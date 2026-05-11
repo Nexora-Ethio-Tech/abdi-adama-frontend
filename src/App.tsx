@@ -40,6 +40,7 @@ const AuditorDashboard = lazy(() => import('./pages/AuditorDashboard').then((m) 
 const AcademicManagement = lazy(() => import('./pages/AcademicManagement').then((m) => ({ default: m.AcademicManagement })));
 const VicePrincipalDashboard = lazy(() => import('./pages/VicePrincipalDashboard').then((m) => ({ default: m.VicePrincipalDashboard })));
 const BranchUsers = lazy(() => import('./pages/BranchUsers').then((m) => ({ default: m.BranchUsers })));
+const Classes = lazy(() => import('./pages/Classes').then((m) => ({ default: m.Classes })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -161,6 +162,12 @@ function App() {
             <Route path="branch-users" element={
               <ProtectedRoute allowedRoles={['school-admin']}>
                 <BranchUsers />
+              </ProtectedRoute>
+            } />
+
+            <Route path="classes" element={
+              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                <Classes />
               </ProtectedRoute>
             } />
 
