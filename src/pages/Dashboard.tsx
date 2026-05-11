@@ -68,16 +68,41 @@ export const Dashboard = () => {
   const isAdmin = role === 'super-admin' || role === 'school-admin';
   const isVP = role === 'vice-principal';
   const selectedBranch = selectedBranchId ? branches.find((branch) => branch.id === selectedBranchId) || null : null;
+  const [branchReports, setBranchReports] = useState<any[]>([]);
+
+  // Fetch branch reports for Super Admin
+  useEffect(() => {
+    const fetchBranchReports = async () => {
+      if (role === 'super-admin' && branches.length > 0) {
+        try {
+          const { getBranchReport } = await import('../services/branchService');
+          const reports = await Promise.all(
+            branches.map(branch => 
+              getBranchReport(branch.id).catch(() => null)
+            )
+          );
+          setBranchReports(reports.filter(r => r !== null));
+        } catch (err) {
+          console.error('Failed to fetch branch reports:', err);
+        }
+      }
+    };
+    fetchBranchReports();
+  }, [role, branches]);
 
   if (role === 'super-admin') {
-    const branchHealth = branches.map((branch, index) => ({
-      ...branch,
-      students: 300 + index * 18,
-      teachers: 22 + index,
-      attendance: (92.1 + index * 0.7).toFixed(1),
-      finance: index % 2 === 0 ? 'Stable' : 'Attention',
-      risk: index === 3 ? 'Infrastructure' : index === 1 ? 'Attendance' : 'Normal'
-    }));
+    // Use real API data if available, fallback to mock
+    const branchHealth = branches.map((branch, index) => {
+      const report = branchReports.find(r => r?.branchId === branch.id);
+      return {
+        ...branch,
+        students: report?.totalStudents || 300 + index * 18,
+        teachers: report?.totalTeachers || 22 + index,
+        attendance: report?.attendanceRate?.toFixed(1) || (92.1 + index * 0.7).toFixed(1),
+        finance: report ? (report.netProfit > 0 ? 'Stable' : 'Attention') : (index % 2 === 0 ? 'Stable' : 'Attention'),
+        risk: report ? (report.attendanceRate < 85 ? 'Attendance' : 'Normal') : (index === 3 ? 'Infrastructure' : index === 1 ? 'Attendance' : 'Normal')
+      };
+    });
 
 
     if (!selectedBranch) {
