@@ -23,4 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 verification/
-*.log
+
+# Documentation and Analysis Files (generated during development)
+*_AUDIT_REPORT.md
+*_ANALYSIS.md
+*_DEVIATION_ANALYSIS.md
+AUTHENTICATION_FLOW.md
+DEPLOYMENT_ALIGNMENT.md
+INTEGRATION_*.md
+API-TESTING-GUIDE.md
+FRONTEND-DEPLOYMENT-GUIDE.md
