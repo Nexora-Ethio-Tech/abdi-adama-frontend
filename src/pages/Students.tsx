@@ -1,9 +1,9 @@
-import { Search, Filter, MoreVertical, Download, ChevronRight, ArrowLeft, UserPlus, X, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Search, Filter, MoreVertical, Download, UserPlus, X, Edit2, Trash2, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Breadcrumbs } from '../components/Breadcrumbs';
+import { useNavigate } from 'react-router-dom';
 import { exportToCSV } from '../utils/exportUtils';
-import { userService } from '../services/userService';
+import studentService, { Student, CreateStudentData, UpdateStudentData } from '../services/studentService';
+import classService from '../services/classService';
 import { useUser } from '../context/UserContext';
 
 export const Students = () => {
@@ -11,336 +11,672 @@ export const Students = () => {
   const { role } = useUser();
   const isSchoolAdmin = role === 'school-admin';
   
-  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
-  const [allStudents, setAllStudents] = useState<any[]>([]);
-  const [grades, setGrades] = useState<any[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [phonePrefix] = useState('+251 ');
-  const [registering, setRegistering] = useState(false);
-  const [registerForm, setRegisterForm] = useState({
-    role: 'student',
-    name: '',
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [filters, setFilters] = useState({ classId: '', grade: '', status: '' });
+  const [formData, setFormData] = useState<CreateStudentData>({
+    firstName: '',
+    lastName: '',
     email: '',
-    grade: ''
+    phone: '',
+    dateOfBirth: '',
+    gender: 'Male',
+    grade: '',
+    guardianName: '',
+    guardianPhone: '',
+    guardianEmail: '',
+    address: '',
   });
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const getToken = () => localStorage.getItem('abdi_adama_token') || '';
+  useEffect(() => {
+    fetchStudents();
+    fetchClasses();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchStudents = async () => {
     try {
-      const gRes = await fetch(`${API}/api/academic/grades/with-sections`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      if (gRes.ok) setGrades(await gRes.json());
-
-      const sRes = await fetch(`${API}/api/students`, {
-        headers: { Authorization: `Bearer ${getToken()}` }
-      });
-      if (sRes.ok) {
-        const data = await sRes.json();
-        // AUTOMATED SORTING: Alphabetical by name
-        const sorted = data.sort((a: any, b: any) => a.name.localeCompare(b.name));
-        setAllStudents(sorted);
-      }
-    } catch (err) {
-      console.error('Fetch error:', err);
-    }
-  };
-
-  useState(() => { fetchData(); });
-
-  const handleExport = (data = allStudents, filename = 'Students_List') => {
-    const dataToExport = data.map(s => ({
-      ID: s.id,
-      Name: s.name,
-      Grade: s.grade,
-      Status: s.status,
-      ParentName: s.parentName,
-      ParentPhone: s.parentPhone
-    }));
-    exportToCSV(dataToExport, filename);
-  };
-
-  const handleAddStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isSchoolAdmin) {
-      alert('Only School Admin can register users');
-      return;
-    }
-
-    setRegistering(true);
-    try {
-      const data: any = {
-        name: registerForm.name,
-        email: registerForm.email,
-        role: registerForm.role
-      };
-
-      // Add grade for students
-      if (registerForm.role === 'student' && registerForm.grade) {
-        data.grade = registerForm.grade;
-      }
-
-      const response = await userService.registerUser(data);
-      console.log('✅ User registered:', response);
-      
-      if (response.data.temporaryPassword) {
-        setTempPassword(response.data.temporaryPassword);
-      }
-      
-      alert(`${registerForm.role} registered successfully! ${response.data.temporaryPassword ? 'Temporary password: ' + response.data.temporaryPassword : ''}`);
-      setShowAddModal(false);
-      setRegisterForm({ role: 'student', name: '', email: '', grade: '' });
-      fetchData();
+      setLoading(true);
+      setError(null);
+      const data = await studentService.getAllStudents(filters);
+      setStudents(data);
     } catch (err: any) {
-      console.error('❌ Error registering user:', err);
-      alert(err.response?.data?.error?.message || 'Failed to register user');
+      setError(err.response?.data?.message || 'Failed to fetch students');
     } finally {
-      setRegistering(false);
+      setLoading(false);
     }
   };
 
-  if (selectedGrade) {
-    const filteredStudents = allStudents.filter(s => s.grade === selectedGrade);
+  const fetchClasses = async () => {
+    try {
+      const data = await classService.getAllClasses();
+      setClasses(data);
+    } catch (err) {
+      console.error('Failed to fetch classes:', err);
+    }
+  };
 
+  useEffect(() => {
+    fetchStudents();
+  }, [filters]);
+
+  const handleExport = () => {
+    const dataToExport = students.map(s => ({
+      ID: s.digitalId,
+      FirstName: s.firstName,
+      LastName: s.lastName,
+      Email: s.email,
+      Grade: s.grade,
+      Class: s.className || 'Unassigned',
+      Status: s.status,
+      GuardianName: s.guardianName,
+      GuardianPhone: s.guardianPhone
+    }));
+    exportToCSV(dataToExport, 'Students_List');
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await studentService.createStudent(formData);
+      setShowAddModal(false);
+      resetForm();
+      fetchStudents();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create student');
+    }
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent) return;
+    try {
+      const updateData: UpdateStudentData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        grade: formData.grade,
+        guardianName: formData.guardianName,
+        guardianPhone: formData.guardianPhone,
+        guardianEmail: formData.guardianEmail,
+        address: formData.address,
+      };
+      await studentService.updateStudent(selectedStudent.id, updateData);
+      setShowEditModal(false);
+      setSelectedStudent(null);
+      fetchStudents();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update student');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedStudent) return;
+    try {
+      await studentService.deleteStudent(selectedStudent.id);
+      setShowDeleteModal(false);
+      setSelectedStudent(null);
+      fetchStudents();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete student');
+    }
+  };
+
+  const handleAssignClass = async (classId: string) => {
+    if (!selectedStudent) return;
+    try {
+      await studentService.assignClass(selectedStudent.id, classId);
+      setShowAssignModal(false);
+      setSelectedStudent(null);
+      fetchStudents();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to assign class');
+    }
+  };
+
+  const openEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setFormData({
+      firstName: student.firstName,
+      lastName: student.lastName,
+      email: student.email,
+      phone: student.phone || '',
+      dateOfBirth: student.dateOfBirth,
+      gender: student.gender,
+      grade: student.grade,
+      guardianName: student.guardianName || '',
+      guardianPhone: student.guardianPhone || '',
+      guardianEmail: student.guardianEmail || '',
+      address: student.address || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dateOfBirth: '',
+      gender: 'Male',
+      grade: '',
+      guardianName: '',
+      guardianPhone: '',
+      guardianEmail: '',
+      address: '',
+    });
+  };
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setSelectedGrade(null)}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
-          >
-            <ArrowLeft size={14} />
-            Back
-          </button>
-          <div>
-            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight uppercase">Students in {selectedGrade}</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Detailed roster for the current academic session.</p>
-          </div>
-          <button 
-            onClick={() => handleExport(filteredStudents, `Students_Grade_${selectedGrade}`)}
-            className="ml-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm font-bold"
-          >
-            <Download size={20} />
-            <span>Export</span>
-          </button>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl dark:shadow-none shadow-slate-200/40 border border-slate-100 dark:border-slate-800 overflow-hidden transition-all duration-500">
-          <table className="w-full text-left min-w-[700px]">
-            <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <tr>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Student Information</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Guardian Contact</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Status</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Quick Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-              {filteredStudents.map((student) => (
-                <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
-                  <td className="px-6 py-4">
-                    <Link
-                      to={`/students/${student.id}`}
-                      className="flex items-center gap-3 group/profile cursor-pointer"
-                    >
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-xl flex items-center justify-center text-blue-700 dark:text-blue-400 font-black text-xs transition-all group-hover/profile:scale-110">
-                        {student.name.split(' ').map((n: string) => n[0]).join('')}
-                      </div>
-                      <span className="text-sm font-medium text-slate-800 dark:text-white group-hover/profile:text-blue-600 dark:group-hover/profile:text-blue-400 transition-colors">{student.name}</span>
-                    </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-slate-800 dark:text-white">{student.parentName}</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">{student.parentPhone}</div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                      student.status === 'Active' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-800/30' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200/50 dark:border-slate-700/50'
-                    }`}>
-                      {student.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button className="p-1 hover:bg-slate-100 rounded transition-colors text-slate-400 hover:text-slate-600">
-                        <MoreVertical size={18} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <Breadcrumbs />
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-bold uppercase tracking-widest"
-        >
-          <ArrowLeft size={14} />
-          Back
-        </button>
-      </div>
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Students</h1>
+          <p className="text-gray-600">Manage student records and assignments</p>
+        </div>
+        <div className="flex gap-3">
           {isSchoolAdmin && (
-            <button 
+            <button
               onClick={() => setShowAddModal(true)}
-              className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-200 dark:shadow-none text-sm font-bold"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
-              <UserPlus size={20} />
-              <span>Register User</span>
+              <UserPlus className="w-5 h-5" />
+              Add Student
             </button>
           )}
-          <button 
-            onClick={() => handleExport()}
-            className="flex-1 sm:flex-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm font-bold"
-          >
-            <Download size={20} />
-            <span>Export</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search students..."
-              className="pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full sm:w-64 font-medium"
-            />
-          </div>
-          <button className="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">
-            <Filter size={20} />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {grades.map((grade) => (
           <button
-            key={grade.grade_id}
-            onClick={() => setSelectedGrade(grade.grade_level)}
-            className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm dark:shadow-none hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-xl dark:hover:shadow-none hover:-translate-y-1 transition-all group text-left"
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-2xl font-black text-slate-800 dark:text-white">G-{grade.grade_level}</span>
-              <ChevronRight size={20} className="text-slate-300 dark:text-slate-600 group-hover:text-blue-500 transition-colors" />
-            </div>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">
-              {allStudents.filter(s => s.grade_level === grade.grade_level).length} Students
-            </p>
+            <Download className="w-5 h-5" />
+            Export
           </button>
-        ))}
+        </div>
       </div>
 
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+        </div>
+      )}
+
+      <div className="mb-4 flex gap-3">
+        <select
+          value={filters.grade}
+          onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
+          className="px-3 py-2 border border-gray-300 rounded-lg"
+        >
+          <option value="">All Grades</option>
+          <option value="9">Grade 9</option>
+          <option value="10">Grade 10</option>
+          <option value="11">Grade 11</option>
+          <option value="12">Grade 12</option>
+        </select>
+        <select
+          value={filters.classId}
+          onChange={(e) => setFilters({ ...filters, classId: e.target.value })}
+          className="px-3 py-2 border border-gray-300 rounded-lg"
+        >
+          <option value="">All Classes</option>
+          {classes.map((cls) => (
+            <option key={cls.id} value={cls.id}>
+              {cls.name} - {cls.section}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filters.status}
+          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+          className="px-3 py-2 border border-gray-300 rounded-lg"
+        >
+          <option value="">All Status</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+          <option value="Suspended">Suspended</option>
+          <option value="Graduated">Graduated</option>
+        </select>
+      </div>
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {students.map((student) => (
+              <tr key={student.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 text-sm text-gray-900">{student.digitalId}</td>
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                  {student.firstName} {student.lastName}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-600">{student.email}</td>
+                <td className="px-6 py-4 text-sm text-gray-900">{student.grade}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">{student.className || 'Unassigned'}</td>
+                <td className="px-6 py-4">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    student.status === 'Active' ? 'bg-green-100 text-green-800' :
+                    student.status === 'Inactive' ? 'bg-gray-100 text-gray-800' :
+                    student.status === 'Suspended' ? 'bg-red-100 text-red-800' :
+                    'bg-blue-100 text-blue-800'
+                  }`}>
+                    {student.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setShowAssignModal(true);
+                      }}
+                      className="p-1 text-gray-600 hover:text-blue-600"
+                      title="Assign Class"
+                    >
+                      <Users className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => openEditModal(student)}
+                      className="p-1 text-gray-600 hover:text-blue-600"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedStudent(student);
+                        setShowDeleteModal(true);
+                      }}
+                      className="p-1 text-gray-600 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {students.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <UserPlus className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600">No students found. Add your first student.</p>
+        </div>
+      )}
+
+      {/* Create Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
-                  <UserPlus size={20} />
-                </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase tracking-wider">Register User</h3>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <X size={20} />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Add New Student</h2>
+              <button onClick={() => setShowAddModal(false)}>
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={handleAddStudent}>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Role</label>
-                <select 
-                  value={registerForm.role}
-                  onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  required
-                >
-                  <option value="student">Student</option>
-                  <option value="teacher">Teacher</option>
-                  <option value="parent">Parent</option>
-                  <option value="finance-clerk">Finance Clerk</option>
-                  <option value="librarian">Librarian</option>
-                  <option value="clinic-admin">Clinic Admin</option>
-                  <option value="driver">Driver</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
-                <input 
-                  type="text" 
-                  value={registerForm.name}
-                  onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
-                  placeholder="e.g. Abdi Tolosa" 
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Email</label>
-                <input 
-                  type="email" 
-                  value={registerForm.email}
-                  onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
-                  placeholder="email@example.com" 
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                  required
-                />
-              </div>
-
-              {registerForm.role === 'student' && (
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Grade Level</label>
-                  <input 
-                    type="text" 
-                    value={registerForm.grade}
-                    onChange={(e) => setRegisterForm({ ...registerForm, grade: e.target.value })}
-                    placeholder="e.g. 10" 
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
                     required
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-              )}
-
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/50">
-                <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
-                  <strong>Note:</strong> User will be created with status <strong>Pending</strong>. Super Admin must approve before they can login. A temporary password will be auto-generated.
-                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
               </div>
-
-              <div className="pt-4 flex gap-3">
-                <button 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                  <select
+                    required
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., 9, 10, 11, 12"
+                  value={formData.grade}
+                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Name</label>
+                  <input
+                    type="text"
+                    value={formData.guardianName}
+                    onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.guardianPhone}
+                    onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Email</label>
+                <input
+                  type="email"
+                  value={formData.guardianEmail}
+                  onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50"
-                  disabled={registering}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
-                  disabled={registering}
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  {registering ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-                  <span>{registering ? 'Registering...' : 'Register User'}</span>
+                  Create Student
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Edit Student</h2>
+              <button onClick={() => setShowEditModal(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                  <select
+                    required
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Grade *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.grade}
+                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Name</label>
+                  <input
+                    type="text"
+                    value={formData.guardianName}
+                    onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.guardianPhone}
+                    onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Guardian Email</label>
+                <input
+                  type="email"
+                  value={formData.guardianEmail}
+                  onChange={(e) => setFormData({ ...formData, guardianEmail: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  rows={2}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Update Student
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {showDeleteModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Delete Student</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{selectedStudent.firstName} {selectedStudent.lastName}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Class Modal */}
+      {showAssignModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Assign Class</h2>
+              <button onClick={() => setShowAssignModal(false)}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Assign <strong>{selectedStudent.firstName} {selectedStudent.lastName}</strong> to a class:
+            </p>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {classes.map((cls) => (
+                <button
+                  key={cls.id}
+                  onClick={() => handleAssignClass(cls.id)}
+                  className="w-full p-3 text-left border border-gray-300 rounded-lg hover:bg-blue-50 hover:border-blue-500"
+                >
+                  <div className="font-medium">{cls.name} - {cls.section}</div>
+                  <div className="text-sm text-gray-600">Capacity: {cls.capacity}</div>
+                </button>
+              ))}
+            </div>
+            {classes.length === 0 && (
+              <p className="text-gray-500 text-center py-4">No classes available</p>
+            )}
           </div>
         </div>
       )}
