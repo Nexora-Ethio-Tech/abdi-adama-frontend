@@ -46,6 +46,7 @@ const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement').t
 const TeacherClasses = lazy(() => import('./pages/TeacherClasses').then((m) => ({ default: m.TeacherClasses })));
 const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ default: m.TeacherGrades })));
 const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight').then((m) => ({ default: m.VPAttendanceOversight })));
+const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -203,6 +204,12 @@ function App() {
             <Route path="vp-attendance" element={
               <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
                 <VPAttendanceOversight />
+              </ProtectedRoute>
+            } />
+
+            <Route path="finance-dashboard" element={
+              <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                <FinanceClerkDashboard />
               </ProtectedRoute>
             } />
 
