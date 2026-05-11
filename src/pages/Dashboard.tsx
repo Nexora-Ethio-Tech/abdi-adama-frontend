@@ -74,16 +74,27 @@ export const Dashboard = () => {
   useEffect(() => {
     const fetchBranchReports = async () => {
       if (role === 'super-admin' && branches.length > 0) {
+        console.log('🔍 Fetching branch reports for', branches.length, 'branches');
         try {
           const { getBranchReport } = await import('../services/branchService');
           const reports = await Promise.all(
-            branches.map(branch => 
-              getBranchReport(branch.id).catch(() => null)
-            )
+            branches.map(async (branch) => {
+              try {
+                console.log('📊 Fetching report for branch:', branch.name, branch.id);
+                const report = await getBranchReport(branch.id);
+                console.log('✅ Report received for', branch.name, ':', report);
+                return report;
+              } catch (err) {
+                console.error('❌ Failed to fetch report for', branch.name, ':', err);
+                return null;
+              }
+            })
           );
-          setBranchReports(reports.filter(r => r !== null));
+          const validReports = reports.filter(r => r !== null);
+          console.log('📈 Total valid reports:', validReports.length, '/', branches.length);
+          setBranchReports(validReports);
         } catch (err) {
-          console.error('Failed to fetch branch reports:', err);
+          console.error('❌ Failed to fetch branch reports:', err);
         }
       }
     };
@@ -94,6 +105,7 @@ export const Dashboard = () => {
     // Use real API data if available, fallback to mock
     const branchHealth = branches.map((branch, index) => {
       const report = branchReports.find(r => r?.branchId === branch.id);
+      console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
       return {
         ...branch,
         students: report?.totalStudents || 300 + index * 18,
