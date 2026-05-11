@@ -4,35 +4,19 @@ import { API_ENDPOINTS } from '../config/api';
 export const userService = {
   // Create School Admin
   createSchoolAdmin: async (data: { name: string; email: string; branchId: string; password?: string }) => {
-    const payload = {
-      name: data.name,
-      email: data.email,
-      branch_id: data.branchId, // Convert to snake_case for backend
-      ...(data.password && { password: data.password })
-    };
-    const response = await api.post(API_ENDPOINTS.CREATE_SCHOOL_ADMIN, payload);
+    const response = await api.post(API_ENDPOINTS.CREATE_SCHOOL_ADMIN, data);
     return response.data;
   },
 
   // Create Vice Principal
   createVicePrincipal: async (data: { name: string; email: string; branchId: string }) => {
-    const payload = {
-      name: data.name,
-      email: data.email,
-      branch_id: data.branchId // Convert to snake_case for backend
-    };
-    const response = await api.post(API_ENDPOINTS.CREATE_VICE_PRINCIPAL, payload);
+    const response = await api.post(API_ENDPOINTS.CREATE_VICE_PRINCIPAL, data);
     return response.data;
   },
 
   // Create Auditor
   createAuditor: async (data: { name: string; email: string; branchId: string }) => {
-    const payload = {
-      name: data.name,
-      email: data.email,
-      branch_id: data.branchId // Convert to snake_case for backend
-    };
-    const response = await api.post(API_ENDPOINTS.CREATE_AUDITOR, payload);
+    const response = await api.post(API_ENDPOINTS.CREATE_AUDITOR, data);
     return response.data;
   },
 
