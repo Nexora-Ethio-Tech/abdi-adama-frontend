@@ -44,6 +44,7 @@ const Classes = lazy(() => import('./pages/Classes').then((m) => ({ default: m.C
 const Subjects = lazy(() => import('./pages/Subjects'));
 const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement').then((m) => ({ default: m.AttendanceManagement })));
 const TeacherClasses = lazy(() => import('./pages/TeacherClasses').then((m) => ({ default: m.TeacherClasses })));
+const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ default: m.TeacherGrades })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -189,6 +190,12 @@ function App() {
             <Route path="teacher-classes" element={
               <ProtectedRoute allowedRoles={['teacher']}>
                 <TeacherClasses />
+              </ProtectedRoute>
+            } />
+
+            <Route path="teacher-grades" element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherGrades />
               </ProtectedRoute>
             } />
 
