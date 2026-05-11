@@ -1,5 +1,5 @@
 
-import { Building2, MapPin, Users, GraduationCap, ChevronRight, Plus, ArrowLeft } from 'lucide-react';
+import { Building2, MapPin, Users, GraduationCap, ChevronRight, Plus, ArrowLeft, X, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -16,6 +16,15 @@ export const Branches = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [branchForm, setBranchForm] = useState({
+    name: '',
+    code: '',
+    phone: '',
+    email: '',
+    address: ''
+  });
 
   useEffect(() => {
     const fetchBranches = async () => {
@@ -44,6 +53,28 @@ export const Branches = () => {
     setSelectedBranch(branch as any);
     setSelectedBranchId(branch.id);
     navigate('/');
+  };
+
+  const handleCreateBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const response = await branchService.createBranch(branchForm);
+      console.log('✅ Branch created:', response);
+      alert('Branch created successfully!');
+      setShowAddModal(false);
+      setBranchForm({ name: '', code: '', phone: '', email: '', address: '' });
+      // Refresh branches
+      const refreshResponse = await branchService.getAllBranches();
+      if (refreshResponse.success) {
+        setBranches(refreshResponse.data);
+      }
+    } catch (err: any) {
+      console.error('❌ Error creating branch:', err);
+      alert(err.response?.data?.error?.message || 'Failed to create branch');
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) {
@@ -77,7 +108,10 @@ export const Branches = () => {
             {error && <span className="text-amber-600 ml-2">⚠️ Using cached data</span>}
           </p>
         </div>
-        <button className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base">
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base"
+        >
           <Plus size={20} />
           <span>Add New Branch</span>
         </button>
@@ -116,6 +150,105 @@ export const Branches = () => {
           </div>
         ))}
       </div>
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                  <Building2 size={20} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New Branch</h3>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form className="p-6 space-y-4" onSubmit={handleCreateBranch}>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Branch Name</label>
+                <input
+                  type="text"
+                  value={branchForm.name}
+                  onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
+                  placeholder="e.g. Main Branch"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Branch Code</label>
+                <input
+                  type="text"
+                  value={branchForm.code}
+                  onChange={(e) => setBranchForm({ ...branchForm, code: e.target.value })}
+                  placeholder="e.g. MB"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Phone</label>
+                <input
+                  type="tel"
+                  value={branchForm.phone}
+                  onChange={(e) => setBranchForm({ ...branchForm, phone: e.target.value })}
+                  placeholder="+251911000000"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
+                <input
+                  type="email"
+                  value={branchForm.email}
+                  onChange={(e) => setBranchForm({ ...branchForm, email: e.target.value })}
+                  placeholder="branch@abdiadama.com"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Address</label>
+                <input
+                  type="text"
+                  value={branchForm.address}
+                  onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
+                  placeholder="Addis Ababa, Ethiopia"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={creating}
+                >
+                  {creating ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                  <span>{creating ? 'Creating...' : 'Create Branch'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
