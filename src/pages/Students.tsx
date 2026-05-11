@@ -1,16 +1,29 @@
-import { Search, Filter, MoreVertical, Download, ChevronRight, ArrowLeft, UserPlus, X, Check } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Filter, MoreVertical, Download, ChevronRight, ArrowLeft, UserPlus, X, Check, Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { exportToCSV } from '../utils/exportUtils';
+import { userService } from '../services/userService';
+import { useUser } from '../context/UserContext';
 
 export const Students = () => {
   const navigate = useNavigate();
+  const { role } = useUser();
+  const isSchoolAdmin = role === 'school-admin';
+  
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [allStudents, setAllStudents] = useState<any[]>([]);
   const [grades, setGrades] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [phonePrefix] = useState('+251 ');
+  const [registering, setRegistering] = useState(false);
+  const [registerForm, setRegisterForm] = useState({
+    role: 'student',
+    name: '',
+    email: '',
+    grade: ''
+  });
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const getToken = () => localStorage.getItem('abdi_adama_token') || '';
@@ -52,33 +65,41 @@ export const Students = () => {
 
   const handleAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget as HTMLFormElement);
     
-    const payload = {
-      name: formData.get('name'),
-      grade: formData.get('grade'),
-      section_id: formData.get('section'),
-      parentName: formData.get('parentName'),
-      parentPhone: phonePrefix + formData.get('parentPhone'),
-      branch_id: grades[0]?.branch_id // Default to same branch as grades
-    };
+    if (!isSchoolAdmin) {
+      alert('Only School Admin can register users');
+      return;
+    }
 
+    setRegistering(true);
     try {
-      const res = await fetch(`${API}/api/students`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}` 
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (res.ok) {
-        setShowAddModal(false);
-        fetchData(); // Refresh list
+      const data: any = {
+        name: registerForm.name,
+        email: registerForm.email,
+        role: registerForm.role
+      };
+
+      // Add grade for students
+      if (registerForm.role === 'student' && registerForm.grade) {
+        data.grade = registerForm.grade;
       }
-    } catch (err) {
-      console.error(err);
+
+      const response = await userService.registerUser(data);
+      console.log('✅ User registered:', response);
+      
+      if (response.data.temporaryPassword) {
+        setTempPassword(response.data.temporaryPassword);
+      }
+      
+      alert(`${registerForm.role} registered successfully! ${response.data.temporaryPassword ? 'Temporary password: ' + response.data.temporaryPassword : ''}`);
+      setShowAddModal(false);
+      setRegisterForm({ role: 'student', name: '', email: '', grade: '' });
+      fetchData();
+    } catch (err: any) {
+      console.error('❌ Error registering user:', err);
+      alert(err.response?.data?.error?.message || 'Failed to register user');
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -173,13 +194,15 @@ export const Students = () => {
       </div>
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={() => navigate('/registration')}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-200 dark:shadow-none text-sm font-bold"
-          >
-            <UserPlus size={20} />
-            <span>Register New Student</span>
-          </button>
+          {isSchoolAdmin && (
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-blue-200 dark:shadow-none text-sm font-bold"
+            >
+              <UserPlus size={20} />
+              <span>Register User</span>
+            </button>
+          )}
           <button 
             onClick={() => handleExport()}
             className="flex-1 sm:flex-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-colors text-sm font-bold"
@@ -230,7 +253,7 @@ export const Students = () => {
                 <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-lg">
                   <UserPlus size={20} />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase tracking-wider">Register New Student</h3>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm uppercase tracking-wider">Register User</h3>
               </div>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
@@ -238,47 +261,83 @@ export const Students = () => {
             </div>
             <form className="p-6 space-y-4" onSubmit={handleAddStudent}>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Student Full Name</label>
-                <input name="name" required type="text" placeholder="e.g. Abdi Tolosa" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Role</label>
+                <select 
+                  value={registerForm.role}
+                  onChange={(e) => setRegisterForm({ ...registerForm, role: e.target.value })}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  required
+                >
+                  <option value="student">Student</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="parent">Parent</option>
+                  <option value="finance-clerk">Finance Clerk</option>
+                  <option value="librarian">Librarian</option>
+                  <option value="clinic-admin">Clinic Admin</option>
+                  <option value="driver">Driver</option>
+                </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
+                <input 
+                  type="text" 
+                  value={registerForm.name}
+                  onChange={(e) => setRegisterForm({ ...registerForm, name: e.target.value })}
+                  placeholder="e.g. Abdi Tolosa" 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                  required
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Email</label>
+                <input 
+                  type="email" 
+                  value={registerForm.email}
+                  onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                  placeholder="email@example.com" 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                  required
+                />
+              </div>
+
+              {registerForm.role === 'student' && (
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Grade Level</label>
-                  <select name="grade" required className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    {grades.map(g => <option key={g.grade_id} value={g.grade_level}>{g.grade_level}</option>)}
-                  </select>
+                  <input 
+                    type="text" 
+                    value={registerForm.grade}
+                    onChange={(e) => setRegisterForm({ ...registerForm, grade: e.target.value })}
+                    placeholder="e.g. 10" 
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                    required
+                  />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Section</label>
-                  <select name="section" required className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                    {grades.flatMap(g => g.sections || []).map(s => (
-                      <option key={s.id} value={s.id}>{s.section_name} (Avail: {s.available})</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Parent/Guardian Name</label>
-                <input name="parentName" required type="text" placeholder="e.g. Tolosa Bekele" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Guardian Phone Number</label>
-                <div className="flex gap-2">
-                  <div className="px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-500">
-                    {phonePrefix}
-                  </div>
-                  <input name="parentPhone" required type="tel" placeholder="912345678" className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-                </div>
-              </div>
+              )}
+
               <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-100 dark:border-amber-800/50">
                 <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
-                  <strong>Student Login:</strong> Students log in using their <strong>Digital ID</strong> (e.g., ST1714...). This ID will be generated upon registration.
+                  <strong>Note:</strong> User will be created with status <strong>Pending</strong>. Super Admin must approve before they can login. A temporary password will be auto-generated.
                 </p>
               </div>
-              <div className="pt-4">
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
-                  <Check size={18} />
-                  <span>Register Student</span>
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-sm text-slate-500 hover:bg-slate-50"
+                  disabled={registering}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
+                  disabled={registering}
+                >
+                  {registering ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                  <span>{registering ? 'Registering...' : 'Register User'}</span>
                 </button>
               </div>
             </form>
