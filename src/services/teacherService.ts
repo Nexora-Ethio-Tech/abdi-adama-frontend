@@ -110,3 +110,153 @@ const teacherService = {
 };
 
 export default teacherService;
+
+// Teacher Attendance Interfaces
+export interface MarkAttendanceData {
+  date: string;
+  attendanceRecords: Array<{
+    studentId: string;
+    status: 'present' | 'absent' | 'late' | 'excused';
+  }>;
+}
+
+export interface TeacherAttendanceRecord {
+  id: string;
+  date: string;
+  classId: string;
+  className: string;
+  studentId: string;
+  studentName: string;
+  status: 'present' | 'absent' | 'late' | 'excused';
+}
+
+// Teacher Schedule Interface
+export interface TeacherScheduleItem {
+  id: string;
+  day: string;
+  timeSlot: string;
+  className: string;
+  subject: string;
+  room?: string;
+}
+
+// Weekly Plan Interfaces
+export interface WeeklyPlan {
+  id: string;
+  date: string;
+  content: string;
+  objectives: string;
+  teacherActivity: string;
+  timeDuration: string;
+  studentActivity: string;
+  teachingMethod: string;
+  teachingAids: string;
+  evaluation: string;
+  remark?: string;
+  status: 'Draft' | 'Pending' | 'Approved' | 'Revision Required';
+  deanFeedback?: string;
+  deanRating?: number;
+}
+
+export interface SubmitWeeklyPlanData {
+  date: string;
+  content: string;
+  objectives: string;
+  teacherActivity: string;
+  timeDuration: string;
+  studentActivity: string;
+  teachingMethod: string;
+  teachingAids: string;
+  evaluation: string;
+  remark?: string;
+  status: 'Draft' | 'Pending';
+}
+
+export interface UpdateWeeklyPlanData {
+  content?: string;
+  objectives?: string;
+  teacherActivity?: string;
+  timeDuration?: string;
+  studentActivity?: string;
+  teachingMethod?: string;
+  teachingAids?: string;
+  evaluation?: string;
+  remark?: string;
+  status?: 'Draft' | 'Pending';
+}
+
+// Communication Log Interfaces
+export interface CommunicationLog {
+  id: string;
+  studentId: string;
+  studentName: string;
+  weekEnding: string;
+  ratingUniform: number;
+  ratingMaterials: number;
+  ratingHomework: number;
+  ratingParticipation: number;
+  ratingConduct: number;
+  ratingSocial: number;
+  ratingPunctuality: number;
+  ratingNoteTaking: number;
+  teacherNote: string;
+  createdAt: string;
+}
+
+export interface SubmitCommunicationLogData {
+  studentId: string;
+  weekEnding: string;
+  ratingUniform: number;
+  ratingMaterials: number;
+  ratingHomework: number;
+  ratingParticipation: number;
+  ratingConduct: number;
+  ratingSocial: number;
+  ratingPunctuality: number;
+  ratingNoteTaking: number;
+  teacherNote: string;
+}
+
+// Teacher Attendance Methods
+export const markAttendance = async (data: MarkAttendanceData) => {
+  const response = await api.post('/teacher/attendance', data);
+  return response.data;
+};
+
+export const getAttendanceByClass = async (classId: string): Promise<TeacherAttendanceRecord[]> => {
+  const response = await api.get(`/teacher/attendance/${classId}`);
+  return response.data;
+};
+
+// Teacher Schedule Methods
+export const getTeacherSchedule = async (): Promise<TeacherScheduleItem[]> => {
+  const response = await api.get('/teacher/schedule');
+  return response.data;
+};
+
+// Weekly Plans Methods
+export const submitWeeklyPlan = async (data: SubmitWeeklyPlanData): Promise<WeeklyPlan> => {
+  const response = await api.post('/teacher/weekly-plans', data);
+  return response.data;
+};
+
+export const getMyWeeklyPlans = async (): Promise<WeeklyPlan[]> => {
+  const response = await api.get('/teacher/weekly-plans');
+  return response.data;
+};
+
+export const updateWeeklyPlan = async (planId: string, data: UpdateWeeklyPlanData): Promise<WeeklyPlan> => {
+  const response = await api.patch(`/teacher/weekly-plans/${planId}`, data);
+  return response.data;
+};
+
+// Communication Logs Methods
+export const submitCommunicationLog = async (data: SubmitCommunicationLogData): Promise<CommunicationLog> => {
+  const response = await api.post('/teacher/communication-logs', data);
+  return response.data;
+};
+
+export const getCommunicationLogs = async (studentId: string): Promise<CommunicationLog[]> => {
+  const response = await api.get(`/teacher/communication-logs/${studentId}`);
+  return response.data;
+};

@@ -6,37 +6,24 @@ import {
   ArrowUpRight, Eye
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-
-interface Transaction {
-  id: string;
-  student_name: string;
-  amount: number;
-  type: string;
-  date: string;
-  verified_by: string;
-  branch_id: string;
-  branch_name?: string;
-  student_digital_id?: string;
-}
-
-interface SpecialStudent {
-  id: string;
-  name: string;
-  grade: string;
-  monthly_fee: number;
-  bus_fee: number;
-  fee_status: 'standard' | 'reduced';
-  fee_approval_status: 'pending' | 'approved' | 'rejected' | 'none';
-  fee_notes: string;
-  branch_name: string;
-}
+import { 
+  getAuditorDashboard, 
+  getAllPayments, 
+  getFeeReductions, 
+  updateFeeReductionStatus,
+  AuditorDashboard as AuditorDashboardData,
+  Payment,
+  FeeReduction
+} from '../services/auditorService';
 
 export const AuditorDashboard = () => {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<'transactions' | 'special-students'>('transactions');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [specialStudents, setSpecialStudents] = useState<SpecialStudent[]>([]);
-  const [, setLoading] = useState(true);
+  const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [feeReductions, setFeeReductions] = useState<FeeReduction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -45,20 +32,18 @@ export const AuditorDashboard = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
-      const token = localStorage.getItem('abdi_adama_token');
-      const [txRes, specialRes] = await Promise.all([
-        fetch('/api/finance/transactions', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('/api/students/special/list', { headers: { 'Authorization': `Bearer ${token}` } })
+      const [dashboardData, paymentsData, feeReductionsData] = await Promise.all([
+        getAuditorDashboard(),
+        getAllPayments(),
+        getFeeReductions()
       ]);
-      
-      const txData = await txRes.json();
-      const specialData = await specialRes.json();
-      
-      if (Array.isArray(txData)) setTransactions(txData);
-      if (Array.isArray(specialData)) setSpecialStudents(specialData);
-    } catch (err) {
-      console.error('Failed to fetch auditor data:', err);
+      setDashboard(dashboardData);
+      setPayments(paymentsData);
+      setFeeReductions(feeReductionsData);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -66,21 +51,13 @@ export const AuditorDashboard = () => {
 
   const handleApprove = async (id: string, approved: boolean) => {
     try {
-      const token = localStorage.getItem('abdi_adama_token');
-      const res = await fetch('/api/students/fees/approve', {
-        method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ studentId: id, approved, approver_name: user?.name })
+      await updateFeeReductionStatus(id, {
+        status: approved ? 'Approved' : 'Rejected',
+        remarks: approved ? 'Approved by auditor' : 'Rejected by auditor'
       });
-      
-      if (res.ok) {
-        setSpecialStudents(prev => prev.map(s => s.id === id ? { ...s, fee_approval_status: approved ? 'approved' : 'rejected' } : s));
-      }
-    } catch (err) {
-      console.error('Failed to approve:', err);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.message);
     }
   };
 
@@ -108,13 +85,25 @@ export const AuditorDashboard = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <>
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Collections', value: '4.2M ETB', trend: '+12%', icon: Wallet, color: 'blue' },
-          { label: 'Special Students', value: '124', trend: 'Active', icon: Users, color: 'purple' },
-          { label: 'Pending Approvals', value: '18', trend: 'Priority', icon: Clock, color: 'amber' },
-          { label: 'System Health', value: 'Secure', trend: 'Audit OK', icon: ShieldCheck, color: 'emerald' },
+          { label: 'Total Revenue', value: `${dashboard?.totalRevenue.toLocaleString() || 0} ETB`, trend: `+${((dashboard?.totalRevenue || 0) / 1000000).toFixed(1)}M`, icon: Wallet, color: 'blue' },
+          { label: 'Total Students', value: dashboard?.totalStudents || 0, trend: `${dashboard?.paidStudents || 0} Paid`, icon: Users, color: 'purple' },
+          { label: 'Pending Approvals', value: dashboard?.pendingFeeReductions || 0, trend: 'Priority', icon: Clock, color: 'amber' },
+          { label: 'Net Profit', value: `${dashboard?.netProfit.toLocaleString() || 0} ETB`, trend: 'Audit OK', icon: ShieldCheck, color: 'emerald' },
         ].map((stat, i) => (
           <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none flex flex-col justify-between group hover:border-blue-500/30 transition-all duration-500">
             <div className="flex justify-between items-start">
@@ -182,38 +171,38 @@ export const AuditorDashboard = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {transactions.map((tx) => (
-                  <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                {payments.map((payment) => (
+                  <tr key={payment.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold">
-                          {tx.student_name[0]}
+                          {payment.studentName[0]}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{tx.student_name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold">ID: {tx.student_digital_id || tx.id.slice(0, 8)}</p>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{payment.studentName}</p>
+                          <p className="text-[10px] text-slate-400 font-bold">ID: {payment.studentId.slice(0, 8)}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-sm">
                         <ArrowUpRight size={14} />
-                        {tx.amount.toLocaleString()} ETB
+                        {payment.amount.toLocaleString()} ETB
                       </div>
                     </td>
                     <td className="px-8 py-6">
                       <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-800/50">
-                        {tx.type}
+                        {payment.type}
                       </span>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{tx.branch_name || 'Network'}</p>
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{payment.paymentMethod}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{tx.verified_by}</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{payment.status}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{tx.date}</p>
+                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(payment.date).toLocaleDateString()}</p>
                     </td>
                     <td className="px-8 py-6 text-right">
                       <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
@@ -226,53 +215,53 @@ export const AuditorDashboard = () => {
             </table>
           ) : (
             <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 dark:divide-slate-800">
-              {specialStudents.map((student) => (
-                <div key={student.id} className="p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+              {feeReductions.map((reduction) => (
+                <div key={reduction.id} className="p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                   <div className="flex items-center gap-6">
                     <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-700 dark:text-purple-400 group-hover:scale-110 transition-transform">
                       <Users size={32} />
                     </div>
                     <div>
                       <div className="flex items-center gap-3">
-                        <h4 className="text-lg font-black text-slate-800 dark:text-white">{student.name}</h4>
+                        <h4 className="text-lg font-black text-slate-800 dark:text-white">{reduction.studentName}</h4>
                         <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          {student.branch_name} • Grade {student.grade}
+                          {reduction.reductionPercentage}% Reduction
                         </span>
                       </div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium italic">"{student.fee_notes}"</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium italic">"{reduction.reason}"</p>
                     </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-8">
                     <div className="text-center">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Proposed Fee</p>
-                      <p className="text-xl font-black text-blue-600 dark:text-blue-400">{student.monthly_fee.toLocaleString()} ETB</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Current → Requested</p>
+                      <p className="text-xl font-black text-blue-600 dark:text-blue-400">{reduction.currentFee.toLocaleString()} → {reduction.requestedFee.toLocaleString()} ETB</p>
                     </div>
 
                     <div className="flex flex-col items-center">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Approval Status</p>
                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${
-                         student.fee_approval_status === 'pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                         student.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
+                         reduction.status === 'Pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
+                         reduction.status === 'Approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
                          'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
                        }`}>
-                         {student.fee_approval_status === 'pending' && <Clock size={12} />}
-                         {student.fee_approval_status === 'approved' && <CheckCircle size={12} />}
-                         {student.fee_approval_status === 'rejected' && <XCircle size={12} />}
-                         {student.fee_approval_status}
+                         {reduction.status === 'Pending' && <Clock size={12} />}
+                         {reduction.status === 'Approved' && <CheckCircle size={12} />}
+                         {reduction.status === 'Rejected' && <XCircle size={12} />}
+                         {reduction.status}
                        </span>
                     </div>
 
-                    {student.fee_approval_status === 'pending' && (
+                    {reduction.status === 'Pending' && (
                       <div className="flex items-center gap-3 ml-4">
                         <button 
-                          onClick={() => handleApprove(student.id, false)}
+                          onClick={() => handleApprove(reduction.id, false)}
                           className="p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/30 transition-all"
                         >
                           <XCircle size={24} />
                         </button>
                         <button 
-                          onClick={() => handleApprove(student.id, true)}
+                          onClick={() => handleApprove(reduction.id, true)}
                           className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
                         >
                           Approve
@@ -286,6 +275,8 @@ export const AuditorDashboard = () => {
           )}
         </div>
       </div>
+        </>
+      )}
 
       {/* Audit Log Hint */}
       <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 p-6 rounded-[2rem] flex items-start gap-4">
