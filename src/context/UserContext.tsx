@@ -61,6 +61,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true); // Block rendering until verified
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
+  const [branches, setBranches] = useState<Branch[]>(mockBranches); // Start with mock, fetch real
   const [gradesLocked, setGradesLocked] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(() => {
     return localStorage.getItem('registration_open') !== 'false';
@@ -105,6 +106,38 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       english: 'Your children are our children'
     };
   });
+
+  // ─── Fetch Real Branches for Super Admin ───────────────────────────────────
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (user?.role === 'super-admin') {
+        try {
+          const token = localStorage.getItem('abdi_adama_token');
+          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/super-admin/branches`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && Array.isArray(data.data)) {
+              // Map API response to Branch interface
+              const apiBranches = data.data.map((b: any) => ({
+                id: b.id,
+                name: b.name,
+                location: b.address || b.location || 'N/A'
+              }));
+              setBranches(apiBranches);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch branches:', err);
+          // Keep mock branches on error
+        }
+      }
+    };
+    fetchBranches();
+  }, [user]);
 
   // ─── Token Verification on Load ────────────────────────────────────────────
   // This is the ONLY way a user gets restored after page refresh.
@@ -260,7 +293,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       role,
       selectedBranch,
       setSelectedBranch,
-      branches: mockBranches,
+      branches,
       gradesLocked,
       setGradesLocked,
       registrationOpen,
