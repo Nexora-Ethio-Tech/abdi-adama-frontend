@@ -59,3 +59,69 @@ export const branchService = {
     return response.data;
   },
 };
+
+// Academic Year Interfaces
+export interface AcademicYear {
+  id: string;
+  yearName: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateAcademicYearData {
+  yearName: string;
+  startDate: string;
+  endDate: string;
+}
+
+// Report Interfaces
+export interface SystemReport {
+  totalUsers: number;
+  totalBranches: number;
+  totalStudents: number;
+  totalTeachers: number;
+  totalRevenue: number;
+  activeUsers: number;
+  pendingApprovals: number;
+}
+
+export interface BranchReport {
+  branchId: string;
+  branchName: string;
+  totalStudents: number;
+  totalTeachers: number;
+  totalStaff: number;
+  revenue: number;
+  expenses: number;
+  netProfit: number;
+  attendanceRate: number;
+}
+
+// Academic Year Methods
+export const createGlobalAcademicYear = async (data: CreateAcademicYearData) => {
+  const response = await api.post('/super-admin/academic-years', data);
+  return response.data;
+};
+
+export const getAllAcademicYears = async () => {
+  const response = await api.get('/super-admin/academic-years');
+  return response.data;
+};
+
+export const activateAcademicYear = async (id: string) => {
+  const response = await api.patch(`/super-admin/academic-years/${id}/activate`);
+  return response.data;
+};
+
+// Report Methods
+export const getSystemReport = async (): Promise<SystemReport> => {
+  const response = await api.get('/super-admin/reports/system');
+  return response.data;
+};
+
+export const getBranchReport = async (branchId: string): Promise<BranchReport> => {
+  const response = await api.get(`/super-admin/reports/branch/${branchId}`);
+  return response.data;
+};

@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
+import { getDashboard as getSchoolAdminDashboard } from '../services/schoolAdminService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -35,26 +36,29 @@ export const Dashboard = () => {
 
   // API Integration: Fetch real dashboard stats
   const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [schoolAdminStats, setSchoolAdminStats] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
-      if (role === 'super-admin') {
-        setLoading(true);
-        setError(null);
-        try {
+      setLoading(true);
+      setError(null);
+      try {
+        if (role === 'super-admin') {
           const response = await dashboardService.getSuperAdminDashboard();
           if (response.success) {
             setDashboardStats(response.data);
-            console.log('✅ Dashboard API Success:', response.data);
           }
-        } catch (err: any) {
-          console.error('❌ Dashboard API Error:', err);
-          setError(err.message || 'Failed to fetch dashboard stats');
-        } finally {
-          setLoading(false);
+        } else if (role === 'school-admin') {
+          const data = await getSchoolAdminDashboard();
+          setSchoolAdminStats(data);
         }
+      } catch (err: any) {
+        console.error('❌ Dashboard API Error:', err);
+        setError(err.message || 'Failed to fetch dashboard stats');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -420,6 +424,34 @@ export const Dashboard = () => {
               icon={Users}
               label="Visitors Today"
               value="42"
+              color="bg-emerald-500"
+            />
+          </>
+        ) : role === 'school-admin' && schoolAdminStats ? (
+          <>
+            <StatCard
+              icon={Users}
+              label="Total Students"
+              value={schoolAdminStats.totalStudents?.toLocaleString() || '0'}
+              trend="+4.3%"
+              color="bg-blue-600"
+            />
+            <StatCard
+              icon={GraduationCap}
+              label="Total Teachers"
+              value={schoolAdminStats.totalTeachers?.toString() || '0'}
+              color="bg-purple-600"
+            />
+            <StatCard
+              icon={Clock}
+              label="Total Classes"
+              value={schoolAdminStats.totalClasses?.toString() || '0'}
+              color="bg-orange-500"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="Pending Applications"
+              value={schoolAdminStats.pendingApplications?.toString() || '0'}
               color="bg-emerald-500"
             />
           </>

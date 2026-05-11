@@ -4,12 +4,33 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { mockExams } from '../data/examData';
 import { mockTeachers } from '../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getStudentDashboard, StudentDashboard } from '../services/studentPortalService';
 
 export const StudentPortal = () => {
+  const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const examCount = mockExams.filter(e => e.category === 'Mid-term' || e.category === 'Final').length;
   const [votedTeacher, setVotedTeacher] = useState<string | null>(null);
   const [hideVoting, setHideVoting] = useState(false);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const data = await getStudentDashboard();
+      setDashboard(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const isWeekend = () => {
     // For demonstration, we assume today is a weekend
@@ -90,39 +111,51 @@ export const StudentPortal = () => {
         </div>
       )}
 
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-10 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
-        <div className="relative z-10">
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Welcome back, Abebe!</h2>
-          <p className="opacity-90 text-lg font-medium">Keep up the great work. You have <span className="underline decoration-wavy decoration-emerald-400 font-bold">{examCount} official examinations</span> pending.</p>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
         </div>
-        <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12">
-          <Award size={160} />
-        </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-          <div className="bg-orange-100 p-3 rounded-lg text-orange-600 w-fit mb-4">
-            <BookOpen size={24} />
-          </div>
-          <h3 className="text-slate-500 text-sm font-medium">Active Courses</h3>
-          <p className="text-2xl font-bold text-slate-800 mt-1">6</p>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-          <div className="bg-emerald-100 p-3 rounded-lg text-emerald-600 w-fit mb-4">
-            <Clock size={24} />
+      ) : (
+        <>
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl p-6 md:p-10 text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-black mb-3">Welcome back, {dashboard?.student.name || 'Student'}!</h2>
+              <p className="opacity-90 text-lg font-medium">Keep up the great work. You have <span className="underline decoration-wavy decoration-emerald-400 font-bold">{dashboard?.stats.upcomingExams || examCount} official examinations</span> pending.</p>
+            </div>
+            <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12">
+              <Award size={160} />
+            </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-medium">Attendance Rate</h3>
-          <p className="text-2xl font-bold text-slate-800 mt-1">96%</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-          <div className="bg-blue-100 p-3 rounded-lg text-blue-600 w-fit mb-4">
-            <Award size={24} />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="bg-orange-100 p-3 rounded-lg text-orange-600 w-fit mb-4">
+                <BookOpen size={24} />
+              </div>
+              <h3 className="text-slate-500 text-sm font-medium">Active Courses</h3>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{dashboard?.stats.totalCourses || 0}</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="bg-emerald-100 p-3 rounded-lg text-emerald-600 w-fit mb-4">
+                <Clock size={24} />
+              </div>
+              <h3 className="text-slate-500 text-sm font-medium">Attendance Rate</h3>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{dashboard?.stats.attendanceRate || 0}%</p>
+            </div>
+            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+              <div className="bg-blue-100 p-3 rounded-lg text-blue-600 w-fit mb-4">
+                <Award size={24} />
+              </div>
+              <h3 className="text-slate-500 text-sm font-medium">Average Grade</h3>
+              <p className="text-2xl font-bold text-slate-800 mt-1">{dashboard?.stats.averageGrade || 0}%</p>
+            </div>
           </div>
-          <h3 className="text-slate-500 text-sm font-medium">CGPA</h3>
-          <p className="text-2xl font-bold text-slate-800 mt-1">92%</p>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
@@ -183,6 +216,8 @@ export const StudentPortal = () => {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

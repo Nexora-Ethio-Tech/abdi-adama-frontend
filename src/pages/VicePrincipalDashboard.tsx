@@ -1,7 +1,8 @@
 
 import { TrendingUp, Users, GraduationCap, Clock, ShieldCheck, FileText, BarChart3, Bell, CheckCircle2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getVPDashboard } from '../services/vicePrincipalService';
 
 const SummaryCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none group">
@@ -23,6 +24,25 @@ const SummaryCard = ({ icon: Icon, label, value, trend, color }: any) => (
 export const VicePrincipalDashboard = () => {
   const { user } = useUser();
   const [calculating, setCalculating] = useState(false);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true);
+      const data = await getVPDashboard();
+      setDashboard(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCalculateRanks = () => {
     setCalculating(true);
@@ -66,10 +86,18 @@ export const VicePrincipalDashboard = () => {
 
       {/* Academic Integrity Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <SummaryCard icon={GraduationCap} label="Academic Performance" value="84.2%" trend="+2.4%" color="bg-indigo-600" />
-        <SummaryCard icon={Users} label="Total Enrollment" value="1,284" color="bg-blue-600" />
-        <SummaryCard icon={Clock} label="Avg. Attendance" value="96.1%" trend="+0.8%" color="bg-emerald-600" />
-        <SummaryCard icon={ShieldCheck} label="Exam Integrity" value="Verified" color="bg-purple-600" />
+        {loading ? (
+          <div className="col-span-4 text-center py-8">
+            <div className="inline-block w-8 h-8 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <SummaryCard icon={GraduationCap} label="Total Students" value={dashboard?.totalStudents?.toLocaleString() || '0'} color="bg-indigo-600" />
+            <SummaryCard icon={Users} label="Total Teachers" value={dashboard?.totalTeachers?.toString() || '0'} color="bg-blue-600" />
+            <SummaryCard icon={Clock} label="Pending Attendance" value={dashboard?.pendingAttendance?.toString() || '0'} color="bg-emerald-600" />
+            <SummaryCard icon={ShieldCheck} label="Pending Plans" value={dashboard?.pendingWeeklyPlans?.toString() || '0'} color="bg-purple-600" />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">

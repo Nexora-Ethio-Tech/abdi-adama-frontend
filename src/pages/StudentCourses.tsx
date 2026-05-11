@@ -1,11 +1,39 @@
 
 import { studentCurrentCourses, studentAcademicHistory } from '../data/mockData';
 import { BookOpen, User, CheckCircle2, Circle, AlertCircle, Calendar, GraduationCap, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getMyCourses, getMyGrades, StudentCourse, StudentGrade } from '../services/studentPortalService';
 
 export const StudentCourses = () => {
   const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
   const [selectedHistory, setSelectedHistory] = useState(studentAcademicHistory[0]);
+  const [courses, setCourses] = useState<StudentCourse[]>([]);
+  const [grades, setGrades] = useState<StudentGrade[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (viewMode === 'current') {
+      fetchCourses();
+    }
+  }, [viewMode]);
+
+  const fetchCourses = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const [coursesData, gradesData] = await Promise.all([
+        getMyCourses(),
+        getMyGrades()
+      ]);
+      setCourses(coursesData);
+      setGrades(gradesData);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -39,9 +67,62 @@ export const StudentCourses = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
       {viewMode === 'current' ? (
+        loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
       <div className="grid grid-cols-1 gap-8">
-        {studentCurrentCourses.map((course) => (
+        {courses.length > 0 ? courses.map((course) => (
+          <div key={course.id} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden group hover:border-blue-500/50 transition-all duration-500">
+            <div className="p-8 md:p-10">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200 dark:shadow-none rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                    <BookOpen size={32} />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{course.name}</h2>
+                    <div className="flex items-center gap-4 mt-1">
+                      <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{course.code}</span>
+                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 font-bold">
+                        <User size={14} className="text-slate-400" />
+                        {course.teacher.name}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                   {course.currentGrade && (
+                     <div className="text-3xl font-black text-blue-600">{course.currentGrade}%</div>
+                   )}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {grades.filter(g => g.courseId === course.id).map((grade) => (
+                  <div key={grade.id} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-white">{grade.assessmentType}</p>
+                      <p className="text-xs text-slate-500">{new Date(grade.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-black text-blue-600">{grade.score}/{grade.maxScore}</p>
+                      <p className="text-xs text-slate-500">{grade.percentage}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )) : studentCurrentCourses.map((course) => (
           <div key={course.id} className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden group hover:border-blue-500/50 transition-all duration-500">
             <div className="p-8 md:p-10">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
@@ -85,6 +166,7 @@ export const StudentCourses = () => {
           </div>
         ))}
       </div>
+        )
       ) : (
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
