@@ -1,9 +1,10 @@
-import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle } from 'lucide-react';
+import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser, type UserRole } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { userService } from '../services/userService';
+import { branchService } from '../services/branchService';
 
 export const Staff = () => {
   const navigate = useNavigate();
@@ -14,10 +15,24 @@ export const Staff = () => {
   const [error, setError] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [createForm, setCreateForm] = useState({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchUsers();
+    fetchBranches();
   }, [roleFilter, statusFilter]);
+
+  const fetchBranches = async () => {
+    try {
+      const response = await branchService.getAllBranches();
+      setBranches(response.data || []);
+    } catch (err) {
+      console.error('❌ Error fetching branches:', err);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -71,6 +86,39 @@ export const Staff = () => {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      const data = {
+        name: createForm.name,
+        email: createForm.email,
+        branchId: createForm.branchId,
+        ...(createForm.password && { password: createForm.password })
+      };
+
+      let response;
+      if (createForm.role === 'school-admin') {
+        response = await userService.createSchoolAdmin(data);
+      } else if (createForm.role === 'vice-principal') {
+        response = await userService.createVicePrincipal(data);
+      } else if (createForm.role === 'auditor') {
+        response = await userService.createAuditor(data);
+      }
+
+      console.log('✅ User created:', response);
+      alert(`User created successfully! ${response.data.temporaryPassword ? 'Temporary password: ' + response.data.temporaryPassword : ''}`);
+      setShowCreateModal(false);
+      setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
+      fetchUsers();
+    } catch (err: any) {
+      console.error('❌ Error creating user:', err);
+      alert(err.response?.data?.error?.message || 'Failed to create user');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-12">
       <button
@@ -88,16 +136,12 @@ export const Staff = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search staff..."
-              className="pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-64"
-            />
-          </div>
-          <button className="p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg">
-            <Filter size={20} className="text-slate-600 dark:text-slate-400" />
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center gap-2 hover:bg-blue-700 text-sm font-bold"
+          >
+            <UserPlus size={18} />
+            Create User
           </button>
         </div>
       </div>
@@ -197,6 +241,106 @@ export const Staff = () => {
       </div>
       )}
 
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                  <UserPlus size={20} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Create New User</h3>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form className="p-6 space-y-4" onSubmit={handleCreateUser}>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Role</label>
+                <select
+                  value={createForm.role}
+                  onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="school-admin">School Admin</option>
+                  <option value="vice-principal">Vice Principal</option>
+                  <option value="auditor">Auditor</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Name</label>
+                <input
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Branch</label>
+                <select
+                  value={createForm.branchId}
+                  onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select Branch</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Password (Optional)</label>
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Leave blank for auto-generated"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={creating}
+                >
+                  {creating ? <Loader2 className="animate-spin" size={18} /> : <UserCheck size={18} />}
+                  <span>{creating ? 'Creating...' : 'Create User'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
