@@ -121,7 +121,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/verify`, {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -129,12 +129,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
         if (res.ok) {
           const data = await res.json();
-          setUser(data.user);
-          localStorage.setItem('abdi_adama_user', JSON.stringify(data.user));
+          if (data.success) {
+            setUser(data.data);
+            localStorage.setItem('abdi_adama_user', JSON.stringify(data.data));
+          } else {
+            localStorage.removeItem('abdi_adama_user');
+            localStorage.removeItem('abdi_adama_token');
+            localStorage.removeItem('abdi_adama_refresh_token');
+            setUser(null);
+          }
         } else {
           // Token expired or invalid — force logout
           localStorage.removeItem('abdi_adama_user');
           localStorage.removeItem('abdi_adama_token');
+          localStorage.removeItem('abdi_adama_refresh_token');
           setUser(null);
         }
       } catch (err) {
@@ -142,6 +150,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         // Network error — clear session to be safe
         localStorage.removeItem('abdi_adama_user');
         localStorage.removeItem('abdi_adama_token');
+        localStorage.removeItem('abdi_adama_refresh_token');
         setUser(null);
       } finally {
         setLoading(false);
@@ -177,64 +186,71 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (credentials: { digitalIdOrEmail: string; password?: string; otp?: string }): Promise<{ success: boolean; redirect?: string; error?: string }> => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/login`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          identifier: credentials.digitalIdOrEmail,
+          email: credentials.digitalIdOrEmail,
           password: credentials.password
         })
       });
 
       const data = await res.json();
 
-      if (res.ok) {
-        localStorage.setItem('abdi_adama_token', data.token);
-        setUser(data.user);
-        return { success: true, redirect: data.redirect };
+      if (res.ok && data.success) {
+        localStorage.setItem('abdi_adama_token', data.data.accessToken);
+        localStorage.setItem('abdi_adama_refresh_token', data.data.refreshToken);
+        setUser(data.data.user);
+        // Map role to dashboard route
+        const roleRoutes: Record<string, string> = {
+          'super-admin': '/dashboard/super-admin',
+          'school-admin': '/dashboard/school-admin',
+          'vice-principal': '/dashboard/vice-principal',
+          'teacher': '/dashboard/teacher',
+          'student': '/dashboard/student',
+          'parent': '/dashboard/parent',
+          'finance-clerk': '/dashboard/finance',
+          'librarian': '/dashboard/library',
+          'clinic-admin': '/dashboard/clinic',
+          'driver': '/dashboard/driver',
+          'auditor': '/dashboard/auditor'
+        };
+        return { success: true, redirect: roleRoutes[data.data.user.role] || '/dashboard' };
       }
-      return { success: false, error: data.error || 'Invalid credentials' };
+      return { success: false, error: data.error?.message || 'Invalid credentials' };
     } catch (err) {
       console.error('Login error:', err);
       return { success: false, error: 'Unable to connect to server' };
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setSelectedBranch(null);
-    localStorage.removeItem('abdi_adama_user');
-    localStorage.removeItem('abdi_adama_token');
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('abdi_adama_token');
+      if (token) {
+        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      setUser(null);
+      setSelectedBranch(null);
+      localStorage.removeItem('abdi_adama_user');
+      localStorage.removeItem('abdi_adama_token');
+      localStorage.removeItem('abdi_adama_refresh_token');
+    }
   };
 
   const switchRole = async (newRole: UserRole): Promise<string | null> => {
-    try {
-      const token = localStorage.getItem('abdi_adama_token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/switch-role`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ newRole })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        localStorage.setItem('abdi_adama_token', data.token);
-        // Force the role to newRole so ProtectedRoute passes immediately on navigate
-        setUser({ ...data.user, role: newRole });
-        window.dispatchEvent(new Event('role-switched'));
-        return data.redirect as string; // e.g. '/dashboard/teacher'
-      } else {
-        console.error('Failed to switch role:', data.error);
-        return null;
-      }
-    } catch (err) {
-      console.error('Error switching role:', err);
-      return null;
-    }
+    // Note: Backend doesn't support role switching yet
+    // This is a placeholder for future implementation
+    console.warn('Role switching not implemented in backend');
+    return null;
   };
 
   return (
