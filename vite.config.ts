@@ -57,9 +57,10 @@ export default defineConfig({
         strictPort: false,
         proxy: {
             '/api': {
-                target: process.env.VITE_API_URL || 'http://localhost:3000',
+                target: 'https://api.abdi-adama.com',
                 changeOrigin: true,
-                secure: false
+                secure: true,
+                rewrite: (path) => path // Keep /api prefix
             }
         }
     },
