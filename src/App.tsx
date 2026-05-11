@@ -47,6 +47,8 @@ const TeacherClasses = lazy(() => import('./pages/TeacherClasses').then((m) => (
 const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ default: m.TeacherGrades })));
 const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight').then((m) => ({ default: m.VPAttendanceOversight })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
+const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -213,6 +215,12 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="audit-logs" element={
+              <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                <AuditLogs />
+              </ProtectedRoute>
+            } />
+
             <Route path="students/:id" element={
               <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
                 <StudentProfile />
@@ -271,6 +279,12 @@ function App() {
             <Route path="courses" element={
               <ProtectedRoute allowedRoles={['student']}>
                 <StudentCourses />
+              </ProtectedRoute>
+            } />
+
+            <Route path="student-schedule" element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <StudentSchedulePage />
               </ProtectedRoute>
             } />
 
