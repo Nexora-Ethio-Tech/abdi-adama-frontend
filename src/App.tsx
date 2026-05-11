@@ -43,6 +43,7 @@ const BranchUsers = lazy(() => import('./pages/BranchUsers').then((m) => ({ defa
 const Classes = lazy(() => import('./pages/Classes').then((m) => ({ default: m.Classes })));
 const Subjects = lazy(() => import('./pages/Subjects'));
 const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement').then((m) => ({ default: m.AttendanceManagement })));
+const TeacherClasses = lazy(() => import('./pages/TeacherClasses').then((m) => ({ default: m.TeacherClasses })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -182,6 +183,12 @@ function App() {
             <Route path="attendance-management" element={
               <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
                 <AttendanceManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="teacher-classes" element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherClasses />
               </ProtectedRoute>
             } />
 
