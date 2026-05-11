@@ -1,11 +1,12 @@
 
 import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { mockStudents } from '../data/mockData';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
+import { dashboardService } from '../services/dashboardService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -31,6 +32,34 @@ export const Dashboard = () => {
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [watchlistExpanded, setWatchlistExpanded] = useState(true);
   const isSuperAdmin = role === 'super-admin';
+
+  // API Integration: Fetch real dashboard stats
+  const [dashboardStats, setDashboardStats] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardStats = async () => {
+      if (role === 'super-admin') {
+        setLoading(true);
+        setError(null);
+        try {
+          const response = await dashboardService.getSuperAdminDashboard();
+          if (response.success) {
+            setDashboardStats(response.data);
+            console.log('✅ Dashboard API Success:', response.data);
+          }
+        } catch (err: any) {
+          console.error('❌ Dashboard API Error:', err);
+          setError(err.message || 'Failed to fetch dashboard stats');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDashboardStats();
+  }, [role]);
 
   const isAdmin = role === 'super-admin' || role === 'school-admin';
   const isVP = role === 'vice-principal';
@@ -79,10 +108,41 @@ export const Dashboard = () => {
           </section>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-            <StatCard icon={Users} label={t('dashboard.totalStudents')} value="1,388" trend="+4.3%" color="bg-blue-600" />
-            <StatCard icon={GraduationCap} label={t('dashboard.totalTeachers')} value="104" color="bg-purple-600" />
-            <StatCard icon={Clock} label={t('dashboard.networkAttendance')} value="94.6%" trend="+1.1%" color="bg-orange-500" />
-            <StatCard icon={TrendingUp} label={t('dashboard.monthlyRevenue')} value="1.8M ETB" color="bg-emerald-600" />
+            {loading ? (
+              <div className="col-span-4 text-center py-8">
+                <div className="inline-block w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                <p className="text-sm text-slate-500 mt-2">Loading dashboard stats...</p>
+              </div>
+            ) : error ? (
+              <div className="col-span-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                <p className="text-sm text-amber-700 dark:text-amber-400">⚠️ Using mock data (API: {error})</p>
+              </div>
+            ) : null}
+            <StatCard 
+              icon={Users} 
+              label={t('dashboard.totalStudents')} 
+              value={dashboardStats?.totalStudents?.toLocaleString() || "0"} 
+              trend={dashboardStats?.totalStudents > 0 ? "+4.3%" : undefined}
+              color="bg-blue-600" 
+            />
+            <StatCard 
+              icon={GraduationCap} 
+              label={t('dashboard.totalTeachers')} 
+              value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"} 
+              color="bg-purple-600" 
+            />
+            <StatCard 
+              icon={Clock} 
+              label="Total Branches" 
+              value={dashboardStats?.totalBranches?.toString() || "0"} 
+              color="bg-orange-500" 
+            />
+            <StatCard 
+              icon={TrendingUp} 
+              label="Pending Approvals" 
+              value={dashboardStats?.pendingUsers?.toString() || "0"} 
+              color="bg-emerald-600" 
+            />
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
