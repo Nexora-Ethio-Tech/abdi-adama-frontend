@@ -102,24 +102,7 @@ export const Branches = () => {
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{branch.name}</h3>
               <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm mb-6">
                 <MapPin size={14} />
-                <span>{branch.address || branch.location || 'No address'}</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl text-center border border-transparent dark:border-slate-700/50">
-                  <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
-                    <Users size={16} />
-                    <span className="text-xs font-medium uppercase tracking-wider">Students</span>
-                  </div>
-                  <p className="text-2xl font-black text-slate-800 dark:text-white">320</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl text-center border border-transparent dark:border-slate-700/50">
-                  <div className="flex items-center justify-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
-                    <GraduationCap size={16} />
-                    <span className="text-xs font-medium uppercase tracking-wider">Teachers</span>
-                  </div>
-                  <p className="text-2xl font-black text-slate-800 dark:text-white">24</p>
-                </div>
+                <span>{branch.address || branch.location || 'No location'}</span>
               </div>
 
               <button
