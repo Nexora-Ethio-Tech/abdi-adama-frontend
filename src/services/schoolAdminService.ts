@@ -213,3 +213,19 @@ export const getBranchTeachers = async () => {
   const response = await api.get('/school-admin/teachers');
   return response.data;
 };
+
+// Teacher Management
+export const approveTeacher = async (userId: string) => {
+  const response = await api.patch(`/school-admin/users/${userId}/approve`);
+  return response.data;
+};
+
+export const revokeTeacher = async (userId: string) => {
+  const response = await api.patch(`/school-admin/users/${userId}/revoke`);
+  return response.data;
+};
+
+export const deleteTeacher = async (userId: string) => {
+  const response = await api.delete(`/school-admin/users/${userId}`);
+  return response.data;
+};

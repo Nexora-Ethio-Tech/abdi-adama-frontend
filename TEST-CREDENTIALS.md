@@ -38,11 +38,11 @@
 
 ---
 
-## 👨‍🏫 Teachers
+## 👨🏫 Teachers
 
-| Email | Password | Branch | Status | Created Date | Notes |
-|-------|----------|--------|--------|--------------|-------|
-| - | - | - | - | - | No Teachers created yet |
+| Email | Digital ID | PIN | Branch | Status | Created Date | Notes |
+|-------|-----------|-----|--------|--------|--------------|-------|
+| `testteacher@adama.com` | - | `7759` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting School Admin approval |
 
 ---
 
@@ -62,7 +62,7 @@
 
 ---
 
-## 👨‍👩‍👧 Parents
+## 👨👩👧 Parents
 
 | Email | Password | Branch | Children | Status | Created Date | Notes |
 |-------|----------|--------|----------|--------|--------------|-------|
@@ -110,8 +110,8 @@
 - [ ] Reports
 
 ### Phase 3: School Admin
-- [ ] Dashboard
-- [ ] User registration
+- [x] Dashboard
+- [x] Teacher registration (backend has bug with PIN generation)
 - [ ] Classes
 - [ ] Subjects
 - [ ] Students
@@ -128,6 +128,7 @@
 
 1. Branch health matrix shows loading (no data created yet)
 2. Individual branch drill-down shows hardcoded values
+3. Backend bug: `generate4DigitPIN` function error when creating teachers
 
 ---
 
@@ -141,6 +142,10 @@ Password: SuperAdmin@2026
 # School Admin (Adama)
 Email: testschooladmin@adama.com
 Password: Adamaschool#123
+
+# Teacher (Adama) - Pending Approval
+Email: testteacher@adama.com
+PIN: 7759
 ```
 
 ---
