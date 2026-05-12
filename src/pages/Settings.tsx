@@ -1,5 +1,5 @@
 
-import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock } from 'lucide-react';
+import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock, Eye, EyeOff, CheckCircle, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
 import { mockGradingConfigs } from '../data/mockData';
@@ -12,6 +12,7 @@ export const Settings = () => {
 
   const tabs = [
     { id: 'General', icon: Building },
+    { id: 'Security', icon: Lock },
     { id: 'Financial Policy', icon: CreditCard },
     ...(role !== 'super-admin' ? [{ id: 'Grading System', icon: GraduationCap }] : []),
     { id: 'Appearance', icon: Palette },
@@ -23,6 +24,10 @@ export const Settings = () => {
   const [newMethodWeight, setNewMethodWeight] = useState(10);
   const [profitTargetMonth, setProfitTargetMonth] = useState('1');
   const [profitTargetAmount, setProfitTargetAmount] = useState('500000');
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   const ethiopianMonths = [
     { id: '1', ge: 'Meskerem', am: 'መስከረም', mockActual: 420000 },
@@ -222,6 +227,199 @@ export const Settings = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
                   <textarea rows={3} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="Bole Sub-city, Woreda 03, House No 1234, Addis Ababa, Ethiopia" />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'Security' && (
+              <div className="space-y-8">
+                {/* Change Password Section */}
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
+                      <Shield size={24} />
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-bold text-slate-800 dark:text-white">Change Password</h4>
+                      <p className="text-xs text-slate-500">Update your password to keep your account secure</p>
+                    </div>
+                  </div>
+
+                  {passwordSuccess && (
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
+                      <CheckCircle className="text-green-600" size={20} />
+                      <p className="text-sm text-green-800 dark:text-green-200 font-medium">Password changed successfully!</p>
+                    </div>
+                  )}
+
+                  {passwordError && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
+                      <AlertCircle className="text-red-600" size={20} />
+                      <p className="text-sm text-red-800 dark:text-red-200 font-medium">{passwordError}</p>
+                    </div>
+                  )}
+
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      setPasswordError('');
+                      setPasswordSuccess(false);
+
+                      // Validation
+                      if (passwordForm.newPassword.length < 8) {
+                        setPasswordError('New password must be at least 8 characters long');
+                        return;
+                      }
+                      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                        setPasswordError('New passwords do not match');
+                        return;
+                      }
+                      if (passwordForm.currentPassword === passwordForm.newPassword) {
+                        setPasswordError('New password must be different from current password');
+                        return;
+                      }
+
+                      setPasswordLoading(true);
+                      try {
+                        const response = await fetch('/api/auth/change-password', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('abdi_adama_token')}`
+                          },
+                          body: JSON.stringify({
+                            currentPassword: passwordForm.currentPassword,
+                            newPassword: passwordForm.newPassword
+                          })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                          setPasswordSuccess(true);
+                          setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                          setTimeout(() => setPasswordSuccess(false), 5000);
+                        } else {
+                          setPasswordError(data.error?.message || 'Failed to change password');
+                        }
+                      } catch (err: any) {
+                        setPasswordError('Network error. Please try again.');
+                      } finally {
+                        setPasswordLoading(false);
+                      }
+                    }}
+                    className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800"
+                  >
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
+                      <div className="relative">
+                        <input
+                          type="password"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                          disabled={passwordLoading}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">New Password</label>
+                        <input
+                          type="password"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                          minLength={8}
+                          disabled={passwordLoading}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Confirm New Password</label>
+                        <input
+                          type="password"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                          minLength={8}
+                          disabled={passwordLoading}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Password Requirements */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                      <p className="text-xs font-bold text-blue-800 dark:text-blue-200 mb-2">Password Requirements:</p>
+                      <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
+                        <li className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${passwordForm.newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-300'}`} />
+                          At least 8 characters long
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                          Contains uppercase letter
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${/[a-z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                          Contains lowercase letter
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                          Contains number
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${/[^A-Za-z0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                          Contains special character
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={passwordLoading}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {passwordLoading ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Changing Password...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={18} />
+                          <span>Change Password</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Account Security Info */}
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-white">Security Tips</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🔒 Use Strong Passwords</p>
+                      <p className="text-xs text-slate-500">Combine letters, numbers, and special characters</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🔄 Change Regularly</p>
+                      <p className="text-xs text-slate-500">Update your password every 3-6 months</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🚫 Don't Share</p>
+                      <p className="text-xs text-slate-500">Never share your password with anyone</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">⚠️ Avoid Reuse</p>
+                      <p className="text-xs text-slate-500">Use unique passwords for different accounts</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

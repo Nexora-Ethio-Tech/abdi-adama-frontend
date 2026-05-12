@@ -53,3 +53,5 @@ export const classService = {
     return response.data;
   },
 };
+
+export default classService;

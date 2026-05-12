@@ -112,27 +112,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const fetchBranches = async () => {
       if (user?.role === 'super-admin') {
         try {
-          const token = localStorage.getItem('abdi_adama_token');
-          const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/super-admin/branches`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success && Array.isArray(data.data)) {
-              // Map API response to Branch interface
-              const apiBranches = data.data.map((b: any) => ({
-                id: b.id,
-                name: b.name,
-                location: b.address || b.location || 'N/A'
-              }));
-              setBranches(apiBranches);
-            }
+          const { default: api } = await import('../services/api');
+          const res = await api.get('/super-admin/branches');
+          if (res.data.success && Array.isArray(res.data.data)) {
+            const apiBranches = res.data.data.map((b: any) => ({
+              id: b.id,
+              name: b.name,
+              location: b.address || b.location || 'N/A'
+            }));
+            setBranches(apiBranches);
           }
         } catch (err) {
           console.error('Failed to fetch branches:', err);
-          // Keep mock branches on error
         }
       }
     };
@@ -154,25 +145,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
 
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Use axios api instance instead of fetch to leverage interceptors
+        const { default: api } = await import('../services/api');
+        const res = await api.get('/auth/me');
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setUser(data.data);
-            localStorage.setItem('abdi_adama_user', JSON.stringify(data.data));
-          } else {
-            localStorage.removeItem('abdi_adama_user');
-            localStorage.removeItem('abdi_adama_token');
-            localStorage.removeItem('abdi_adama_refresh_token');
-            setUser(null);
-          }
+        if (res.data.success) {
+          setUser(res.data.data);
+          localStorage.setItem('abdi_adama_user', JSON.stringify(res.data.data));
         } else {
-          // Token expired or invalid — force logout
           localStorage.removeItem('abdi_adama_user');
           localStorage.removeItem('abdi_adama_token');
           localStorage.removeItem('abdi_adama_refresh_token');
@@ -180,7 +160,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
       } catch (err) {
         console.error('Failed to verify token:', err);
-        // Network error — clear session to be safe
+        // Token expired or invalid — force logout
         localStorage.removeItem('abdi_adama_user');
         localStorage.removeItem('abdi_adama_token');
         localStorage.removeItem('abdi_adama_refresh_token');
@@ -219,22 +199,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (credentials: { digitalIdOrEmail: string; password?: string; otp?: string }): Promise<{ success: boolean; redirect?: string; error?: string }> => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: credentials.digitalIdOrEmail,
-          password: credentials.password
-        })
+      const { default: api } = await import('../services/api');
+      const res = await api.post('/auth/login', {
+        email: credentials.digitalIdOrEmail,
+        password: credentials.password
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        localStorage.setItem('abdi_adama_token', data.data.accessToken);
-        localStorage.setItem('abdi_adama_refresh_token', data.data.refreshToken);
-        setUser(data.data.user);
-        // Map role to dashboard route
+      if (res.data.success) {
+        localStorage.setItem('abdi_adama_token', res.data.data.accessToken);
+        localStorage.setItem('abdi_adama_refresh_token', res.data.data.refreshToken);
+        setUser(res.data.data.user);
         const roleRoutes: Record<string, string> = {
           'super-admin': '/dashboard/super-admin',
           'school-admin': '/dashboard/school-admin',
@@ -248,12 +222,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           'driver': '/dashboard/driver',
           'auditor': '/dashboard/auditor'
         };
-        return { success: true, redirect: roleRoutes[data.data.user.role] || '/dashboard' };
+        return { success: true, redirect: roleRoutes[res.data.data.user.role] || '/dashboard' };
       }
-      return { success: false, error: data.error?.message || 'Invalid credentials' };
-    } catch (err) {
+      return { success: false, error: res.data.error?.message || 'Invalid credentials' };
+    } catch (err: any) {
       console.error('Login error:', err);
-      return { success: false, error: 'Unable to connect to server' };
+      return { success: false, error: err.response?.data?.error?.message || 'Unable to connect to server' };
     }
   };
 
@@ -261,12 +235,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       const token = localStorage.getItem('abdi_adama_token');
       if (token) {
-        await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const { default: api } = await import('../services/api');
+        await api.post('/auth/logout');
       }
     } catch (err) {
       console.error('Logout error:', err);
