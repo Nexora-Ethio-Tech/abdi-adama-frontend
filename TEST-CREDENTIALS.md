@@ -43,6 +43,7 @@
 | Email | Digital ID | PIN | Branch | Status | Created Date | Notes |
 |-------|-----------|-----|--------|--------|--------------|-------|
 | `testteacher@adama.com` | - | `7759` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting School Admin approval |
+| `johndoe@gmail.com` | `TCH-AD-0004` | `4661` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting School Admin approval |
 
 ---
 

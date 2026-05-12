@@ -52,7 +52,14 @@ export const Dashboard = () => {
           }
         } else if (role === 'school-admin') {
           const data = await getSchoolAdminDashboard();
-          setSchoolAdminStats(data);
+          // Fetch teachers to count only approved ones
+          const { getBranchTeachers } = await import('../services/schoolAdminService');
+          const teachersResponse = await getBranchTeachers();
+          const approvedTeachers = (teachersResponse.data || []).filter((t: any) => t.status === 'Approved');
+          setSchoolAdminStats({
+            ...data,
+            totalTeachers: approvedTeachers.length
+          });
         }
       } catch (err: any) {
         console.error('❌ Dashboard API Error:', err);
@@ -507,40 +514,12 @@ export const Dashboard = () => {
               color="bg-emerald-500"
             />
           </>
-        ) : (
-          <>
-            <StatCard
-              icon={Users}
-              label="Total Students"
-              value="1,284"
-              trend="+4.3%"
-              color="bg-blue-600"
-            />
-            <StatCard
-              icon={GraduationCap}
-              label="Total Teachers"
-              value="76"
-              color="bg-purple-600"
-            />
-            {(isSuperAdmin || role === 'school-admin' || role === 'teacher') && (
-              <StatCard
-                icon={Clock}
-                label="Daily Attendance"
-                value="94.2%"
-                trend="+1.2%"
-                color="bg-orange-500"
-              />
-            )}
-            {(isSuperAdmin || role === 'school-admin' || role === 'finance-clerk') && (
-              <StatCard
-                icon={TrendingUp}
-                label="Monthly Revenue"
-                value="450,000 ETB"
-                color="bg-emerald-500"
-              />
-            )}
-          </>
-        )}
+        ) : loading ? (
+          <div className="col-span-4 text-center py-8">
+            <div className="inline-block w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+            <p className="text-sm text-slate-500 mt-2">Loading dashboard...</p>
+          </div>
+        ) : null}
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">

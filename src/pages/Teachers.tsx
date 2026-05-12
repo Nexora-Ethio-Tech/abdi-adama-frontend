@@ -57,12 +57,14 @@ export const Teachers = () => {
     
     setProcessing(true);
     try {
+      const userId = confirmAction.teacher.userId;
+      
       if (confirmAction.action === 'approve') {
-        await approveTeacher(confirmAction.teacher.id);
+        await approveTeacher(userId);
       } else if (confirmAction.action === 'revoke') {
-        await revokeTeacher(confirmAction.teacher.id);
+        await revokeTeacher(userId);
       } else if (confirmAction.action === 'delete') {
-        await deleteTeacher(confirmAction.teacher.id);
+        await deleteTeacher(userId);
       }
       
       setConfirmAction({ show: false, action: 'approve', teacher: null });
@@ -70,7 +72,10 @@ export const Teachers = () => {
       fetchTeachers();
     } catch (err: any) {
       console.error('Action failed:', err);
-      alert(err.response?.data?.error?.message || 'Action failed');
+      const errorMsg = err.response?.status === 404 
+        ? 'Backend route not implemented yet. Contact backend team to implement: PATCH /school-admin/users/{userId}/status'
+        : err.response?.data?.error?.message || 'Action failed';
+      alert(errorMsg);
     } finally {
       setProcessing(false);
     }

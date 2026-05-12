@@ -216,12 +216,16 @@ export const getBranchTeachers = async () => {
 
 // Teacher Management
 export const approveTeacher = async (userId: string) => {
-  const response = await api.patch(`/school-admin/users/${userId}/approve`);
+  const response = await api.patch(`/school-admin/users/${userId}/status`, {
+    status: 'Approved'
+  });
   return response.data;
 };
 
 export const revokeTeacher = async (userId: string) => {
-  const response = await api.patch(`/school-admin/users/${userId}/revoke`);
+  const response = await api.patch(`/school-admin/users/${userId}/status`, {
+    status: 'Revoked'
+  });
   return response.data;
 };
 
