@@ -84,6 +84,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
           { icon: GraduationCap, label: 'Academic Structure', path: '/academic-management' },
           { icon: ClipboardCheck, label: 'Admissions', path: '/admissions-dashboard' },
+          { icon: BookOpen, label: 'Classes', path: '/classes' },
           { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
