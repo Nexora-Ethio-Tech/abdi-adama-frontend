@@ -123,5 +123,6 @@ export const getSystemReport = async (): Promise<SystemReport> => {
 
 export const getBranchReport = async (branchId: string): Promise<BranchReport> => {
   const response = await api.get(`/super-admin/reports/branch/${branchId}`);
-  return response.data;
+  // API returns {success: true, data: {...}}, so return the whole response
+  return response.data.data;
 };

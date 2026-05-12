@@ -102,19 +102,25 @@ export const Dashboard = () => {
   }, [role, branches]);
 
   if (role === 'super-admin') {
-    // Use real API data if available, fallback to mock
-    const branchHealth = branches.map((branch, index) => {
+    // Use ONLY real API data - no fallback
+    const branchHealth = branches.map((branch) => {
+      // Now report is the actual data object, not wrapped in response
       const report = branchReports.find(r => r?.branchId === branch.id);
       console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
+      
+      if (!report) {
+        return null; // Skip branches without API data
+      }
+      
       return {
         ...branch,
-        students: report?.totalStudents || 300 + index * 18,
-        teachers: report?.totalTeachers || 22 + index,
-        attendance: report?.attendanceRate?.toFixed(1) || (92.1 + index * 0.7).toFixed(1),
-        finance: report ? (report.netProfit > 0 ? 'Stable' : 'Attention') : (index % 2 === 0 ? 'Stable' : 'Attention'),
-        risk: report ? (report.attendanceRate < 85 ? 'Attendance' : 'Normal') : (index === 3 ? 'Infrastructure' : index === 1 ? 'Attendance' : 'Normal')
+        students: report.totalStudents,
+        teachers: report.totalTeachers,
+        attendance: report.attendanceRate?.toFixed(1),
+        finance: report.netProfit > 0 ? 'Stable' : 'Attention',
+        risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
       };
-    });
+    }).filter(Boolean); // Remove null entries
 
 
     if (!selectedBranch) {
@@ -208,7 +214,16 @@ export const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {branchHealth.map((branch) => (
+                    {branchHealth.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
+                            <p className="text-sm text-slate-500 mt-2">Loading branch reports...</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : branchHealth.map((branch) => (
                       <tr key={branch.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

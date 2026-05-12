@@ -19,6 +19,7 @@ export const Staff = () => {
   const [branches, setBranches] = useState<any[]>([]);
   const [createForm, setCreateForm] = useState({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
   const [creating, setCreating] = useState(false);
+  const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
 
   useEffect(() => {
     fetchUsers();
@@ -90,12 +91,20 @@ export const Staff = () => {
     e.preventDefault();
     setCreating(true);
     try {
-      const data = {
+      // Backend has conflicting validation - dedicated endpoints shouldn't require role field
+      const data: any = {
         name: createForm.name,
         email: createForm.email,
-        branchId: createForm.branchId,
-        ...(createForm.password && { password: createForm.password })
+        branchId: createForm.branchId
       };
+
+      // Only add password if provided
+      if (createForm.password) {
+        data.password = createForm.password;
+      }
+
+      console.log('📤 Sending data:', data);
+      console.log('🎯 Endpoint:', createForm.role);
 
       let response;
       if (createForm.role === 'school-admin') {
@@ -107,13 +116,17 @@ export const Staff = () => {
       }
 
       console.log('✅ User created:', response);
-      alert(`User created successfully! ${response.data.temporaryPassword ? 'Temporary password: ' + response.data.temporaryPassword : ''}`);
       setShowCreateModal(false);
       setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
+      setSuccessModal({ show: true, data: response.data });
       fetchUsers();
     } catch (err: any) {
       console.error('❌ Error creating user:', err);
-      alert(err.response?.data?.error?.message || 'Failed to create user');
+      console.error('❌ Error response:', err.response?.data);
+      console.error('❌ Full error details:', JSON.stringify(err.response?.data, null, 2));
+      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create user';
+      const errorDetails = err.response?.data?.error?.details ? '\n' + JSON.stringify(err.response.data.error.details, null, 2) : '';
+      alert(`Error: ${errorMsg}${errorDetails}\n\n⚠️ BACKEND BUG: Dedicated endpoints have conflicting validation. Ask backend to fix.`);
     } finally {
       setCreating(false);
     }
@@ -217,12 +230,39 @@ export const Staff = () => {
                           </button>
                         )}
                         {staff.status === 'Approved' && (
-                          <button
-                            onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
-                            className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
-                          >
-                            Revoke
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
+                              className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
+                            >
+                              Revoke
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Reset password for ${staff.name}?`)) return;
+                                try {
+                                  const response = await fetch(`/api/super-admin/users/${staff.id}/reset-password`, {
+                                    method: 'POST',
+                                    headers: {
+                                      'Content-Type': 'application/json',
+                                      'Authorization': `Bearer ${localStorage.getItem('abdi_adama_token')}`
+                                    }
+                                  });
+                                  const data = await response.json();
+                                  if (response.ok && data.success) {
+                                    alert(`Password reset successfully!\n\nNew temporary password: ${data.data.temporaryPassword}\n\nPlease save this and share it securely with the user.`);
+                                  } else {
+                                    alert(data.error?.message || 'Failed to reset password');
+                                  }
+                                } catch (err) {
+                                  alert('Network error. Please try again.');
+                                }
+                              }}
+                              className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700"
+                            >
+                              Reset Password
+                            </button>
+                          </>
                         )}
                         <button
                           onClick={() => handleDeleteUser(staff.id)}
@@ -338,6 +378,83 @@ export const Staff = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successModal.show && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-100 text-green-600 rounded-full">
+                  <UserCheck size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">User Created Successfully!</h3>
+                  <p className="text-sm text-slate-500">Save the temporary password below</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Temporary Password</label>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-lg font-mono font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-slate-900 px-4 py-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                    {successModal.data?.temporaryPassword || 'N/A'}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(successModal.data?.temporaryPassword || '');
+                      alert('Password copied to clipboard!');
+                    }}
+                    className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>⚠️ Important:</strong> This password will only be shown once. Make sure to save it securely.
+                </p>
+              </div>
+
+              {successModal.data?.user && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Name:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-100">{successModal.data.user.name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Email:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-100">{successModal.data.user.email}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Digital ID:</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{successModal.data.user.digitalId}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Status:</span>
+                    <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold uppercase">
+                      {successModal.data.user.status || 'Pending'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setSuccessModal({ show: false, data: null })}
+                className="w-full bg-slate-900 dark:bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-700"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
