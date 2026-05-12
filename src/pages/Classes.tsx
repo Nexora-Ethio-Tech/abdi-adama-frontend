@@ -1,8 +1,7 @@
-import { Users, Plus, Edit2, Trash2, UserPlus, X, Check, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Users, Plus, Edit2, Trash2, UserPlus, X, Check, Loader2, AlertCircle, ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { classService, type Class, type CreateClassData, type UpdateClassData } from '../services/classService';
-import { userService } from '../services/userService';
 import { useUser } from '../context/UserContext';
 
 export const Classes = () => {
@@ -27,6 +26,13 @@ export const Classes = () => {
   });
   const [editForm, setEditForm] = useState<UpdateClassData>({});
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [confirmDelete, setConfirmDelete] = useState<{ show: boolean; classId: string | null }>({ show: false, classId: null });
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
 
   useEffect(() => {
     if (isSchoolAdmin) {
@@ -41,7 +47,18 @@ export const Classes = () => {
       setError(null);
       const response = await classService.getAllClasses();
       console.log('✅ Classes fetched:', response);
-      setClasses(response.data || []);
+      // Transform snake_case to camelCase
+      const transformedClasses = (response.data || []).map((cls: any) => ({
+        id: cls.id,
+        name: cls.name,
+        capacity: cls.capacity,
+        section: cls.section,
+        teacherId: cls.teacher_id,
+        teacherName: cls.teacher_name,
+        branchId: cls.branch_id,
+        studentCount: cls.student_count || cls.actual_student_count || 0
+      }));
+      setClasses(transformedClasses);
     } catch (err: any) {
       console.error('❌ Error fetching classes:', err);
       setError(err.response?.data?.error?.message || 'Failed to load classes');
@@ -52,8 +69,18 @@ export const Classes = () => {
 
   const fetchTeachers = async () => {
     try {
-      const response = await userService.getBranchUsers({ role: 'teacher', status: 'Approved' });
-      setTeachers(response.data || []);
+      const { getBranchTeachers } = await import('../services/schoolAdminService');
+      const response = await getBranchTeachers();
+      // Transform snake_case to camelCase and filter approved only
+      const transformedTeachers = (response.data || [])
+        .filter((t: any) => t.status === 'Approved')
+        .map((t: any) => ({
+          id: t.user_id,
+          name: t.name,
+          digitalId: t.digital_id,
+          status: t.status
+        }));
+      setTeachers(transformedTeachers);
     } catch (err) {
       console.error('❌ Error fetching teachers:', err);
     }
@@ -65,13 +92,13 @@ export const Classes = () => {
     try {
       const response = await classService.createClass(createForm);
       console.log('✅ Class created:', response);
-      alert('Class created successfully!');
+      showToast('Class created successfully!', 'success');
       setShowCreateModal(false);
       setCreateForm({ name: '', capacity: 40, section: '' });
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error creating class:', err);
-      alert(err.response?.data?.error?.message || 'Failed to create class');
+      showToast(err.response?.data?.error?.message || 'Failed to create class', 'error');
     } finally {
       setCreating(false);
     }
@@ -84,29 +111,30 @@ export const Classes = () => {
     try {
       const response = await classService.updateClass(selectedClass.id, editForm);
       console.log('✅ Class updated:', response);
-      alert('Class updated successfully!');
+      showToast('Class updated successfully!', 'success');
       setShowEditModal(false);
       setSelectedClass(null);
       setEditForm({});
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error updating class:', err);
-      alert(err.response?.data?.error?.message || 'Failed to update class');
+      showToast(err.response?.data?.error?.message || 'Failed to update class', 'error');
     } finally {
       setUpdating(false);
     }
   };
 
-  const handleDeleteClass = async (classId: string) => {
-    if (!confirm('Are you sure you want to delete this class?')) return;
+  const handleDeleteClass = async () => {
+    if (!confirmDelete.classId) return;
     try {
-      await classService.deleteClass(classId);
+      await classService.deleteClass(confirmDelete.classId);
       console.log('✅ Class deleted');
-      alert('Class deleted successfully!');
+      showToast('Class deleted successfully!', 'success');
+      setConfirmDelete({ show: false, classId: null });
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error deleting class:', err);
-      alert(err.response?.data?.error?.message || 'Failed to delete class');
+      showToast(err.response?.data?.error?.message || 'Failed to delete class', 'error');
     }
   };
 
@@ -114,16 +142,20 @@ export const Classes = () => {
     e.preventDefault();
     if (!selectedClass || !selectedTeacherId) return;
     try {
+      console.log('🔄 Assigning teacher:', { classId: selectedClass.id, teacherId: selectedTeacherId });
       const response = await classService.assignTeacher(selectedClass.id, selectedTeacherId);
       console.log('✅ Teacher assigned:', response);
-      alert('Teacher assigned successfully!');
+      showToast('Teacher assigned successfully!', 'success');
       setShowAssignModal(false);
       setSelectedClass(null);
       setSelectedTeacherId('');
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error assigning teacher:', err);
-      alert(err.response?.data?.error?.message || 'Failed to assign teacher');
+      const errorMsg = err.response?.status === 500 
+        ? 'Backend error: Teacher assignment endpoint not implemented or has a bug. Contact backend team.'
+        : err.response?.data?.error?.message || 'Failed to assign teacher';
+      showToast(errorMsg, 'error');
     }
   };
 
@@ -243,7 +275,7 @@ export const Classes = () => {
                     <Edit2 size={14} />
                   </button>
                   <button
-                    onClick={() => handleDeleteClass(classItem.id)}
+                    onClick={() => setConfirmDelete({ show: true, classId: classItem.id })}
                     className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
                   >
                     <Trash2 size={14} />
@@ -452,6 +484,60 @@ export const Classes = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
+            toast.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="text-green-600" size={20} />
+            ) : (
+              <XCircle className="text-red-600" size={20} />
+            )}
+            <p className={`text-sm font-bold ${
+              toast.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+            }`}>
+              {toast.message}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDelete.show && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Confirm Deletion</h3>
+            </div>
+
+            <div className="p-6">
+              <p className="text-slate-600 dark:text-slate-400">
+                Are you sure you want to delete this class? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+              <button
+                onClick={() => setConfirmDelete({ show: false, classId: null })}
+                className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteClass}
+                className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700"
+              >
+                Delete Class
+              </button>
+            </div>
           </div>
         </div>
       )}
