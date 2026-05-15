@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher } from '../services/schoolAdminService';
+import { getVPTeachers } from '../services/vicePrincipalService';
 
 export const Teachers = () => {
   const navigate = useNavigate();
   const { role } = useUser();
   const isAdmin = role === 'school-admin' || role === 'super-admin';
+  const isVP = role === 'vice-principal';
   
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,10 @@ export const Teachers = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getBranchTeachers();
+      
+      // Use different endpoint based on role
+      const response = isVP ? await getVPTeachers() : await getBranchTeachers();
+      
       const teachers = (response.data || []).map((teacher: any) => ({
         id: teacher.id,
         name: teacher.name,
@@ -41,7 +46,11 @@ export const Teachers = () => {
         digitalId: teacher.digital_id,
         status: teacher.status,
         userId: teacher.user_id,
-        branchId: teacher.branch_id
+        branchId: teacher.branch_id,
+        // VP-specific fields
+        classesAssigned: teacher.classes_assigned || '0',
+        plansSubmitted: teacher.plans_submitted || '0',
+        plansPending: teacher.plans_pending || '0'
       }));
       setTeachers(teachers);
     } catch (err: any) {
@@ -221,13 +230,19 @@ export const Teachers = () => {
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Email</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+              {isVP && (
+                <>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Classes</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plans</th>
+                </>
+              )}
               <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {teachers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                <td colSpan={isVP ? 7 : 5} className="px-6 py-12 text-center text-slate-500">
                   No teachers found. Register your first teacher.
                 </td>
               </tr>
@@ -253,6 +268,21 @@ export const Teachers = () => {
                       {teacher.status}
                     </span>
                   </td>
+                  {isVP && (
+                    <>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.classesAssigned}</td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <span className="text-slate-600 dark:text-slate-400">{teacher.plansSubmitted}</span>
+                          {teacher.plansPending !== '0' && (
+                            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">
+                              {teacher.plansPending} pending
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </>
+                  )}
                   <td className="px-6 py-4 relative">
                     {isAdmin && (
                       <>
