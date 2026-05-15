@@ -45,11 +45,16 @@ export const Students = () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getBranchUsers('student', filterStatus || undefined);
-      const data = response.data || [];
+      
+      // Use the new /school-admin/students endpoint that includes class info
+      const response = await studentService.getAllStudents({ 
+        status: filterStatus || undefined 
+      });
+      
+      const data = response || [];
       const transformed = data.map((s: any) => ({
-        id: s.id,
-        userId: s.id,
+        id: s.student_id || s.id,
+        userId: s.user_id || s.userId,
         digitalId: s.digital_id || s.digitalId,
         firstName: s.name?.split(' ')[0] || '',
         lastName: s.name?.split(' ').slice(1).join(' ') || '',
@@ -59,6 +64,7 @@ export const Students = () => {
         className: s.class_name || s.className,
         status: s.status,
       }));
+      
       setStudents(transformed);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to fetch students');

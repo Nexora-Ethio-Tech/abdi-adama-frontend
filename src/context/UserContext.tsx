@@ -107,12 +107,16 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
   });
 
-  // ─── Fetch Real Branches for Super Admin ───────────────────────────────────
+  // ─── Fetch Real Branches ───────────────────────────────────────────────────
   useEffect(() => {
     const fetchBranches = async () => {
-      if (user?.role === 'super-admin') {
-        try {
-          const { default: api } = await import('../services/api');
+      if (!user) return;
+      
+      try {
+        const { default: api } = await import('../services/api');
+        
+        if (user.role === 'super-admin') {
+          // Super Admin: Fetch all branches
           const res = await api.get('/super-admin/branches');
           if (res.data.success && Array.isArray(res.data.data)) {
             const apiBranches = res.data.data.map((b: any) => ({
@@ -122,9 +126,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }));
             setBranches(apiBranches);
           }
-        } catch (err) {
-          console.error('Failed to fetch branches:', err);
+        } else if (user.role === 'school-admin' && (user as any).branchId) {
+          // School Admin: Fetch their specific branch
+          const res = await api.get('/super-admin/branches');
+          if (res.data.success && Array.isArray(res.data.data)) {
+            const userBranch = res.data.data.find((b: any) => b.id === (user as any).branchId);
+            if (userBranch) {
+              setBranches([{
+                id: userBranch.id,
+                name: userBranch.name,
+                location: userBranch.address || userBranch.location || 'N/A'
+              }]);
+            }
+          }
         }
+      } catch (err) {
+        console.error('Failed to fetch branches:', err);
       }
     };
     fetchBranches();
