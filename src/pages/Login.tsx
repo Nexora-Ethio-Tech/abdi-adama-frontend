@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { LogIn, Fingerprint, Lock, AlertCircle, Key, CheckCircle, Send, ArrowRight, ShieldCheck } from 'lucide-react';
+import { LogIn, Fingerprint, Lock, AlertCircle, Key, CheckCircle, Send, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { ShootingStars } from '../components/Effects';
 import logo from '../assets/logo.jpg';
 
@@ -14,6 +14,7 @@ export const Login = () => {
   // Password mode fields
   const [digitalIdOrEmail, setDigitalIdOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   // OTP mode fields
   const [fan, setFan] = useState('');
   const [otp, setOtp] = useState('');
@@ -127,11 +128,19 @@ export const Login = () => {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
-                    type="password" required value={password}
+                    type={showPassword ? "text" : "password"} required value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-school-primary focus:ring-4 focus:ring-school-primary/10 transition-all outline-none"
+                    className="w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-school-primary focus:ring-4 focus:ring-school-primary/10 transition-all outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
                 </div>
               </div>
               <button
