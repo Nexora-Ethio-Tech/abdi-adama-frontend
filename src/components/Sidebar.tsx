@@ -97,11 +97,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       case 'vice-principal':
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
-          { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
           { icon: FileText, label: t('nav.transcripts'), path: '/transcripts' },
-          { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
-          { icon: ClipboardList, label: t('nav.exams'), path: '/exams' },
+          { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
+          { icon: ClipboardList, label: 'Grade Management', path: '/grades' },
         ];
       case 'teacher':
         return [
