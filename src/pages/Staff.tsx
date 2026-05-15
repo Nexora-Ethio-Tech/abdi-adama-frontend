@@ -20,6 +20,9 @@ export const Staff = () => {
   const [createForm, setCreateForm] = useState({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; userId: string; userName: string }>({ show: false, userId: '', userName: '' });
+  const [errorModal, setErrorModal] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
     const init = async () => {
@@ -50,20 +53,31 @@ export const Staff = () => {
       if (statusFilter) filters.status = statusFilter;
       const response = await userService.getAllUsers(filters);
       const resolvedBranches = branchList || branches;
-      const transformed = (response.data || []).map((u: any) => {
-        const branchId = u.branch_id || u.branchId;
-        const matched = resolvedBranches.find((b: any) => b.id === branchId);
-        return {
-          id: u.id,
-          name: u.name,
-          email: u.email,
-          role: u.role,
-          status: u.status,
-          digitalId: u.digital_id || u.digitalId,
-          branchId,
-          branchName: matched?.name || (branchId ? 'Unknown Branch' : 'All Branches'),
-        };
-      });
+      
+      // 🔐 SECURITY: Super Admin can ONLY see users they create:
+      // - Super Admins (system-level)
+      // - Auditors (system-level)
+      // - School Admins (created by Super Admin, assigned to branches)
+      // - Vice Principals (created by Super Admin)
+      // School Admin creates: Teachers, Students, Finance Clerks, Drivers, Parents
+      const SUPER_ADMIN_MANAGEABLE_ROLES = ['super-admin', 'auditor', 'school-admin', 'vice-principal'];
+      
+      const transformed = (response.data || [])
+        .filter((u: any) => SUPER_ADMIN_MANAGEABLE_ROLES.includes(u.role))
+        .map((u: any) => {
+          const branchId = u.branch_id || u.branchId;
+          const matched = resolvedBranches.find((b: any) => b.id === branchId);
+          return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            status: u.status,
+            digitalId: u.digital_id || u.digitalId,
+            branchId,
+            branchName: matched?.name || (branchId ? 'Unknown Branch' : 'All Branches'),
+          };
+        });
       setStaffList(transformed);
     } catch (err: any) {
       console.error('❌ Error fetching users:', err);
@@ -88,21 +102,26 @@ export const Staff = () => {
       await userService.updateUserStatus(userId, status);
       const branchList = await fetchBranches();
       fetchUsers(branchList);
+      setToast({ show: true, message: 'Status updated successfully', type: 'success' });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     } catch (err: any) {
       console.error('❌ Error updating status:', err);
-      alert(err.response?.data?.error?.message || 'Failed to update status');
+      setErrorModal({ show: true, message: err.response?.data?.error?.message || 'Failed to update status' });
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+  const confirmDelete = async () => {
     try {
-      await userService.deleteUser(userId);
+      await userService.deleteUser(deleteModal.userId);
+      setDeleteModal({ show: false, userId: '', userName: '' });
       const branchList = await fetchBranches();
       fetchUsers(branchList);
+      setToast({ show: true, message: 'User deleted successfully', type: 'success' });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
     } catch (err: any) {
       console.error('❌ Error deleting user:', err);
-      alert(err.response?.data?.error?.message || 'Failed to delete user');
+      setDeleteModal({ show: false, userId: '', userName: '' });
+      setErrorModal({ show: true, message: err.response?.data?.error?.message || 'Failed to delete user' });
     }
   };
 
@@ -145,8 +164,8 @@ export const Staff = () => {
       console.error('❌ Error response:', err.response?.data);
       console.error('❌ Full error details:', JSON.stringify(err.response?.data, null, 2));
       const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create user';
-      const errorDetails = err.response?.data?.error?.details ? '\n' + JSON.stringify(err.response.data.error.details, null, 2) : '';
-      alert(`Error: ${errorMsg}${errorDetails}\n\n⚠️ BACKEND BUG: Dedicated endpoints have conflicting validation. Ask backend to fix.`);
+      setShowCreateModal(false);
+      setErrorModal({ show: true, message: errorMsg });
     } finally {
       setCreating(false);
     }
@@ -250,42 +269,15 @@ export const Staff = () => {
                           </button>
                         )}
                         {staff.status === 'Approved' && (
-                          <>
-                            <button
-                              onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
-                              className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
-                            >
-                              Revoke
-                            </button>
-                            <button
-                              onClick={async () => {
-                                if (!confirm(`Reset password for ${staff.name}?`)) return;
-                                try {
-                                  const response = await fetch(`/api/super-admin/users/${staff.id}/reset-password`, {
-                                    method: 'POST',
-                                    headers: {
-                                      'Content-Type': 'application/json',
-                                      'Authorization': `Bearer ${localStorage.getItem('abdi_adama_token')}`
-                                    }
-                                  });
-                                  const data = await response.json();
-                                  if (response.ok && data.success) {
-                                    alert(`Password reset successfully!\n\nNew temporary password: ${data.data.temporaryPassword}\n\nPlease save this and share it securely with the user.`);
-                                  } else {
-                                    alert(data.error?.message || 'Failed to reset password');
-                                  }
-                                } catch (err) {
-                                  alert('Network error. Please try again.');
-                                }
-                              }}
-                              className="px-3 py-1 bg-amber-600 text-white rounded text-xs font-bold hover:bg-amber-700"
-                            >
-                              Reset Password
-                            </button>
-                          </>
+                          <button
+                            onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
+                            className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
+                          >
+                            Revoke
+                          </button>
                         )}
                         <button
-                          onClick={() => handleDeleteUser(staff.id)}
+                          onClick={() => setDeleteModal({ show: true, userId: staff.id, userName: staff.name })}
                           className="px-3 py-1 bg-slate-900 dark:bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-800"
                         >
                           Delete
@@ -428,7 +420,8 @@ export const Staff = () => {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(successModal.data?.temporaryPassword || '');
-                      alert('Password copied to clipboard!');
+                      setToast({ show: true, message: 'Password copied to clipboard!', type: 'success' });
+                      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
                     }}
                     className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold text-sm"
                   >
@@ -475,6 +468,79 @@ export const Staff = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.show && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                  <AlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Delete User</h3>
+                  <p className="text-sm text-slate-500">This action cannot be undone</p>
+                </div>
+              </div>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                Are you sure you want to delete <strong>{deleteModal.userName}</strong>?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteModal({ show: false, userId: '', userName: '' })}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {errorModal.show && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                  <AlertCircle size={24} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Error</h3>
+              </div>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">{errorModal.message}</p>
+              <button
+                onClick={() => setErrorModal({ show: false, message: '' })}
+                className="w-full bg-slate-900 dark:bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
+          <div className={`px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 ${
+            toast.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+          }`}>
+            <UserCheck size={20} />
+            <p className="font-bold text-sm">{toast.message}</p>
           </div>
         </div>
       )}
