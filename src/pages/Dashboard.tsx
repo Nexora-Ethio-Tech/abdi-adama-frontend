@@ -28,7 +28,7 @@ const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
 );
 
 export const Dashboard = () => {
-  const { role, gradesLocked, setGradesLocked, branches, setSelectedBranch } = useUser();
+  const { role, gradesLocked, setGradesLocked, branches, setSelectedBranch, user } = useUser();
   const { selectedBranchId, setSelectedBranchId, notices, addNotice, deleteNotice } = useStore();
   const { t } = useTranslation();
   const [showNoticeModal, setShowNoticeModal] = useState(false);
@@ -411,6 +411,37 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8">
+      {/* Welcome Message for School Admin */}
+      {role === 'school-admin' && user && (
+        <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-2xl p-6 shadow-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-100 mb-1">Welcome back,</p>
+              <h2 className="text-2xl md:text-3xl font-black">{user.name}</h2>
+              <p className="text-blue-100 mt-2 flex items-center gap-2">
+                <span className="font-semibold">
+                  {(() => {
+                    const branchId = (user as any).branchId;
+                    console.log('🔍 Debug - User branchId:', branchId);
+                    console.log('🔍 Debug - Branches array:', branches);
+                    const foundBranch = branches.find(b => b.id === branchId);
+                    console.log('🔍 Debug - Found branch:', foundBranch);
+                    return foundBranch?.name || 'School';
+                  })()}
+                </span>
+                <span className="text-blue-300">•</span>
+                <span className="text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              </p>
+            </div>
+            <div className="hidden md:block">
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+                <span className="text-3xl font-black">{user.name?.charAt(0)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {(role === 'school-admin' || isVP || isSuperAdmin) && (
         <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${
           gradesLocked
