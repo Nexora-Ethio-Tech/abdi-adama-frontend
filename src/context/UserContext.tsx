@@ -150,8 +150,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const res = await api.get('/auth/me');
 
         if (res.data.success) {
-          setUser(res.data.data);
-          localStorage.setItem('abdi_adama_user', JSON.stringify(res.data.data));
+          const rawUser = res.data.data;
+          const user = {
+            id: rawUser.id,
+            name: rawUser.name,
+            email: rawUser.email,
+            role: rawUser.role,
+            digitalId: rawUser.digital_id || rawUser.digitalId,
+            branchId: rawUser.branch_id || rawUser.branchId,
+            status: rawUser.status,
+          };
+          setUser(user);
+          localStorage.setItem('abdi_adama_user', JSON.stringify(user));
         } else {
           localStorage.removeItem('abdi_adama_user');
           localStorage.removeItem('abdi_adama_token');
@@ -206,9 +216,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (res.data.success) {
+        const rawUser = res.data.data.user;
+        const user = {
+          id: rawUser.id,
+          name: rawUser.name,
+          email: rawUser.email,
+          role: rawUser.role,
+          digitalId: rawUser.digital_id || rawUser.digitalId,
+          branchId: rawUser.branch_id || rawUser.branchId,
+          status: rawUser.status,
+        };
         localStorage.setItem('abdi_adama_token', res.data.data.accessToken);
         localStorage.setItem('abdi_adama_refresh_token', res.data.data.refreshToken);
-        setUser(res.data.data.user);
+        setUser(user);
         const roleRoutes: Record<string, string> = {
           'super-admin': '/dashboard/super-admin',
           'school-admin': '/dashboard/school-admin',
@@ -222,7 +242,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           'driver': '/dashboard/driver',
           'auditor': '/dashboard/auditor'
         };
-        return { success: true, redirect: roleRoutes[res.data.data.user.role] || '/dashboard' };
+        return { success: true, redirect: roleRoutes[user.role] || '/dashboard' };
       }
       return { success: false, error: res.data.error?.message || 'Invalid credentials' };
     } catch (err: any) {
@@ -249,7 +269,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const switchRole = async (newRole: UserRole): Promise<string | null> => {
+  const switchRole = async (_newRole: UserRole): Promise<string | null> => {
     // Note: Backend doesn't support role switching yet
     // This is a placeholder for future implementation
     console.warn('Role switching not implemented in backend');

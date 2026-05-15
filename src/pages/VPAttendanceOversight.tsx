@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Users, AlertTriangle, CheckCircle, TrendingDown, Calendar, Flag, Check, X } from 'lucide-react';
-import vicePrincipalService, { VPDashboard, AttendanceOverview, AttendanceAlert } from '../services/vicePrincipalService';
+import * as vicePrincipalService from '../services/vicePrincipalService';
 
 export const VPAttendanceOversight = () => {
-  const [dashboard, setDashboard] = useState<VPDashboard | null>(null);
-  const [overview, setOverview] = useState<AttendanceOverview[]>([]);
-  const [alerts, setAlerts] = useState<AttendanceAlert[]>([]);
+  const [dashboard, setDashboard] = useState<vicePrincipalService.VPDashboard | null>(null);
+  const [overview, setOverview] = useState<vicePrincipalService.AttendanceOverview[]>([]);
+  const [alerts, setAlerts] = useState<vicePrincipalService.AttendanceAlert[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'alerts'>('overview');
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<AttendanceAlert | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<vicePrincipalService.AttendanceAlert | null>(null);
   const [approvalRemarks, setApprovalRemarks] = useState('');
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export const VPAttendanceOversight = () => {
       setLoading(true);
       setError(null);
       const [dashboardData, overviewData, alertsData] = await Promise.all([
-        vicePrincipalService.getDashboard(),
+        vicePrincipalService.getVPDashboard(),
         vicePrincipalService.getAttendanceOverview(selectedDate),
         vicePrincipalService.getAttendanceAlerts()
       ]);

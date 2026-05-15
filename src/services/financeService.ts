@@ -1,167 +1,120 @@
 import api from './api';
 
-export interface FinanceDashboard {
-  totalRevenue: number;
+// ============ FINANCE CLERK API TYPES ============
+
+export interface FinanceClerkDashboard {
+  todayCollection: number;
   monthlyRevenue: number;
-  pendingPayments: number;
-  totalStudents: number;
-  paidStudents: number;
-  unpaidStudents: number;
-  partiallyPaidStudents: number;
-  recentPayments: {
-    id: string;
-    studentName: string;
-    amount: number;
-    date: string;
-  }[];
+  pendingApprovals: number;
+  recentTransactions: Transaction[];
 }
 
-export interface FeeRecord {
+export interface Transaction {
   id: string;
-  studentId: string;
-  studentName: string;
-  studentDigitalId: string;
-  grade: string;
-  feeType: string;
-  totalAmount: number;
-  paidAmount: number;
-  remainingAmount: number;
-  status: 'Paid' | 'Pending' | 'Partial' | 'Overdue';
-  dueDate: string;
-  academicYear: string;
-  term: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface FeePayment {
-  studentId: string;
-  feeType: string;
+  student_id: string;
+  student_name: string;
   amount: number;
-  paymentMethod: 'Cash' | 'Bank Transfer' | 'Mobile Money' | 'Cheque';
-  transactionReference?: string;
-  remarks?: string;
-  academicYear: string;
-  term: string;
+  type: string;
+  date: string;
+  verified_by: string;
+  branch_id: string;
+  created_at: string;
 }
 
-export interface FeeFilters {
-  status?: string;
-  grade?: string;
-  term?: string;
-  academicYear?: string;
+export interface StudentFeeInfo {
+  id: string;
+  name: string;
+  email: string;
+  digital_id: string;
+  grade: string;
+  monthly_fee: number;
+  bus_fee: number;
+  penalty_fee: number;
+  fee_status: 'standard' | 'reduced';
+  fee_approval_status: 'none' | 'pending' | 'approved' | 'rejected';
+  fee_notes: string | null;
 }
 
-const financeService = {
-  getDashboard: async (): Promise<FinanceDashboard> => {
+export interface RecordPaymentRequest {
+  studentId: string;  // Will be sent as studentId in body
+  amount: number;
+  type: string;
+  date: string;
+}
+
+export interface UpdateFeeStatusRequest {
+  feeStatus?: 'standard' | 'reduced';
+  monthlyFee?: number;
+  busFee?: number;
+  penaltyFee?: number;
+  feeNotes?: string;
+}
+
+export interface OverdueStudent {
+  id: string;
+  name: string;
+  email: string;
+  digital_id: string;
+  grade: string;
+  monthly_fee: number;
+  bus_fee: number;
+  penalty_fee: number;
+  parent_phone: string;
+}
+
+export interface DailyReport {
+  date: string;
+  transactions: Transaction[];
+  summary: {
+    totalTransactions: number;
+    totalAmount: number;
+  };
+}
+
+// ============ FINANCE CLERK SERVICE ============
+
+const financeClerkService = {
+  // 1. Get Dashboard
+  getDashboard: async (): Promise<FinanceClerkDashboard> => {
     const response = await api.get('/finance-clerk/dashboard');
     return response.data.data;
   },
 
-  getAllFees: async (filters?: FeeFilters): Promise<FeeRecord[]> => {
-    const response = await api.get('/finance-clerk/fees', { params: filters });
+  // 2. Get All Students with Fee Info
+  getStudentsFees: async (params?: { search?: string; feeStatus?: 'standard' | 'reduced' }): Promise<StudentFeeInfo[]> => {
+    const response = await api.get('/finance-clerk/students/fees', { params });
     return response.data.data;
   },
 
-  getStudentFees: async (studentId: string): Promise<FeeRecord[]> => {
-    const response = await api.get(`/finance-clerk/fees/student/${studentId}`);
+  // 3. Record Payment
+  recordPayment: async (data: RecordPaymentRequest): Promise<Transaction> => {
+    const response = await api.post('/finance-clerk/payments', data);
     return response.data.data;
   },
 
-  recordPayment: async (data: FeePayment): Promise<FeeRecord> => {
-    const response = await api.post('/finance-clerk/fees/payment', data);
+  // 4. Get Payment History for a Student
+  getPaymentHistory: async (studentId: string): Promise<Transaction[]> => {
+    const response = await api.get(`/finance-clerk/payments/${studentId}`);
     return response.data.data;
   },
 
-  getPendingPayments: async (): Promise<FeeRecord[]> => {
-    const response = await api.get('/finance-clerk/fees/pending');
+  // 5. Update Student Fee Status
+  updateFeeStatus: async (studentId: string, data: UpdateFeeStatusRequest): Promise<StudentFeeInfo> => {
+    const response = await api.patch(`/finance-clerk/students/${studentId}/fee-status`, data);
+    return response.data.data;
+  },
+
+  // 6. Get Overdue Payments
+  getOverduePayments: async (): Promise<OverdueStudent[]> => {
+    const response = await api.get('/finance-clerk/overdue-payments');
+    return response.data.data;
+  },
+
+  // 7. Get Daily Collection Report
+  getDailyReport: async (date?: string): Promise<DailyReport> => {
+    const response = await api.get('/finance-clerk/reports/daily', { params: { date } });
     return response.data.data;
   },
 };
 
-export default financeService;
-
-// Audit Log Interfaces
-export interface AuditLog {
-  id: string;
-  timestamp: string;
-  action: string;
-  actionType: 'Money In' | 'Money Out';
-  category: 'Fees' | 'Staff' | 'Inventory' | 'Other';
-  performedBy: {
-    id: string;
-    name: string;
-    role: string;
-  };
-  amount?: number;
-  description: string;
-  section?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface AuditLogFilters {
-  direction?: 'Money In' | 'Money Out';
-  category?: string;
-  section?: string;
-  actionType?: string;
-  role?: string;
-  minAmount?: number;
-  maxAmount?: number;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface AuditLogResponse {
-  logs: AuditLog[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalRecords: number;
-    hasNext: boolean;
-    hasPrevious: boolean;
-  };
-}
-
-// Audit Log Methods
-export const getAllAuditLogs = async (filters?: AuditLogFilters): Promise<AuditLogResponse> => {
-  const params = new URLSearchParams();
-  if (filters?.direction) params.append('direction', filters.direction);
-  if (filters?.category) params.append('category', filters.category);
-  if (filters?.section) params.append('section', filters.section);
-  if (filters?.actionType) params.append('actionType', filters.actionType);
-  if (filters?.role) params.append('role', filters.role);
-  if (filters?.minAmount) params.append('minAmount', filters.minAmount.toString());
-  if (filters?.maxAmount) params.append('maxAmount', filters.maxAmount.toString());
-  if (filters?.startDate) params.append('startDate', filters.startDate);
-  if (filters?.endDate) params.append('endDate', filters.endDate);
-  if (filters?.page) params.append('page', filters.page.toString());
-  if (filters?.limit) params.append('limit', filters.limit.toString());
-
-  const response = await fetch(`${API_BASE_URL}/finance-clerk/audit-logs?${params}`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch audit logs');
-  return result.data;
-};
-
-export const getAuditLogById = async (id: string): Promise<AuditLog> => {
-  const response = await fetch(`${API_BASE_URL}/finance-clerk/audit-logs/${id}`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch audit log');
-  return result.data;
-};
-
-export const exportAuditLogs = async (filters?: AuditLogFilters): Promise<Blob> => {
-  const response = await fetch(`${API_BASE_URL}/finance-clerk/audit-logs/export`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(filters || {}),
-  });
-  if (!response.ok) throw new Error('Failed to export audit logs');
-  return response.blob();
-};
+export default financeClerkService;

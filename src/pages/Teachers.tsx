@@ -1,4 +1,4 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -79,6 +79,64 @@ export const Teachers = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handlePrintCredentials = () => {
+    const { user, temporaryPassword } = successModal.data;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Staff Credentials - ${user.name}</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 40px; max-width: 400px; margin: 0 auto; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 16px; margin-bottom: 24px; }
+            .school { font-size: 18px; font-weight: bold; }
+            .title { font-size: 14px; color: #555; margin-top: 4px; }
+            .field { margin-bottom: 16px; }
+            .label { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+            .value { font-size: 16px; font-weight: bold; margin-top: 4px; }
+            .pin-box { background: #fff8e1; border: 2px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center; }
+            .pin { font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #b45309; font-family: monospace; }
+            .warning { font-size: 11px; color: #b45309; margin-top: 8px; }
+            .footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid #ddd; font-size: 11px; color: #888; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="school">Abdi Adama School IMS</div>
+            <div class="title">Staff Login Credentials</div>
+          </div>
+          <div class="field">
+            <div class="label">Full Name</div>
+            <div class="value">${user.name}</div>
+          </div>
+          <div class="field">
+            <div class="label">Email</div>
+            <div class="value">${user.email}</div>
+          </div>
+          <div class="field">
+            <div class="label">Digital ID (Username)</div>
+            <div class="value" style="font-family: monospace; color: #2563eb;">${user.digitalId}</div>
+          </div>
+          <div class="pin-box">
+            <div class="label">🔑 4-Digit PIN</div>
+            <div class="pin">${temporaryPassword}</div>
+            <div class="warning">⚠️ Change this PIN after first login</div>
+          </div>
+          <div class="field">
+            <div class="label">Status</div>
+            <div class="value">${user.status}</div>
+          </div>
+          <div class="footer">
+            Printed on ${new Date().toLocaleDateString()} · Keep this document confidential
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   };
 
   const handleAddTeacher = async (e: React.FormEvent) => {
@@ -411,10 +469,17 @@ export const Teachers = () => {
               </div>
             </div>
 
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+              <button
+                onClick={handlePrintCredentials}
+                className="flex-1 flex items-center justify-center gap-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <Printer size={18} />
+                Print
+              </button>
               <button
                 onClick={() => setSuccessModal({ show: false, data: null })}
-                className="w-full bg-slate-900 dark:bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-700"
+                className="flex-1 bg-slate-900 dark:bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-700"
               >
                 Close
               </button>

@@ -25,16 +25,18 @@ export interface RegisterUserData {
 }
 
 export interface RegisterUserResponse {
-  user: {
-    id: string;
-    digitalId: string;
-    name: string;
-    email: string;
-    role: string;
-    branchId: string;
-    status: string;
+  data: {
+    user: {
+      id: string;
+      digital_id: string;
+      name: string;
+      email: string;
+      role: string;
+      branch_id: string;
+      status: string;
+    };
+    temporaryPassword: string;
   };
-  temporaryPassword: string;
 }
 
 // Course Interface
@@ -231,5 +233,21 @@ export const revokeTeacher = async (userId: string) => {
 
 export const deleteTeacher = async (userId: string) => {
   const response = await api.delete(`/school-admin/users/${userId}`);
+  return response.data;
+};
+
+// Student Management
+export const updateUser = async (userId: string, data: { name?: string; email?: string; grade?: string }) => {
+  const response = await api.patch(`/school-admin/users/${userId}`, data);
+  return response.data;
+};
+
+export const assignStudentToClass = async (studentId: string, classId: string) => {
+  const response = await api.post('/school-admin/students/assign-class', { studentId, classId });
+  return response.data;
+};
+
+export const removeStudentFromClass = async (studentId: string) => {
+  const response = await api.delete(`/school-admin/students/${studentId}/remove-class`);
   return response.data;
 };
