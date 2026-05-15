@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Award, Edit2, X, Plus, TrendingUp } from 'lucide-react';
-import teacherService, { TeacherClass, ClassStudent, Grade, SubmitGradeData, UpdateGradeData } from '../services/teacherService';
+import * as teacherService from '../services/teacherService';
 
 export const TeacherGrades = () => {
-  const [classes, setClasses] = useState<TeacherClass[]>([]);
+  const [classes, setClasses] = useState<teacherService.TeacherClass[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [students, setStudents] = useState<ClassStudent[]>([]);
-  const [grades, setGrades] = useState<Grade[]>([]);
+  const [students, setStudents] = useState<teacherService.ClassStudent[]>([]);
+  const [grades, setGrades] = useState<teacherService.Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
-  const [formData, setFormData] = useState<SubmitGradeData>({
+  const [selectedGrade, setSelectedGrade] = useState<teacherService.Grade | null>(null);
+  const [formData, setFormData] = useState<teacherService.SubmitGradeData>({
     studentId: '',
     classId: '',
     subject: '',
@@ -41,7 +41,7 @@ export const TeacherGrades = () => {
       setClasses(data);
       if (data.length > 0) {
         setSelectedClass(data[0].id);
-        setFormData(prev => ({ ...prev, classId: data[0].id, subject: data[0].subject }));
+        setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, classId: data[0].id, subject: data[0].subject }));
       }
     } catch (err) {
       console.error('Failed to fetch classes:', err);
@@ -83,7 +83,7 @@ export const TeacherGrades = () => {
     e.preventDefault();
     if (!selectedGrade) return;
     try {
-      const updateData: UpdateGradeData = {
+      const updateData: teacherService.UpdateGradeData = {
         score: formData.score,
         maxScore: formData.maxScore,
         remarks: formData.remarks,
@@ -97,7 +97,7 @@ export const TeacherGrades = () => {
     }
   };
 
-  const openEditModal = (grade: Grade) => {
+  const openEditModal = (grade: teacherService.Grade) => {
     setSelectedGrade(grade);
     setFormData({
       studentId: grade.studentId,
@@ -179,7 +179,7 @@ export const TeacherGrades = () => {
           onChange={(e) => {
             setSelectedClass(e.target.value);
             const cls = classes.find(c => c.id === e.target.value);
-            setFormData(prev => ({ ...prev, classId: e.target.value, subject: cls?.subject || '' }));
+            setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, classId: e.target.value, subject: cls?.subject || '' }));
           }}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg"
         >
@@ -230,7 +230,7 @@ export const TeacherGrades = () => {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => {
-                        setFormData(prev => ({ ...prev, studentId: student.id }));
+                        setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, studentId: student.id }));
                         setShowAddModal(true);
                       }}
                       className="text-blue-600 hover:text-blue-700 font-medium text-sm"

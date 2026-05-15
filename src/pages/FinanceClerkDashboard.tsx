@@ -1,47 +1,47 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search } from 'lucide-react';
-import financeService, { FinanceDashboard, FeeRecord, FeePayment } from '../services/financeService';
+import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, FileText } from 'lucide-react';
+import financeClerkService, { type FinanceClerkDashboard, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
+import { Breadcrumbs } from '../components/Breadcrumbs';
 
 export const FinanceClerkDashboard = () => {
-  const [dashboard, setDashboard] = useState<FinanceDashboard | null>(null);
-  const [fees, setFees] = useState<FeeRecord[]>([]);
-  const [pendingPayments, setPendingPayments] = useState<FeeRecord[]>([]);
+  const [dashboard, setDashboard] = useState<FinanceClerkDashboard | null>(null);
+  const [students, setStudents] = useState<StudentFeeInfo[]>([]);
+  const [overdueStudents, setOverdueStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all');
+  const [success, setSuccess] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue'>('all');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedFee, setSelectedFee] = useState<FeeRecord | null>(null);
-  const [filters, setFilters] = useState({ status: '', grade: '', term: '', academicYear: '2024/2025' });
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [paymentData, setPaymentData] = useState<FeePayment>({
+  const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
+  const [paymentData, setPaymentData] = useState<RecordPaymentRequest>({
     studentId: '',
-    feeType: 'Tuition',
     amount: 0,
-    paymentMethod: 'Cash',
-    transactionReference: '',
-    remarks: '',
-    academicYear: '2024/2025',
-    term: 'Term 1',
+    type: 'Monthly Tuition',
+    date: new Date().toISOString().split('T')[0],
   });
 
   useEffect(() => {
     fetchData();
-  }, [filters]);
+  }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [dashboardData, feesData, pendingData] = await Promise.all([
-        financeService.getDashboard(),
-        financeService.getAllFees(filters),
-        financeService.getPendingPayments()
+      const [dashboardData, studentsData, overdueData] = await Promise.all([
+        financeClerkService.getDashboard(),
+        financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined }),
+        financeClerkService.getOverduePayments()
       ]);
       setDashboard(dashboardData);
-      setFees(feesData);
-      setPendingPayments(pendingData);
+      setStudents(studentsData);
+      setOverdueStudents(overdueData);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch data');
+      setError(err.response?.data?.error?.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -50,27 +50,27 @@ export const FinanceClerkDashboard = () => {
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await financeService.recordPayment(paymentData);
+      await financeClerkService.recordPayment(paymentData);
+      setSuccess('Payment recorded successfully!');
       setShowPaymentModal(false);
       resetPaymentForm();
       fetchData();
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to record payment');
+      setError(err.response?.data?.error?.message || 'Failed to record payment');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
-  const openPaymentModal = (fee?: FeeRecord) => {
-    if (fee) {
-      setSelectedFee(fee);
+  const openPaymentModal = (student?: StudentFeeInfo) => {
+    if (student) {
+      setSelectedStudent(student);
+      const totalDue = student.monthly_fee + student.bus_fee + student.penalty_fee;
       setPaymentData({
-        studentId: fee.studentId,
-        feeType: fee.feeType,
-        amount: fee.remainingAmount,
-        paymentMethod: 'Cash',
-        transactionReference: '',
-        remarks: '',
-        academicYear: fee.academicYear,
-        term: fee.term,
+        studentId: student.id,
+        amount: totalDue,
+        type: 'Monthly Tuition',
+        date: new Date().toISOString().split('T')[0],
       });
     }
     setShowPaymentModal(true);
@@ -79,20 +79,27 @@ export const FinanceClerkDashboard = () => {
   const resetPaymentForm = () => {
     setPaymentData({
       studentId: '',
-      feeType: 'Tuition',
       amount: 0,
-      paymentMethod: 'Cash',
-      transactionReference: '',
-      remarks: '',
-      academicYear: '2024/2025',
-      term: 'Term 1',
+      type: 'Monthly Tuition',
+      date: new Date().toISOString().split('T')[0],
     });
-    setSelectedFee(null);
+    setSelectedStudent(null);
   };
 
-  const filteredFees = fees.filter(fee =>
-    fee.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    fee.studentDigitalId.toLowerCase().includes(searchTerm.toLowerCase())
+  const openPaymentHistory = async (student: StudentFeeInfo) => {
+    try {
+      const history = await financeClerkService.getPaymentHistory(student.id);
+      setPaymentHistory(history);
+      setSelectedStudent(student);
+      setShowHistoryModal(true);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to fetch payment history');
+    }
+  };
+
+  const filteredStudents = students.filter(student =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading && !dashboard) {
@@ -104,18 +111,20 @@ export const FinanceClerkDashboard = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <Breadcrumbs />
+      
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
-          <p className="text-gray-600">Manage fee collection and payments</p>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Finance Clerk Dashboard</h1>
+          <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mt-1">Manage student fees and payment collection</p>
         </div>
         <button
           onClick={() => {
             resetPaymentForm();
             setShowPaymentModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all font-bold text-sm"
         >
           <Plus className="w-5 h-5" />
           Record Payment
@@ -123,300 +132,384 @@ export const FinanceClerkDashboard = () => {
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
+        <div className="fixed top-6 right-6 z-50 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-right-8 max-w-md">
+          ⚠️ {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="fixed top-6 right-6 z-50 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-right-8 max-w-md">
+          ✅ {success}
         </div>
       )}
 
       {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="w-6 h-6 text-green-600" />
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-500 text-white p-6 rounded-[2rem] shadow-xl hover:-translate-y-1 transition-all">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">ETB {dashboard?.totalRevenue.toLocaleString() || 0}</p>
+              <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-2">Today's Collection</p>
+              <p className="text-3xl font-black">{dashboard?.todayCollection.toLocaleString() || 0}</p>
+              <p className="text-emerald-100 text-xs font-bold mt-1">ETB</p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <DollarSign className="w-8 h-8" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-blue-600" />
-            </div>
+        
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">ETB {dashboard?.monthlyRevenue.toLocaleString() || 0}</p>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Monthly Revenue</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.monthlyRevenue.toLocaleString() || 0}</p>
+              <p className="text-slate-500 text-xs font-bold mt-1">ETB</p>
+            </div>
+            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-2xl">
+              <TrendingUp className="w-8 h-8" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <AlertCircle className="w-6 h-6 text-yellow-600" />
-            </div>
+        
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Pending Payments</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboard?.pendingPayments || 0}</p>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Pending Approvals</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.pendingApprovals || 0}</p>
+              <p className="text-slate-500 text-xs font-bold mt-1">Fee Reductions</p>
+            </div>
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-2xl">
+              <AlertCircle className="w-8 h-8" />
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
+        
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Paid Students</p>
-              <p className="text-2xl font-bold text-gray-900">{dashboard?.paidStudents || 0}/{dashboard?.totalStudents || 0}</p>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Recent Transactions</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.recentTransactions.length || 0}</p>
+              <p className="text-slate-500 text-xs font-bold mt-1">Last 10</p>
+            </div>
+            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-2xl">
+              <Receipt className="w-8 h-8" />
             </div>
           </div>
         </div>
       </div>
 
+      {/* Recent Transactions */}
+      {dashboard && dashboard.recentTransactions.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg">Recent Transactions</h3>
+            <p className="text-slate-500 text-xs mt-1">Last 10 payment records</p>
+          </div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {dashboard.recentTransactions.map((tx) => (
+              <div key={tx.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">{tx.student_name}</p>
+                    <p className="text-xs text-slate-500">{tx.type} • {new Date(tx.date).toLocaleDateString()}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-black text-emerald-600 text-lg">{tx.amount.toLocaleString()} ETB</p>
+                  <p className="text-xs text-slate-500">by {tx.verified_by}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b">
+      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
         <button
           onClick={() => setActiveTab('all')}
-          className={`px-4 py-2 font-medium ${
+          className={`px-6 py-3 font-bold text-sm transition-all ${
             activeTab === 'all'
               ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
-          All Fees
+          All Students ({students.length})
         </button>
         <button
-          onClick={() => setActiveTab('pending')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'pending'
+          onClick={() => setActiveTab('overdue')}
+          className={`px-6 py-3 font-bold text-sm transition-all ${
+            activeTab === 'overdue'
               ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-600 hover:text-gray-900'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
-          Pending ({pendingPayments.length})
+          Overdue ({overdueStudents.length})
         </button>
       </div>
 
       {/* Filters */}
-      <div className="mb-4 bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search student..."
+              placeholder="Search by name or ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                fetchData();
+              }}
+              className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
           <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+            value={feeStatusFilter}
+            onChange={(e) => {
+              setFeeStatusFilter(e.target.value as any);
+              fetchData();
+            }}
+            className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           >
-            <option value="">All Status</option>
-            <option value="Paid">Paid</option>
-            <option value="Pending">Pending</option>
-            <option value="Partial">Partial</option>
-            <option value="Overdue">Overdue</option>
+            <option value="">All Fee Status</option>
+            <option value="standard">Standard</option>
+            <option value="reduced">Reduced</option>
           </select>
-          <select
-            value={filters.grade}
-            onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+          <button
+            onClick={fetchData}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm transition-all"
           >
-            <option value="">All Grades</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-          </select>
-          <select
-            value={filters.term}
-            onChange={(e) => setFilters({ ...filters, term: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
-          >
-            <option value="">All Terms</option>
-            <option value="Term 1">Term 1</option>
-            <option value="Term 2">Term 2</option>
-            <option value="Term 3">Term 3</option>
-          </select>
+            Apply Filters
+          </button>
         </div>
       </div>
 
-      {/* Fee Records Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fee Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Remaining</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {(activeTab === 'all' ? filteredFees : pendingPayments).map((fee) => (
-              <tr key={fee.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">{fee.studentName}</p>
-                    <p className="text-sm text-gray-500">{fee.studentDigitalId} • Grade {fee.grade}</p>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900">{fee.feeType}</td>
-                <td className="px-6 py-4 text-sm text-gray-900">ETB {fee.totalAmount.toLocaleString()}</td>
-                <td className="px-6 py-4 text-sm text-green-600 font-medium">ETB {fee.paidAmount.toLocaleString()}</td>
-                <td className="px-6 py-4 text-sm text-red-600 font-medium">ETB {fee.remainingAmount.toLocaleString()}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                    fee.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                    fee.status === 'Partial' ? 'bg-blue-100 text-blue-800' :
-                    fee.status === 'Overdue' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {fee.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-600">{fee.dueDate}</td>
-                <td className="px-6 py-4 text-right">
-                  {fee.status !== 'Paid' && (
-                    <button
-                      onClick={() => openPaymentModal(fee)}
-                      className="text-blue-600 hover:text-blue-700 font-medium text-sm"
-                    >
-                      Record Payment
-                    </button>
-                  )}
-                </td>
+      {/* Students Table */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Monthly Fee</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Bus Fee</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Penalty</th>
+                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {(activeTab === 'all' ? filteredStudents : overdueStudents).map((student) => {
+                const _totalDue = student.monthly_fee + student.bus_fee + student.penalty_fee;
+                return (
+                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                        <p className="text-xs text-slate-500">{student.digital_id} • {student.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
+                        Grade {student.grade}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                      {student.monthly_fee.toLocaleString()} ETB
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                      {student.bus_fee.toLocaleString()} ETB
+                    </td>
+                    <td className="px-6 py-4">
+                      {student.penalty_fee > 0 ? (
+                        <span className="text-sm font-bold text-red-600">{student.penalty_fee.toLocaleString()} ETB</span>
+                      ) : (
+                        <span className="text-sm text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${
+                          student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                        }`}>
+                          {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
+                        </span>
+                        {student.fee_approval_status === 'pending' && (
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
+                            Pending Approval
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openPaymentModal(student)}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          Record Payment
+                        </button>
+                        <button
+                          onClick={() => openPaymentHistory(student)}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          History
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {(activeTab === 'all' ? filteredFees : pendingPayments).length === 0 && !loading && (
-        <div className="text-center py-12">
-          <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No fee records found.</p>
+      {(activeTab === 'all' ? filteredStudents : overdueStudents).length === 0 && !loading && (
+        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+          <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
         </div>
       )}
 
       {/* Payment Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Record Payment</h2>
-              <button onClick={() => setShowPaymentModal(false)}>
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Payment</h2>
+              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            {selectedFee && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Student: <span className="font-medium text-gray-900">{selectedFee.studentName}</span></p>
-                <p className="text-sm text-gray-600">Fee Type: <span className="font-medium text-gray-900">{selectedFee.feeType}</span></p>
-                <p className="text-sm text-gray-600">Remaining: <span className="font-medium text-red-600">ETB {selectedFee.remainingAmount.toLocaleString()}</span></p>
+            {selectedStudent && (
+              <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border-b border-slate-100 dark:border-slate-800">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{selectedStudent.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{selectedStudent.digital_id}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Due: <span className="font-black text-red-600 text-lg">{(selectedStudent.monthly_fee + selectedStudent.bus_fee + selectedStudent.penalty_fee).toLocaleString()} ETB</span></p>
               </div>
             )}
-            <form onSubmit={handleRecordPayment} className="space-y-4">
-              {!selectedFee && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Student ID *</label>
-                    <input
-                      type="text"
-                      required
-                      value={paymentData.studentId}
-                      onChange={(e) => setPaymentData({ ...paymentData, studentId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fee Type *</label>
-                    <select
-                      required
-                      value={paymentData.feeType}
-                      onChange={(e) => setPaymentData({ ...paymentData, feeType: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    >
-                      <option value="Tuition">Tuition</option>
-                      <option value="Registration">Registration</option>
-                      <option value="Exam">Exam</option>
-                      <option value="Library">Library</option>
-                      <option value="Transport">Transport</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-                </>
+            <form onSubmit={handleRecordPayment} className="p-6 space-y-4">
+              {!selectedStudent && (
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student ID *</label>
+                  <input
+                    type="text"
+                    required
+                    value={paymentData.studentId}
+                    onChange={(e) => setPaymentData({ ...paymentData, studentId: e.target.value })}
+                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Enter student ID"
+                  />
+                </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount (ETB) *</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Payment Type *</label>
+                <select
+                  required
+                  value={paymentData.type}
+                  onChange={(e) => setPaymentData({ ...paymentData, type: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="Monthly Tuition">Monthly Tuition</option>
+                  <option value="Registration Fee">Registration Fee</option>
+                  <option value="Bus Fee">Bus Fee</option>
+                  <option value="Penalty Fee">Penalty Fee</option>
+                  <option value="Exam Fee">Exam Fee</option>
+                  <option value="Activity Fee">Activity Fee</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
                 <input
                   type="number"
                   required
                   min="0"
+                  step="0.01"
                   value={paymentData.amount}
                   onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="0.00"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method *</label>
-                <select
-                  required
-                  value={paymentData.paymentMethod}
-                  onChange={(e) => setPaymentData({ ...paymentData, paymentMethod: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Mobile Money">Mobile Money</option>
-                  <option value="Cheque">Cheque</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Transaction Reference</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Payment Date *</label>
                 <input
-                  type="text"
-                  value={paymentData.transactionReference}
-                  onChange={(e) => setPaymentData({ ...paymentData, transactionReference: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  type="date"
+                  required
+                  value={paymentData.date}
+                  onChange={(e) => setPaymentData({ ...paymentData, date: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                <textarea
-                  value={paymentData.remarks}
-                  onChange={(e) => setPaymentData({ ...paymentData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  rows={2}
-                />
-              </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20"
                 >
                   Record Payment
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment History Modal */}
+      {showHistoryModal && selectedStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Payment History</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{selectedStudent.name} ({selectedStudent.digital_id})</p>
+              </div>
+              <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {paymentHistory.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                  <p className="text-slate-600 dark:text-slate-400 font-medium">No payment history found.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {paymentHistory.map((tx) => (
+                    <div key={tx.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:shadow-md transition-all">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg">
+                            <CreditCard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{tx.type}</p>
+                            <p className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString()}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-black text-emerald-600 text-lg">{tx.amount.toLocaleString()} ETB</p>
+                          <p className="text-xs text-slate-500">by {tx.verified_by}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

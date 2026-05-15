@@ -22,30 +22,49 @@ export const Staff = () => {
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
 
   useEffect(() => {
-    fetchUsers();
-    fetchBranches();
+    const init = async () => {
+      const branchList = await fetchBranches();
+      await fetchUsers(branchList);
+    };
+    init();
   }, [roleFilter, statusFilter]);
 
   const fetchBranches = async () => {
     try {
       const response = await branchService.getAllBranches();
-      setBranches(response.data || []);
+      const list = response.data || [];
+      setBranches(list);
+      return list;
     } catch (err) {
       console.error('❌ Error fetching branches:', err);
+      return [];
     }
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (branchList?: any[]) => {
     try {
       setLoading(true);
       setError(null);
       const filters: any = {};
       if (roleFilter) filters.role = roleFilter;
       if (statusFilter) filters.status = statusFilter;
-      
       const response = await userService.getAllUsers(filters);
-      console.log('✅ Users fetched:', response);
-      setStaffList(response.data || []);
+      const resolvedBranches = branchList || branches;
+      const transformed = (response.data || []).map((u: any) => {
+        const branchId = u.branch_id || u.branchId;
+        const matched = resolvedBranches.find((b: any) => b.id === branchId);
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          status: u.status,
+          digitalId: u.digital_id || u.digitalId,
+          branchId,
+          branchName: matched?.name || (branchId ? 'Unknown Branch' : 'All Branches'),
+        };
+      });
+      setStaffList(transformed);
     } catch (err: any) {
       console.error('❌ Error fetching users:', err);
       setError(err.response?.data?.error?.message || 'Failed to load users');
@@ -67,8 +86,8 @@ export const Staff = () => {
   const handleUpdateStatus = async (userId: string, status: 'Approved' | 'Pending' | 'Revoked') => {
     try {
       await userService.updateUserStatus(userId, status);
-      console.log('✅ User status updated');
-      fetchUsers();
+      const branchList = await fetchBranches();
+      fetchUsers(branchList);
     } catch (err: any) {
       console.error('❌ Error updating status:', err);
       alert(err.response?.data?.error?.message || 'Failed to update status');
@@ -79,8 +98,8 @@ export const Staff = () => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
       await userService.deleteUser(userId);
-      console.log('✅ User deleted');
-      fetchUsers();
+      const branchList = await fetchBranches();
+      fetchUsers(branchList);
     } catch (err: any) {
       console.error('❌ Error deleting user:', err);
       alert(err.response?.data?.error?.message || 'Failed to delete user');
@@ -119,7 +138,8 @@ export const Staff = () => {
       setShowCreateModal(false);
       setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
       setSuccessModal({ show: true, data: response.data });
-      fetchUsers();
+      const branchList = await fetchBranches();
+      fetchUsers(branchList);
     } catch (err: any) {
       console.error('❌ Error creating user:', err);
       console.error('❌ Error response:', err.response?.data);
@@ -199,7 +219,7 @@ export const Staff = () => {
                       <div>
                         <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
                         <p className="text-xs text-slate-500">{staff.email}</p>
-                        <p className="text-xs text-slate-400 mt-1">{staff.digitalId}</p>
+                        <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -208,7 +228,7 @@ export const Staff = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {staff.branchId || 'All'}
+                      {staff.branchName || (staff.branchId ? staff.branchId : 'All Branches')}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
@@ -435,7 +455,7 @@ export const Staff = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Digital ID:</span>
-                    <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{successModal.data.user.digitalId}</span>
+                    <span className="font-mono font-bold text-slate-800 dark:text-slate-100">{successModal.data.user.digital_id || successModal.data.user.digitalId}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Status:</span>

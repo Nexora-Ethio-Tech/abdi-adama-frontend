@@ -41,13 +41,23 @@ Full 5-stage admission workflow with gated controls:
 - **Email Notifications** — Toast notifications for every status change
 
 ### 💰 Finance & Audit
+- **✅ REAL API INTEGRATION** - Finance Clerk dashboard fully connected to backend
+- **✅ REAL API INTEGRATION** - Auditor dashboard fully connected to backend
 - Fee collection with payment status tracking and approval history
+- Real-time payment recording with auto-verified clerk name
+- Student fee management (standard/reduced status)
+- Payment history timeline for each student
+- Overdue payments tracking with parent contact info
+- Daily collection reports
+- **Auditor read-only access** with fee reduction approval authority
+- **Financial reports** with date range filtering and breakdown by type
 - **Audit Logs** with Gmail-style pagination and advanced filters:
   - Direction (Money In / Money Out)
   - Category (Fees / Staff)
   - Section, Action Type, Role, Amount Range
 - **Pending Enrollment Payments** — Finance clerk confirms admission fee payments
 - **Monthly Net Profit Targets** — Set targets per Ethiopian calendar month with visual comparison bars
+- **See:** `FINANCE-CLERK-INTEGRATION.md` and `AUDITOR-INTEGRATION.md` for complete API documentation
 
 ### 📊 Executive Dashboard
 - **"Power of Three"** widget layout replacing heavy tab navigation:

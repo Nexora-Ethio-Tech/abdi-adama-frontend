@@ -24,9 +24,10 @@
 
 ## 👔 Vice Principals
 
-| Email | Password | Branch | Status | Created Date | Notes |
-|-------|----------|--------|--------|--------------|-------|
-| - | - | - | - | - | No VP created yet |
+| Email | Digital ID | Password | Branch | Status | Created Date | Notes |
+|-------|-----------|----------|--------|--------|--------------|-------|
+| `testviceprincipal@adama.com` | - | `ThU6Gq^$mq$!` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting Super Admin approval |
+| `test2viceprincipal@adama.com` | `VP-AD-0002` | `S%muR25RNmeQ` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting Super Admin approval |
 
 ---
 
@@ -34,7 +35,7 @@
 
 | Email | Password | Branch | Status | Created Date | Notes |
 |-------|----------|--------|--------|--------------|-------|
-| - | - | - | - | - | No Auditor created yet |
+| `auditor@adama.com` | `Audit@Secure99` | Adama Branch | ✅ Active | 2025-01-XX | Test Auditor - use for testing fee reduction approvals |
 
 ---
 
@@ -44,14 +45,15 @@
 |-------|-----------|-----|--------|--------|--------------|-------|
 | `testteacher@adama.com` | - | `7759` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting School Admin approval |
 | `johndoe@gmail.com` | `TCH-AD-0004` | `4661` | Adama Branch | ⏳ Pending | 2025-01-XX | Awaiting School Admin approval |
+| `mrgemechu@adama.com` | `TCH-AD-0005` | `4272` | Adama Branch | ✅ Approved | 2025-01-XX | Active teacher - use for testing |
 
 ---
 
 ## 💰 Finance Clerks
 
-| Email | Password | Branch | Status | Created Date | Notes |
-|-------|----------|--------|--------|--------------|-------|
-| - | - | - | - | - | No Finance Clerks created yet |
+| Email | PIN | Branch | Status | Created Date | Notes |
+|-------|-----|--------|--------|--------------|-------|
+| `financeclerk@adama.com` | `1234` | Adama Branch | ✅ Active | 2025-01-XX | Test Finance Clerk - use for testing payment recording |
 
 ---
 

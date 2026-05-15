@@ -1,6 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Filter, ChevronLeft, ChevronRight, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-import { getAllAuditLogs, exportAuditLogs, AuditLog, AuditLogFilters } from '../services/financeService';
+import { Download, Filter, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import * as financeService from '../services/financeService';
+
+interface AuditLog {
+  id: string;
+  timestamp: string;
+  action: string;
+  actionType: string;
+  category: string;
+  performedBy: { name: string; role: string };
+  amount?: number;
+  description: string;
+}
+
+interface AuditLogFilters {
+  page?: number;
+  limit?: number;
+  direction?: string;
+  category?: string;
+  section?: string;
+  actionType?: string;
+  role?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  startDate?: string;
+  endDate?: string;
+}
 
 const AuditLogs: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -25,7 +50,7 @@ const AuditLogs: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const data = await getAllAuditLogs(filters);
+      const data = await (financeService as any).getAllAuditLogs(filters);
       setLogs(data.logs);
       setCurrentPage(data.pagination.currentPage);
       setTotalPages(data.pagination.totalPages);
@@ -40,7 +65,7 @@ const AuditLogs: React.FC = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const blob = await exportAuditLogs(filters);
+      const blob = await (financeService as any).exportAuditLogs(filters);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -57,7 +82,7 @@ const AuditLogs: React.FC = () => {
   };
 
   const handleFilterChange = (key: keyof AuditLogFilters, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+    setFilters((prev: AuditLogFilters) => ({ ...prev, [key]: value, page: 1 }));
   };
 
   const clearFilters = () => {
@@ -65,7 +90,7 @@ const AuditLogs: React.FC = () => {
   };
 
   const goToPage = (page: number) => {
-    setFilters(prev => ({ ...prev, page }));
+    setFilters((prev: AuditLogFilters) => ({ ...prev, page }));
   };
 
   const getActionTypeColor = (type: string) => {
