@@ -1,211 +1,126 @@
 import api from './api';
 
+// Dashboard
+export const getVPDashboard = async () => {
+  const response = await api.get('/vice-principal/dashboard');
+  return response.data.data;
+};
+
+// Absence Queue
+export const getAbsenceQueue = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await api.get(`/vice-principal/absence-queue${params}`);
+  return response.data;
+};
+
+export const updateAbsenceStatus = async (id: string, status: 'pending' | 'excused' | 'notified') => {
+  const response = await api.patch(`/vice-principal/absence-queue/${id}`, { status });
+  return response.data;
+};
+
+// Weekly Plans
+export const getWeeklyPlans = async (status?: string, teacherId?: string) => {
+  const params = new URLSearchParams();
+  if (status) params.append('status', status);
+  if (teacherId) params.append('teacherId', teacherId);
+  const response = await api.get(`/vice-principal/weekly-plans?${params}`);
+  return response.data;
+};
+
+export const reviewWeeklyPlan = async (planId: string, data: {
+  status: 'Approved' | 'Revision Required';
+  deanFeedback?: string;
+  deanRating?: number;
+}) => {
+  const response = await api.patch(`/vice-principal/weekly-plans/${planId}/review`, data);
+  return response.data;
+};
+
+// Grade Locks
+export const getGradeLocks = async () => {
+  const response = await api.get('/vice-principal/grade-locks');
+  return response.data;
+};
+
+export const toggleGradeLock = async (data: {
+  gradeLevel: string;
+  isLocked: boolean;
+  academicYearId?: string;
+}) => {
+  const response = await api.post('/vice-principal/grade-locks', data);
+  return response.data;
+};
+
+// Teachers
+export const getVPTeachers = async () => {
+  const response = await api.get('/vice-principal/teachers');
+  return response.data;
+};
+
+// Attendance Summary
+export const getAttendanceSummary = async (date?: string, gradeLevel?: string) => {
+  const params = new URLSearchParams();
+  if (date) params.append('date', date);
+  if (gradeLevel) params.append('gradeLevel', gradeLevel);
+  const response = await api.get(`/vice-principal/attendance-summary?${params}`);
+  return response.data;
+};
+
+// Academic Performance
+export const getAcademicPerformance = async (gradeLevel?: string, courseId?: string) => {
+  const params = new URLSearchParams();
+  if (gradeLevel) params.append('gradeLevel', gradeLevel);
+  if (courseId) params.append('courseId', courseId);
+  const response = await api.get(`/vice-principal/academic-performance?${params}`);
+  return response.data;
+};
+
+// ─── TypeScript Interfaces ────────────────────────────────────────────────────
 export interface VPDashboard {
-  totalClasses: number;
-  totalStudents: number;
-  totalTeachers: number;
-  todayAttendanceRate: number;
-  pendingAttendanceReviews: number;
-  attendanceAlerts: number;
-  lowAttendanceClasses: {
-    classId: string;
-    className: string;
-    attendanceRate: number;
-  }[];
+  totalStudents?: number;
+  todayAttendanceRate?: number;
+  pendingAttendanceReviews?: number;
+  attendanceAlerts?: number;
+  pendingPlansCount?: number;
+  pendingAbsencesCount?: number;
 }
 
 export interface AttendanceOverview {
   classId: string;
   className: string;
   section: string;
+  teacherName: string;
   totalStudents: number;
   presentToday: number;
   absentToday: number;
   lateToday: number;
   attendanceRate: number;
-  teacherName: string;
 }
 
 export interface AttendanceAlert {
   id: string;
-  type: 'Low Attendance' | 'Consecutive Absences' | 'Late Pattern' | 'Unexcused';
-  studentId: string;
   studentName: string;
-  classId: string;
   className: string;
+  date: string;
+  type: string;
+  severity: 'High' | 'Medium' | 'Low';
   details: string;
-  severity: 'Low' | 'Medium' | 'High';
-  date: string;
-  status: 'Pending' | 'Reviewed' | 'Resolved';
+  status: 'Pending' | 'Approved' | 'Flagged';
 }
 
-export interface ApproveAttendanceData {
-  status: 'Approved' | 'Flagged';
-  remarks?: string;
-}
-
-const vicePrincipalService = {
-  getDashboard: async (): Promise<VPDashboard> => {
-    const response = await api.get('/vice-principal/dashboard');
-    return response.data.data;
-  },
-
-  getAttendanceOverview: async (date?: string): Promise<AttendanceOverview[]> => {
-    const response = await api.get('/vice-principal/attendance/overview', {
-      params: { date }
-    });
-    return response.data.data;
-  },
-
-  getAttendanceAlerts: async (): Promise<AttendanceAlert[]> => {
-    const response = await api.get('/vice-principal/attendance/alerts');
-    return response.data.data;
-  },
-
-  approveAttendance: async (id: string, data: ApproveAttendanceData): Promise<void> => {
-    await api.patch(`/vice-principal/attendance/${id}/approve`, data);
-  },
+// ─── Additional VP Methods ────────────────────────────────────────────────────────
+export const getAttendanceOverview = async (date?: string) => {
+  const params = date ? `?date=${date}` : '';
+  const response = await api.get(`/vice-principal/attendance-overview${params}`);
+  return response.data.data;
 };
 
-export default vicePrincipalService;
-
-// Absence Queue Interfaces
-export interface AbsenceQueueItem {
-  id: string;
-  studentId: string;
-  studentName: string;
-  classId: string;
-  className: string;
-  date: string;
-  status: 'pending' | 'excused' | 'notified';
-  reason?: string;
-  teacherNote?: string;
-}
-
-export interface UpdateAbsenceStatusData {
-  status: 'excused' | 'notified';
-}
-
-// Weekly Plan Review Interfaces
-export interface WeeklyPlanForReview {
-  id: string;
-  teacherId: string;
-  teacherName: string;
-  date: string;
-  content: string;
-  objectives: string;
-  teacherActivity: string;
-  timeDuration: string;
-  studentActivity: string;
-  teachingMethod: string;
-  teachingAids: string;
-  evaluation: string;
-  remark?: string;
-  status: 'Pending' | 'Approved' | 'Revision Required';
-  deanFeedback?: string;
-  deanRating?: number;
-}
-
-export interface ReviewWeeklyPlanData {
-  status: 'Approved' | 'Revision Required';
-  deanFeedback: string;
-  deanRating: number; // 1-5
-}
-
-// Grade Lock Interfaces
-export interface GradeLock {
-  id: string;
-  gradeLevel: string;
-  isLocked: boolean;
-  academicYearId: string;
-  lockedBy?: string;
-  lockedAt?: string;
-}
-
-export interface ToggleGradeLockData {
-  gradeLevel: string;
-  isLocked: boolean;
-  academicYearId: string;
-}
-
-// VP Reports Interfaces
-export interface VPTeacher {
-  id: string;
-  digitalId: string;
-  name: string;
-  email: string;
-  subjects: string[];
-  classes: string[];
-  weeklyPlansSubmitted: number;
-  attendanceMarked: number;
-}
-
-export interface AttendanceSummary {
-  date: string;
-  totalClasses: number;
-  markedClasses: number;
-  pendingClasses: number;
-  averageAttendanceRate: number;
-}
-
-export interface AcademicPerformance {
-  gradeLevel: string;
-  totalStudents: number;
-  averageGrade: number;
-  passRate: number;
-  failRate: number;
-  topPerformers: Array<{
-    studentId: string;
-    studentName: string;
-    grade: number;
-  }>;
-}
-
-// Absence Queue Methods
-export const getAbsenceQueue = async (): Promise<AbsenceQueueItem[]> => {
-  const response = await api.get('/vice-principal/absence-queue');
-  return response.data;
+export const getAttendanceAlerts = async () => {
+  const response = await api.get('/vice-principal/attendance-alerts');
+  return response.data.data;
 };
 
-export const updateAbsenceStatus = async (id: string, data: UpdateAbsenceStatusData) => {
-  const response = await api.patch(`/vice-principal/absence-queue/${id}`, data);
-  return response.data;
-};
-
-// Weekly Plans Review Methods
-export const getWeeklyPlansForReview = async (): Promise<WeeklyPlanForReview[]> => {
-  const response = await api.get('/vice-principal/weekly-plans');
-  return response.data;
-};
-
-export const reviewWeeklyPlan = async (planId: string, data: ReviewWeeklyPlanData) => {
-  const response = await api.patch(`/vice-principal/weekly-plans/${planId}/review`, data);
-  return response.data;
-};
-
-// Grade Locks Methods
-export const getGradeLocks = async (): Promise<GradeLock[]> => {
-  const response = await api.get('/vice-principal/grade-locks');
-  return response.data;
-};
-
-export const toggleGradeLock = async (data: ToggleGradeLockData): Promise<GradeLock> => {
-  const response = await api.post('/vice-principal/grade-locks', data);
-  return response.data;
-};
-
-// VP Reports Methods
-export const getVPTeachers = async (): Promise<VPTeacher[]> => {
-  const response = await api.get('/vice-principal/teachers');
-  return response.data;
-};
-
-export const getAttendanceSummary = async (): Promise<AttendanceSummary[]> => {
-  const response = await api.get('/vice-principal/attendance-summary');
-  return response.data;
-};
-
-export const getAcademicPerformance = async (): Promise<AcademicPerformance[]> => {
-  const response = await api.get('/vice-principal/academic-performance');
+export const approveAttendance = async (alertId: string, data: { status: 'Approved' | 'Flagged'; remarks?: string }) => {
+  const response = await api.patch(`/vice-principal/attendance-alerts/${alertId}`, data);
   return response.data;
 };

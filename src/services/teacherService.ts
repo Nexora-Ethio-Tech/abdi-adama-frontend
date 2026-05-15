@@ -1,28 +1,136 @@
 import api from './api';
 
-export interface TeacherDashboard {
-  totalClasses: number;
-  totalStudents: number;
-  todaySchedule: {
-    classId: string;
-    className: string;
-    subject: string;
-    time: string;
-    room: string;
-  }[];
-  upcomingAssignments: number;
-  pendingGrades: number;
-}
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export const getTeacherDashboard = async () => {
+  const response = await api.get('/teacher/dashboard');
+  return response.data.data;
+};
 
+// ─── Schedule ─────────────────────────────────────────────────────────────────
+export const getTeacherSchedule = async () => {
+  const response = await api.get('/teacher/schedule');
+  return response.data.data;
+};
+
+// ─── Classes ──────────────────────────────────────────────────────────────────
+export const getMyClasses = async () => {
+  const response = await api.get('/teacher/classes');
+  return response.data.data;
+};
+
+// ─── Students ─────────────────────────────────────────────────────────────────
+export const getClassStudents = async (classId: string) => {
+  const response = await api.get(`/teacher/students/${classId}`);
+  return response.data.data;
+};
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+export const markAttendance = async (data: {
+  date: string;
+  attendanceRecords: Array<{
+    studentId: string;
+    status: 'present' | 'absent' | 'late' | 'excused';
+  }>;
+}) => {
+  const response = await api.post('/teacher/attendance', data);
+  return response.data;
+};
+
+export const getClassAttendance = async (classId: string, date?: string) => {
+  const params = date ? `?date=${date}` : '';
+  const response = await api.get(`/teacher/attendance/${classId}${params}`);
+  return response.data.data;
+};
+
+// ─── Grades ───────────────────────────────────────────────────────────────────
+export const enterGrade = async (data: {
+  studentId: string;
+  courseId: string;
+  type: string;
+  score: number;
+  total: number;
+  weight?: string;
+}) => {
+  const response = await api.post('/teacher/grades', data);
+  return response.data;
+};
+
+export const getCourseGrades = async (courseId: string) => {
+  const response = await api.get(`/teacher/grades/${courseId}`);
+  return response.data.data;
+};
+
+// ─── Weekly Plans ─────────────────────────────────────────────────────────────
+export const submitWeeklyPlan = async (data: {
+  date: string;
+  content: string;
+  objectives: string;
+  teacherActivity: string;
+  timeDuration: string;
+  studentActivity: string;
+  teachingMethod: string;
+  teachingAids: string;
+  evaluation: string;
+  remark?: string;
+  status?: 'Draft' | 'Pending';
+}) => {
+  const response = await api.post('/teacher/weekly-plans', data);
+  return response.data;
+};
+
+export const getMyWeeklyPlans = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await api.get(`/teacher/weekly-plans${params}`);
+  return response.data.data;
+};
+
+export const updateWeeklyPlan = async (planId: string, data: {
+  date?: string;
+  content?: string;
+  objectives?: string;
+  teacherActivity?: string;
+  timeDuration?: string;
+  studentActivity?: string;
+  teachingMethod?: string;
+  teachingAids?: string;
+  evaluation?: string;
+  remark?: string;
+  status?: 'Draft' | 'Pending';
+}) => {
+  const response = await api.patch(`/teacher/weekly-plans/${planId}`, data);
+  return response.data;
+};
+
+// ─── Communication Logs ───────────────────────────────────────────────────────
+export const submitCommunicationLog = async (data: {
+  studentId: string;
+  weekEnding: string;
+  ratingUniform: number;
+  ratingMaterials: number;
+  ratingHomework: number;
+  ratingParticipation: number;
+  ratingConduct: number;
+  ratingSocial: number;
+  ratingPunctuality: number;
+  ratingNoteTaking: number;
+  teacherNote?: string;
+}) => {
+  const response = await api.post('/teacher/communication-logs', data);
+  return response.data;
+};
+
+export const getCommunicationLogs = async (studentId: string) => {
+  const response = await api.get(`/teacher/communication-logs/${studentId}`);
+  return response.data.data;
+};
+
+// ─── TypeScript Interfaces ────────────────────────────────────────────────────
 export interface TeacherClass {
   id: string;
   name: string;
   section: string;
   subject: string;
-  capacity: number;
-  enrolledStudents: number;
-  schedule: string;
-  room: string;
+  gradeLevel?: string;
 }
 
 export interface ClassStudent {
@@ -30,35 +138,29 @@ export interface ClassStudent {
   digitalId: string;
   firstName: string;
   lastName: string;
-  email: string;
-  grade: string;
-  status: string;
-  attendanceRate?: number;
+  email?: string;
 }
 
 export interface Grade {
   id: string;
   studentId: string;
-  studentName?: string;
+  studentName: string;
   classId: string;
   subject: string;
-  assessmentType: 'Quiz' | 'Exam' | 'Assignment' | 'Project' | 'Midterm' | 'Final';
+  assessmentType: string;
   score: number;
   maxScore: number;
   percentage: number;
   term: string;
   academicYear: string;
   remarks?: string;
-  submittedBy: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface SubmitGradeData {
   studentId: string;
   classId: string;
   subject: string;
-  assessmentType: 'Quiz' | 'Exam' | 'Assignment' | 'Project' | 'Midterm' | 'Final';
+  assessmentType: string;
   score: number;
   maxScore: number;
   term: string;
@@ -72,191 +174,18 @@ export interface UpdateGradeData {
   remarks?: string;
 }
 
-const teacherService = {
-  getDashboard: async (): Promise<TeacherDashboard> => {
-    const response = await api.get('/teacher/dashboard');
-    return response.data.data;
-  },
-
-  getMyClasses: async (): Promise<TeacherClass[]> => {
-    const response = await api.get('/teacher/classes');
-    return response.data.data;
-  },
-
-  getClassStudents: async (classId: string): Promise<ClassStudent[]> => {
-    const response = await api.get(`/teacher/classes/${classId}/students`);
-    return response.data.data;
-  },
-
-  submitGrade: async (data: SubmitGradeData): Promise<Grade> => {
-    const response = await api.post('/teacher/grades', data);
-    return response.data.data;
-  },
-
-  getClassGrades: async (classId: string): Promise<Grade[]> => {
-    const response = await api.get(`/teacher/grades/class/${classId}`);
-    return response.data.data;
-  },
-
-  getStudentGrades: async (studentId: string): Promise<Grade[]> => {
-    const response = await api.get(`/teacher/grades/student/${studentId}`);
-    return response.data.data;
-  },
-
-  updateGrade: async (gradeId: string, data: UpdateGradeData): Promise<Grade> => {
-    const response = await api.patch(`/teacher/grades/${gradeId}`, data);
-    return response.data.data;
-  },
+// ─── Additional Grade Methods ─────────────────────────────────────────────────
+export const getClassGrades = async (classId: string) => {
+  const response = await api.get(`/teacher/grades/class/${classId}`);
+  return response.data.data;
 };
 
-export default teacherService;
-
-// Teacher Attendance Interfaces
-export interface MarkAttendanceData {
-  date: string;
-  attendanceRecords: Array<{
-    studentId: string;
-    status: 'present' | 'absent' | 'late' | 'excused';
-  }>;
-}
-
-export interface TeacherAttendanceRecord {
-  id: string;
-  date: string;
-  classId: string;
-  className: string;
-  studentId: string;
-  studentName: string;
-  status: 'present' | 'absent' | 'late' | 'excused';
-}
-
-// Teacher Schedule Interface
-export interface TeacherScheduleItem {
-  id: string;
-  day: string;
-  timeSlot: string;
-  className: string;
-  subject: string;
-  room?: string;
-}
-
-// Weekly Plan Interfaces
-export interface WeeklyPlan {
-  id: string;
-  date: string;
-  content: string;
-  objectives: string;
-  teacherActivity: string;
-  timeDuration: string;
-  studentActivity: string;
-  teachingMethod: string;
-  teachingAids: string;
-  evaluation: string;
-  remark?: string;
-  status: 'Draft' | 'Pending' | 'Approved' | 'Revision Required';
-  deanFeedback?: string;
-  deanRating?: number;
-}
-
-export interface SubmitWeeklyPlanData {
-  date: string;
-  content: string;
-  objectives: string;
-  teacherActivity: string;
-  timeDuration: string;
-  studentActivity: string;
-  teachingMethod: string;
-  teachingAids: string;
-  evaluation: string;
-  remark?: string;
-  status: 'Draft' | 'Pending';
-}
-
-export interface UpdateWeeklyPlanData {
-  content?: string;
-  objectives?: string;
-  teacherActivity?: string;
-  timeDuration?: string;
-  studentActivity?: string;
-  teachingMethod?: string;
-  teachingAids?: string;
-  evaluation?: string;
-  remark?: string;
-  status?: 'Draft' | 'Pending';
-}
-
-// Communication Log Interfaces
-export interface CommunicationLog {
-  id: string;
-  studentId: string;
-  studentName: string;
-  weekEnding: string;
-  ratingUniform: number;
-  ratingMaterials: number;
-  ratingHomework: number;
-  ratingParticipation: number;
-  ratingConduct: number;
-  ratingSocial: number;
-  ratingPunctuality: number;
-  ratingNoteTaking: number;
-  teacherNote: string;
-  createdAt: string;
-}
-
-export interface SubmitCommunicationLogData {
-  studentId: string;
-  weekEnding: string;
-  ratingUniform: number;
-  ratingMaterials: number;
-  ratingHomework: number;
-  ratingParticipation: number;
-  ratingConduct: number;
-  ratingSocial: number;
-  ratingPunctuality: number;
-  ratingNoteTaking: number;
-  teacherNote: string;
-}
-
-// Teacher Attendance Methods
-export const markAttendance = async (data: MarkAttendanceData) => {
-  const response = await api.post('/teacher/attendance', data);
+export const submitGrade = async (data: SubmitGradeData) => {
+  const response = await api.post('/teacher/grades', data);
   return response.data;
 };
 
-export const getAttendanceByClass = async (classId: string): Promise<TeacherAttendanceRecord[]> => {
-  const response = await api.get(`/teacher/attendance/${classId}`);
-  return response.data;
-};
-
-// Teacher Schedule Methods
-export const getTeacherSchedule = async (): Promise<TeacherScheduleItem[]> => {
-  const response = await api.get('/teacher/schedule');
-  return response.data;
-};
-
-// Weekly Plans Methods
-export const submitWeeklyPlan = async (data: SubmitWeeklyPlanData): Promise<WeeklyPlan> => {
-  const response = await api.post('/teacher/weekly-plans', data);
-  return response.data;
-};
-
-export const getMyWeeklyPlans = async (): Promise<WeeklyPlan[]> => {
-  const response = await api.get('/teacher/weekly-plans');
-  return response.data;
-};
-
-export const updateWeeklyPlan = async (planId: string, data: UpdateWeeklyPlanData): Promise<WeeklyPlan> => {
-  const response = await api.patch(`/teacher/weekly-plans/${planId}`, data);
-  return response.data;
-};
-
-// Communication Logs Methods
-export const submitCommunicationLog = async (data: SubmitCommunicationLogData): Promise<CommunicationLog> => {
-  const response = await api.post('/teacher/communication-logs', data);
-  return response.data;
-};
-
-export const getCommunicationLogs = async (studentId: string): Promise<CommunicationLog[]> => {
-  const response = await api.get(`/teacher/communication-logs/${studentId}`);
+export const updateGrade = async (gradeId: string, data: UpdateGradeData) => {
+  const response = await api.patch(`/teacher/grades/${gradeId}`, data);
   return response.data;
 };

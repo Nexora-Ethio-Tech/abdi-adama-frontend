@@ -1,146 +1,145 @@
-const API_BASE_URL = 'https://api.abdi-adama.com/api';
+import api from './api';
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  };
-};
+// ============ AUDITOR API TYPES ============
 
-// Auditor Dashboard Interface
 export interface AuditorDashboard {
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
+  totalPayments: {
+    count: number;
+    total: number;
+  };
+  monthlyPayments: {
+    count: number;
+    total: number;
+  };
   pendingFeeReductions: number;
-  totalStudents: number;
-  paidStudents: number;
-  unpaidStudents: number;
-  recentTransactions: Array<{
-    id: string;
-    type: string;
-    amount: number;
-    date: string;
-    description: string;
-  }>;
+  recentTransactions: Transaction[];
 }
 
-// Payment Interface (READ ONLY)
-export interface Payment {
+export interface Transaction {
   id: string;
-  studentId: string;
-  studentName: string;
+  student_id: string;
+  student_name: string;
   amount: number;
   type: string;
   date: string;
-  paymentMethod: string;
-  transactionReference?: string;
-  status: string;
+  verified_by: string;
+  branch_id: string;
+  created_at: string;
 }
 
-// Fee Reduction Interface
 export interface FeeReduction {
   id: string;
-  studentId: string;
-  studentName: string;
-  currentFee: number;
-  requestedFee: number;
-  reductionPercentage: number;
-  reason: string;
-  status: 'Pending' | 'Approved' | 'Rejected';
-  requestDate: string;
-  reviewedBy?: string;
-  reviewDate?: string;
-  remarks?: string;
+  name: string;
+  email: string;
+  digital_id: string;
+  grade: string;
+  monthly_fee: number;
+  bus_fee: number;
+  penalty_fee: number;
+  fee_status: 'standard' | 'reduced';
+  fee_approval_status: 'none' | 'pending' | 'approved' | 'rejected';
+  fee_notes: string | null;
 }
 
-export interface UpdateFeeReductionData {
-  status: 'Approved' | 'Rejected';
-  remarks?: string;
+export interface ApproveFeeReductionRequest {
+  status: 'Approved' | 'Rejected' | 'Pending';
 }
 
-// Financial Report Interface
 export interface FinancialReport {
-  period: string;
-  totalRevenue: number;
-  totalExpenses: number;
-  netProfit: number;
-  revenueByCategory: Array<{
-    category: string;
-    amount: number;
-  }>;
-  expensesByCategory: Array<{
-    category: string;
-    amount: number;
-  }>;
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  summary: {
+    totalTransactions: number;
+    totalCollected: number;
+  };
+  byType: {
+    type: string;
+    count: string;
+    total: string;
+  }[];
+  dailyBreakdown: {
+    date: string;
+    transactions: string;
+    total: string;
+  }[];
 }
 
-// Audit Trail Interface
 export interface AuditTrailEntry {
   id: string;
+  student_id: string;
+  student_name: string;
+  section: string;
+  category: string;
+  direction: string;
+  action_label: string;
+  modified_by: string;
+  approver_name: string | null;
+  old_value: any;
+  new_value: any;
+  status: boolean;
   timestamp: string;
-  userId: string;
-  userName: string;
-  action: string;
-  entity: string;
-  entityId: string;
-  changes: Record<string, any>;
-  ipAddress?: string;
 }
 
-// Auditor Methods
-export const getAuditorDashboard = async (): Promise<AuditorDashboard> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/dashboard`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch dashboard');
-  return result.data;
+export interface PaymentsQueryParams {
+  studentId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface FeeReductionsQueryParams {
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface AuditTrailQueryParams {
+  startDate?: string;
+  endDate?: string;
+}
+
+// ============ AUDITOR SERVICE ============
+
+const auditorService = {
+  // 1. Get Dashboard
+  getDashboard: async (): Promise<AuditorDashboard> => {
+    const response = await api.get('/auditor/dashboard');
+    return response.data.data;
+  },
+
+  // 2. Get All Payments (Read Only)
+  getPayments: async (params?: PaymentsQueryParams): Promise<Transaction[]> => {
+    const response = await api.get('/auditor/payments', { params });
+    return response.data.data;
+  },
+
+  // 3. Get Fee Reduction Requests
+  getFeeReductions: async (params?: FeeReductionsQueryParams): Promise<FeeReduction[]> => {
+    const response = await api.get('/auditor/fee-reductions', { params });
+    return response.data.data;
+  },
+
+  // 4. Approve or Reject Fee Reduction (ONLY WRITE ENDPOINT)
+  updateFeeReductionStatus: async (
+    id: string,
+    data: ApproveFeeReductionRequest
+  ): Promise<FeeReduction> => {
+    const response = await api.patch(`/auditor/fee-reductions/${id}/status`, data);
+    return response.data.data;
+  },
+
+  // 5. Get Financial Report
+  getFinancialReport: async (startDate: string, endDate: string): Promise<FinancialReport> => {
+    const response = await api.get('/auditor/financial-report', {
+      params: { startDate, endDate }
+    });
+    return response.data.data;
+  },
+
+  // 6. Get Audit Trail
+  getAuditTrail: async (params?: AuditTrailQueryParams): Promise<AuditTrailEntry[]> => {
+    const response = await api.get('/auditor/audit-trail', { params });
+    return response.data.data;
+  },
 };
 
-export const getAllPayments = async (): Promise<Payment[]> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/payments`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch payments');
-  return result.data;
-};
-
-export const getFeeReductions = async (): Promise<FeeReduction[]> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/fee-reductions`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch fee reductions');
-  return result.data;
-};
-
-export const updateFeeReductionStatus = async (id: string, data: UpdateFeeReductionData): Promise<void> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/fee-reductions/${id}/status`, {
-    method: 'PATCH',
-    headers: getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to update fee reduction status');
-};
-
-export const getFinancialReport = async (): Promise<FinancialReport> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/financial-report`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch financial report');
-  return result.data;
-};
-
-export const getAuditTrail = async (): Promise<AuditTrailEntry[]> => {
-  const response = await fetch(`${API_BASE_URL}/auditor/audit-trail`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch audit trail');
-  return result.data;
-};
+export default auditorService;

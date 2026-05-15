@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Download } from 'lucide-react';
-import attendanceService, { AttendanceRecord, MarkAttendanceData } from '../services/attendanceService';
+import { Users, CheckCircle, XCircle, Clock, AlertCircle, Download } from 'lucide-react';
+import * as attendanceService from '../services/attendanceService';
 import classService from '../services/classService';
 import studentService from '../services/studentService';
 import { exportToCSV } from '../utils/exportUtils';
@@ -8,7 +8,7 @@ import { exportToCSV } from '../utils/exportUtils';
 export const AttendanceManagement = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [attendance, setAttendance] = useState<attendanceService.AttendanceRecord[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export const AttendanceManagement = () => {
       
       const [studentsData, attendanceData] = await Promise.all([
         studentService.getStudentsByClass(selectedClass),
-        attendanceService.getAttendanceByClass(selectedClass, selectedDate)
+        attendanceService.default.getAttendanceByClass(selectedClass, selectedDate)
       ]);
       
       setStudents(studentsData);
@@ -53,7 +53,7 @@ export const AttendanceManagement = () => {
       
       // Initialize local attendance state
       const localState: Record<string, 'Present' | 'Absent' | 'Late' | 'Excused'> = {};
-      attendanceData.forEach(record => {
+      attendanceData.forEach((record: attendanceService.AttendanceRecord) => {
         localState[record.studentId] = record.status;
       });
       setLocalAttendance(localState);
@@ -82,16 +82,16 @@ export const AttendanceManagement = () => {
         
         if (existingRecord) {
           // Update existing record
-          return attendanceService.updateAttendance(existingRecord.id, { status });
+          return attendanceService.default.updateAttendance(existingRecord.id, { status });
         } else {
           // Create new record
-          const data: MarkAttendanceData = {
+          const data: attendanceService.MarkAttendanceData = {
             studentId: student.id,
             classId: selectedClass,
             date: selectedDate,
             status
           };
-          return attendanceService.markAttendance(data);
+          return attendanceService.default.markAttendance(data);
         }
       });
       
