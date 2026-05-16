@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { onSSEEvent, connectSSE } from '../utils/sseClient';
+import { apiFetch } from '../utils/apiClient';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -37,11 +38,41 @@ export const Dashboard = () => {
   const isVP = role === 'vice-principal';
   const selectedBranch = selectedBranchId ? branches.find((branch) => branch.id === selectedBranchId) || null : null;
 
+  // ── Initial Load: Fetch existing logistics notices for the branch ──────────
+  useEffect(() => {
+    if (isAdmin || isVP) {
+      apiFetch('/api/driver/notices')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data.data)) {
+            data.data.forEach((notice: any) => {
+              addNotice({
+                id: notice.id,
+                title: notice.title || 'Logistics Update',
+                content: notice.content,
+                priority: 'Normal',
+                category: 'Logistics',
+                driverName: notice.driverName,
+                time: notice.time,
+                expiresAt: notice.expires_at ? new Date(notice.expires_at).toLocaleDateString() : undefined,
+                audience: ['super-admin', 'school-admin', 'vice-principal', 'student', 'parent'],
+              } as any);
+            });
+          }
+        })
+        .catch(err => console.error('[Dashboard] Failed to fetch logistics notices:', err));
+    }
+  }, [isAdmin, isVP, addNotice]);
+
   // ── Real-time SSE: inject driver logistics notices into the notice board ─────
   useEffect(() => {
     connectSSE();
     const unsub = onSSEEvent('LOGISTICS_NOTICE', (payload: any) => {
+      // Guard: Only process if user is Admin or VP
+      if (role !== 'school-admin' && role !== 'super-admin' && role !== 'vice-principal') return;
+
       addNotice({
+        id:        payload.id,
         title:     payload.title || 'Logistics Update',
         content:   payload.content,
         priority:  'Normal',
@@ -49,11 +80,11 @@ export const Dashboard = () => {
         driverName: payload.driverName,
         stations:  payload.stations,
         expiresAt: payload.expires_at ? new Date(payload.expires_at).toLocaleDateString() : undefined,
-        audience:  ['super-admin', 'school-admin', 'vice-principal', 'teacher', 'student', 'parent'],
-      });
+        audience:  ['super-admin', 'school-admin', 'vice-principal', 'student', 'parent'],
+      } as any);
     });
     return unsub;
-  }, [addNotice]);
+  }, [role, addNotice]);
 
   if (role === 'super-admin') {
     const branchHealth = branches.map((branch, index) => ({

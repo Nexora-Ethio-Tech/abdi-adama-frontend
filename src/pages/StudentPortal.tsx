@@ -54,6 +54,8 @@ export const StudentPortal = () => {
   const [loading, setLoading] = useState(true);
   const [votedTeacher, setVotedTeacher] = useState<string | null>(null);
   const [hideVoting, setHideVoting] = useState(false);
+  // Separate state so SSE notices still arrive even if the initial data fetch returned null
+  const [liveNotices, setLiveNotices] = useState<DashboardData['announcements']>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,11 +65,18 @@ export const StudentPortal = () => {
           apiFetch('/api/student/profile')
         ]);
 
-        if (dashRes.ok && profRes.ok) {
+        if (dashRes.ok) {
           const dashData = await dashRes.json();
-          const profData = await profRes.json();
           setData(dashData.data);
+        } else {
+          console.error('Student dashboard fetch failed:', dashRes.status);
+        }
+
+        if (profRes.ok) {
+          const profData = await profRes.json();
           setProfile(profData.data);
+        } else {
+          console.error('Student profile fetch failed:', profRes.status);
         }
       } catch (err) {
         console.error('Failed to fetch student dashboard data:', err);
@@ -83,20 +92,22 @@ export const StudentPortal = () => {
   useEffect(() => {
     connectSSE(); // no-op if already connected
     const unsub = onSSEEvent('LOGISTICS_NOTICE', (payload: any) => {
+      const newNotice = {
+        id:        payload.id || String(Date.now()),
+        priority:  payload.priority || 'Normal',
+        title:     payload.title || 'Logistics Update',
+        content:   payload.content,
+        timestamp: payload.timestamp,
+        category:  'Logistics',
+      };
+      // Update both states so the notice appears regardless of whether the initial fetch succeeded
+      setLiveNotices(prev => [newNotice, ...prev]);
       setData(prev => {
         if (!prev) return prev;
-        const newNotice = {
-          id:        payload.id,
-          priority:  payload.priority || 'Normal',
-          title:     payload.title,
-          content:   payload.content,
-          timestamp: payload.timestamp,
-          category:  'Logistics',
-        };
-        return {
-          ...prev,
-          announcements: [newNotice, ...(prev.announcements || [])],
-        };
+        return { ...prev, announcements: [newNotice, ...(prev.announcements || [])] };
+      });
+      import('../components/Toast').then(({ toast }) => {
+        toast.success(`🚌 Logistics Update: ${payload.title || 'New Notice'}`);
       });
     });
     return unsub;
@@ -123,7 +134,11 @@ export const StudentPortal = () => {
   const schedule = data?.schedule || [];
   const deadlines = data?.deadlines || [];
   const monthlyTeachers = data?.teacherOfTheMonth || [];
-  const announcements = data?.announcements || [];
+  // Merge: start with SSE live notices, then add backend-fetched ones (avoiding duplicates by ID)
+  const fetchedAnnouncements = data?.announcements || [];
+  const liveIds = new Set(liveNotices.map(n => n.id));
+  const mergedAnnouncements = [...liveNotices, ...fetchedAnnouncements.filter(n => !liveIds.has(n.id))];
+  const announcements = mergedAnnouncements;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-20">
@@ -337,7 +352,7 @@ export const StudentPortal = () => {
               to="/official-exam"
               className="flex items-center justify-center gap-2 p-3 text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors border-t border-slate-100 dark:border-slate-800 mt-2"
             >
-              View Official Exams <ArrowRight size={16} />
+              View Online Exams <ArrowRight size={16} />
             </Link>
           </div>
         </div>

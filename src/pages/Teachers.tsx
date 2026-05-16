@@ -477,7 +477,7 @@ export const Teachers = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Examiner Status</p>
-                      <p className="text-[10px] text-slate-500">Designate as an official examiner</p>
+                      <p className="text-[10px] text-slate-500">Designate as an online examiner</p>
                     </div>
                     <button
                       type="button"

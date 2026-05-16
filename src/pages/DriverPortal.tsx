@@ -112,7 +112,8 @@ export const DriverPortal = () => {
         toast.success('Notice deleted successfully.');
         fetchNotices();
       } else {
-        toast.error('Failed to delete notice.');
+        const errorData = await res.json().catch(() => ({}));
+        toast.error(errorData.message || 'Failed to delete notice.');
       }
     } catch {
       toast.error('Network error.');
@@ -193,9 +194,9 @@ export const DriverPortal = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center font-bold text-xs">
-                            {student.student_name[0]}
+                            {student.student_name?.[0] || '?'}
                           </div>
-                          <span className="text-sm font-bold dark:text-slate-200">{student.student_name}</span>
+                          <span className="text-sm font-bold dark:text-slate-200">{student.student_name || 'Unknown Student'}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-xs font-mono text-slate-500">{student.digital_id}</td>

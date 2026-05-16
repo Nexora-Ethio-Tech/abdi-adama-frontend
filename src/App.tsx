@@ -29,9 +29,8 @@ const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.L
 const Registration = lazy(() => import('./pages/Registration').then((m) => ({ default: m.Registration })));
 const Attendance = lazy(() => import('./pages/Attendance').then((m) => ({ default: m.Attendance })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
-const ExamSession = lazy(() => import('./pages/ExamSession').then((m) => ({ default: m.ExamSession })));
 const Transcripts = lazy(() => import('./pages/Transcripts').then((m) => ({ default: m.Transcripts })));
-const Exams = lazy(() => import('./pages/Exams'));
+
 const Clinic = lazy(() => import('./pages/Clinic').then((m) => ({ default: m.Clinic })));
 const ParentClinicChat = lazy(() => import('./pages/ParentClinicChat').then((m) => ({ default: m.ParentClinicChat })));
 const DriverPortal = lazy(() => import('./pages/DriverPortal').then((m) => ({ default: m.DriverPortal })));
@@ -40,7 +39,6 @@ const AuditorDashboard = lazy(() => import('./pages/AuditorDashboard').then((m) 
 const AcademicManagement = lazy(() => import('./pages/AcademicManagement').then((m) => ({ default: m.AcademicManagement })));
 const VicePrincipalDashboard = lazy(() => import('./pages/VicePrincipalDashboard').then((m) => ({ default: m.VicePrincipalDashboard })));
 const OfficialExam = lazy(() => import('./pages/OfficialExam').then((m) => ({ default: m.OfficialExam })));
-const OfficialExamManagement = lazy(() => import('./pages/OfficialExamManagement'));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -265,13 +263,8 @@ function App() {
             } />
 
             <Route path="finance" element={<Finance />} />
-            <Route path="exams" element={
-              <ProtectedRoute allowedRoles={['teacher', 'school-admin', 'vice-principal', 'student', 'parent']}>
-                <Exams />
-              </ProtectedRoute>
-            } />
+
             <Route path="settings" element={<Settings />} />
-            <Route path="exam/:examId" element={<ExamSession />} />
 
             {/* Official Exam — full lockdown mode for Students, view mode for Parents */}
             <Route path="official-exam" element={
@@ -280,11 +273,6 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="official-exam-management" element={
-              <ProtectedRoute allowedRoles={['vice-principal', 'school-admin']}>
-                <OfficialExamManagement />
-              </ProtectedRoute>
-            } />
 
             {/* Catch-all within layout */}
             <Route path="*" element={<Navigate to="/" replace />} />

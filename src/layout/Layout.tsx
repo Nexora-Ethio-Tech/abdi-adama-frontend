@@ -25,7 +25,7 @@ export const Layout = () => {
         case '/courses': return 'Grades & Courses';
         case '/attendance': return 'Academic History';
         case '/finance': return 'Fee Payments';
-        case '/official-exam': return 'Official Exam';
+        case '/official-exam': return 'Online Exam';
         default: return 'Student Portal';
       }
     }
@@ -72,38 +72,32 @@ export const Layout = () => {
 
   const isExamPage = location.pathname.startsWith('/exam/');
 
-  // ── EXAM LOCKDOWN MODE — full-screen takeover ──────────────────────────────
-  // When active: no sidebar, no header, no chatbot, no decorations.
-  if (examLockdown) {
-    return (
-      <div className="min-h-screen bg-slate-950">
-        <Outlet />
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden">
       {shouldShowStars && <ShootingStars />}
       {/* Sidebar Backdrop for Mobile */}
-      {isSidebarOpen && (
+      {isSidebarOpen && !examLockdown && (
         <div
           className="fixed inset-0 bg-black/50 z-20 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      {!examLockdown && (
+        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      )}
 
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header
-          title={getTitle(location.pathname)}
-          onMenuClick={() => setIsSidebarOpen(true)}
-        />
-        <main className={`p-4 md:p-8 flex-1 w-full ${role === 'parent' ? 'max-w-7xl mx-auto' : ''}`}>
+        {!examLockdown && (
+          <Header
+            title={getTitle(location.pathname)}
+            onMenuClick={() => setIsSidebarOpen(true)}
+          />
+        )}
+        <main className={`${!examLockdown ? 'p-4 md:p-8' : ''} flex-1 w-full ${role === 'parent' ? 'max-w-7xl mx-auto' : ''}`}>
           <Outlet />
         </main>
-        {!isExamPage && <Chatbot />}
+        {!isExamPage && !examLockdown && <Chatbot />}
       </div>
     </div>
   );

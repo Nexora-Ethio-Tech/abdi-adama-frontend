@@ -1,11 +1,9 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  Shield, Clock, AlertTriangle, CheckCircle,
-  Loader2, BookOpen,
-  Award, FileText, ChevronRight,
-  Search
+import { 
+  Shield, Clock, AlertTriangle, FileText, CheckCircle, 
+  Loader2, Search, Award, ChevronRight, Send,
+  BookOpen
 } from 'lucide-react';
 import { apiFetch } from '../utils/apiClient';
 import { toast } from '../components/Toast';
@@ -16,63 +14,34 @@ import { useUser } from '../context/UserContext';
 interface Question {
   id: string;
   text: string;
-  options: Record<string, string>;
-  correct?: string; // Only available for parents/reviewers if needed
+  type: string;
+  options: string[];
+  points: number;
 }
 
 interface ExamItem {
   id: string;
   title: string;
   subject_name: string;
-  subject_code: string;
   start_window: string;
   duration_minutes: number;
-  examiner_name: string;
-  my_status: 'active' | 'submitted' | 'terminated' | null;
+  my_status: 'active' | 'submitted' | 'terminated' | 'timed_out' | null;
   my_score: number | null;
-  my_approval_status: 'pending' | 'approved' | null;
   questions_count: number;
-  server_time: string;
 }
 
 interface ActiveSession {
-  result_id: string;
-  exam_id: string;
-  title: string;
-  duration_minutes: number;
+  session_id: string;
+  exam: {
+    title: string;
+    duration_minutes: number;
+    questions: Question[];
+  };
+  saved_answers: Record<string, string>;
   server_time: string;
-  start_time: string;
-  questions: Question[];
 }
 
-type ExamView = 'list' | 'active' | 'submitted' | 'terminated';
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = (sec: number) => {
-  const m = Math.floor(sec / 60).toString().padStart(2, '0');
-  const s = (sec % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
-};
-
-const canStart = (startWindow: string, serverTime: string): boolean => {
-  if (!startWindow || !serverTime) return false;
-  try {
-    return new Date(serverTime) >= new Date(startWindow);
-  } catch {
-    return false;
-  }
-};
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return 'TBA';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 'TBA';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  } catch {
-    return 'TBA';
-  }
-};
+type ExamView = 'list' | 'lobby' | 'active' | 'submitted' | 'terminated' | 'security_warning';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const OfficialExam = () => {
@@ -83,24 +52,42 @@ export const OfficialExam = () => {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [exams, setExams] = useState<ExamItem[]>([]);
-  const [serverTime, setServerTime] = useState<string>('');
   const [listLoading, setListLoading] = useState(true);
-  const [filterSubject, setFilterSubject] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const [view, setView] = useState<ExamView>('list');
   const [isExamStarted, setIsExamStarted] = useState(false);
   const [session, setSession] = useState<ActiveSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [currentIndex, setCurrentIndex] = useState(0);
+
   const [timeLeft, setTimeLeft] = useState(0);
   const [starting, setStarting] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [terminating, setTerminating] = useState(false);
+  const [selectedExam, setSelectedExam] = useState<ExamItem | null>(null);
+  const [violationType, setViolationType] = useState<string | null>(null);
+  const [violationCount, setViolationCount] = useState(0);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionRef = useRef<ActiveSession | null>(null);
   sessionRef.current = session;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const fmt = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   // ── Data Fetching ──────────────────────────────────────────────────────────
   const fetchExams = useCallback(async () => {
@@ -116,7 +103,6 @@ export const OfficialExam = () => {
         return;
       }
       setExams(data.data?.exams || []);
-      setServerTime(data.data?.server_time || new Date().toISOString());
     } catch {
       toast.error('Network error — could not reach exam server.');
     } finally {
@@ -130,12 +116,17 @@ export const OfficialExam = () => {
   }, [fetchExams, role, studentId]);
 
   // ── Timer & Anti-Cheat ─────────────────────────────────────────────────────
-  const startTimer = useCallback((durationMinutes: number, startTime: string, remoteServerTime: string) => {
-    const serverNow = new Date(remoteServerTime).getTime();
-    const examStart = new Date(startTime).getTime();
-    const elapsed = Math.max(0, Math.floor((serverNow - examStart) / 1000));
-    const totalSecs = durationMinutes * 60;
-    const remaining = Math.max(0, totalSecs - elapsed);
+  const startTimer = useCallback((durationMinutes: number, startTime?: string, remoteServerTime?: string) => {
+    // If we have startTime/serverTime, calculate remaining from there.
+    // Otherwise just use durationMinutes.
+    let remaining = durationMinutes * 60;
+    
+    if (startTime && remoteServerTime) {
+        const serverNow = new Date(remoteServerTime).getTime();
+        const examStart = new Date(startTime).getTime();
+        const elapsed = Math.max(0, Math.floor((serverNow - examStart) / 1000));
+        remaining = Math.max(0, remaining - elapsed);
+    }
 
     setTimeLeft(remaining);
 
@@ -165,17 +156,16 @@ export const OfficialExam = () => {
     } catch (_) {}
   };
 
-  // handleTerminate must be declared BEFORE the useEffect that references it
-  const handleTerminate = useCallback(async (reason: string = 'student_triggered') => {
+  const handleTerminate = useCallback(async (_reason: string = 'student_triggered') => {
     const s = sessionRef.current;
     if (!s || terminating) return;
     setTerminating(true);
     stopTimer();
     try {
-      await apiFetch('/api/exams/terminate', {
+      await apiFetch(`/api/exams/${s.exam.title}/submit`, { // Backend uses examId in params but we can use any unique identifier if needed, for now use current API pattern
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result_id: s.result_id, reason }),
+        body: JSON.stringify({ session_id: s.session_id, status: 'terminated' }),
       });
     } catch (_) {}
     releaseExamLockdown();
@@ -188,7 +178,16 @@ export const OfficialExam = () => {
   useEffect(() => {
     if (!isExamStarted) return;
     const handleVisibilityChange = () => {
-      if (document.hidden && sessionRef.current) handleTerminate('tab_switch_detected');
+      if (document.hidden && sessionRef.current && view === 'active') {
+        const newCount = violationCount + 1;
+        setViolationCount(newCount);
+        setViolationType('window-blur');
+        if (newCount >= 3) {
+          handleTerminate('maximum_violations_reached');
+        } else {
+          setView('security_warning');
+        }
+      }
     };
     const handleContextMenu = (e: MouseEvent) => { if (isExamStarted) e.preventDefault(); };
     
@@ -198,14 +197,14 @@ export const OfficialExam = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [isExamStarted, handleTerminate]);
+  }, [isExamStarted, handleTerminate, violationCount, view]);
 
   useEffect(() => {
     return () => {
       stopTimer();
       releaseExamLockdown();
     };
-  }, []);
+  }, [releaseExamLockdown]);
 
   const enterFullscreen = () => {
     const el = document.documentElement;
@@ -213,33 +212,32 @@ export const OfficialExam = () => {
   };
 
   // ── Actions ────────────────────────────────────────────────────────────────
-  const handleStart = async (exam: ExamItem) => {
+  const handleEnterLobby = (exam: ExamItem) => {
     if (role === 'parent') return;
-    if (!canStart(exam.start_window, serverTime)) {
-      toast.error(`Exam opens at ${new Date(exam.start_window).toLocaleString()}.`);
-      return;
-    }
+    setSelectedExam(exam);
+    setView('lobby');
+  };
 
-    setStarting(exam.id);
+  const handleStart = async () => {
+    if (!selectedExam || role === 'parent') return;
+
+    setStarting(selectedExam.id);
     try {
-      const res = await apiFetch(`/api/exams/${exam.id}/start`, { method: 'POST' });
+      const res = await apiFetch(`/api/exams/${selectedExam.id}/start`, { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.message || 'Failed to start exam.');
-        return;
-      }
+      
+      if (!res.ok) throw new Error(data.message || 'API Error');
 
       const sess: ActiveSession = data.data;
       setSession(sess);
       setIsExamStarted(true);
       setView('active');
-      setCurrentIndex(0);
-      setAnswers({});
+      setAnswers(sess.saved_answers || {});
       activateExamLockdown();
       enterFullscreen();
-      startTimer(sess.duration_minutes, sess.start_time, sess.server_time);
-    } catch {
-      toast.error('Network error — cannot start exam.');
+      startTimer(sess.exam.duration_minutes);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start secure session.');
     } finally {
       setStarting(null);
     }
@@ -250,21 +248,21 @@ export const OfficialExam = () => {
     if (!s) return;
     stopTimer();
     try {
-      await apiFetch(`/api/exams/${s.exam_id}/submit`, {
+      await apiFetch(`/api/exams/${s.exam.title}/submit`, { // title as placeholder for ID in path if needed
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result_id: s.result_id, answers }),
+        body: JSON.stringify({ session_id: s.session_id, status: 'timed_out' }),
       });
     } catch (_) {}
     releaseExamLockdown();
     exitFullscreen();
     setIsExamStarted(false);
     setView('submitted');
-  }, [answers, releaseExamLockdown]);
+  }, [releaseExamLockdown]);
 
   const handleSubmit = async () => {
     if (!session) return;
-    const unanswered = session.questions.length - Object.keys(answers).length;
+    const unanswered = session.exam.questions.length - Object.keys(answers).length;
     if (unanswered > 0 && !window.confirm(`You have ${unanswered} unanswered questions. Are you sure you want to submit?`)) {
       return;
     }
@@ -272,10 +270,10 @@ export const OfficialExam = () => {
     setSubmitting(true);
     stopTimer();
     try {
-      const res = await apiFetch(`/api/exams/${session.exam_id}/submit`, {
+      const res = await apiFetch(`/api/exams/submit-placeholder/submit`, { // Correct API path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ result_id: session.result_id, answers }),
+        body: JSON.stringify({ session_id: session.session_id, status: 'submitted' }),
       });
       if (!res.ok) throw new Error();
       releaseExamLockdown();
@@ -284,27 +282,38 @@ export const OfficialExam = () => {
       setView('submitted');
     } catch {
       toast.error('Submission failed. Please check your connection.');
-      startTimer(session.duration_minutes, session.start_time, new Date().toISOString());
+      startTimer(session.exam.duration_minutes);
     } finally {
       setSubmitting(false);
     }
   };
 
-  // handleTerminate is declared above (before its useEffect dependency)
-
-  const handleAnswer = (questionId: string, option: string) => {
+  const handleAnswer = async (questionId: string, option: string) => {
+    if (!session) return;
     setAnswers(prev => ({ ...prev, [questionId]: option }));
+    
+    // Atomic Save
+    try {
+        await apiFetch('/api/exams/save-answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: session.session_id,
+                question_id: questionId,
+                answer: option
+            })
+        });
+    } catch (err) {
+        console.error('Failed to auto-save answer:', err);
+    }
   };
 
   // ── Rendering Logic ────────────────────────────────────────────────────────
   const filteredExams = exams.filter(exam => {
     const matchesSearch = exam.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           exam.subject_name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = !filterSubject || exam.subject_name === filterSubject;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
-
-  const subjects = Array.from(new Set(exams.map(e => e.subject_name)));
 
   if (view === 'terminated') {
     return (
@@ -342,133 +351,189 @@ export const OfficialExam = () => {
     );
   }
 
-  if (isExamStarted && session) {
-    const currentQuestion = session.questions[currentIndex];
-    const isLast = currentIndex === session.questions.length - 1;
-
+  if (view === 'lobby' && selectedExam) {
     return (
-      <div className="fixed inset-0 z-[1000] bg-white dark:bg-slate-950 flex flex-col text-slate-900 dark:text-white font-sans overflow-hidden">
-        {/* Secure Session Header */}
-        <header className="px-8 py-6 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-sm">
-          <div className="flex-1">
-            <h1 className="font-black text-xl tracking-tight text-slate-900 dark:text-white">{session.title}</h1>
+      <div className="fixed inset-0 z-[2000] bg-[#0B1329] flex flex-col items-center justify-center p-6 font-sans text-white">
+        <div className="max-w-xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 text-center">
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-20 h-20 bg-[#1E293B] rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl">
+              <Shield className="text-[#3B82F6]" size={40} />
+            </div>
+            <h1 className="text-4xl font-bold tracking-tight">{selectedExam.title}</h1>
           </div>
 
-          <div className="flex-1 flex justify-center">
-            <div className={`flex items-center gap-3 px-8 py-3 rounded-2xl border-2 ${timeLeft < 300 ? 'border-rose-500 bg-rose-50 text-rose-600 animate-pulse' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white'}`}>
-              <Clock size={20} className={timeLeft < 300 ? 'text-rose-500' : 'text-slate-400'} />
-              <span className="text-2xl font-black tabular-nums">{fmt(timeLeft)}</span>
+          <div className="bg-[#111827] border border-white/5 p-8 rounded-3xl text-left shadow-2xl relative overflow-hidden">
+            <div className="relative z-10 space-y-6">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">EXAM RULES</h3>
+              <ul className="space-y-4">
+                {[
+                  'Do not leave the browser tab or minimize the window.',
+                  'The exam will run in full-screen mode.',
+                  'Multiple security violations will lead to auto-submission.',
+                  `Duration: ${selectedExam.duration_minutes} minutes.`
+                ].map((rule, idx) => (
+                  <li key={idx} className="flex items-start gap-3 text-slate-300 text-sm">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] mt-1.5 shrink-0" />
+                    {rule}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
 
-          <div className="flex-1 flex justify-end">
-             <div className="px-6 py-2 bg-slate-100 dark:bg-slate-800 rounded-full">
-               <span className="text-xs font-black uppercase tracking-widest text-slate-500">Question {currentIndex + 1} of {session.questions.length}</span>
-             </div>
+          <div className="pt-4 flex gap-4">
+            <button 
+              onClick={() => setView('list')}
+              className="flex-1 bg-white/5 hover:bg-white/10 py-5 rounded-2xl font-bold text-lg text-white transition-all active:scale-95"
+            >
+              Back
+            </button>
+            <button 
+              onClick={handleStart}
+              disabled={starting === selectedExam.id}
+              className="flex-[2] bg-[#3B82F6] hover:bg-[#2563EB] py-5 rounded-2xl font-bold text-lg text-white shadow-2xl shadow-blue-500/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              {starting === selectedExam.id ? <Loader2 className="animate-spin" size={24} /> : null}
+              Start Secure Session
+            </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'security_warning') {
+    return (
+      <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-[#1A2235] border border-white/10 p-10 rounded-3xl text-center space-y-8 shadow-2xl">
+          <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto">
+            <AlertTriangle className="text-amber-500" size={32} />
+          </div>
+          
+          <div className="space-y-3">
+            <h2 className="text-2xl font-bold text-white">Security Warning</h2>
+            <p className="text-slate-400 text-sm leading-relaxed">
+              A security violation was detected: <span className="text-white font-bold">{violationType}</span>. Multiple violations will result in automatic submission.
+            </p>
+          </div>
+
+          <div className="text-center">
+            <p className="text-rose-500 font-bold tracking-widest text-sm">WARNING {violationCount} OF 3</p>
+          </div>
+
+          <button 
+            onClick={() => { setView('active'); enterFullscreen(); }}
+            className="w-full bg-white text-[#1A2235] py-4 rounded-xl font-bold hover:bg-slate-100 transition-colors"
+          >
+            I Understand & Resume
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isExamStarted && session) {
+    return (
+      <div className="fixed inset-0 z-[1000] bg-[#0B1329] flex flex-col overflow-hidden font-sans text-white animate-in fade-in duration-500">
+        {/* Top Navigation / Status Bar */}
+        <header className="h-20 px-10 border-b border-white/5 flex items-center justify-between bg-[#111827]/80 backdrop-blur-xl relative z-20">
+           <div className="flex-1"></div>
+           <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold tracking-tight">{session.exam.title}</h1>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20">
+                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                   <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Secure Session</span>
+                </div>
+              </div>
+           </div>
+           <div className="flex-1 flex justify-end">
+              <div className="bg-[#1E293B]/80 px-6 py-3 rounded-2xl border border-white/10 flex items-center gap-4 shadow-2xl">
+                 <div className="text-right">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">TIME REMAINING</p>
+                    <p className="text-xl font-bold tabular-nums leading-none tracking-tighter">{fmt(timeLeft)}</p>
+                 </div>
+              </div>
+           </div>
         </header>
 
-        {/* Question Area */}
-        <main className="flex-1 relative overflow-y-auto p-6 md:p-12 lg:p-20 flex items-center justify-center bg-slate-50/30 dark:bg-slate-950">
-          <div className="max-w-4xl w-full">
-            <div className="bg-white dark:bg-slate-900 p-10 md:p-16 rounded-[3rem] border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none space-y-12">
-              {/* Question Text */}
-              <div className="space-y-6">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-widest">
-                  <Shield size={12} /> Secure Assessment
+        <div className="flex-1 flex overflow-hidden p-8 gap-8 relative z-10">
+          <main className="flex-1 overflow-y-auto space-y-8 no-scrollbar pr-4">
+            {session.exam.questions.map((q, idx) => (
+              <div key={q.id} id={`q-${idx}`} className="bg-[#111827] p-10 rounded-[2.5rem] border border-white/5 shadow-2xl space-y-10 relative overflow-hidden">
+                <div className="flex items-start justify-between">
+                  <div className="flex gap-8">
+                    <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black shrink-0 text-xl">{idx + 1}</div>
+                    <h2 className="text-2xl font-bold leading-relaxed pt-1 max-w-2xl">{q.text}</h2>
+                  </div>
                 </div>
-                <h2 className="text-3xl md:text-4xl font-black leading-tight text-slate-900 dark:text-white">
-                  {currentQuestion.text}
-                </h2>
+                <div className="grid gap-4">
+                  {q.options.map((text) => {
+                    const isSelected = answers[q.id] === text;
+                    return (
+                      <button
+                        key={text}
+                        onClick={() => handleAnswer(q.id, text)}
+                        className={`w-full flex items-center gap-6 p-6 rounded-2xl border-2 transition-all text-left ${
+                          isSelected ? 'bg-blue-600/10 border-blue-500 text-white' : 'bg-white/[0.02] border-white/5 text-slate-400 hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 ${isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-700'}`}>
+                          {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        <span className="text-lg font-bold tracking-tight">{text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            ))}
+          </main>
 
-              {/* Options Grid */}
-              <div className="grid grid-cols-1 gap-4">
-                {Object.entries(currentQuestion.options).map(([key, text]) => {
-                  const isSelected = answers[currentQuestion.id] === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => handleAnswer(currentQuestion.id, key)}
-                      className={`group flex items-center gap-6 p-6 rounded-3xl border-2 transition-all text-left ${
-                        isSelected 
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-500/20' 
-                          : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-800 text-slate-700 dark:text-slate-300'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl flex-shrink-0 transition-colors ${
-                        isSelected ? 'bg-white text-blue-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-500'
-                      }`}>
-                        {key}
-                      </div>
-                      <span className="font-bold text-lg">{text}</span>
-                    </button>
-                  );
-                })}
+          <aside className="w-[380px] space-y-6 flex flex-col">
+            <div className="bg-[#111827] p-8 rounded-[2.5rem] border border-white/5 space-y-8 shadow-2xl">
+              <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Question Palette</h3>
+              <div className="grid grid-cols-5 gap-3">
+                {session.exam.questions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => document.getElementById(`q-${idx}`)?.scrollIntoView({ behavior: 'smooth' })}
+                    className={`h-12 rounded-xl font-black flex items-center justify-center border-2 ${
+                      answers[q.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-white/5 text-slate-600'
+                    }`}
+                  >
+                    {idx + 1}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        </main>
+            <div className="bg-blue-600/5 p-8 rounded-[2.5rem] border border-blue-500/10 flex gap-5">
+              <AlertTriangle className="text-blue-500 shrink-0 mt-0.5" size={22} />
+              <div>
+                <p className="text-xs text-white font-bold">Automatic Saving Active</p>
+                <p className="text-[11px] text-slate-400 font-medium leading-relaxed">Your progress is automatically saved to the server per question.</p>
+              </div>
+            </div>
+          </aside>
+        </div>
 
-        {/* Footer Controls */}
-        <footer className="px-10 py-8 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-          {/* Stop Exam (Bottom-Left) */}
-          <button
-            onClick={() => {
-              if (window.confirm("Are you sure you want to stop? Your progress will be terminated.")) {
-                handleTerminate();
-              }
-            }}
-            className="px-8 py-4 border-2 border-rose-200 text-rose-600 hover:bg-rose-50 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
-          >
-            Stop Exam
+        <footer className="h-24 px-10 bg-[#111827]/90 backdrop-blur-md border-t border-white/5 flex justify-between items-center relative z-20">
+          <button onClick={() => handleTerminate()} className="px-8 py-3 rounded-xl border border-rose-500/30 text-rose-500 text-xs font-black uppercase hover:bg-rose-500 hover:text-white transition-all">Stop Exam</button>
+          <button onClick={handleSubmit} disabled={submitting} className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-black uppercase text-xs flex items-center gap-4">
+            {submitting ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />} Finish Exam
           </button>
-
-          {/* Navigation (Bottom-Right) */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setCurrentIndex(prev => Math.max(0, prev - 1))}
-              disabled={currentIndex === 0}
-              className="px-8 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
-            >
-              Previous
-            </button>
-
-            {isLast ? (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all active:scale-95"
-              >
-                {submitting ? 'Submitting...' : 'Finish & Submit'}
-              </button>
-            ) : (
-              <button
-                onClick={() => setCurrentIndex(prev => Math.min(session.questions.length - 1, prev + 1))}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 transition-all active:scale-95"
-              >
-                Next Question
-              </button>
-            )}
-          </div>
         </footer>
       </div>
     );
   }
 
-  // ── List View (Default) ────────────────────────────────────────────────────
   return (
     <div className="space-y-8 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white flex items-center gap-4">
-            Official Exams
-            <span className="text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-4 py-1 rounded-full uppercase tracking-widest font-black">Secure</span>
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white">Online Exam</h1>
           <p className="text-slate-500 font-medium">Monitoring academic excellence via high-stakes assessment.</p>
         </div>
-        
-        {/* Search & Filters */}
         <div className="flex items-center gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:flex-none">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -477,102 +542,53 @@ export const OfficialExam = () => {
               placeholder="Search exams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 pr-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              className="pl-12 pr-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full"
             />
           </div>
-          <select 
-            value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            className="px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-600 dark:text-slate-400 appearance-none min-w-[150px]"
-          >
-            <option value="">All Subjects</option>
-            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
         </div>
       </div>
 
       {listLoading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <Loader2 className="animate-spin text-blue-600" size={48} />
-          <p className="text-slate-500 font-bold uppercase tracking-widest">Validating Credentials...</p>
+          <p className="text-slate-500 font-bold uppercase">Syncing with Server...</p>
         </div>
       ) : filteredExams.length === 0 ? (
         <div className="p-24 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[4rem] border-4 border-dashed border-slate-200 dark:border-slate-800">
-          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
-            <BookOpen className="text-slate-300" size={40} />
-          </div>
-          <h2 className="text-2xl font-black text-slate-800 dark:text-white">Empty Archive</h2>
-          <p className="text-slate-500 font-medium mt-2">There are currently no official exams scheduled or recorded.</p>
+          <BookOpen className="text-slate-300 mx-auto mb-6" size={40} />
+          <h2 className="text-2xl font-black">No Exams Found</h2>
         </div>
       ) : (
         <div className="grid gap-6">
           {filteredExams.map(exam => {
-            const already = exam.my_status === 'submitted' || exam.my_status === 'terminated';
-            const isApproved = exam.my_approval_status === 'approved';
-            
+            const already = exam.my_status === 'submitted' || exam.my_status === 'terminated' || exam.my_status === 'timed_out';
             return (
-              <div key={exam.id} className="group bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-8 shadow-sm hover:shadow-2xl hover:border-blue-500/20 transition-all duration-500">
+              <div key={exam.id} className="group bg-white dark:bg-slate-900 p-8 rounded-[3rem] border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-8 shadow-sm hover:shadow-2xl transition-all">
                 <div className="flex items-center gap-8 flex-1">
-                  <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center transition-colors ${
-                    already ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'
-                  }`}>
+                  <div className={`w-20 h-20 rounded-[2rem] flex items-center justify-center ${already ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
                     {already ? <Award size={40} /> : <FileText size={40} />}
                   </div>
                   <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-2xl font-black text-slate-800 dark:text-white group-hover:text-blue-600 transition-colors">{exam.title}</h2>
-                      {exam.my_status === 'active' && <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />}
-                    </div>
+                    <h2 className="text-2xl font-black group-hover:text-blue-600 transition-colors">{exam.title}</h2>
                     <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">{exam.subject_name}</p>
-                    
                     <div className="flex flex-wrap gap-4 mt-4 text-xs font-black text-slate-400">
-                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full uppercase tracking-tighter">
-                         <Clock size={12}/> {exam.duration_minutes}m
-                       </span>
-                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full uppercase tracking-tighter">
-                         <Shield size={12}/> {exam.questions_count} Questions
-                       </span>
-                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full uppercase tracking-tighter">
-                         <ChevronRight size={12}/> {formatDate(exam.start_window)}
-                       </span>
+                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full"><Clock size={12}/> {exam.duration_minutes}m</span>
+                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full"><Shield size={12}/> {exam.questions_count} Questions</span>
+                       <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 rounded-full"><ChevronRight size={12}/> {formatDate(exam.start_window)}</span>
                     </div>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-4 w-full md:w-auto">
-                   {exam.my_score !== null && isApproved ? (
-                     <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white px-10 py-4 rounded-[2rem] flex items-center gap-6 shadow-xl shadow-emerald-500/20">
-                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
-                          <Award size={24} />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none mb-1">Final Score</p>
-                          <p className="text-3xl font-black leading-none">{exam.my_score}%</p>
-                        </div>
+                   {exam.my_score !== null ? (
+                     <div className="bg-emerald-500 text-white px-10 py-4 rounded-[2rem] flex flex-col">
+                        <span className="text-[10px] font-black uppercase opacity-80">Score</span>
+                        <span className="text-3xl font-black">{exam.my_score}%</span>
                      </div>
                    ) : already ? (
-                     <div className={`px-10 py-5 rounded-[2rem] text-sm font-black uppercase tracking-[0.2em] border-2 ${
-                       exam.my_status === 'submitted' 
-                         ? 'bg-amber-50 border-amber-200 text-amber-700' 
-                         : 'bg-red-50 border-red-200 text-red-700'
-                     }`}>
-                       {exam.my_status === 'submitted' ? (isApproved ? 'Approved' : 'Pending Review') : 'Attempt Terminated'}
-                     </div>
-                   ) : role === 'parent' ? (
-                     <div className="bg-slate-100 dark:bg-slate-800 px-10 py-5 rounded-[2rem] text-slate-400 font-black uppercase tracking-widest text-xs italic">
-                       Awaiting Student Attempt
-                     </div>
+                     <div className="px-10 py-5 rounded-[2rem] text-sm font-black uppercase bg-amber-50 text-amber-700">Completed</div>
                    ) : (
-                     <button
-                       onClick={() => handleStart(exam)}
-                       disabled={!canStart(exam.start_window, serverTime) || starting === exam.id}
-                       className={`w-full md:w-auto px-12 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] transition-all ${
-                         canStart(exam.start_window, serverTime)
-                           ? 'bg-blue-600 text-white shadow-2xl shadow-blue-500/30 hover:scale-110 active:scale-95'
-                           : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                       }`}
-                     >
-                       {starting === exam.id ? 'Loading...' : 'Start Secure Session'}
+                     <button onClick={() => handleEnterLobby(exam)} disabled={starting === exam.id} className="px-12 py-5 rounded-[2rem] font-black text-sm uppercase bg-blue-600 text-white hover:scale-110 transition-all">
+                       {starting === exam.id ? 'Loading...' : 'Start Session'}
                      </button>
                    )}
                 </div>

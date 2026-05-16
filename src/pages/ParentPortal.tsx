@@ -219,7 +219,7 @@ export const ParentPortal = () => {
                       className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors font-bold text-[10px] uppercase tracking-widest border border-rose-100 dark:border-rose-800 shadow-sm"
                     >
                       <ShieldCheck size={14} />
-                      Official Exams
+                      Online Exams
                     </Link>
                     <button
                       onClick={() => setShowHistory(!showHistory)}

@@ -1,7 +1,8 @@
-
-import { TrendingUp, Users, GraduationCap, Clock, ShieldCheck, FileText, BarChart3, Bell, CheckCircle2, Lock, Unlock } from 'lucide-react';
+import { TrendingUp, Users, GraduationCap, Clock, ShieldCheck, FileText, BarChart3, Bell, CheckCircle2, Lock, Unlock, Megaphone } from 'lucide-react';
 import { useUser } from '../context/UserContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { onSSEEvent, connectSSE } from '../utils/sseClient';
+import { toast } from '../components/Toast';
 
 const SummaryCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-none group">
@@ -23,6 +24,39 @@ const SummaryCard = ({ icon: Icon, label, value, trend, color }: any) => (
 export const VicePrincipalDashboard = () => {
   const { user, gradesLocked, setGradesLocked } = useUser();
   const [calculating, setCalculating] = useState(false);
+  const [notices, setNotices] = useState<any[]>([]);
+
+  // ── Initial Load: Fetch existing logistics notices for the branch ──────────
+  useEffect(() => {
+    import('../utils/apiClient').then(({ apiFetch }) => {
+      apiFetch('/api/driver/notices')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data.data)) {
+            const mapped = data.data.map((n: any) => ({
+              ...n,
+              time: n.time || (n.timestamp ? new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'),
+            }));
+            setNotices(mapped);
+          }
+        })
+        .catch(err => console.error('[VP Dashboard] Failed to fetch logistics notices:', err));
+    });
+  }, []);
+
+  // ── Real-time SSE: Logistics notices for the VP's branch ────────────────────
+  useEffect(() => {
+    connectSSE();
+    const unsub = onSSEEvent('LOGISTICS_NOTICE', (payload: any) => {
+      const newNotice = {
+        ...payload,
+        time: payload.timestamp ? new Date(payload.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
+      };
+      setNotices(prev => [newNotice, ...prev]);
+      toast.success(`🚌 Logistics Update: ${payload.title || 'New Notice'}`);
+    });
+    return unsub;
+  }, []);
 
   const handleCalculateRanks = () => {
     setCalculating(true);
@@ -108,6 +142,37 @@ export const VicePrincipalDashboard = () => {
         <SummaryCard icon={Clock} label="Avg. Attendance" value="96.1%" trend="+0.8%" color="bg-emerald-600" />
         <SummaryCard icon={ShieldCheck} label="Exam Integrity" value="Verified" color="bg-purple-600" />
       </div>
+
+      {/* ── Logistics Notice Board (New) ── */}
+      {notices.length > 0 && (
+        <section className="animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-3 mb-6 px-2">
+            <div className="p-2 bg-amber-500 rounded-xl text-white shadow-lg shadow-amber-500/20">
+              <Megaphone size={20} />
+            </div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Active Logistics Notices</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {notices.map((notice, i) => (
+              <div key={i} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden group hover:shadow-xl transition-all">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500" />
+                <div className="flex justify-between items-start mb-4">
+                  <span className="text-[10px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-3 py-1 rounded-full uppercase tracking-widest">
+                    {notice.category || 'Logistics'}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">{notice.time}</span>
+                </div>
+                <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{notice.title}</h4>
+                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-3">{notice.content}</p>
+                <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sent by {notice.driverName || 'Driver'}</p>
+                   {notice.stations && <p className="text-[10px] font-bold text-indigo-500 uppercase">Affected Route</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Vice Principal Tasks */}
