@@ -41,8 +41,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   try {
     // 1. Resolve identity from school_id
-    const identityResult = await pool.query<{ id: string; full_name: string }>(
-      `SELECT id, full_name
+    const identityResult = await pool.query<{ id: string; full_name: string; branch_id: string }>(
+      `SELECT id, full_name, branch_id
          FROM silo_identities
         WHERE school_id = $1`,
       [school_id]
@@ -93,7 +93,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       user_id: user.id,
       identity_id: identity.id,
       school_id,
-      role,
+      role: role as UserRole,
+      branch_id: identity.branch_id,
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -106,6 +107,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         school_id,
         full_name: identity.full_name,
         role,
+        branch_id: identity.branch_id,
       },
     });
   } catch (err: unknown) {

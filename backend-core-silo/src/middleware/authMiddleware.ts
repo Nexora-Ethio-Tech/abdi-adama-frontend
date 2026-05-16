@@ -12,6 +12,7 @@ export interface AuthRequest extends Request {
     identity_id: string;
     school_id: string;
     role: string;
+    branch_id: string;
   };
 }
 

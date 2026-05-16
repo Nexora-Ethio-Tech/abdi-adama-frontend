@@ -4,6 +4,7 @@ import { AuthRequest } from '../../middleware/authMiddleware';
 import { sendSuccess, sendError, getPagination } from '../../shared/responseUtils';
 import { getNextSaturday } from '../../shared/dateUtils';
 import { broadcast } from '../../shared/sseManager';
+import { performAllCleanups } from '../../shared/cleanupUtils';
 
 /**
  * GET /api/driver/manifest  (also aliased at /api/transport/manifest)
@@ -81,11 +82,13 @@ export const postNotice = async (req: AuthRequest, res: Response) => {
     // Set expiration to end of Saturday (e.g., 11:59 PM)
     expiresAt.setHours(23, 59, 59, 999);
 
+    const branchId = req.user?.branch_id || '1';
+
     const result = await pool.query(
-      `INSERT INTO silo_logistics_notices (sender_id, message, title, stations, published_at, expires_at)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5)
+      `INSERT INTO silo_logistics_notices (sender_id, message, title, stations, published_at, expires_at, branch_id)
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, $5, $6)
        RETURNING *`,
-      [identity_id, content, title || null, stations || null, expiresAt]
+      [identity_id, content, title || null, stations || null, expiresAt, branchId]
     );
 
     const notice = result.rows[0];
@@ -99,10 +102,20 @@ export const postNotice = async (req: AuthRequest, res: Response) => {
       category:   'Logistics',
       priority:   'Normal',
       expires_at: notice.expires_at,
+      branchId:   notice.branch_id,
+      senderId:   identity_id
     };
 
-    // Push to all connected SSE clients instantly (Student, Parent, Admin portals)
-    broadcast('LOGISTICS_NOTICE', broadcastPayload);
+    // 3. Find assigned students for this driver (to restrict broadcast)
+    const manifestResult = await pool.query(
+      'SELECT student_id FROM silo_route_manifest rm JOIN silo_routes r ON r.id = rm.route_id WHERE r.driver_id = $1',
+      [identity_id]
+    );
+    const assignedStudentIds = manifestResult.rows.map(r => r.student_id);
+
+    // Push to relevant SSE clients instantly (Assigned Student/Parent + Admin/VP in branch)
+    const allowedRoles = ['Student', 'Parent', 'Admin', 'SchoolAdmin', 'VicePrincipal'];
+    broadcast('LOGISTICS_NOTICE', broadcastPayload, branchId, allowedRoles, assignedStudentIds);
 
     return sendSuccess(res, {
       ...notice,
@@ -117,31 +130,46 @@ export const postNotice = async (req: AuthRequest, res: Response) => {
  * GET /api/driver/notices?page=&limit=
  * Returns logistics notices — most recent first.
  */
-export const getNotices = async (req: Request, res: Response) => {
-  const { limit, offset, page } = getPagination(req.query);
+export const getNotices = async (req: AuthRequest, res: Response) => {
+  const { limit, offset } = getPagination(req.query);
+  const branchId = req.user?.branch_id || '1';
+  await performAllCleanups();
 
   try {
-    const result = await pool.query(
-      `SELECT 
-         n.id,
-         n.title,
-         n.message      AS content,
-         n.stations,
-         n.timestamp    AS time,
-         n.published_at,
-         n.expires_at,
-         i.full_name    AS driverName,
-         'Logistics'::text AS category,
-         false AS is_pending
-       FROM silo_logistics_notices n
-       LEFT JOIN silo_identities i ON i.id = n.sender_id
-       WHERE n.deleted_at IS NULL
-         AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
-       ORDER BY n.timestamp DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
-    );
+    const role = req.user?.role;
+    const identityId = req.user?.identity_id;
 
+    let query = `
+      SELECT 
+        n.id,
+        n.title,
+        n.message      AS content,
+        n.stations,
+        n.timestamp    AS time,
+        n.published_at,
+        n.expires_at,
+        n.branch_id,
+        i.full_name    AS driverName,
+        'Logistics'::text AS category,
+        false AS is_pending
+      FROM silo_logistics_notices n
+      LEFT JOIN silo_identities i ON i.id = n.sender_id
+      WHERE n.deleted_at IS NULL
+        AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+        AND n.branch_id = $1
+    `;
+    const params: any[] = [branchId];
+
+    // Driver only sees their OWN notices. Admin/VP sees ALL notices for the branch.
+    if (role === 'Driver') {
+      query += ` AND n.sender_id = $${params.length + 1}`;
+      params.push(identityId);
+    }
+
+    query += ` ORDER BY n.timestamp DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const result = await pool.query(query, params);
     return sendSuccess(res, result.rows);
   } catch (err: any) {
     return sendError(res, 'Failed to fetch notices.', 500, err.message);
@@ -154,11 +182,12 @@ export const getNotices = async (req: Request, res: Response) => {
  */
 export const deleteNotice = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
+  const branchId = req.user?.branch_id;
   const identity_id = req.user?.identity_id;
 
   try {
     const checkResult = await pool.query(
-      'SELECT sender_id FROM silo_logistics_notices WHERE id = $1',
+      'SELECT sender_id, branch_id FROM silo_logistics_notices WHERE id = $1',
       [id]
     );
 
@@ -167,26 +196,26 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
     }
 
     const notice = checkResult.rows[0];
+    const role = req.user?.role;
 
-    // Ownership check:
-    // 1. If it's their notice, allow.
-    // 2. If it's a "legacy" notice (created before recent identity cleanup), 
-    //    and the current user is a driver, we'll allow it for now to let them clean up.
-    if (notice.sender_id !== identity_id) {
-       // Check if sender_id exists in identities
-       const senderExists = await pool.query('SELECT 1 FROM silo_identities WHERE id = $1', [notice.sender_id]);
-       if (senderExists.rows.length > 0) {
-         // Sender exists and it's NOT the current driver. Block.
-         return sendError(res, 'You do not have permission to delete this notice.', 403);
-       }
-       // If sender_id doesn't exist, it's an orphaned legacy notice. 
-       // Since the route is restricted to drivers (via middleware), we allow them to clean up orphaned logistics notices.
+    // 1. Branch Isolation (Admin/VP/Driver must be in the same branch)
+    if (notice.branch_id !== branchId) {
+      return sendError(res, 'You do not have permission to delete notices from another branch.', 403);
     }
 
-    await pool.query(
-      'UPDATE silo_logistics_notices SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1',
+    // 2. Ownership Isolation for Drivers (strict)
+    if (role === 'Driver' && notice.sender_id !== identity_id) {
+      return sendError(res, 'You can only delete your own notices.', 403);
+    }
+
+    const deleteResult = await pool.query(
+      'UPDATE silo_logistics_notices SET deleted_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING id',
       [id]
     );
+
+    if (deleteResult.rowCount === 0) {
+      return sendError(res, 'Notice could not be deleted.', 500);
+    }
 
     return sendSuccess(res, null, 'Notice deleted successfully.');
   } catch (err: any) {

@@ -434,13 +434,38 @@ app.get('/api/events/stream', (req: Request, res: Response) => {
     return;
   }
   try {
-    jwt.verify(token, JWT_SECRET_SSE);
+    const decoded = jwt.verify(token, JWT_SECRET_SSE) as any;
+    const { branch_id, role, identity_id, user_id } = decoded;
+
+    let childIds: string[] = [];
+    if (role === 'Parent') {
+      pool.query('SELECT student_identity_id FROM silo_family_links WHERE parent_user_id = $1', [user_id])
+        .then(res_ids => {
+          childIds = res_ids.rows.map(r => r.student_identity_id);
+          addClient(res, {
+            branchId: branch_id || '1',
+            role: role || 'Student',
+            identityId: identity_id,
+            childIdentityIds: childIds
+          });
+        })
+        .catch(err => {
+          console.error('[SSE] Failed to fetch children for parent:', err);
+          // Fallback to basic registration
+          addClient(res, { branchId: branch_id || '1', role: role || 'Student', identityId: identity_id });
+        });
+    } else {
+      addClient(res, {
+        branchId: branch_id || '1',
+        role: role || 'Student',
+        identityId: identity_id
+      });
+    }
   } catch {
     res.status(403).json({ message: 'Invalid or expired token.' });
     return;
   }
 
-  addClient(res);
   req.on('close', () => removeClient(res));
 });
 
@@ -499,22 +524,18 @@ app.listen(PORT, async () => {
   // Start SSE keepalive pings — prevents proxy/browser from closing idle connections
   startKeepalive();
 
-  // ── Saturday midnight cleanup: hard-delete expired logistics notices ──────────
-  // Cron: every Saturday at 00:01 AM server time.
-  // Keeps silo_logistics_notices lean; reduces query overhead on all portals.
-  cron.schedule('1 0 * * 6', async () => {
-    console.log('[Cron] Saturday cleanup — deleting expired logistics notices...');
+  // ── Sunday morning cleanup: hard-delete all logistics notices ──────────
+  // Cron: every Sunday at 00:01 AM server time.
+  // Purges the logistics table to keep the system fast and resolve traffic issues.
+  cron.schedule('1 0 * * 0', async () => {
+    console.log('[Cron] Sunday morning cleanup — purging logistics notices...');
     try {
-      const result = await pool.query(
-        `DELETE FROM silo_logistics_notices
-         WHERE expires_at IS NOT NULL AND expires_at < NOW()
-         RETURNING id`
-      );
-      console.log(`[Cron] Deleted ${result.rowCount ?? 0} expired notice(s).`);
+      const result = await pool.query('DELETE FROM silo_logistics_notices RETURNING id');
+      console.log(`[Cron] Successfully purged ${result.rowCount ?? 0} notice(s).`);
     } catch (err) {
-      console.error('[Cron] Cleanup failed:', err instanceof Error ? err.message : err);
+      console.error('[Cron] Sunday cleanup failed:', err instanceof Error ? err.message : err);
     }
   });
-  console.log('✓ Saturday cleanup cron scheduled (every Saturday 00:01 AM)\n');
+  console.log('✓ Sunday morning cleanup cron scheduled (every Sunday 00:01 AM)\n');
 });
 

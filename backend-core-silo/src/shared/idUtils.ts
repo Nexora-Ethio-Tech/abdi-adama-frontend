@@ -20,6 +20,8 @@ const PREFIXES: Record<UserRole, string> = {
   ClinicAdmin: 'CLN',
   Teacher:    'TCH',
   Admin:      'ADM',
+  VicePrincipal: 'VP',
+  SchoolAdmin: 'SADM',
 };
 
 const pad = (n: number, width: number) => String(n).padStart(width, '0');

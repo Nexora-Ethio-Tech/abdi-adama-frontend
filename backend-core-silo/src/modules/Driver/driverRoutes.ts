@@ -6,14 +6,13 @@ const router = Router();
 
 // All routes require Driver JWT
 router.use(authenticateToken);
-router.use(authorizeRoles('Driver'));
 
-// Route Manifest — Driver sees their assigned students
-router.get('/manifest',  getManifest);
+// Manifest is Driver-only
+router.get('/manifest', authorizeRoles('Driver'), getManifest);
 
-// Notices
-router.post('/notice',   postNotice);
-router.get('/notices',   getNotices);
-router.delete('/notice/:id', deleteNotice);
+// Notices - Shared accessibility for tracking & visibility
+router.post('/notice', authorizeRoles('Driver'), postNotice);
+router.get('/notices', authorizeRoles('Driver', 'SchoolAdmin', 'VicePrincipal', 'SuperAdmin'), getNotices);
+router.delete('/notice/:id', authorizeRoles('Driver', 'SchoolAdmin'), deleteNotice);
 
 export default router;

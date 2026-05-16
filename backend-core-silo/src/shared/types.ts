@@ -10,6 +10,7 @@ export interface SiloIdentity {
   id: string;
   school_id: string;
   full_name: string;
+  branch_id: string;
   created_at: Date;
 }
 
@@ -44,4 +45,5 @@ export interface JwtPayload {
   identity_id: string;
   school_id: string;
   role: UserRole;
+  branch_id: string;
 }

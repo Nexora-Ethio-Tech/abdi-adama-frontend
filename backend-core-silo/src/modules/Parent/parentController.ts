@@ -60,6 +60,17 @@ export const getParentDashboard = async (req: AuthRequest, res: Response) => {
        LEFT JOIN silo_identities i ON i.id = n.sender_id
        WHERE n.deleted_at IS NULL
          AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)
+         AND n.branch_id = (SELECT branch_id FROM silo_identities WHERE id = (SELECT identity_id FROM silo_users WHERE id = $1))
+         AND (
+           -- Only see notices from drivers assigned to at least one of this parent's children
+           n.sender_id IN (
+             SELECT r.driver_id 
+             FROM silo_routes r
+             JOIN silo_route_manifest rm ON r.id = rm.route_id
+             JOIN silo_family_links fl ON fl.student_identity_id = rm.student_id
+             WHERE fl.parent_user_id = $1
+           )
+         )
 
        UNION ALL
 
@@ -91,7 +102,8 @@ export const getParentDashboard = async (req: AuthRequest, res: Response) => {
   }
 };
 
-import { performCommunicationCleanup, getActiveCommLogSQL } from '../../shared/commBookUtils';
+import { performAllCleanups } from '../../shared/cleanupUtils';
+import { getActiveCommLogSQL } from '../../shared/commBookUtils';
 
 /**
  * GET /api/parent/child/:studentId/communication
@@ -112,8 +124,8 @@ export const getChildCommunicationLogs = async (req: AuthRequest, res: Response)
       return sendError(res, 'Access denied: student not linked to your account.', 403);
     }
 
-    // 1. Automated Cleanup (Thursday evening policy)
-    await performCommunicationCleanup();
+    // 1. Automated Cleanup (Logistics + Communication Book)
+    await performAllCleanups();
 
     // 2. Fetch the most recent active log for this child
     const result = await pool.query(
