@@ -99,7 +99,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
-          { icon: FileText, label: t('nav.transcripts'), path: '/transcripts' },
+          { icon: FileText, label: t('nav.transcripts'), path: '/vp-transcripts' },
           { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
           { icon: Lock, label: 'Grade Locks', path: '/vp-grade-locks' },
           { icon: ClipboardList, label: 'Grade Management', path: '/grades' },
