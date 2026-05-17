@@ -19,7 +19,8 @@ import {
   UserPlus,
   Megaphone,
   GraduationCap,
-  ClipboardCheck
+  ClipboardCheck,
+  Lock
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -100,6 +101,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
           { icon: FileText, label: t('nav.transcripts'), path: '/transcripts' },
           { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
+          { icon: Lock, label: 'Grade Locks', path: '/vp-grade-locks' },
           { icon: ClipboardList, label: 'Grade Management', path: '/grades' },
         ];
       case 'teacher':
