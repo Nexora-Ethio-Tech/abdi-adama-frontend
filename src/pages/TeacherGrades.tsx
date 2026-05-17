@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Award, Edit2, X, Plus, TrendingUp, Trash2, Users } from 'lucide-react';
+import { Award, Edit2, X, Plus, TrendingUp, Trash2, Users, Save } from 'lucide-react';
 import * as teacherService from '../services/teacherService';
 
 interface Course {
@@ -38,8 +38,10 @@ export const TeacherGrades = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
+  const [bulkGrades, setBulkGrades] = useState<Record<string, { score: number; total: number }>>({});
   const [formData, setFormData] = useState({
     studentId: '',
     courseId: '',
@@ -126,6 +128,39 @@ export const TeacherGrades = () => {
       const errorMsg = err.response?.status === 423
         ? 'Grades are locked. Contact Vice Principal to unlock.'
         : err.response?.data?.error?.message || 'Failed to submit grade';
+      alert(errorMsg);
+    }
+  };
+
+  const handleBulkSubmit = async () => {
+    try {
+      const gradesArray = Object.entries(bulkGrades)
+        .filter(([_, data]) => data.score > 0)
+        .map(([studentId, data]) => ({
+          studentId,
+          type: formData.type,
+          score: data.score,
+          total: data.total,
+          weight: formData.weight,
+        }));
+
+      if (gradesArray.length === 0) {
+        alert('Please enter at least one grade');
+        return;
+      }
+
+      await teacherService.bulkEnterGrades({
+        courseId: selectedCourse,
+        grades: gradesArray,
+      });
+      
+      setShowBulkModal(false);
+      setBulkGrades({});
+      fetchGrades();
+    } catch (err: any) {
+      const errorMsg = err.response?.status === 423
+        ? 'Grades are locked. Contact Vice Principal to unlock.'
+        : err.response?.data?.error?.message || 'Failed to submit grades';
       alert(errorMsg);
     }
   };
@@ -217,6 +252,14 @@ export const TeacherGrades = () => {
           <p className="text-gray-600 dark:text-gray-400">Enter and manage student grades by course</p>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowBulkModal(true)}
+            disabled={students.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Users className="w-5 h-5" />
+            Bulk Entry
+          </button>
           <button
             onClick={() => {
               resetForm();
@@ -545,6 +588,108 @@ export const TeacherGrades = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Entry Modal */}
+      {showBulkModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h2 className="text-xl font-bold">Bulk Grade Entry</h2>
+                <p className="text-sm text-gray-600">Enter grades for all students at once</p>
+              </div>
+              <button onClick={() => { setShowBulkModal(false); setBulkGrades({}); }}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Type *</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="Mid-Exam">Mid-Exam</option>
+                  <option value="Final-Exam">Final-Exam</option>
+                  <option value="Quiz">Quiz</option>
+                  <option value="Assignment">Assignment</option>
+                  <option value="Class-Work">Class-Work</option>
+                  <option value="Home-Work">Home-Work</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.total}
+                  onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {students.map((student) => (
+                <div key={student.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="text-sm text-gray-600">{student.digitalId}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max={formData.total}
+                      placeholder="Score"
+                      value={bulkGrades[student.id]?.score || ''}
+                      onChange={(e) => {
+                        const score = Number(e.target.value);
+                        setBulkGrades({
+                          ...bulkGrades,
+                          [student.id]: { score, total: formData.total }
+                        });
+                      }}
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                    />
+                    <span className="text-gray-600">/ {formData.total}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => { setShowBulkModal(false); setBulkGrades({}); }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkSubmit}
+                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                Save All Grades
+              </button>
+            </div>
           </div>
         </div>
       )}
