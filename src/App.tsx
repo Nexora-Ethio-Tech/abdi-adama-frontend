@@ -45,6 +45,7 @@ const Subjects = lazy(() => import('./pages/Subjects'));
 const AttendanceManagement = lazy(() => import('./pages/AttendanceManagement').then((m) => ({ default: m.AttendanceManagement })));
 const TeacherClasses = lazy(() => import('./pages/TeacherClasses').then((m) => ({ default: m.TeacherClasses })));
 const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ default: m.TeacherGrades })));
+const TeacherStudentGrades = lazy(() => import('./pages/TeacherStudentGrades').then((m) => ({ default: m.TeacherStudentGrades })));
 const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight').then((m) => ({ default: m.VPAttendanceOversight })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
@@ -200,6 +201,12 @@ function App() {
             <Route path="teacher-grades" element={
               <ProtectedRoute allowedRoles={['teacher']}>
                 <TeacherGrades />
+              </ProtectedRoute>
+            } />
+
+            <Route path="teacher-student-grades/:studentId" element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherStudentGrades />
               </ProtectedRoute>
             } />
 
