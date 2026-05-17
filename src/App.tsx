@@ -48,6 +48,7 @@ const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ 
 const TeacherStudentGrades = lazy(() => import('./pages/TeacherStudentGrades').then((m) => ({ default: m.TeacherStudentGrades })));
 const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight').then((m) => ({ default: m.VPAttendanceOversight })));
 const VPGradeLocks = lazy(() => import('./pages/VPGradeLocks').then((m) => ({ default: m.VPGradeLocks })));
+const VPTranscripts = lazy(() => import('./pages/VPTranscripts').then((m) => ({ default: m.VPTranscripts })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
@@ -220,6 +221,12 @@ function App() {
             <Route path="vp-grade-locks" element={
               <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
                 <VPGradeLocks />
+              </ProtectedRoute>
+            } />
+
+            <Route path="vp-transcripts" element={
+              <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                <VPTranscripts />
               </ProtectedRoute>
             } />
 
