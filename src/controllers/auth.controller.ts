@@ -1,10 +1,9 @@
 import { Response, NextFunction } from 'express';
-import logger from '../utils/logger';
 import authService from '../services/auth.service';
-import { AuthRequest, LoginDTO, ChangePasswordDTO } from '../types';
+import { AuthRequest, ChangePasswordDTO } from '../types';
 
 class AuthController {
-  async login(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  async login(req: AuthRequest, res: Response): Promise<void> {
     try {
       // Support both 'email' (backend standard) and 'school_id' (frontend standard)
       const { email, school_id, password } = req.body;

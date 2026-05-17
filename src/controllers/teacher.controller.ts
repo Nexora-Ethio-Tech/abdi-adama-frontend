@@ -62,6 +62,23 @@ class TeacherController {
     }
   }
 
+  // Bulk enter grades
+  async bulkEnterGrades(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const teacherId = req.user!.id;
+      const { courseId, grades } = req.body;
+
+      const result = await teacherService.bulkEnterGrades(teacherId, courseId, grades);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: `${result.count} grades entered successfully`
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   // Get grades for a course
   async getGrades(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -78,6 +95,47 @@ class TeacherController {
     }
   }
 
+  // Update grade
+  async updateGrade(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const teacherId = req.user!.id;
+      const { score, total, type, weight } = req.body;
+
+      const grade = await teacherService.updateGrade(id, teacherId, {
+        score,
+        total,
+        type,
+        weight
+      });
+
+      res.json({
+        success: true,
+        data: grade,
+        message: 'Grade updated successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Delete grade
+  async deleteGrade(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const teacherId = req.user!.id;
+
+      const result = await teacherService.deleteGrade(id, teacherId);
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Grade deleted successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   // Get assigned classes
   async getAssignedClasses(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -198,6 +256,22 @@ class TeacherController {
     }
   }
 
+  // Get student's all grades
+  async getStudentGrades(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { studentId } = req.params;
+      const teacherId = req.user!.id;
+
+      const grades = await teacherService.getStudentGrades(studentId, teacherId);
+
+      res.json({
+        success: true,
+        data: grades
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   // Get teaching schedule
   async getSchedule(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -229,7 +303,6 @@ class TeacherController {
       next(error);
     }
   }
-
   // --- ONLINE EXAM MANAGEMENT ---
 
   async getExams(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

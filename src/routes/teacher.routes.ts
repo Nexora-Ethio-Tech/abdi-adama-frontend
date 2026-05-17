@@ -32,6 +32,25 @@ const enterGradeSchema = Joi.object({
   weight: Joi.string().allow('')
 });
 
+const bulkEnterGradesSchema = Joi.object({
+  courseId: Joi.string().uuid().required(),
+  grades: Joi.array().items(
+    Joi.object({
+      studentId: Joi.string().uuid().required(),
+      type: Joi.string().required(),
+      score: Joi.number().min(0).required(),
+      total: Joi.number().positive().required(),
+      weight: Joi.string().allow('').optional()
+    })
+  ).min(1).required()
+});
+
+const updateGradeSchema = Joi.object({
+  score: Joi.number().min(0).required(),
+  total: Joi.number().positive().required(),
+  type: Joi.string().optional(),
+  weight: Joi.string().allow('').optional()
+});
 const weeklyPlanSchema = Joi.object({
   date: Joi.date().iso().required(),
   content: Joi.string().required(),
@@ -65,6 +84,9 @@ router.post('/attendance', validate(markAttendanceSchema), teacherController.mar
 router.get('/attendance/:classId', teacherController.getAttendance);
 router.post('/grades', validate(enterGradeSchema), teacherController.enterGrades);
 router.get('/grades/:courseId', teacherController.getGrades);
+router.post('/grades/bulk', validate(bulkEnterGradesSchema), teacherController.bulkEnterGrades);
+router.patch('/grades/:id', validate(updateGradeSchema), teacherController.updateGrade);
+router.delete('/grades/:id', teacherController.deleteGrade);
 router.get('/classes', teacherController.getAssignedClasses);
 router.get('/students/:classId', teacherController.getStudentRoster);
 router.post('/weekly-plans', validate(weeklyPlanSchema), teacherController.submitWeeklyPlan);
@@ -74,6 +96,7 @@ router.post('/communication-logs', validate(communicationLogSchema), teacherCont
 router.get('/communication-logs/:studentId', teacherController.getCommunicationLogs);
 router.get('/schedule', teacherController.getSchedule);
 router.get('/dashboard', teacherController.getDashboard);
+router.get('/students/:studentId/grades', teacherController.getStudentGrades);
 
 // Online Exam Management
 router.get('/exams', teacherController.getExams);
@@ -81,5 +104,4 @@ router.post('/exams', validate(schemas.createExam), teacherController.createExam
 router.patch('/exams/:id/publish', teacherController.togglePublish);
 router.delete('/exams/:id', teacherController.deleteExam);
 router.get('/exams/:id/submissions', teacherController.getExamSubmissions);
-
 export default router;
