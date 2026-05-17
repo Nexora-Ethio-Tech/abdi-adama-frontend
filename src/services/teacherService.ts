@@ -43,6 +43,7 @@ export const getClassAttendance = async (classId: string, date?: string) => {
 };
 
 // ─── Grades ───────────────────────────────────────────────────────────────────
+// Create single grade
 export const enterGrade = async (data: {
   studentId: string;
   courseId: string;
@@ -55,8 +56,47 @@ export const enterGrade = async (data: {
   return response.data;
 };
 
+// Bulk create grades
+export const bulkEnterGrades = async (data: {
+  courseId: string;
+  grades: Array<{
+    studentId: string;
+    type: string;
+    score: number;
+    total: number;
+    weight?: string;
+  }>;
+}) => {
+  const response = await api.post('/teacher/grades/bulk', data);
+  return response.data;
+};
+
+// Get grades by course
 export const getCourseGrades = async (courseId: string) => {
   const response = await api.get(`/teacher/grades/${courseId}`);
+  return response.data.data;
+};
+
+// Update grade
+export const updateGrade = async (gradeId: string, data: {
+  score?: number;
+  total?: number;
+  type?: string;
+  weight?: string;
+}) => {
+  const response = await api.patch(`/teacher/grades/${gradeId}`, data);
+  return response.data;
+};
+
+// Delete grade
+export const deleteGrade = async (gradeId: string) => {
+  const response = await api.delete(`/teacher/grades/${gradeId}`);
+  return response.data;
+};
+
+// View student's all grades (across all courses)
+export const getStudentAllGrades = async (studentId: string) => {
+  const response = await api.get(`/teacher/students/${studentId}/grades`);
   return response.data.data;
 };
 
@@ -182,10 +222,5 @@ export const getClassGrades = async (classId: string) => {
 
 export const submitGrade = async (data: SubmitGradeData) => {
   const response = await api.post('/teacher/grades', data);
-  return response.data;
-};
-
-export const updateGrade = async (gradeId: string, data: UpdateGradeData) => {
-  const response = await api.patch(`/teacher/grades/${gradeId}`, data);
   return response.data;
 };
