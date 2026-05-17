@@ -58,12 +58,25 @@ export const VicePrincipalDashboard = () => {
     return unsub;
   }, []);
 
-  const handleCalculateRanks = () => {
+
+  const handleCalculateRanks = async () => {
     setCalculating(true);
-    setTimeout(() => {
+    try {
+      const { apiFetch } = await import('../utils/apiClient');
+      const res = await apiFetch('/api/academic/transcripts/calculate-ranks', {
+        method: 'POST',
+        body: JSON.stringify({ batch: 'all' }) // Default to all or specify if needed
+      });
+      if (res.ok) {
+        toast.success('Ranking calculation completed successfully across all grades.');
+      } else {
+        toast.error('Failed to calculate ranks.');
+      }
+    } catch (err) {
+      toast.error('Network error during rank calculation.');
+    } finally {
       setCalculating(false);
-      alert('Ranking calculation completed successfully across all grades.');
-    }, 2000);
+    }
   };
 
   return (

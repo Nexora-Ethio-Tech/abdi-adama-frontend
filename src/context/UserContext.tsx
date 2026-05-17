@@ -47,12 +47,7 @@ interface UserContextType {
   loading: boolean;
 }
 
-const mockBranches: Branch[] = [
-  { id: '1', name: 'Main Branch', location: 'Addis Ababa' },
-  { id: '2', name: 'Bole Branch', location: 'Bole, AA' },
-  { id: '3', name: 'Megenagna Branch', location: 'Megenagna, AA' },
-  { id: '4', name: 'Adama Branch', location: 'Adama' },
-];
+
 
 const getDashboardRoute = (role: UserRole) => {
   switch (role) {
@@ -71,11 +66,6 @@ const getDashboardRoute = (role: UserRole) => {
   }
 };
 
-/**
- * Map backend silo_role enum values to frontend UserRole.
- * Backend uses PascalCase enums; frontend uses kebab-case strings.
- */
-// @ts-ignore - keeping for future reference when backend is re-enabled
 const mapBackendRole = (backendRole: string): UserRole => {
   const map: Record<string, UserRole> = {
     Student:    'student',
@@ -96,6 +86,23 @@ const mapBackendRole = (backendRole: string): UserRole => {
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/branches`);
+        if (res.ok) {
+          const data = await res.json();
+          setBranches(data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch branches:', err);
+      }
+    };
+    fetchBranches();
+  }, []);
+
   // ─── SECURITY FIX ──────────────────────────────────────────────────────────
   // Do NOT trust localStorage on initial load. Start with null.
   // The verifyToken effect will restore the user ONLY if the token is valid.
@@ -269,7 +276,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       primaryRole,
       selectedBranch,
       setSelectedBranch,
-      branches: mockBranches,
+      branches,
       gradesLocked,
       setGradesLocked,
       registrationOpen,

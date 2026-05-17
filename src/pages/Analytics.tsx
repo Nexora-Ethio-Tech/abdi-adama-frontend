@@ -10,10 +10,12 @@ import {
   Zap,
   ArrowLeft
 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { exportToCSV } from '../utils/exportUtils';
+import { apiFetch } from '../utils/apiClient';
 
 const trafficColor = (value: number) => {
   if (value >= 90) return { bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Healthy' };
@@ -25,27 +27,42 @@ export const Analytics = () => {
   const navigate = useNavigate();
   useStore();
 
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await apiFetch('/api/finance/analytics');
+        if (res.ok) {
+          const d = await res.json();
+          setData(d.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch analytics:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAnalytics();
+  }, []);
+
   // Executive "Big Three" data
-  const feeCollected = 4350000;
-  const feeExpected = 4800000;
+  const feeCollected = data?.feeCollected || 0;
+  const feeExpected = data?.feeExpected || 1; // Prevent div by zero
   const feePercent = Math.round((feeCollected / feeExpected) * 100);
 
-  const studentAttendance = 94.2;
-  const staffAttendance = 97.8;
+  const studentAttendance = data?.studentAttendance || 0;
+  const staffAttendance = data?.staffAttendance || 0;
 
-  const currentStudents = 1284;
-  const lastMonthStudents = 1256;
+  const currentStudents = data?.currentStudents || 0;
+  const lastMonthStudents = data?.lastMonthStudents || 1;
   const enrollmentGrowth = (((currentStudents - lastMonthStudents) / lastMonthStudents) * 100).toFixed(1);
 
   const feeColor = trafficColor(feePercent);
   const studentAttColor = trafficColor(studentAttendance);
 
-  const branchPerformance = [
-    { name: 'Main Branch', collected: '1.8M', expected: '2.0M', percent: 90, students: 450 },
-    { name: 'Bole Branch', collected: '1.2M', expected: '1.3M', percent: 92, students: 320 },
-    { name: 'Megenagna Branch', collected: '800K', expected: '950K', percent: 84, students: 280 },
-    { name: 'Adama Branch', collected: '550K', expected: '850K', percent: 65, students: 234 },
-  ];
+  const branchPerformance = data?.branchPerformance || [];
 
   const handleExport = () => {
     const dataToExport: any[] = branchPerformance.map(b => ({

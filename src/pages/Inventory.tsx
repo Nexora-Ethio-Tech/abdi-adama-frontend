@@ -1,17 +1,35 @@
 
 import { Package, Search, Filter, Plus, X, MoreVertical, AlertCircle, ArrowLeft } from 'lucide-react';
-import { mockInventory } from '../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import { apiFetch } from '../utils/apiClient';
 
 export const Inventory = () => {
   const navigate = useNavigate();
   const { role } = useUser();
-  const [items] = useState(mockInventory);
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const res = await apiFetch('/api/inventory');
+        if (res.ok) {
+          const data = await res.json();
+          setItems(data.data || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch inventory:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchInventory();
+  }, []);
 
   const filteredItems = items.filter(item =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

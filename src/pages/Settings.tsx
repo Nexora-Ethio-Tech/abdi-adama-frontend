@@ -2,7 +2,8 @@
 import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock } from 'lucide-react';
 import { useState } from 'react';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
-import { mockGradingConfigs } from '../data/mockData';
+import { apiFetch } from '../utils/apiClient';
+import { useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 
 export const Settings = () => {
@@ -18,7 +19,20 @@ export const Settings = () => {
   ];
 
   const [selectedGrade, setSelectedGrade] = useState('10');
-  const [gradeConfigs, setGradeConfigs] = useState(mockGradingConfigs);
+  const [gradeConfigs, setGradeConfigs] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const fetchConfigs = async () => {
+      try {
+        const res = await apiFetch('/api/academic/grading-configs'); // Hypothetical endpoint
+        const data = await res.json();
+        if (res.ok) setGradeConfigs(data.data || {});
+      } catch (err) {
+        console.error('Failed to fetch grading configs', err);
+      }
+    };
+    fetchConfigs();
+  }, []);
   const [newMethodLabel, setNewMethodLabel] = useState('');
   const [newMethodWeight, setNewMethodWeight] = useState(10);
   const [profitTargetMonth, setProfitTargetMonth] = useState('1');

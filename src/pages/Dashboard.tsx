@@ -1,8 +1,6 @@
-
 import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
-import { mockStudents } from '../data/mockData';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +30,7 @@ export const Dashboard = () => {
   const { t } = useTranslation();
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [watchlistExpanded, setWatchlistExpanded] = useState(true);
+  const [watchlist, setWatchlist] = useState<any[]>([]);
   const isSuperAdmin = role === 'super-admin';
 
   const isAdmin = role === 'super-admin' || role === 'school-admin';
@@ -85,6 +84,19 @@ export const Dashboard = () => {
     });
     return unsub;
   }, [role, addNotice]);
+
+  useEffect(() => {
+    if (isAdmin || isVP) {
+      apiFetch('/api/students/watchlist')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data.data)) {
+            setWatchlist(data.data);
+          }
+        })
+        .catch(err => console.error('[Dashboard] Failed to fetch watchlist:', err));
+    }
+  }, [isAdmin, isVP]);
 
   if (role === 'super-admin') {
     const branchHealth = branches.map((branch, index) => ({
@@ -535,20 +547,24 @@ export const Dashboard = () => {
             </div>
             {watchlistExpanded && (
               <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                {mockStudents.filter(s => s.riskLevel === 'High' || s.riskLevel === 'Medium').slice(0, 4).map((student, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${student.riskLevel === 'High' ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                      <div>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{student.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Grade {student.grade} • {student.riskLevel} Risk</p>
+                {watchlist.length > 0 ? (
+                  watchlist.slice(0, 4).map((student, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${student.risk_level === 'High' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{student.name}</p>
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">Grade {student.grade_level} • {student.risk_level} Risk</p>
+                        </div>
                       </div>
+                      <Link to={`/students/${student.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all">
+                        <ArrowRight size={16} />
+                      </Link>
                     </div>
-                    <Link to={`/students/${student.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all">
-                      <ArrowRight size={16} />
-                    </Link>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-xs text-slate-500 py-4 italic">No priority items at the moment.</p>
+                )}
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 
 import { CreditCard, ArrowUpRight, ArrowDownRight, Search, FileText, Users, Plus, X, Check, AlertCircle, Bell, History, ShieldCheck, Clock, Filter, ChevronDown, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockFinances, mockStudents } from '../data/mockData';
 import { useUser } from '../context/UserContext';
+import { apiFetch } from '../utils/apiClient';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -112,33 +112,19 @@ export const Finance = () => {
   const AUDIT_PAGE_SIZE = 10;
 
   const fetchData = useCallback(async () => {
-    // try {
-    //   const [sumRes, txRes] = await Promise.all([
-    //     fetch(`${API}/api/finance/summary`, { headers: authHeaders() }),
-    //     fetch(`${API}/api/finance/transactions`, { headers: authHeaders() })
-    //   ]);
-    //   if (sumRes.ok) setDbSummary(await sumRes.json());
-    //   if (txRes.ok) setDbTransactions(await txRes.json());
-    // } catch (err) {
-    //   console.error('Failed to fetch finance data', err);
-    // }
-
-    // MOCK DATA
-    setDbSummary({
-      total_revenue: mockFinances.totalRevenue,
-      pending_fees: mockFinances.pendingFees,
-      monthly_revenue: 850000
-    });
-    setDbTransactions(mockFinances.recentTransactions.map(tx => ({
-      id: tx.id,
-      category: tx.category || 'General',
-      description: tx.description || 'No description',
-      amount: tx.amount,
-      type: tx.type || 'Income',
-      date: tx.date,
-      verified_by: tx.verifiedBy,
-      branch_name: 'Main'
-    })));
+    try {
+      const response = await apiFetch('/api/finance-clerk/dashboard');
+      if (response.success) {
+        setDbSummary({
+          total_revenue: response.data.totalRevenue,
+          pending_fees: response.data.pendingFees,
+          monthly_revenue: response.data.monthlyRevenue
+        });
+        setDbTransactions(response.data.recentTransactions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch finance data', err);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);

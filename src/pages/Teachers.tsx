@@ -1,10 +1,11 @@
 
 import { UserPlus, Calendar, Search, Filter, MoreVertical, DoorOpen, DoorClosed, Award, X, Check, Mail, Phone, MapPin, Briefcase, GraduationCap, BookOpen, Trophy, Medal } from 'lucide-react';
-import { mockTeachers, mockSchedules, mockClasses } from '../data/mockData';
+import { UserPlus, Calendar, Search, Filter, MoreVertical, DoorOpen, DoorClosed, Award, X, Check, Mail, Phone, MapPin, Briefcase, GraduationCap, BookOpen, Trophy, Medal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { ArrowLeft } from 'lucide-react';
+import { apiFetch } from '../utils/apiClient';
 
 export const Teachers = () => {
   const navigate = useNavigate();
@@ -13,54 +14,50 @@ export const Teachers = () => {
   const isVP = role === 'vice-principal';
   
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [sections, setSections] = useState<any[]>([]);
   const [viewingSchedule, setViewingSchedule] = useState<string | null>(null);
   const [promotingTeacher, setPromotingTeacher] = useState<any | null>(null);
   const [viewingProfile, setViewingProfile] = useState<any | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState<'directory' | 'leaderboard'>('directory');
   const [credentials, setCredentials] = useState<any>(null);
-
-  // const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  // const getToken = () => sessionStorage.getItem('abdi_adama_token') || '';
+  const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    // try {
-    //   const res = await fetch(`${API}/api/teachers`, {
-    //     headers: { Authorization: `Bearer ${getToken()}` }
-    //   });
-    //   if (res.ok) setTeachers(await res.json());
-    // } catch (err) {
-    //   console.error('Fetch error:', err);
-    // }
-    setTeachers(mockTeachers);
+    try {
+      const res = await apiFetch('/api/teachers');
+      if (res.ok) {
+        const data = await res.json();
+        setTeachers(data.data || []);
+      }
+    } catch (err) {
+      console.error('Fetch teachers error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const [sections, setSections] = useState<any[]>([]);
+  const fetchSections = async () => {
+    try {
+      const res = await apiFetch('/api/academic/sections');
+      if (res.ok) {
+        const data = await res.json();
+        setSections(data.data || []);
+      }
+    } catch (err) {
+      console.error('Fetch sections error:', err);
+    }
+  };
 
   useEffect(() => {
     fetchData(); 
     fetchSections();
   }, []);
 
-  const fetchSections = async () => {
-    // try {
-    //   const res = await fetch(`${API}/api/academic/sections`, {
-    //     headers: { Authorization: `Bearer ${getToken()}` }
-    //   });
-    //   if (res.ok) setSections(await res.json());
-    // } catch (err) {
-    //   console.error('Fetch sections error:', err);
-    // }
-    setSections([
-      { id: '1', grade_level: '9', section_name: 'A' },
-      { id: '2', grade_level: '10', section_name: 'A' }
-    ]);
-  };
-
 
   if (viewingSchedule) {
-    const teacher = mockTeachers.find(t => t.id === viewingSchedule);
-    const schedule = mockSchedules[viewingSchedule as keyof typeof mockSchedules] || [];
+    const teacher = teachers.find(t => t.id === viewingSchedule);
+    const schedule = teacher?.schedule || [];
 
     return (
       <div className="space-y-6">
@@ -74,7 +71,7 @@ export const Teachers = () => {
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white mb-6">Schedule for {teacher?.name}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {schedule.length > 0 ? (
-              schedule.map((slot, i) => (
+              schedule.map((slot: any, i: number) => (
                 <div key={i} className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
                   <p className="text-blue-600 font-bold text-sm mb-1">{slot.day}</p>
                   <p className="font-semibold text-slate-800 dark:text-slate-200">{slot.time}</p>
@@ -103,54 +100,41 @@ export const Teachers = () => {
     e.preventDefault();
     if (!promotingTeacher) return;
     
-    // try {
-    //   const headers = {
-    //     'Content-Type': 'application/json',
-    //     Authorization: `Bearer ${getToken()}`
-    //   };
+    try {
+      // 1. Assign Room Teacher
+      if (promotingTeacher.isRoomTeacher && promotingTeacher.assignedRoomSectionId) {
+        await apiFetch(`/api/teachers/${promotingTeacher.id}/assign-room`, {
+          method: 'POST',
+          body: JSON.stringify({ section_id: promotingTeacher.assignedRoomSectionId })
+        });
+      }
 
-    //   // 1. Assign Room Teacher
-    //   if (promotingTeacher.isRoomTeacher && promotingTeacher.assignedRoomSectionId) {
-    //     await fetch(`${API}/api/teachers/${promotingTeacher.id}/assign-room`, {
-    //       method: 'POST',
-    //       headers,
-    //       body: JSON.stringify({ section_id: promotingTeacher.assignedRoomSectionId })
-    //     });
-    //   }
+      // 2. Assign Examiner
+      if (promotingTeacher.isExaminer) {
+        await apiFetch(`/api/teachers/${promotingTeacher.id}/assign-examiner`, {
+          method: 'POST',
+          body: JSON.stringify({
+            exam_title: promotingTeacher.examTitle,
+            exam_date: promotingTeacher.examDate,
+            assigned_class: promotingTeacher.assignedExamClass
+          })
+        });
+      }
 
-    //   // 2. Assign Examiner
-    //   if (promotingTeacher.isExaminer) {
-    //     await fetch(`${API}/api/teachers/${promotingTeacher.id}/assign-examiner`, {
-    //       method: 'POST',
-    //       headers,
-    //       body: JSON.stringify({
-    //         exam_title: promotingTeacher.examTitle,
-    //         exam_date: promotingTeacher.examDate,
-    //         assigned_class: promotingTeacher.assignedExamClass
-    //       })
-    //     });
-    //   }
+      // 3. Assign Department Head
+      if (promotingTeacher.isDeptHead) {
+        await apiFetch(`/api/teachers/${promotingTeacher.id}/assign-dept-head`, {
+          method: 'POST',
+          body: JSON.stringify({ department_name: promotingTeacher.deptSubject })
+        });
+      }
 
-    //   // 3. Assign Department Head
-    //   if (promotingTeacher.isDeptHead) {
-    //     await fetch(`${API}/api/teachers/${promotingTeacher.id}/assign-dept-head`, {
-    //       method: 'POST',
-    //       headers,
-    //       body: JSON.stringify({ department_name: promotingTeacher.deptSubject })
-    //     });
-    //   }
-
-    //   setPromotingTeacher(null);
-    //   fetchData();
-    //   alert('Teacher roles updated successfully');
-    // } catch (err: any) {
-    //   alert('Failed to update teacher roles');
-    // }
-
-    // MOCK PROMOTE
-    setTeachers(prev => prev.map(t => t.id === promotingTeacher.id ? { ...t, ...promotingTeacher } : t));
-    setPromotingTeacher(null);
-    alert('Teacher roles updated successfully (Mock)');
+      setPromotingTeacher(null);
+      fetchData();
+      alert('Teacher roles updated successfully');
+    } catch (err: any) {
+      alert('Failed to update teacher roles');
+    }
   };
 
   const handleAddTeacher = async (e: React.FormEvent) => {
@@ -176,32 +160,19 @@ export const Teachers = () => {
       background_details: formData.get('background_details') as string
     };
 
-    // try {
-    //   const res = await fetch(`${API}/api/teachers`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       Authorization: `Bearer ${getToken()}`
-    //     },
-    //     body: JSON.stringify(payload)
-    //   });
-    //   if (!res.ok) throw new Error(await res.text());
-    //   const data = await res.json();
-    //   setCredentials(data.credentials);
-    //   setShowAddModal(false);
-    //   fetchData();
-    // } catch (err: any) {
-    //   alert(err.message || 'Failed to create teacher');
-    // }
-
-    // MOCK ADD
-    const mockCreds = {
-      teacherUsername: 'T' + Math.floor(Math.random() * 10000),
-      tempPassword: Math.floor(Math.random() * 900000 + 100000).toString()
-    };
-    setCredentials(mockCreds);
-    setTeachers([...teachers, { id: 'T' + Date.now(), ...payload, digital_id: mockCreds.teacherUsername }]);
-    setShowAddModal(false);
+    try {
+      const res = await apiFetch('/api/teachers', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setCredentials(data.credentials);
+      setShowAddModal(false);
+      fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to create teacher');
+    }
   };
 
   return (
@@ -520,8 +491,8 @@ export const Teachers = () => {
                           className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                         >
                           <option value="">Select a class...</option>
-                          {mockClasses.map(c => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
+                          {sections.map(s => (
+                            <option key={s.id} value={`${s.grade_level} - ${s.section_name}`}>{s.grade_level} - {s.section_name}</option>
                           ))}
                         </select>
                       </div>
@@ -555,8 +526,8 @@ export const Teachers = () => {
                           className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                         >
                           <option value="">Select a subject...</option>
-                          {Array.from(new Set(mockTeachers.flatMap(t => t.subjects))).map(s => (
-                            <option key={s} value={s}>{s}</option>
+                          {Array.from(new Set(teachers.flatMap(t => t.subjects))).map(s => (
+                            <option key={s as string} value={s as string}>{s as string}</option>
                           ))}
                         </select>
                       </div>

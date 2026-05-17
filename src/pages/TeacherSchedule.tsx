@@ -1,15 +1,55 @@
 
-import { mockTeachers, mockSchedules } from '../data/mockData';
-import { Calendar, Clock, MapPin, Users, Info } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Info, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useUser } from '../context/UserContext';
+import { apiFetch } from '../utils/apiClient';
+import { toast } from '../components/Toast';
+
+interface ScheduleSlot {
+  day: string;
+  time: string;
+  class: string;
+  subject: string;
+  room?: string;
+}
 
 export const TeacherSchedule = () => {
-  // Hardcoded to Ato Solomon (T1) for now, as we don't have a real auth system
-  const teacherId = 'T1';
-  const teacher = mockTeachers.find(t => t.id === teacherId);
-  const schedule = mockSchedules[teacherId as keyof typeof mockSchedules] || [];
+  const { user } = useUser();
+  const [schedule, setSchedule] = useState<ScheduleSlot[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await apiFetch('/api/teacher/schedule');
+        if (res.ok) {
+          const result = await res.json();
+          setSchedule(result.data || []);
+        } else {
+          toast.error('Failed to load schedule.');
+        }
+      } catch {
+        toast.error('Network error while loading schedule.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchedule();
+  }, [user?.id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+        <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Fetching your schedule...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
         <div className="flex items-center gap-4 mb-8">
           <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
@@ -17,7 +57,7 @@ export const TeacherSchedule = () => {
           </div>
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-white">My Teaching Schedule</h2>
-            <p className="text-slate-500 dark:text-slate-400">Weekly classes and room assignments for {teacher?.name}</p>
+            <p className="text-slate-500 dark:text-slate-400">Weekly classes and room assignments for {user?.name}</p>
           </div>
         </div>
 
@@ -44,7 +84,7 @@ export const TeacherSchedule = () => {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <MapPin size={16} />
-                    <span>Room 402</span>
+                    <span>{slot.room || 'Room 402'}</span>
                   </div>
                 </div>
               </div>
@@ -71,3 +111,4 @@ export const TeacherSchedule = () => {
     </div>
   );
 };
+

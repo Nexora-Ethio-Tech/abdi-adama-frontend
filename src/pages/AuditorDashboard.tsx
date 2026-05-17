@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import { 
   Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Download, Clock, ShieldCheck,
   Eye
 } from 'lucide-react';
-// import { useUser } from '../context/UserContext';
+import { apiFetch } from '../utils/apiClient';
 
 interface Transaction {
   id: string;
@@ -33,11 +32,10 @@ interface SpecialStudent {
 }
 
 export const AuditorDashboard = () => {
-  // const { user } = useUser();
   const [activeTab, setActiveTab] = useState<'transactions' | 'special-students'>('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [specialStudents, setSpecialStudents] = useState<SpecialStudent[]>([]);
-  const [, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -46,57 +44,40 @@ export const AuditorDashboard = () => {
 
   const fetchData = async () => {
     setLoading(true);
-    // try {
-    //   const token = sessionStorage.getItem('abdi_adama_token');
-    //   const [txRes, specialRes] = await Promise.all([
-    //     fetch('/api/finance/transactions', { headers: { 'Authorization': `Bearer ${token}` } }),
-    //     fetch('/api/students/special/list', { headers: { 'Authorization': `Bearer ${token}` } })
-    //   ]);
+    try {
+      const [txRes, specialRes] = await Promise.all([
+        apiFetch('/api/finance/transactions'),
+        apiFetch('/api/students/special/list')
+      ]);
       
-    //   const txData = await txRes.json();
-    //   const specialData = await specialRes.json();
-      
-    //   if (Array.isArray(txData)) setTransactions(txData);
-    //   if (Array.isArray(specialData)) setSpecialStudents(specialData);
-    // } catch (err) {
-    //   console.error('Failed to fetch auditor data:', err);
-    // } finally {
-    //   setLoading(false);
-    // }
-
-    // MOCK DATA
-    setTransactions([
-      { id: '1', category: 'Student Fees', description: 'May 2026 Collection (Grade 1-8)', amount: 450000, type: 'Income', date: '2026-05-10', verified_by: 'Ato Dawit (Chief Accountant)', branch_id: '1', branch_name: 'Main' },
-      { id: '2', category: 'Staff Salaries', description: 'Servant & Janitor Payments (May)', amount: 25000, type: 'Expense', date: '2026-05-11', verified_by: 'W/ro Tigist (Finance Manager)', branch_id: '1', branch_name: 'Main' }
-    ]);
-    setSpecialStudents([
-      { id: '1', name: 'Dawit Abebe', grade: '8', monthly_fee: 4000, bus_fee: 1000, fee_status: 'reduced', fee_approval_status: 'pending', fee_notes: 'Financial hardship', branch_name: 'Main' }
-    ]);
-    setLoading(false);
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setTransactions(txData.data || []);
+      }
+      if (specialRes.ok) {
+        const specialData = await specialRes.json();
+        setSpecialStudents(specialData.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch auditor data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleApprove = async (id: string, approved: boolean) => {
-    // try {
-    //   const token = sessionStorage.getItem('abdi_adama_token');
-    //   const res = await fetch('/api/students/fees/approve', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Authorization': `Bearer ${token}`,
-    //       'Content-Type': 'application/json'
-    //     },
-    //     body: JSON.stringify({ studentId: id, approved, approver_name: user?.name })
-    //   });
+    try {
+      const res = await apiFetch('/api/students/fees/approve', {
+        method: 'POST',
+        body: JSON.stringify({ studentId: id, approved })
+      });
       
-    //   if (res.ok) {
-    //     setSpecialStudents(prev => prev.map(s => s.id === id ? { ...s, fee_approval_status: approved ? 'approved' : 'rejected' } : s));
-    //   }
-    // } catch (err) {
-    //   console.error('Failed to approve:', err);
-    // }
-
-    // MOCK APPROVE
-    setSpecialStudents(prev => prev.map(s => s.id === id ? { ...s, fee_approval_status: approved ? 'approved' : 'rejected' } : s));
-    alert(approved ? 'Approved (Mock)' : 'Rejected (Mock)');
+      if (res.ok) {
+        setSpecialStudents(prev => prev.map(s => s.id === id ? { ...s, fee_approval_status: approved ? 'approved' : 'rejected' } : s));
+      }
+    } catch (err) {
+      console.error('Failed to approve:', err);
+    }
   };
 
   return (

@@ -1,6 +1,7 @@
 
 import { useParams, Link } from 'react-router-dom';
-import { mockStudents, mockGradingConfigs } from '../data/mockData';
+import { apiFetch } from '../utils/apiClient';
+import { useEffect } from 'react';
 import {
   ArrowLeft,
   User,
@@ -32,11 +33,36 @@ export const StudentProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedBio, setEditedBio] = useState('');
   const [selectedHistoryYear, setSelectedHistoryYear] = useState('all');
-  const student = mockStudents.find(s => s.id === id) as any;
-  const gradeLevel = student?.grade?.replace(/[A-Z]/g, '');
-  const gradingMethods = mockGradingConfigs[gradeLevel] || mockGradingConfigs['default'];
+  const [student, setStudent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [gradingMethods, setGradingMethods] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        // Fetch student profile (adjust endpoint)
+        const res = await apiFetch(`/api/student/profile?studentId=${id}`);
+        const data = await res.json();
+        if (res.ok) {
+          setStudent(data.data);
+          // Fetch grading config for the student's grade if available
+          const gRes = await apiFetch(`/api/academic/grading-config?grade=${data.data.grade}`);
+          const gData = await gRes.json();
+          setGradingMethods(gRes.ok ? gData.data : []);
+        }
+      } catch (err) {
+        console.error('Profile fetch error', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const isParent = role === 'parent';
+
+  if (loading) return <div className="flex justify-center py-20">Loading profile...</div>;
 
   if (!student) {
     return (

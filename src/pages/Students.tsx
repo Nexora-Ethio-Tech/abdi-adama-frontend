@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { exportToCSV } from '../utils/exportUtils';
-import { mockStudents } from '../data/mockData';
+import { apiFetch } from '../utils/apiClient';
 
 export const Students = () => {
   const navigate = useNavigate();
@@ -12,50 +12,44 @@ export const Students = () => {
   const [grades, setGrades] = useState<any[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [phonePrefix] = useState('+251 ');
-
-  // const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  // const getToken = () => sessionStorage.getItem('abdi_adama_token') || '';
+  const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    // try {
-    //   const gRes = await fetch(`${API}/api/academic/grades/with-sections`, {
-    //     headers: { Authorization: `Bearer ${getToken()}` }
-    //   });
-    //   if (gRes.ok) setGrades(await gRes.json());
+    setLoading(true);
+    try {
+      const [gRes, sRes] = await Promise.all([
+        apiFetch('/api/academic/grades/with-sections'),
+        apiFetch('/api/students')
+      ]);
 
-    //   const sRes = await fetch(`${API}/api/students`, {
-    //     headers: { Authorization: `Bearer ${getToken()}` }
-    //   });
-    //   if (sRes.ok) {
-    //     const data = await sRes.json();
-    //     // AUTOMATED SORTING: Alphabetical by name
-    //     const sorted = data.sort((a: any, b: any) => a.name.localeCompare(b.name));
-    //     setAllStudents(sorted);
-    //   }
-    // } catch (err) {
-    //   console.error('Fetch error:', err);
-    // }
+      if (gRes.ok) {
+        const gData = await gRes.json();
+        setGrades(gData.data || []);
+      }
 
-    // MOCK DATA
-    setGrades([
-      { grade_id: '1', grade_level: '9', branch_id: '1', sections: [{ id: '1', section_name: 'A', available: 5 }] },
-      { grade_id: '2', grade_level: '10', branch_id: '1', sections: [{ id: '2', section_name: 'A', available: 3 }] },
-      { grade_id: '3', grade_level: '11', branch_id: '1', sections: [{ id: '3', section_name: 'A', available: 8 }] },
-      { grade_id: '4', grade_level: '12', branch_id: '1', sections: [{ id: '4', section_name: 'A', available: 2 }] },
-    ]);
-    setAllStudents(mockStudents);
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        const students = sData.data || [];
+        const sorted = students.sort((a: any, b: any) => a.name.localeCompare(b.name));
+        setAllStudents(sorted);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, []);
 
   const handleExport = (data = allStudents, filename = 'Students_List') => {
     const dataToExport = data.map(s => ({
-      ID: s.id,
+      ID: s.digital_id || s.id,
       Name: s.name,
-      Grade: s.grade,
+      Grade: s.grade_level || s.grade,
       Status: s.status,
-      ParentName: s.parentName,
-      ParentPhone: s.parentPhone
+      ParentName: s.parent_name || s.parentName,
+      ParentPhone: s.parent_phone || s.parentPhone
     }));
     exportToCSV(dataToExport, filename);
   };
@@ -70,35 +64,22 @@ export const Students = () => {
       section_id: formData.get('section'),
       parentName: formData.get('parentName'),
       parentPhone: phonePrefix + formData.get('parentPhone'),
-      branch_id: grades[0]?.branch_id // Default to same branch as grades
+      branch_id: grades[0]?.branch_id
     };
 
-    // try {
-    //   const res = await fetch(`${API}/api/students`, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       Authorization: `Bearer ${getToken()}`
-    //     },
-    //     body: JSON.stringify(payload)
-    //   });
+    try {
+      const res = await apiFetch('/api/students', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
       
-    //   if (res.ok) {
-    //     setShowAddModal(false);
-    //     fetchData(); // Refresh list
-    //   }
-    // } catch (err) {
-    //   console.error(err);
-    // }
-
-    // MOCK ADD
-    const newStudent = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...payload,
-      status: 'Active'
-    };
-    setAllStudents([...allStudents, newStudent]);
-    setShowAddModal(false);
+      if (res.ok) {
+        setShowAddModal(false);
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   if (selectedGrade) {

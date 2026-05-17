@@ -61,7 +61,7 @@ export const connectSSE = (): void => {
     }
   };
 
-  eventSource.addEventListener('LOGISTICS_NOTICE', handleEvent('LOGISTICS_NOTICE'));
+  eventSource.addEventListener('LOGISTICS_NOTICE', handleEvent('LOGISTICS_NOTICE') as EventListener);
 
   eventSource.onerror = () => {
     console.warn('[SSE] Connection lost — will auto-reconnect via browser.');

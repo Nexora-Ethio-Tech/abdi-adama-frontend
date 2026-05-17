@@ -1,7 +1,7 @@
 
 import { ChevronLeft, ChevronRight, Plus, Tag } from 'lucide-react';
-import { mockEvents } from '../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiFetch } from '../utils/apiClient';
 
 export const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 3, 1)); // April 2026
@@ -16,9 +16,25 @@ export const Calendar = () => {
   const days = Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1);
   const emptyDays = Array.from({ length: firstDayOfMonth(year, month) }, (_, i) => i);
 
+  const [events, setEvents] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await apiFetch('/api/academic/events');
+        if (response.success) {
+          setEvents(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch events', err);
+      }
+    };
+    fetchEvents();
+  }, []);
+
   const getEventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return mockEvents.filter(e => e.date === dateStr);
+    return events.filter(e => e.date === dateStr);
   };
 
   return (

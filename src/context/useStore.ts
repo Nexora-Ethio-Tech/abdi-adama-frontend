@@ -178,29 +178,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     }
   })),
 
-  publicPosts: [
-    {
-      id: 'post-1',
-      type: 'image',
-      mediaUrl: 'https://images.unsplash.com/photo-1523050853063-913ec3673c2e?q=80&w=800&auto=format&fit=crop',
-      description: 'Celebrating our Class of 2024! A beautiful graduation ceremony marking the end of one journey and the beginning of another. Congratulations to all our outstanding students.',
-      timestamp: '2024-06-15T10:00:00Z'
-    },
-    {
-      id: 'post-2',
-      type: 'image',
-      mediaUrl: 'https://images.unsplash.com/photo-1544333346-64e4fe18204b?q=80&w=800&auto=format&fit=crop',
-      description: 'New sports facilities now open! Our commitment to physical education continues with the inauguration of our modern sports complex. Building champions on and off the field.',
-      timestamp: '2024-05-20T14:30:00Z'
-    },
-    {
-      id: 'post-3',
-      type: 'image',
-      mediaUrl: 'https://images.unsplash.com/photo-1564939558297-fc396f18e5c7?q=80&w=800&auto=format&fit=crop',
-      description: 'Annual Science Fair Highlights: Our young scientists showcased incredible innovative projects this week. From robotics to sustainable energy solutions, the future looks bright!',
-      timestamp: '2024-04-10T09:00:00Z'
-    }
-  ],
+  publicPosts: [],
   addPublicPost: (post) => set((state) => ({
     publicPosts: [
       {
@@ -218,11 +196,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     publicPosts: state.publicPosts.filter(p => p.id !== id)
   })),
 
-  notices: [
-    { id: '1', title: 'Term 3 Exams Schedule', content: 'The final schedule for Term 3 exams has been posted in the academic office.', priority: 'High', time: '1 hour ago', expiresAt: '2024-06-30', category: 'Academic', audience: ['school-admin','vice-principal','teacher','student','parent'] },
-    { id: '2', title: 'Bus #4 — 15 min delay', content: 'Heavy traffic near Meskel Square. Route B running behind schedule.', priority: 'Medium', time: '30 mins ago', expiresAt: '2024-05-15', category: 'Logistics', driverName: 'Ato Bekele', audience: ['school-admin','vice-principal','parent','student'] },
-    { id: '3', title: 'Fee deadline extended', content: 'April fee payment deadline extended to May 5th for all branches.', priority: 'High', time: 'Yesterday', expiresAt: '2024-05-05', category: 'Finance', audience: ['school-admin','finance-clerk','parent'] },
-  ],
+  notices: [],
   addNotice: (notice) => set((state) => ({
     notices: [
       {

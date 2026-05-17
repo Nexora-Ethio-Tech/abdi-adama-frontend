@@ -2,7 +2,8 @@ import { Plus, Trash2, BookOpen, Users, Search, Save, X, Settings2, LayoutGrid, 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { mockTeachers } from '../data/mockData';
+import { apiFetch } from '../utils/apiClient';
+import { useEffect } from 'react';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 
 interface CourseFrequency { id: string; subject: string; sessions: string; }
@@ -21,10 +22,24 @@ export const ScheduleBuilder = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [teacherConstraints, setTeacherConstraints] = useState<Record<string, number[]>>({});
+  const [teachers, setTeachers] = useState<any[]>([]);
   const [grades, setGrades] = useState<GradeConfig[]>([
     { id: '1', gradeNumber: '9', sections: ['A','B'], courses: [{ course: 'Mathematics', teacherPerSection: {} },{ course: 'English', teacherPerSection: {} }]},
     { id: '2', gradeNumber: '10', sections: ['A','B'], courses: [{ course: 'Mathematics', teacherPerSection: {} },{ course: 'English', teacherPerSection: {} },{ course: 'Physics', teacherPerSection: {} }]},
   ]);
+
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const res = await apiFetch('/api/school-admin/teachers'); // Adjust endpoint if needed
+        const data = await res.json();
+        if (res.ok) setTeachers(data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch teachers', err);
+      }
+    };
+    fetchTeachers();
+  }, []);
   const [expandedGrade, setExpandedGrade] = useState<string | null>('1');
   const [configView, setConfigView] = useState<'edit' | 'summary'>('edit');
   const [showGeneratedSchedule, setShowGeneratedSchedule] = useState(false);
@@ -34,7 +49,7 @@ export const ScheduleBuilder = () => {
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-  const filteredTeachers = mockTeachers.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredTeachers = teachers.filter(t => t.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const toggleUnavailability = (day: string, period: number) => {
     if (!selectedTeacher) return;
@@ -256,7 +271,7 @@ export const ScheduleBuilder = () => {
                         <tr key={c.course}>
                           <td className="px-4 py-2 font-bold text-slate-700 dark:text-slate-200">{c.course}</td>
                           {g.sections.map(sec => {
-                            const tStr = mockTeachers.find(t => t.id === c.teacherPerSection[sec]);
+                            const tStr = teachers.find(t => t.id === c.teacherPerSection[sec]);
                             return <td key={sec} className="px-4 py-2 text-center">
                               {tStr ? <span className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-[10px] font-bold">{tStr.name}</span> : <span className="text-rose-400 text-[10px] font-bold">{t('schedule.unassigned')}</span>}
                             </td>;
@@ -280,7 +295,7 @@ export const ScheduleBuilder = () => {
             <div className="p-3 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-2xl"><Users size={22} /></div>
             <div className="text-left">
               <p className="font-black text-slate-800 dark:text-white text-lg">{t('schedule.constraints.title')}</p>
-              <p className="text-[10px] text-rose-500 dark:text-rose-400 font-bold uppercase tracking-widest">{t('schedule.constraints.subtitle')} • {mockTeachers.length} {t('nav.teachers')}</p>
+              <p className="text-[10px] text-rose-500 dark:text-rose-400 font-bold uppercase tracking-widest">{t('schedule.constraints.subtitle')} • {teachers.length} {t('nav.teachers')}</p>
             </div>
           </div>
           {showTeacherConstraints ? <ChevronDown size={20} className="text-rose-400" /> : <ChevronRight size={20} className="text-rose-400" />}
@@ -414,7 +429,7 @@ export const ScheduleBuilder = () => {
                                   if (cc === 0) return <td key={day} className="px-4 py-3"><div className="h-10 bg-slate-100 dark:bg-slate-800/50 rounded-xl" /></td>;
                                   const idx = (pIdx + day.length + label.charCodeAt(0)) % cc;
                                   const sc = sectionCourses[idx];
-                                  const teacher = mockTeachers.find(t => t.id === sc.teacherId);
+                                  const teacher = teachers.find(t => t.id === sc.teacherId);
                                   const colors = ['bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100','bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-100','bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-100','bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-100','bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-100'];
                                   return (
                                     <td key={day} className="px-2 py-2">

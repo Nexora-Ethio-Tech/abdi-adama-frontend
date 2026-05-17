@@ -1,21 +1,36 @@
 import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser, type UserRole } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-
-const mockStaff = [
-  { id: 'STF001', name: 'Abebe Kebede', role: 'finance-clerk', branch: 'Main', email: 'abebe@school.com', isBranchAuditor: false },
-  { id: 'STF002', name: 'Almaz Tadesse', role: 'teacher', branch: 'Bole', email: 'almaz@school.com' },
-  { id: 'STF003', name: 'Daniel Bekele', role: 'auditor', branch: 'All', email: 'daniel@school.com' },
-  { id: 'STF004', name: 'Hirut Alemu', role: 'vice-principal', branch: 'Adama', email: 'hirut@school.com' },
-];
+import { apiFetch } from '../utils/apiClient';
 
 export const Staff = () => {
   const navigate = useNavigate();
   const { role: currentUserRole } = useUser();
-  const [staffList, setStaffList] = useState(mockStaff);
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [managingStaff, setManagingStaff] = useState<any | null>(null);
+
+  const fetchStaff = async () => {
+    try {
+      const res = await apiFetch('/api/staff');
+      if (res.ok) {
+        const data = await res.json();
+        setStaffList(data.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch staff:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUserRole === 'super-admin') {
+      fetchStaff();
+    }
+  }, [currentUserRole]);
 
   if (currentUserRole !== 'super-admin') {
     return (
@@ -27,11 +42,21 @@ export const Staff = () => {
     );
   }
 
-  const handleUpdateRole = (e: React.FormEvent) => {
+  const handleUpdateRole = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!managingStaff) return;
-    setStaffList(prev => prev.map(s => s.id === managingStaff.id ? managingStaff : s));
-    setManagingStaff(null);
+    try {
+      const res = await apiFetch(`/api/staff/${managingStaff.id}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: managingStaff.role, is_branch_auditor: managingStaff.isBranchAuditor })
+      });
+      if (res.ok) {
+        fetchStaff();
+        setManagingStaff(null);
+      }
+    } catch (err) {
+      console.error('Failed to update staff role:', err);
+    }
   };
 
   return (
