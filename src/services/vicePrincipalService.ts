@@ -51,6 +51,12 @@ export const toggleGradeLock = async (data: {
   return response.data;
 };
 
+// Student Transcript
+export const getStudentTranscript = async (studentId: string) => {
+  const response = await api.get(`/vice-principal/students/${studentId}/transcript`);
+  return response.data.data;
+};
+
 // Teachers
 export const getVPTeachers = async () => {
   const response = await api.get('/vice-principal/teachers');
