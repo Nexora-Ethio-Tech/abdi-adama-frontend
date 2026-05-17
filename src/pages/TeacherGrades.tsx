@@ -93,7 +93,7 @@ export const TeacherGrades = () => {
       setGrades(gradesData || []);
       
       // Extract unique students from grades
-      const uniqueStudents = Array.from(
+      const uniqueStudents: Student[] = Array.from(
         new Map(
           gradesData.map((g: Grade) => [
             g.student_id,
@@ -102,7 +102,7 @@ export const TeacherGrades = () => {
               name: g.student_name,
               digitalId: g.digital_id,
               grade: g.grade,
-            },
+            } as Student,
           ])
         ).values()
       );
