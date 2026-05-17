@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Users, BookOpen, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Users, BookOpen, ChevronRight, ArrowLeft, Award } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import teacherService, { TeacherClass, ClassStudent } from '../services/teacherService';
 
 export const TeacherClasses = () => {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null);
   const [students, setStudents] = useState<ClassStudent[]>([]);
@@ -83,6 +85,7 @@ export const TeacherClasses = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Grade</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Attendance</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -108,6 +111,15 @@ export const TeacherClasses = () => {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {student.attendanceRate ? `${student.attendanceRate}%` : 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => navigate(`/teacher-student-grades/${student.id}`)}
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                    >
+                      <Award className="w-4 h-4" />
+                      View Grades
+                    </button>
                   </td>
                 </tr>
               ))}
