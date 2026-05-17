@@ -1,67 +1,117 @@
 import { useState, useEffect } from 'react';
-import { Award, Edit2, X, Plus, TrendingUp } from 'lucide-react';
+import { Award, Edit2, X, Plus, TrendingUp, Trash2, Save, Users } from 'lucide-react';
 import * as teacherService from '../services/teacherService';
 
+interface Course {
+  id: string;
+  name: string;
+  code: string;
+  gradeLevel: string;
+}
+
+interface Student {
+  id: string;
+  name: string;
+  digitalId: string;
+  grade: string;
+}
+
+interface Grade {
+  id: string;
+  student_id: string;
+  course_id: string;
+  type: string;
+  score: number;
+  total: number;
+  weight: string;
+  created_at: string;
+  student_name: string;
+  digital_id: string;
+  grade: string;
+}
+
 export const TeacherGrades = () => {
-  const [classes, setClasses] = useState<teacherService.TeacherClass[]>([]);
-  const [selectedClass, setSelectedClass] = useState('');
-  const [students, setStudents] = useState<teacherService.ClassStudent[]>([]);
-  const [grades, setGrades] = useState<teacherService.Grade[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState('');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedGrade, setSelectedGrade] = useState<teacherService.Grade | null>(null);
-  const [formData, setFormData] = useState<teacherService.SubmitGradeData>({
+  const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
+  const [bulkGrades, setBulkGrades] = useState<Record<string, { score: number; total: number }>>({});
+  const [formData, setFormData] = useState({
     studentId: '',
-    classId: '',
-    subject: '',
-    assessmentType: 'Quiz',
+    courseId: '',
+    type: 'Mid-Exam',
     score: 0,
-    maxScore: 100,
-    term: 'Term 1',
-    academicYear: '2024/2025',
-    remarks: '',
+    total: 100,
+    weight: '30',
   });
 
   useEffect(() => {
-    fetchClasses();
+    fetchCourses();
   }, []);
 
   useEffect(() => {
-    if (selectedClass) {
-      fetchStudentsAndGrades();
+    if (selectedCourse) {
+      fetchGrades();
     }
-  }, [selectedClass]);
+  }, [selectedCourse]);
 
-  const fetchClasses = async () => {
+  const fetchCourses = async () => {
     try {
       setLoading(true);
-      const data = await teacherService.getMyClasses();
-      setClasses(data);
-      if (data.length > 0) {
-        setSelectedClass(data[0].id);
-        setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, classId: data[0].id, subject: data[0].subject }));
+      // TODO: Replace with actual course endpoint when available
+      const classes = await teacherService.getMyClasses();
+      // Map classes to courses for now
+      const coursesData = classes.map((cls: any) => ({
+        id: cls.id,
+        name: cls.subject || cls.name,
+        code: cls.section || 'N/A',
+        gradeLevel: cls.gradeLevel || cls.name,
+      }));
+      setCourses(coursesData);
+      if (coursesData.length > 0) {
+        setSelectedCourse(coursesData[0].id);
+        setFormData((prev) => ({ ...prev, courseId: coursesData[0].id }));
       }
     } catch (err) {
-      console.error('Failed to fetch classes:', err);
+      console.error('Failed to fetch courses:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchStudentsAndGrades = async () => {
+  const fetchGrades = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [studentsData, gradesData] = await Promise.all([
-        teacherService.getClassStudents(selectedClass),
-        teacherService.getClassGrades(selectedClass)
-      ]);
-      setStudents(studentsData);
-      setGrades(gradesData);
+      const gradesData = await teacherService.getCourseGrades(selectedCourse);
+      setGrades(gradesData || []);
+      
+      // Extract unique students from grades
+      const uniqueStudents = Array.from(
+        new Map(
+          gradesData.map((g: Grade) => [
+            g.student_id,
+            {
+              id: g.student_id,
+              name: g.student_name,
+              digitalId: g.digital_id,
+              grade: g.grade,
+            },
+          ])
+        ).values()
+      );
+      setStudents(uniqueStudents);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch data');
+      console.error('Failed to fetch grades:', err);
+      setError(err.response?.data?.error?.message || 'Failed to load grades');
+      setGrades([]);
+      setStudents([]);
     } finally {
       setLoading(false);
     }
@@ -70,12 +120,48 @@ export const TeacherGrades = () => {
   const handleSubmitGrade = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await teacherService.submitGrade(formData);
+      await teacherService.enterGrade(formData);
       setShowAddModal(false);
       resetForm();
-      fetchStudentsAndGrades();
+      fetchGrades();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to submit grade');
+      const errorMsg = err.response?.status === 423
+        ? 'Grades are locked. Contact Vice Principal to unlock.'
+        : err.response?.data?.error?.message || 'Failed to submit grade';
+      alert(errorMsg);
+    }
+  };
+
+  const handleBulkSubmit = async () => {
+    try {
+      const gradesArray = Object.entries(bulkGrades)
+        .filter(([_, data]) => data.score > 0)
+        .map(([studentId, data]) => ({
+          studentId,
+          type: formData.type,
+          score: data.score,
+          total: data.total,
+          weight: formData.weight,
+        }));
+
+      if (gradesArray.length === 0) {
+        alert('Please enter at least one grade');
+        return;
+      }
+
+      await teacherService.bulkEnterGrades({
+        courseId: selectedCourse,
+        grades: gradesArray,
+      });
+      
+      setShowBulkModal(false);
+      setBulkGrades({});
+      fetchGrades();
+    } catch (err: any) {
+      const errorMsg = err.response?.status === 423
+        ? 'Grades are locked. Contact Vice Principal to unlock.'
+        : err.response?.data?.error?.message || 'Failed to submit grades';
+      alert(errorMsg);
     }
   };
 
@@ -83,63 +169,74 @@ export const TeacherGrades = () => {
     e.preventDefault();
     if (!selectedGrade) return;
     try {
-      const updateData: teacherService.UpdateGradeData = {
+      await teacherService.updateGrade(selectedGrade.id, {
         score: formData.score,
-        maxScore: formData.maxScore,
-        remarks: formData.remarks,
-      };
-      await teacherService.updateGrade(selectedGrade.id, updateData);
+        total: formData.total,
+        type: formData.type,
+        weight: formData.weight,
+      });
       setShowEditModal(false);
       setSelectedGrade(null);
-      fetchStudentsAndGrades();
+      fetchGrades();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update grade');
+      const errorMsg = err.response?.status === 423
+        ? 'Grades are locked. Contact Vice Principal to unlock.'
+        : err.response?.data?.error?.message || 'Failed to update grade';
+      alert(errorMsg);
     }
   };
 
-  const openEditModal = (grade: teacherService.Grade) => {
+  const handleDeleteGrade = async (gradeId: string) => {
+    if (!confirm('Are you sure you want to delete this grade?')) return;
+    try {
+      await teacherService.deleteGrade(gradeId);
+      fetchGrades();
+    } catch (err: any) {
+      const errorMsg = err.response?.status === 423
+        ? 'Grades are locked. Contact Vice Principal to unlock.'
+        : err.response?.data?.error?.message || 'Failed to delete grade';
+      alert(errorMsg);
+    }
+  };
+
+  const openEditModal = (grade: Grade) => {
     setSelectedGrade(grade);
     setFormData({
-      studentId: grade.studentId,
-      classId: grade.classId,
-      subject: grade.subject,
-      assessmentType: grade.assessmentType,
+      studentId: grade.student_id,
+      courseId: grade.course_id,
+      type: grade.type,
       score: grade.score,
-      maxScore: grade.maxScore,
-      term: grade.term,
-      academicYear: grade.academicYear,
-      remarks: grade.remarks || '',
+      total: grade.total,
+      weight: grade.weight,
     });
     setShowEditModal(true);
   };
 
   const resetForm = () => {
-    const selectedClassData = classes.find(c => c.id === selectedClass);
     setFormData({
       studentId: '',
-      classId: selectedClass,
-      subject: selectedClassData?.subject || '',
-      assessmentType: 'Quiz',
+      courseId: selectedCourse,
+      type: 'Mid-Exam',
       score: 0,
-      maxScore: 100,
-      term: 'Term 1',
-      academicYear: '2024/2025',
-      remarks: '',
+      total: 100,
+      weight: '30',
     });
   };
 
   const getStudentGrades = (studentId: string) => {
-    return grades.filter(g => g.studentId === studentId);
+    return grades.filter((g) => g.student_id === studentId);
   };
 
   const calculateAverage = (studentId: string) => {
     const studentGrades = getStudentGrades(studentId);
     if (studentGrades.length === 0) return 'N/A';
-    const avg = studentGrades.reduce((sum, g) => sum + g.percentage, 0) / studentGrades.length;
+    const avg =
+      studentGrades.reduce((sum, g) => sum + (g.score / g.total) * 100, 0) /
+      studentGrades.length;
     return avg.toFixed(1) + '%';
   };
 
-  if (loading && !classes.length) {
+  if (loading && !courses.length) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -151,19 +248,28 @@ export const TeacherGrades = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Grade Management</h1>
-          <p className="text-gray-600">Enter and manage student grades</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Grade Management</h1>
+          <p className="text-gray-600 dark:text-gray-400">Enter and manage student grades by course</p>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowAddModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-5 h-5" />
-          Add Grade
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowBulkModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            <Users className="w-5 h-5" />
+            Bulk Entry
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            <Plus className="w-5 h-5" />
+            Add Grade
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -172,20 +278,19 @@ export const TeacherGrades = () => {
         </div>
       )}
 
-      <div className="mb-6 bg-white rounded-lg shadow p-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Select Class</label>
+      <div className="mb-6 bg-white dark:bg-slate-900 rounded-lg shadow p-4">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Course</label>
         <select
-          value={selectedClass}
+          value={selectedCourse}
           onChange={(e) => {
-            setSelectedClass(e.target.value);
-            const cls = classes.find(c => c.id === e.target.value);
-            setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, classId: e.target.value, subject: cls?.subject || '' }));
+            setSelectedCourse(e.target.value);
+            setFormData((prev) => ({ ...prev, courseId: e.target.value }));
           }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         >
-          {classes.map((cls) => (
-            <option key={cls.id} value={cls.id}>
-              {cls.name} - {cls.section} ({cls.subject})
+          {courses.map((course) => (
+            <option key={course.id} value={course.id}>
+              {course.name} ({course.code}) - {course.gradeLevel}
             </option>
           ))}
         </select>
@@ -209,10 +314,10 @@ export const TeacherGrades = () => {
                 <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">
-                        {student.firstName[0]}{student.lastName[0]}
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
+                        {student.name.split(' ').map(n => n[0]).join('')}
                       </div>
-                      <span className="font-medium text-gray-900">{student.firstName} {student.lastName}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">{student.name}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{student.digitalId}</td>
@@ -230,7 +335,7 @@ export const TeacherGrades = () => {
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => {
-                        setFormData((prev: teacherService.SubmitGradeData) => ({ ...prev, studentId: student.id }));
+                        setFormData((prev) => ({ ...prev, studentId: student.id }));
                         setShowAddModal(true);
                       }}
                       className="text-blue-600 hover:text-blue-700 font-medium text-sm"
@@ -264,41 +369,52 @@ export const TeacherGrades = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assessment</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Term</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Weight</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {grades.slice(0, 10).map((grade) => (
+                {grades.slice(0, 10).map((grade) => {
+                  const percentage = ((grade.score / grade.total) * 100).toFixed(1);
+                  return (
                   <tr key={grade.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{grade.studentName}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{grade.student_name}</td>
                     <td className="px-6 py-4">
                       <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                        {grade.assessmentType}
+                        {grade.type}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{grade.score}/{grade.maxScore}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{grade.score}/{grade.total}</td>
                     <td className="px-6 py-4">
                       <span className={`font-bold ${
-                        grade.percentage >= 80 ? 'text-green-600' :
-                        grade.percentage >= 60 ? 'text-blue-600' :
-                        grade.percentage >= 40 ? 'text-yellow-600' :
+                        Number(percentage) >= 80 ? 'text-green-600' :
+                        Number(percentage) >= 60 ? 'text-blue-600' :
+                        Number(percentage) >= 40 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {grade.percentage}%
+                        {percentage}%
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{grade.term}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-sm text-gray-600">{grade.weight}%</td>
+                    <td className="px-6 py-4 text-right flex gap-2 justify-end">
                       <button
                         onClick={() => openEditModal(grade)}
                         className="p-1 text-gray-600 hover:text-blue-600"
+                        title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => handleDeleteGrade(grade.id)}
+                        className="p-1 text-gray-600 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -327,7 +443,7 @@ export const TeacherGrades = () => {
                   <option value="">Select Student</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.id}>
-                      {student.firstName} {student.lastName} ({student.digitalId})
+                      {student.name} ({student.digitalId})
                     </option>
                   ))}
                 </select>
@@ -336,19 +452,19 @@ export const TeacherGrades = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Type *</label>
                 <select
                   required
-                  value={formData.assessmentType}
-                  onChange={(e) => setFormData({ ...formData, assessmentType: e.target.value as any })}
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 >
+                  <option value="Mid-Exam">Mid-Exam</option>
+                  <option value="Final-Exam">Final-Exam</option>
                   <option value="Quiz">Quiz</option>
-                  <option value="Exam">Exam</option>
                   <option value="Assignment">Assignment</option>
-                  <option value="Project">Project</option>
-                  <option value="Midterm">Midterm</option>
-                  <option value="Final">Final</option>
+                  <option value="Class-Work">Class-Work</option>
+                  <option value="Home-Work">Home-Work</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Score *</label>
                   <input
@@ -361,50 +477,28 @@ export const TeacherGrades = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Score *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total *</label>
                   <input
                     type="number"
                     required
                     min="1"
-                    value={formData.maxScore}
-                    onChange={(e) => setFormData({ ...formData, maxScore: Number(e.target.value) })}
+                    value={formData.total}
+                    onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Term *</label>
-                  <select
-                    required
-                    value={formData.term}
-                    onChange={(e) => setFormData({ ...formData, term: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="Term 1">Term 1</option>
-                    <option value="Term 2">Term 2</option>
-                    <option value="Term 3">Term 3</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
                   <input
-                    type="text"
+                    type="number"
                     required
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                    min="0"
+                    max="100"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                <textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  rows={2}
-                />
               </div>
               <div className="flex gap-3">
                 <button
@@ -438,10 +532,10 @@ export const TeacherGrades = () => {
             </div>
             <form onSubmit={handleUpdateGrade} className="space-y-4">
               <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Student: <span className="font-medium text-gray-900">{selectedGrade.studentName}</span></p>
-                <p className="text-sm text-gray-600">Assessment: <span className="font-medium text-gray-900">{selectedGrade.assessmentType}</span></p>
+                <p className="text-sm text-gray-600">Student: <span className="font-medium text-gray-900">{selectedGrade.student_name}</span></p>
+                <p className="text-sm text-gray-600">Assessment: <span className="font-medium text-gray-900">{selectedGrade.type}</span></p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Score *</label>
                   <input
@@ -454,25 +548,28 @@ export const TeacherGrades = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Score *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Total *</label>
                   <input
                     type="number"
                     required
                     min="1"
-                    value={formData.maxScore}
-                    onChange={(e) => setFormData({ ...formData, maxScore: Number(e.target.value) })}
+                    value={formData.total}
+                    onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-                <textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  rows={2}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    max="100"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
               </div>
               <div className="flex gap-3">
                 <button
