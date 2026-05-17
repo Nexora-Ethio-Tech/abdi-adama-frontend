@@ -93,19 +93,18 @@ export const TeacherGrades = () => {
       setGrades(gradesData || []);
       
       // Extract unique students from grades
-      const uniqueStudents: Student[] = Array.from(
-        new Map(
-          gradesData.map((g: Grade) => [
-            g.student_id,
-            {
-              id: g.student_id,
-              name: g.student_name,
-              digitalId: g.digital_id,
-              grade: g.grade,
-            } as Student,
-          ])
-        ).values()
-      );
+      const studentMap = new Map<string, Student>();
+      gradesData.forEach((g: Grade) => {
+        if (!studentMap.has(g.student_id)) {
+          studentMap.set(g.student_id, {
+            id: g.student_id,
+            name: g.student_name,
+            digitalId: g.digital_id,
+            grade: g.grade,
+          });
+        }
+      });
+      const uniqueStudents = Array.from(studentMap.values());
       setStudents(uniqueStudents);
     } catch (err: any) {
       console.error('Failed to fetch grades:', err);
