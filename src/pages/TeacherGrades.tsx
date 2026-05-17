@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Award, Edit2, X, Plus, TrendingUp, Trash2, Save, Users } from 'lucide-react';
+import { Award, Edit2, X, Plus, TrendingUp, Trash2, Users } from 'lucide-react';
 import * as teacherService from '../services/teacherService';
 
 interface Course {
@@ -38,10 +38,8 @@ export const TeacherGrades = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
-  const [bulkGrades, setBulkGrades] = useState<Record<string, { score: number; total: number }>>({});
   const [formData, setFormData] = useState({
     studentId: '',
     courseId: '',
@@ -128,39 +126,6 @@ export const TeacherGrades = () => {
       const errorMsg = err.response?.status === 423
         ? 'Grades are locked. Contact Vice Principal to unlock.'
         : err.response?.data?.error?.message || 'Failed to submit grade';
-      alert(errorMsg);
-    }
-  };
-
-  const handleBulkSubmit = async () => {
-    try {
-      const gradesArray = Object.entries(bulkGrades)
-        .filter(([_, data]) => data.score > 0)
-        .map(([studentId, data]) => ({
-          studentId,
-          type: formData.type,
-          score: data.score,
-          total: data.total,
-          weight: formData.weight,
-        }));
-
-      if (gradesArray.length === 0) {
-        alert('Please enter at least one grade');
-        return;
-      }
-
-      await teacherService.bulkEnterGrades({
-        courseId: selectedCourse,
-        grades: gradesArray,
-      });
-      
-      setShowBulkModal(false);
-      setBulkGrades({});
-      fetchGrades();
-    } catch (err: any) {
-      const errorMsg = err.response?.status === 423
-        ? 'Grades are locked. Contact Vice Principal to unlock.'
-        : err.response?.data?.error?.message || 'Failed to submit grades';
       alert(errorMsg);
     }
   };
@@ -252,13 +217,6 @@ export const TeacherGrades = () => {
           <p className="text-gray-600 dark:text-gray-400">Enter and manage student grades by course</p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => setShowBulkModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            <Users className="w-5 h-5" />
-            Bulk Entry
-          </button>
           <button
             onClick={() => {
               resetForm();
