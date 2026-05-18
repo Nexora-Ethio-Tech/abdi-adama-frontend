@@ -251,3 +251,82 @@ export const removeStudentFromClass = async (studentId: string) => {
   const response = await api.delete(`/school-admin/students/${studentId}/remove-class`);
   return response.data;
 };
+
+// At-Risk Students Interface
+export interface AtRiskStudent {
+  student_id: string;
+  user_id: string;
+  digital_id: string;
+  name: string;
+  email: string;
+  grade: string;
+  risk_level: 'High' | 'Medium';
+  risk_factor: string;
+  absence_count: string;
+  average_grade: string;
+  monthly_fee: string;
+  bus_fee: string;
+  penalty_fee: string;
+  fee_status: 'standard' | 'reduced';
+  created_at: string;
+}
+
+export interface AtRiskStudentsResponse {
+  students: AtRiskStudent[];
+  summary: {
+    high: number;
+    medium: number;
+  };
+}
+
+// Event Interface
+export interface Event {
+  id: string;
+  title: string;
+  date: string;
+  type: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface CreateEventData {
+  title: string;
+  date: string;
+  type: string;
+  description?: string;
+}
+
+export interface UpdateEventData {
+  title?: string;
+  date?: string;
+  type?: string;
+  description?: string;
+}
+
+// At-Risk Students
+export const getAtRiskStudents = async (): Promise<AtRiskStudentsResponse> => {
+  const response = await api.get('/school-admin/dashboard/at-risk-students');
+  return response.data.data;
+};
+
+// Events
+export const getUpcomingEvents = async (limit: number = 10): Promise<Event[]> => {
+  const response = await api.get('/school-admin/dashboard/upcoming-events', {
+    params: { limit }
+  });
+  return response.data.data;
+};
+
+export const createEvent = async (data: CreateEventData): Promise<Event> => {
+  const response = await api.post('/school-admin/events', data);
+  return response.data.data;
+};
+
+export const updateEvent = async (eventId: string, data: UpdateEventData): Promise<Event> => {
+  const response = await api.patch(`/school-admin/events/${eventId}`, data);
+  return response.data.data;
+};
+
+export const deleteEvent = async (eventId: string): Promise<void> => {
+  await api.delete(`/school-admin/events/${eventId}`);
+};
