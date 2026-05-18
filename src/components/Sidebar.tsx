@@ -20,7 +20,8 @@ import {
   Megaphone,
   GraduationCap,
   ClipboardCheck,
-  Lock
+  Lock,
+  DollarSign
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -89,6 +90,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
+          { icon: DollarSign, label: 'Finance Staff', path: '/finance-staff' },
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
           { icon: BookOpen, label: t('nav.scheduleBuilder'), path: '/schedule-builder' },
           { icon: Package, label: t('nav.inventory'), path: '/inventory' },
