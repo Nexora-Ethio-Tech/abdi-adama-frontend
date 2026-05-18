@@ -1,6 +1,5 @@
 
 import { CreditCard, ArrowUpRight, ArrowDownRight, Search, FileText, Users, Plus, X, Check, AlertCircle, Bell, History, ShieldCheck, Clock, Filter, ChevronDown, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
-import { mockFinances, mockStudents } from '../data/mockData';
 import { useUser } from '../context/UserContext';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -85,17 +84,9 @@ export const Finance = () => {
   const [toDateTime, setToDateTime] = useState(toInputDateTimeValue(now));
   const [netProfitSummary, setNetProfitSummary] = useState<NetProfitSummary | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [enrollmentQueue, setEnrollmentQueue] = useState([
-    { id: 'ENR1', name: 'Dawit Abebe', grade: '8', amount: 7700, email: 'abebe.k@gmail.com', confirmed: false, failed: false },
-    { id: 'ENR2', name: 'Hanna Mekonnen', grade: '9', amount: 8200, email: 'mekonnen.t@gmail.com', confirmed: false, failed: false },
-  ]);
+  const [enrollmentQueue, setEnrollmentQueue] = useState([]);
 
-  const [paymentStatus, setPaymentStatus] = useState<Record<string, PaymentLog[]>>({
-    '1': [{ status: true, modifiedBy: 'Ato Bekele', approverName: 'W/ro Almaz', timestamp: '2026-04-01T09:00:00' }],
-    '2': [{ status: false, modifiedBy: 'Ato Bekele', approverName: 'W/ro Almaz', timestamp: '2026-04-01T09:00:00' }],
-    '3': [{ status: false, modifiedBy: 'Ato Bekele', approverName: 'W/ro Almaz', timestamp: '2026-04-01T09:00:00' }],
-    '6': [{ status: false, modifiedBy: 'Ato Bekele', approverName: 'W/ro Almaz', timestamp: '2026-04-01T09:00:00' }],
-  });
+  const [paymentStatus, setPaymentStatus] = useState<Record<string, PaymentLog[]>>({});
 
   const [activeView, setActiveView] = useState<'main' | 'audit'>('main');
   const [dbSummary, setDbSummary] = useState<any>(null);
@@ -113,6 +104,7 @@ export const Finance = () => {
   const AUDIT_PAGE_SIZE = 10;
 
   const fetchData = useCallback(async () => {
+    if (!isAdmin) return; // finance-clerk uses /finance-dashboard, not this page
     try {
       const [sumRes, txRes] = await Promise.all([
         fetch(`${API}/api/finance/summary`, { headers: authHeaders() }),
@@ -123,7 +115,7 @@ export const Finance = () => {
     } catch (err) {
       console.error('Failed to fetch finance data', err);
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -137,45 +129,11 @@ export const Finance = () => {
     return current >= from && current <= to;
   };
 
-  const summaryApprovers: Record<string, string> = {
-    S1: 'W/ro Selam (Finance Clerk)',
-    S2: 'Ato Mekonnen (School Admin)',
-    S3: 'W/ro Hana (Procurement Officer)'
-  };
+  const summariesWithApproval: SummaryWithApproval[] = [];
 
-  const summariesWithApproval: SummaryWithApproval[] = mockFinances.summaries.map((summary) => ({
-    ...summary,
-    approvedBy: summaryApprovers[summary.id] ?? 'Finance Office',
-    timestamp: `${summary.date}T12:00:00`
-  }));
+  const feeAuditLogs: AuditLogItem[] = [];
 
-  const feeAuditLogs: AuditLogItem[] = Object.entries(paymentStatus).flatMap(([id, logs]) => {
-    const student = mockStudents.find(s => s.id === id);
-    return logs.map(log => ({
-      ...log,
-      studentName: student?.name || 'Unknown Student',
-      studentId: id,
-      section: student?.grade || 'N/A',
-      category: 'Fees' as const,
-      direction: log.status ? 'In' as const : 'Out' as const,
-      actionLabel: log.status ? 'Fee Payment Approved' : 'Fee Status Reversed'
-    }));
-  });
-
-  const opsAuditLogs: AuditLogItem[] = summariesWithApproval
-    .filter((summary) => summary.category !== 'Student Fees')
-    .map((summary) => ({
-      status: summary.type === 'Income',
-      modifiedBy: 'Ato Girma',
-      approverName: summary.approvedBy,
-      timestamp: summary.timestamp,
-      studentName: summary.description,
-      studentId: summary.id,
-      section: 'N/A',
-      category: 'Staff',
-      direction: summary.type === 'Income' ? 'In' : 'Out',
-      actionLabel: summary.type === 'Income' ? 'Income Recorded' : 'Expense Recorded'
-    }));
+  const opsAuditLogs: AuditLogItem[] = [];
 
   const allAuditLogs = [...feeAuditLogs, ...opsAuditLogs].sort((a, b) =>
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
@@ -623,7 +581,7 @@ export const Finance = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                {mockStudents.map((student) => {
+                {[].map((student: any) => {
                   const logs = paymentStatus[student.id] || [];
                   const isPaid = logs.length > 0 ? logs[0].status : false;
                   const scholarship = (student as any).isScholarship;

@@ -140,7 +140,7 @@ function App() {
             <Route path="dashboard/student" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
             <Route path="dashboard/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentPortal /></ProtectedRoute>} />
             <Route path="dashboard/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverPortal /></ProtectedRoute>} />
-            <Route path="dashboard/finance" element={<ProtectedRoute allowedRoles={['finance-clerk']}><Finance /></ProtectedRoute>} />
+            <Route path="dashboard/finance" element={<ProtectedRoute allowedRoles={['finance-clerk']}><FinanceClerkDashboard /></ProtectedRoute>} />
             <Route path="dashboard/vice-principal" element={<ProtectedRoute allowedRoles={['vice-principal']}><VicePrincipalDashboard /></ProtectedRoute>} />
             <Route path="dashboard/librarian" element={<ProtectedRoute allowedRoles={['librarian']}><Library /></ProtectedRoute>} />
             <Route path="dashboard/clinic-admin" element={<ProtectedRoute allowedRoles={['clinic-admin']}><Clinic /></ProtectedRoute>} />
