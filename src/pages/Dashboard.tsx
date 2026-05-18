@@ -2,12 +2,11 @@
 import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
-import { mockStudents } from '../data/mockData';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
-import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers } from '../services/schoolAdminService';
+import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 import classService from '../services/classService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
@@ -38,6 +37,8 @@ export const Dashboard = () => {
   // API Integration: Fetch real dashboard stats
   const [dashboardStats, setDashboardStats] = useState<any>(null);
   const [schoolAdminStats, setSchoolAdminStats] = useState<any>(null);
+  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,12 +53,14 @@ export const Dashboard = () => {
             setDashboardStats(response.data);
           }
         } else if (role === 'school-admin') {
-          const [data, studentsRes, teachersRes, classesRes, pendingStudentsRes] = await Promise.all([
+          const [data, studentsRes, teachersRes, classesRes, pendingStudentsRes, atRiskData, eventsData] = await Promise.all([
             getSchoolAdminDashboard(),
             getBranchUsers('student', 'Approved'),
             getBranchTeachers(),
             classService.getAllClasses(),
-            getBranchUsers('student', 'Pending')
+            getBranchUsers('student', 'Pending'),
+            getAtRiskStudents(),
+            getUpcomingEvents(5)
           ]);
           const approvedTeachers = (teachersRes.data || []).filter((t: any) => t.status === 'Approved');
           setSchoolAdminStats({
@@ -67,6 +70,8 @@ export const Dashboard = () => {
             totalClasses: classesRes.data?.length || 0,
             pendingApplications: pendingStudentsRes.data?.length || 0
           });
+          setAtRiskStudents(atRiskData.students || []);
+          setUpcomingEvents(eventsData || []);
         }
       } catch (err: any) {
         console.error('❌ Dashboard API Error:', err);
@@ -646,60 +651,61 @@ export const Dashboard = () => {
             </div>
             {watchlistExpanded && (
               <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
-                {mockStudents.filter(s => s.riskLevel === 'High' || s.riskLevel === 'Medium').slice(0, 4).map((student, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${student.riskLevel === 'High' ? 'bg-rose-500' : 'bg-amber-500'}`} />
-                      <div>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{student.name}</p>
-                        <p className="text-[10px] text-slate-400 font-medium uppercase">Grade {student.grade} • {student.riskLevel} Risk</p>
-                      </div>
-                    </div>
-                    <Link to={`/students/${student.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all">
-                      <ArrowRight size={16} />
-                    </Link>
+                {atRiskStudents.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-slate-500">No at-risk students at this time</p>
                   </div>
-                ))}
+                ) : (
+                  atRiskStudents.slice(0, 4).map((student) => (
+                    <div key={student.student_id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${student.risk_level === 'High' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{student.name}</p>
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">{student.grade} • {student.risk_level} Risk</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{student.risk_factor}</p>
+                        </div>
+                      </div>
+                      <Link to={`/students/${student.student_id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white dark:hover:bg-slate-800 rounded-lg transition-all">
+                        <ArrowRight size={16} />
+                      </Link>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
         )}
 
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-6">Recent Activity</h3>
-          <div className="space-y-6">
-            {[
-              { text: 'Annual Sports Day event created', time: '2 hours ago', office: 'Admin Office' },
-              { text: 'Monthly newsletter sent to parents', time: '5 hours ago', office: 'Communications' },
-              { text: 'Staff meeting agenda updated', time: 'Yesterday', office: 'Academic Office' },
-              { text: 'Quarterly financial report finalized', time: '2 days ago', office: 'Finance Dept' },
-            ].map((activity, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 flex-shrink-0"></div>
-                <div>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{activity.text}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{activity.time} • {activity.office}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-6">Upcoming Events</h3>
-          <div className="space-y-6">
-            {[1, 2].map((i) => (
-              <div key={i} className="flex gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
-                <div className="text-center px-3 border-r border-slate-200 dark:border-slate-700">
-                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">15</p>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">Apr</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">Teacher-Parent Conference</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">09:00 AM - 12:00 PM • Main Hall</p>
-                </div>
+          <div className="space-y-4">
+            {upcomingEvents.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-slate-500">No upcoming events scheduled</p>
               </div>
-            ))}
+            ) : (
+              upcomingEvents.map((event) => {
+                const eventDate = new Date(event.date);
+                const day = eventDate.getDate();
+                const month = eventDate.toLocaleDateString('en-US', { month: 'short' });
+                return (
+                  <div key={event.id} className="flex gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700">
+                    <div className="text-center px-3 border-r border-slate-200 dark:border-slate-700">
+                      <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{day}</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase">{month}</p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{event.title}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{event.type}</p>
+                      {event.description && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">{event.description}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
