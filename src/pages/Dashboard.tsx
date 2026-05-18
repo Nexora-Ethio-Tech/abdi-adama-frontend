@@ -1,12 +1,12 @@
 
-import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2 } from 'lucide-react';
+import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2, Edit, Calendar } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
-import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, type AtRiskStudent, type Event } from '../services/schoolAdminService';
+import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 import classService from '../services/classService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
@@ -31,6 +31,8 @@ export const Dashboard = () => {
   const { selectedBranchId, setSelectedBranchId, notices, addNotice, deleteNotice } = useStore();
   const { t } = useTranslation();
   const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [watchlistExpanded, setWatchlistExpanded] = useState(true);
   const isSuperAdmin = role === 'super-admin';
 
@@ -83,6 +85,65 @@ export const Dashboard = () => {
 
     fetchDashboardStats();
   }, [role]);
+
+  // Event Management Handlers
+  const refreshEvents = async () => {
+    try {
+      const eventsData = await getUpcomingEvents(5);
+      setUpcomingEvents(eventsData || []);
+    } catch (err) {
+      console.error('Failed to refresh events:', err);
+    }
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    try {
+      await createEvent({
+        title: formData.get('title') as string,
+        date: formData.get('date') as string,
+        type: formData.get('type') as string,
+        description: formData.get('description') as string || undefined
+      });
+      setShowEventModal(false);
+      refreshEvents();
+      alert('Event created successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to create event');
+    }
+  };
+
+  const handleUpdateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+    const formData = new FormData(e.currentTarget);
+    try {
+      await updateEvent(editingEvent.id, {
+        title: formData.get('title') as string,
+        date: formData.get('date') as string,
+        type: formData.get('type') as string,
+        description: formData.get('description') as string || undefined
+      });
+      setShowEventModal(false);
+      setEditingEvent(null);
+      refreshEvents();
+      alert('Event updated successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update event');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${eventTitle}"?`)) return;
+    try {
+      await deleteEvent(eventId);
+      setUpcomingEvents(prev => prev.filter(e => e.id !== eventId));
+      alert('Event deleted successfully!');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to delete event');
+    }
+  };
 
   const isAdmin = role === 'super-admin' || role === 'school-admin';
   const isVP = role === 'vice-principal';
@@ -678,7 +739,21 @@ export const Dashboard = () => {
         )}
 
         <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-6">Upcoming Events</h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Upcoming Events</h3>
+            {role === 'school-admin' && (
+              <button
+                onClick={() => {
+                  setEditingEvent(null);
+                  setShowEventModal(true);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                <Plus size={14} />
+                Add Event
+              </button>
+            )}
+          </div>
           <div className="space-y-4">
             {upcomingEvents.length === 0 ? (
               <div className="text-center py-8">
@@ -702,6 +777,27 @@ export const Dashboard = () => {
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-2">{event.description}</p>
                       )}
                     </div>
+                    {role === 'school-admin' && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingEvent(event);
+                            setShowEventModal(true);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Edit Event"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteEvent(event.id, event.title)}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Delete Event"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -766,6 +862,79 @@ export const Dashboard = () => {
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
                   <Bell size={18} />
                   <span>Publish Notice</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showEventModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">
+                {editingEvent ? 'Edit Event' : 'Create New Event'}
+              </h3>
+              <button onClick={() => {
+                setShowEventModal(false);
+                setEditingEvent(null);
+              }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form className="p-6 space-y-4" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
+                <input 
+                  name="title" 
+                  required 
+                  type="text" 
+                  defaultValue={editingEvent?.title}
+                  placeholder="e.g. Parent-Teacher Meeting" 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
+                  <input 
+                    name="date" 
+                    required 
+                    type="date" 
+                    defaultValue={editingEvent?.date}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+                  <select 
+                    name="type" 
+                    required
+                    defaultValue={editingEvent?.type}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
+                    <option value="Meeting">Meeting</option>
+                    <option value="Event">Event</option>
+                    <option value="Exam">Exam</option>
+                    <option value="Holiday">Holiday</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
+                <textarea 
+                  name="description" 
+                  rows={3} 
+                  defaultValue={editingEvent?.description || ''}
+                  placeholder="Event details..." 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                />
+              </div>
+              <div className="pt-4">
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
+                  <Calendar size={18} />
+                  <span>{editingEvent ? 'Update Event' : 'Create Event'}</span>
                 </button>
               </div>
             </form>
