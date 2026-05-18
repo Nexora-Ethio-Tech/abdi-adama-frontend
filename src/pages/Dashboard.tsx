@@ -1,5 +1,5 @@
 
-import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2, Edit, Calendar } from 'lucide-react';
+import { Users, GraduationCap, Clock, TrendingUp, Lock, Unlock, Megaphone, Plus, X, Bell, Book, BookOpen, AlertTriangle, ShieldAlert, ArrowRight, ArrowLeft, Trash2, Edit, Calendar, CheckCircle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -34,6 +34,9 @@ export const Dashboard = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [watchlistExpanded, setWatchlistExpanded] = useState(true);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
   const isSuperAdmin = role === 'super-admin';
 
   // API Integration: Fetch real dashboard stats
@@ -108,9 +111,10 @@ export const Dashboard = () => {
       });
       setShowEventModal(false);
       refreshEvents();
-      alert('Event created successfully!');
+      setSuccessMessage('Event created successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to create event');
+      setError(err.response?.data?.message || 'Failed to create event');
     }
   };
 
@@ -128,20 +132,26 @@ export const Dashboard = () => {
       setShowEventModal(false);
       setEditingEvent(null);
       refreshEvents();
-      alert('Event updated successfully!');
+      setSuccessMessage('Event updated successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to update event');
+      setError(err.response?.data?.message || 'Failed to update event');
     }
   };
 
-  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
-    if (!confirm(`Are you sure you want to delete "${eventTitle}"?`)) return;
+  const handleDeleteEvent = async () => {
+    if (!deletingEvent) return;
     try {
-      await deleteEvent(eventId);
-      setUpcomingEvents(prev => prev.filter(e => e.id !== eventId));
-      alert('Event deleted successfully!');
+      await deleteEvent(deletingEvent.id);
+      setUpcomingEvents(prev => prev.filter(e => e.id !== deletingEvent.id));
+      setShowDeleteConfirm(false);
+      setDeletingEvent(null);
+      setSuccessMessage('Event deleted successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete event');
+      setShowDeleteConfirm(false);
+      setDeletingEvent(null);
+      setError(err.response?.data?.message || 'Failed to delete event');
     }
   };
 
@@ -790,7 +800,10 @@ export const Dashboard = () => {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteEvent(event.id, event.title)}
+                          onClick={() => {
+                            setDeletingEvent(event);
+                            setShowDeleteConfirm(true);
+                          }}
                           className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Delete Event"
                         >
@@ -865,6 +878,51 @@ export const Dashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3">
+            <CheckCircle size={20} />
+            <span className="font-bold">{successMessage}</span>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center gap-3 bg-red-50/50 dark:bg-red-900/20">
+              <div className="p-2 bg-red-100 dark:bg-red-900/40 text-red-600 rounded-lg">
+                <AlertTriangle size={20} />
+              </div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100">Delete Event</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                Are you sure you want to delete <span className="font-bold text-slate-800 dark:text-slate-100">"{deletingEvent?.title}"</span>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeletingEvent(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteEvent}
+                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={18} />
+                  Delete Event
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
