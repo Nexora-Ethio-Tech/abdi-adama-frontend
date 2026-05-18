@@ -218,11 +218,7 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     publicPosts: state.publicPosts.filter(p => p.id !== id)
   })),
 
-  notices: [
-    { id: '1', title: 'Term 3 Exams Schedule', content: 'The final schedule for Term 3 exams has been posted in the academic office.', priority: 'High', time: '1 hour ago', expiresAt: '2024-06-30', category: 'Academic', audience: ['school-admin','vice-principal','teacher','student','parent'] },
-    { id: '2', title: 'Bus #4 — 15 min delay', content: 'Heavy traffic near Meskel Square. Route B running behind schedule.', priority: 'Medium', time: '30 mins ago', expiresAt: '2024-05-15', category: 'Logistics', driverName: 'Ato Bekele', audience: ['school-admin','vice-principal','parent','student'] },
-    { id: '3', title: 'Fee deadline extended', content: 'April fee payment deadline extended to May 5th for all branches.', priority: 'High', time: 'Yesterday', expiresAt: '2024-05-05', category: 'Finance', audience: ['school-admin','finance-clerk','parent'] },
-  ],
+  notices: [],
   addNotice: (notice) => set((state) => ({
     notices: [
       {

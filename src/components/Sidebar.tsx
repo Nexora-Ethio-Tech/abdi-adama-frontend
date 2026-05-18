@@ -130,9 +130,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         ];
       case 'finance-clerk':
         return [
-          { icon: LayoutDashboard, label: t('nav.overview'), path: '/' },
+          { icon: LayoutDashboard, label: t('nav.overview'), path: '/dashboard/finance' },
           { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
-          { icon: Wallet, label: t('nav.finance'), path: '/finance' },
+          { icon: Wallet, label: t('nav.finance'), path: '/finance-dashboard' },
           ...(user?.isBranchAuditor ? [{ icon: Users, label: t('nav.specialStudents'), path: '/special-students' }] : []),
         ];
       case 'librarian':

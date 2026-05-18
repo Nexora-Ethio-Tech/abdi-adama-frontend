@@ -224,3 +224,27 @@ export const submitGrade = async (data: SubmitGradeData) => {
   const response = await api.post('/teacher/grades', data);
   return response.data;
 };
+
+const teacherService = {
+  getMyClasses,
+  getClassStudents,
+  getTeacherDashboard,
+  getTeacherSchedule,
+  markAttendance,
+  getClassAttendance,
+  enterGrade,
+  bulkEnterGrades,
+  getCourseGrades,
+  updateGrade,
+  deleteGrade,
+  getStudentAllGrades,
+  submitWeeklyPlan,
+  getMyWeeklyPlans,
+  updateWeeklyPlan,
+  submitCommunicationLog,
+  getCommunicationLogs,
+  getClassGrades,
+  submitGrade,
+};
+
+export default teacherService;

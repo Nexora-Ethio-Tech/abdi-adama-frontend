@@ -142,11 +142,16 @@ export const FinanceStaff = () => {
 
   const handleAddFinanceClerk = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      alert('Please enter a valid email address (e.g. name@school.com)');
+      return;
+    }
     setCreating(true);
     try {
       const response = await registerUser({
-        name: formData.name,
-        email: formData.email,
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
         role: 'finance-clerk'
       });
       
@@ -348,7 +353,8 @@ export const FinanceStaff = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="finance@school.com"
+                  placeholder="e.g. chaltu.bekele@school.com"
+                  pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
                 />
               </div>
 

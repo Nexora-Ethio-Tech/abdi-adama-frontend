@@ -77,13 +77,28 @@ const financeClerkService = {
   // 1. Get Dashboard
   getDashboard: async (): Promise<FinanceClerkDashboard> => {
     const response = await api.get('/finance-clerk/dashboard');
-    return response.data.data;
+    const d = response.data.data;
+    return {
+      ...d,
+      todayCollection: parseFloat(d.todayCollection) || 0,
+      monthlyRevenue: parseFloat(d.monthlyRevenue) || 0,
+      pendingApprovals: parseInt(d.pendingApprovals) || 0,
+      recentTransactions: (d.recentTransactions || []).map((tx: any) => ({
+        ...tx,
+        amount: parseFloat(tx.amount) || 0,
+      })),
+    };
   },
 
   // 2. Get All Students with Fee Info
   getStudentsFees: async (params?: { search?: string; feeStatus?: 'standard' | 'reduced' }): Promise<StudentFeeInfo[]> => {
     const response = await api.get('/finance-clerk/students/fees', { params });
-    return response.data.data;
+    return (response.data.data || []).map((s: any) => ({
+      ...s,
+      monthly_fee: parseFloat(s.monthly_fee) || 0,
+      bus_fee: parseFloat(s.bus_fee) || 0,
+      penalty_fee: parseFloat(s.penalty_fee) || 0,
+    }));
   },
 
   // 3. Record Payment
@@ -107,7 +122,12 @@ const financeClerkService = {
   // 6. Get Overdue Payments
   getOverduePayments: async (): Promise<OverdueStudent[]> => {
     const response = await api.get('/finance-clerk/overdue-payments');
-    return response.data.data;
+    return (response.data.data || []).map((s: any) => ({
+      ...s,
+      monthly_fee: parseFloat(s.monthly_fee) || 0,
+      bus_fee: parseFloat(s.bus_fee) || 0,
+      penalty_fee: parseFloat(s.penalty_fee) || 0,
+    }));
   },
 
   // 7. Get Daily Collection Report
