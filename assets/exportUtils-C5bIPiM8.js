@@ -1,0 +1,2 @@
+var e=(e,t)=>{if(e.length===0)return;let n=Object.keys(e[0]),r=[n.join(`,`),...e.map(e=>n.map(t=>`"${(``+e[t]).replace(/"/g,`""`)}"`).join(`,`))].join(`
+`),i=new Blob([r],{type:`text/csv;charset=utf-8;`}),a=URL.createObjectURL(i),o=document.createElement(`a`);o.setAttribute(`href`,a),o.setAttribute(`download`,`${t}_${new Date().toISOString().split(`T`)[0]}.csv`),o.style.visibility=`hidden`,document.body.appendChild(o),o.click(),document.body.removeChild(o)};export{e as t};

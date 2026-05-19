@@ -1,0 +1,23 @@
+# ─── Force HTTPS (301 permanent redirect) ─────────────────────────────────────
+RewriteEngine On
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ─── SPA Fallback — serve index.html for all client-side routes ────────────────
+# Skip /api paths (handled by Node.js via LiteSpeed proxy)
+RewriteCond %{REQUEST_URI} !^/api
+# Skip real files (JS, CSS, images, fonts, etc.)
+RewriteCond %{REQUEST_FILENAME} !-f
+# Skip real directories
+RewriteCond %{REQUEST_FILENAME} !-d
+# Serve index.html for everything else (React Router handles it)
+RewriteRule ^ /index.html [L]
+
+# ─── Security Headers ─────────────────────────────────────────────────────────
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-XSS-Protection "1; mode=block"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
