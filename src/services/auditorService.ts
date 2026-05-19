@@ -115,7 +115,12 @@ const auditorService = {
   // 3. Get Fee Reduction Requests
   getFeeReductions: async (params?: FeeReductionsQueryParams): Promise<FeeReduction[]> => {
     const response = await api.get('/auditor/fee-reductions', { params });
-    return response.data.data;
+    return (response.data.data || []).map((s: any) => ({
+      ...s,
+      monthly_fee: parseFloat(s.monthly_fee) || 0,
+      bus_fee: parseFloat(s.bus_fee) || 0,
+      penalty_fee: parseFloat(s.penalty_fee) || 0,
+    }));
   },
 
   // 4. Approve or Reject Fee Reduction (ONLY WRITE ENDPOINT)
