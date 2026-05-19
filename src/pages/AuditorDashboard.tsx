@@ -301,7 +301,7 @@ export const AuditorDashboard = () => {
           ) : (
             <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 dark:divide-slate-800">
               {filteredFeeReductions.map((reduction) => {
-                const _totalDue = reduction.monthly_fee + reduction.bus_fee + reduction.penalty_fee;
+                const totalDue = reduction.monthly_fee + reduction.bus_fee + reduction.penalty_fee;
                 return (
                   <div key={reduction.id} className="p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
                     <div className="flex items-center gap-6">
