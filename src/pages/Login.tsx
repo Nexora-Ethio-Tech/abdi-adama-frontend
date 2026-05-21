@@ -112,27 +112,25 @@ export const Login = () => {
           {loginMode === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Custom ID</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Digital ID / Email</label>
                 <div className="relative">
                   <Fingerprint className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type="text" required value={digitalIdOrEmail}
                     onChange={e => setDigitalIdOrEmail(e.target.value)}
-                    placeholder="e.g., STU-MB-0001"
+                    placeholder="e.g. SA-1001 or email@school.com"
                     className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-school-primary focus:ring-4 focus:ring-school-primary/10 transition-all outline-none"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">4-Digit PIN</label>
+                <label className="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                   <input
                     type={showPassword ? "text" : "password"} required value={password}
-                    onChange={e => setPassword(e.target.value.replace(/\D/g, '').substring(0, 4))}
-                    placeholder="1234"
-                    maxLength={4}
-                    pattern="\d{4}"
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
                     className="w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl focus:border-school-primary focus:ring-4 focus:ring-school-primary/10 transition-all outline-none"
                   />
                   <button

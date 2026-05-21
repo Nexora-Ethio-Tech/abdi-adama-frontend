@@ -4,7 +4,6 @@ import { useUser } from '../context/UserContext';
 import teacherService, { markAttendance, getMyClasses, getClassStudents } from '../services/teacherService';
 
 export const TeacherAttendance = () => {
-  const { user } = useUser();
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<any>(null);

@@ -136,7 +136,7 @@ export const Branches = () => {
               <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">{branch.name}</h3>
               <div className="flex items-center gap-1 text-slate-500 dark:text-slate-400 text-sm mb-6">
                 <MapPin size={14} />
-                <span>{branch.address || branch.location || 'No location'}</span>
+                <span>{branch.address || 'No location'}</span>
               </div>
 
               <button

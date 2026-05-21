@@ -21,8 +21,7 @@ import {
   GraduationCap,
   ClipboardCheck,
   Lock,
-  DollarSign,
-  StopCircle
+  DollarSign
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -42,7 +41,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, role, logout, schoolName } = useUser();
-  const { isExamLockedDown, selectedBranchId, triggerStopExam } = useStore();
+  const { isExamLockedDown, selectedBranchId } = useStore();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
 
@@ -189,56 +188,47 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
-        {!isExamLockedDown ? (
-          navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={() => {
-                if (window.innerWidth < 1024) onClose();
-              }}
-              className={({ isActive }) => cn(
-                "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group",
-                isActive
-                  ? "bg-school-primary text-white shadow-lg shadow-school-primary/20 scale-[1.02]"
-                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
-              )}
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive ? "text-white" : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
-                  <span className="font-bold text-sm tracking-wide">{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-500 p-6 text-center space-y-3">
-            <Lock size={32} className="text-rose-500 animate-pulse" />
-            <p className="text-xs font-black uppercase tracking-wider text-rose-500">Exam In Progress</p>
-            <p className="text-[11px] leading-relaxed">Navigation is locked to ensure exam security.</p>
-          </div>
-        )}
+        {navItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={isExamLockedDown ? '#' : item.path}
+            onClick={(e) => {
+              if (isExamLockedDown) {
+                e.preventDefault();
+                return;
+              }
+              if (window.innerWidth < 1024) onClose();
+            }}
+            className={({ isActive }) => cn(
+              "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group",
+              isExamLockedDown && "opacity-50 cursor-not-allowed",
+              isActive && !isExamLockedDown
+                ? "bg-school-primary text-white shadow-lg shadow-school-primary/20 scale-[1.02]"
+                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            {({ isActive }) => (
+              <>
+                <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive ? "text-white" : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
+                <span className="font-bold text-sm tracking-wide">{item.label}</span>
+              </>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="p-6 border-t border-slate-200 dark:border-slate-800/50 space-y-4">
-        {!isExamLockedDown ? (
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-4 px-5 py-4 w-full text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-400/10 rounded-2xl transition-all duration-300 group"
-          >
-            <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="font-bold text-sm tracking-wide">{t('sidebar.logout')}</span>
-          </button>
-        ) : (
-          <button
-            onClick={triggerStopExam}
-            className="flex items-center gap-4 px-5 py-4 w-full bg-rose-500 hover:bg-rose-600 text-white rounded-2xl transition-all duration-300 shadow-lg shadow-rose-500/20 active:scale-[0.98]"
-          >
-            <StopCircle size={20} className="animate-pulse" />
-            <span className="font-extrabold text-sm tracking-wide">Stop Exam</span>
-          </button>
-        )}
+        <button
+          onClick={handleLogout}
+          disabled={isExamLockedDown}
+          className={cn(
+            "flex items-center gap-4 px-5 py-4 w-full text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-400/10 rounded-2xl transition-all duration-300 group",
+            isExamLockedDown && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="font-bold text-sm tracking-wide">{t('sidebar.logout')}</span>
+        </button>
       </div>
     </aside>
   );

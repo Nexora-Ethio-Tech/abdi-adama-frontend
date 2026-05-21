@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, BookOpen, ChevronRight, ArrowLeft, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import teacherService, { TeacherClass, ClassStudent } from '../services/teacherService';
+import teacherService, { type TeacherClass, type ClassStudent } from '../services/teacherService';
 
 export const TeacherClasses = () => {
   const navigate = useNavigate();

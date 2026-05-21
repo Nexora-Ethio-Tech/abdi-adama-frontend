@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, FileText } from 'lucide-react';
-import financeClerkService, { type FinanceClerkDashboard, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
+import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 
 export const FinanceClerkDashboard = () => {
-  const [dashboard, setDashboard] = useState<FinanceClerkDashboard | null>(null);
+  const [dashboard, setDashboard] = useState<FinanceClerkDashboardType | null>(null);
   const [students, setStudents] = useState<StudentFeeInfo[]>([]);
   const [overdueStudents, setOverdueStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

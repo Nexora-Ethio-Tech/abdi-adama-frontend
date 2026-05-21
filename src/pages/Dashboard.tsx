@@ -314,29 +314,31 @@ export const Dashboard = () => {
                         </td>
                       </tr>
                     ) : branchHealth.map((branch) => (
-                      <tr key={branch.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                      <tr key={branch?.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm">{branch.name[0]}</div>
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black text-sm">{branch?.name?.[0] || ''}</div>
                             <div>
-                              <p className="font-bold text-slate-800 dark:text-slate-100">{branch.name}</p>
-                              <p className="text-xs text-slate-500">{branch.location}</p>
+                              <p className="font-bold text-slate-800 dark:text-slate-100">{branch?.name || ''}</p>
+                              <p className="text-xs text-slate-500">{branch?.location || ''}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch.students}</td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch.teachers}</td>
-                        <td className="px-6 py-4 text-center font-bold text-emerald-600">{branch.attendance}%</td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch.finance}</td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.students ?? 0}</td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.teachers ?? 0}</td>
+                        <td className="px-6 py-4 text-center font-bold text-emerald-600">{branch?.attendance ?? 0}%</td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.finance ?? 0}</td>
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => {
-                              setSelectedBranchId(branch.id);
-                              setSelectedBranch(branch);
+                              if (branch) {
+                                setSelectedBranchId(branch.id);
+                                setSelectedBranch(branch);
+                              }
                             }}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${branch.risk === 'Normal' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${branch?.risk === 'Normal' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
                           >
-                            {branch.risk}
+                            {branch?.risk || ''}
                           </button>
                         </td>
                       </tr>

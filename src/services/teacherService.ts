@@ -171,6 +171,10 @@ export interface TeacherClass {
   section: string;
   subject: string;
   gradeLevel?: string;
+  enrolledStudents?: number;
+  capacity?: number;
+  schedule?: string;
+  room?: string;
 }
 
 export interface ClassStudent {
@@ -179,6 +183,9 @@ export interface ClassStudent {
   firstName: string;
   lastName: string;
   email?: string;
+  grade?: string;
+  status?: string;
+  attendanceRate?: number;
 }
 
 export interface Grade {

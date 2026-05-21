@@ -65,6 +65,9 @@ const toInputDateTimeValue = (date: Date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+// Minimal mock used for typings when original mock data is not present after merge
+const mockFinances: { summaries: any[] } = { summaries: [] };
+
 export const Finance = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -84,7 +87,7 @@ export const Finance = () => {
   const [toDateTime, setToDateTime] = useState(toInputDateTimeValue(now));
   const [netProfitSummary, setNetProfitSummary] = useState<NetProfitSummary | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [enrollmentQueue, setEnrollmentQueue] = useState([]);
+  const [enrollmentQueue, setEnrollmentQueue] = useState<any[]>([]);
 
   const [paymentStatus, setPaymentStatus] = useState<Record<string, PaymentLog[]>>({});
 
