@@ -50,6 +50,8 @@ interface AppState {
   isExamLockedDown: boolean;
   lockdownPassword: string | null;
   setExamLockedDown: (isLocked: boolean, password?: string) => void;
+  stopExamTrigger: number;
+  triggerStopExam: () => void;
 
   // Branch Selection
   selectedBranchId: string | null;
@@ -99,6 +101,8 @@ export const useStore = create<AppState>()(persist((set, get) => ({
     isExamLockedDown: isLocked,
     lockdownPassword: password || null
   }),
+  stopExamTrigger: 0,
+  triggerStopExam: () => set((state) => ({ stopExamTrigger: state.stopExamTrigger + 1 })),
 
   selectedBranchId: null,
   setSelectedBranchId: (id: string | null) => set({ selectedBranchId: id }),

@@ -160,8 +160,12 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
           <div className="relative pl-3 border-l border-slate-200 dark:border-slate-800">
             {/* Trigger */}
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center gap-2 md:gap-3 p-1.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              onClick={() => !isExamLockedDown && setIsMenuOpen(!isMenuOpen)}
+              disabled={isExamLockedDown}
+              className={cn(
+                "flex items-center gap-2 md:gap-3 p-1.5 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
+                isExamLockedDown && "opacity-50 cursor-not-allowed"
+              )}
             >
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">

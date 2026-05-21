@@ -1,26 +1,38 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Send, AlertTriangle, ShieldCheck, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Send, AlertTriangle, ShieldCheck, Lock, Loader2 } from 'lucide-react';
 import { ExamTimer } from './ExamSession/components/ExamTimer';
 import { QuestionCard } from './ExamSession/components/QuestionCard';
 import { QuestionPalette } from './ExamSession/components/QuestionPalette';
 import { SubmitOverlay } from './ExamSession/components/SubmitOverlay';
 import { useAntiCheat } from './ExamSession/hooks/useAntiCheat';
-import { mockExam } from '../data/examData';
-import type { AnswerPayload } from '../data/examData';
+import { ExamList } from './ExamList';
+import { getExamById, saveExamAnswer, submitExam as submitExamApi } from '../services/examService';
+import type { ExamQuestion } from '../services/examService';
+import { useStore } from '../context/useStore';
 
+// Fallback to mock if API fails
+import { mockExam } from '../data/examData';
 
 export const Exams: React.FC = () => {
   const navigate = useNavigate();
-  const examId = mockExam.id; // using the mock exam directly
+  const { setExamLockedDown, stopExamTrigger } = useStore();
 
-  // --- State ---
+  // ─── View State: 'list' or 'session' ──────────────────────────────────────
+  const [view, setView] = useState<'list' | 'session'>('list');
+  const [selectedExamId, setSelectedExamId] = useState<string | null>(null);
+  const [examLoading, setExamLoading] = useState(false);
+  const [examLoadError, setExamLoadError] = useState<string | null>(null);
+
+  // ─── Exam Session State ───────────────────────────────────────────────────
+  const [examTitle, setExamTitle] = useState('');
+  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [submitStatus, setSubmitStatus] = useState<'submitting' | 'success' | 'error' | null>(null);
-  const [examStartedAt, setExamStartedAt] = useState<string>('');
   const [examEndTime, setExamEndTime] = useState<number>(0);
   const [violations, setViolations] = useState<string[]>([]);
   const [showWarningModal, setShowWarningModal] = useState(false);
@@ -28,54 +40,47 @@ export const Exams: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [reentryPassword, setReentryPassword] = useState('');
   const [showReentryModal, setShowReentryModal] = useState(false);
+  const [usingMock, setUsingMock] = useState(false);
 
-  // --- Persistence ---
-  const STORAGE_KEY = `exam_session_${examId}`;
+  // ─── Select Exam & Load from Backend ──────────────────────────────────────
+  const handleSelectExam = async (examId: string) => {
+    setSelectedExamId(examId);
+    setExamLoading(true);
+    setExamLoadError(null);
+    setUsingMock(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const { savedAnswers, savedIndex, savedStartTime, savedEndTime, savedViolations, savedFlagged } = JSON.parse(saved);
-      setAnswers(savedAnswers || {});
-      setFlaggedQuestions(new Set(savedFlagged || []));
-      setCurrentQuestionIndex(savedIndex || 0);
-      setExamStartedAt(savedStartTime || new Date().toISOString());
-      setExamEndTime(savedEndTime || (Date.now() + mockExam.durationMinutes * 60 * 1000));
-      setViolations(savedViolations || []);
-    } else {
-      const startTime = new Date().toISOString();
-      const endTime = Date.now() + mockExam.durationMinutes * 60 * 1000;
-      setExamStartedAt(startTime);
-      setExamEndTime(endTime);
+    try {
+      const data = await getExamById(examId);
+      setExamTitle(data.exam.title);
+      setQuestions(data.questions);
+      setDurationMinutes(data.exam.durationMinutes);
+      setExamEndTime(data.session.endTime);
+      setAnswers(data.savedAnswers || {});
+      setCurrentQuestionIndex(0);
+      setView('session');
+    } catch (err: any) {
+      console.warn('Failed to load exam from API, falling back to mock:', err);
+      // Fallback to mock
+      setExamTitle(mockExam.title);
+      setQuestions(mockExam.questions.map(q => ({
+        id: q.id,
+        text: q.text,
+        type: 'multiple_choice',
+        options: q.options,
+        points: 1,
+      })));
+      setDurationMinutes(mockExam.durationMinutes);
+      setExamEndTime(Date.now() + mockExam.durationMinutes * 60 * 1000);
+      setAnswers({});
+      setCurrentQuestionIndex(0);
+      setUsingMock(true);
+      setView('session');
+    } finally {
+      setExamLoading(false);
     }
-  }, [STORAGE_KEY]);
+  };
 
-  useEffect(() => {
-    if (examEndTime > 0) {
-      const dataToSave = JSON.stringify({
-        savedAnswers: answers,
-        savedIndex: currentQuestionIndex,
-        savedStartTime: examStartedAt,
-        savedEndTime: examEndTime,
-        savedViolations: violations,
-        savedFlagged: Array.from(flaggedQuestions)
-      });
-      localStorage.setItem(STORAGE_KEY, dataToSave);
-    }
-  }, [STORAGE_KEY, answers, currentQuestionIndex, examStartedAt, examEndTime, violations, flaggedQuestions]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasStarted && submitStatus !== 'success') {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasStarted, submitStatus]);
-
-  // --- Handlers ---
+  // ─── Handlers ─────────────────────────────────────────────────────────────
   const handleViolation = useCallback((type: string) => {
     setViolations(prev => [...prev, type]);
     setLastViolationType(type);
@@ -90,20 +95,15 @@ export const Exams: React.FC = () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     setSubmitStatus('submitting');
-    const payload: AnswerPayload = {
-      examId: examId || 'unknown',
-      studentId: 'current-student-id',
-      answers,
-      warningCount: violations.length,
-      startedAt: examStartedAt,
-      submittedAt: new Date().toISOString(),
-      autoSubmitted: auto
-    };
-    console.log('Submitting Payload:', payload);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      localStorage.removeItem(STORAGE_KEY);
+      if (!usingMock && selectedExamId) {
+        await submitExamApi(selectedExamId, auto);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
       setSubmitStatus('success');
+      setExamLockedDown(false);
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
@@ -113,36 +113,101 @@ export const Exams: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [examId, answers, violations.length, examStartedAt, STORAGE_KEY, isSubmitting]);
+  }, [selectedExamId, usingMock, isSubmitting, setExamLockedDown]);
+
+  // Lock/Unlock sidebar depending on active session state
+  useEffect(() => {
+    if (hasStarted && submitStatus !== 'success') {
+      setExamLockedDown(true);
+    } else {
+      setExamLockedDown(false);
+    }
+    return () => {
+      setExamLockedDown(false);
+    };
+  }, [hasStarted, submitStatus, setExamLockedDown]);
+
+  // Listen for stop exam signal from Sidebar Stop Exam button
+  useEffect(() => {
+    if (stopExamTrigger > 0 && hasStarted && submitStatus !== 'success' && !isSubmitting) {
+      handleSubmit(true);
+    }
+  }, [stopExamTrigger, hasStarted, submitStatus, isSubmitting, handleSubmit]);
+
 
   const { requestFullscreen } = useAntiCheat({
-    onViolation: isSubmitting || submitStatus === 'success' || showReentryModal ? () => {} : handleViolation,
+    onViolation: isSubmitting || submitStatus === 'success' || showReentryModal ? () => { } : handleViolation,
     maxWarnings: 3,
     autoSubmit: () => handleSubmit(true)
   });
 
-  const handleSelectOption = (optionId: string) => {
-    const questionId = mockExam.questions[currentQuestionIndex].id;
+  const handleSelectOption = async (optionId: string) => {
+    const questionId = questions[currentQuestionIndex].id;
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+
+    // Save to backend atomically (fire-and-forget)
+    if (!usingMock && selectedExamId) {
+      saveExamAnswer(selectedExamId, questionId, optionId).catch(err =>
+        console.warn('Failed to save answer to server:', err)
+      );
+    }
   };
 
   const handleToggleFlag = (questionId: string) => {
     setFlaggedQuestions(prev => {
       const next = new Set(prev);
-      if (next.has(questionId)) {
-        next.delete(questionId);
-      } else {
-        next.add(questionId);
-      }
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
       return next;
     });
   };
 
   const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
-  const handleNext = () => setCurrentQuestionIndex(prev => Math.min(mockExam.questions.length - 1, prev + 1));
+  const handleNext = () => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1));
+  const questionIds = useMemo(() => questions.map(q => q.id), [questions]);
 
-  const questionIds = useMemo(() => mockExam.questions.map(q => q.id), []);
+  const handleBackToList = () => {
+    setView('list');
+    setHasStarted(false);
+    setSubmitStatus(null);
+    setViolations([]);
+    setAnswers({});
+    setFlaggedQuestions(new Set());
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  };
 
+  // ─── Prevent accidental close during exam ─────────────────────────────────
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasStarted && submitStatus !== 'success') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasStarted, submitStatus]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VIEW 1: EXAM LIST
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (view === 'list') {
+    if (examLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-32">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Loading exam...</p>
+        </div>
+      );
+    }
+    return <ExamList onSelectExam={handleSelectExam} />;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VIEW 2: EXAM SESSION — Rules Screen
+  // ═══════════════════════════════════════════════════════════════════════════
   if (!hasStarted) {
     return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900">
@@ -150,39 +215,49 @@ export const Exams: React.FC = () => {
           <div className="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <ShieldCheck size={40} />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">{mockExam.title}</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">{examTitle}</h2>
           <div className="bg-slate-800 rounded-xl p-6 text-left mb-8 space-y-4">
             <h3 className="text-slate-300 font-semibold uppercase text-xs tracking-wider">Exam Rules</h3>
             <ul className="text-slate-400 text-sm space-y-2">
               <li className="flex gap-2"><span className="text-blue-400">•</span> Do not leave the browser tab or minimize the window.</li>
               <li className="flex gap-2"><span className="text-blue-400">•</span> The exam will run in full-screen mode.</li>
               <li className="flex gap-2"><span className="text-blue-400">•</span> Multiple security violations will lead to auto-submission.</li>
-              <li className="flex gap-2"><span className="text-blue-400">•</span> Duration: {mockExam.durationMinutes} minutes.</li>
+              <li className="flex gap-2"><span className="text-blue-400">•</span> Duration: {durationMinutes} minutes.</li>
+              <li className="flex gap-2"><span className="text-blue-400">•</span> {questions.length} questions total.</li>
             </ul>
           </div>
           <button
             onClick={() => { setHasStarted(true); requestFullscreen(); }}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] mb-3"
           >
             Start Secure Session
+          </button>
+          <button
+            onClick={handleBackToList}
+            className="w-full text-slate-400 hover:text-white py-2 text-sm font-medium transition-colors"
+          >
+            ← Back to Exam List
           </button>
         </div>
       </div>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VIEW 2: EXAM SESSION — Active Exam
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
       {/* Teacher Re-entry Modal */}
       {showReentryModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900 backdrop-blur-xl p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 text-center border-4 border-rose-500 animate-in zoom-in duration-300">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 text-center border-4 border-rose-500">
             <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <Lock size={40} />
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">LOCKDOWN ACTIVE</h3>
             <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">
-              You attempted to leave the exam environment. A teacher must enter their password to resume the session.
+              You attempted to leave the exam environment. A teacher must enter their password to resume.
             </p>
             <div className="space-y-4">
               <input
@@ -214,7 +289,7 @@ export const Exams: React.FC = () => {
       <SubmitOverlay
         status={submitStatus}
         onRetry={() => handleSubmit()}
-        onClose={() => navigate('/')}
+        onClose={handleBackToList}
       />
 
       {/* Warning Modal */}
@@ -247,7 +322,7 @@ export const Exams: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-              {mockExam.title}
+              {examTitle}
             </h1>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -261,35 +336,33 @@ export const Exams: React.FC = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Question Area */}
           <div className="lg:col-span-8 space-y-6">
-            <QuestionCard
-              question={mockExam.questions[currentQuestionIndex]}
-              selectedOptionId={answers[mockExam.questions[currentQuestionIndex].id]}
-              onSelectOption={handleSelectOption}
-              index={currentQuestionIndex}
-              isFlagged={flaggedQuestions.has(mockExam.questions[currentQuestionIndex].id)}
-              onToggleFlag={() => handleToggleFlag(mockExam.questions[currentQuestionIndex].id)}
-            />
+            {questions.length > 0 && (
+              <QuestionCard
+                question={questions[currentQuestionIndex]}
+                selectedOptionId={answers[questions[currentQuestionIndex].id]}
+                onSelectOption={handleSelectOption}
+                index={currentQuestionIndex}
+                isFlagged={flaggedQuestions.has(questions[currentQuestionIndex].id)}
+                onToggleFlag={() => handleToggleFlag(questions[currentQuestionIndex].id)}
+              />
+            )}
           </div>
-
-          {/* Sidebar / Palette */}
           <div className="lg:col-span-4">
             <div className="sticky top-24 space-y-6">
               <QuestionPalette
-                totalQuestions={mockExam.questions.length}
+                totalQuestions={questions.length}
                 currentIndex={currentQuestionIndex}
                 answers={answers}
                 flaggedQuestions={flaggedQuestions}
                 questionIds={questionIds}
                 onSelectIndex={setCurrentQuestionIndex}
               />
-
               <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
                 <div className="flex gap-3">
                   <AlertTriangle className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={20} />
                   <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Your progress is automatically saved. Do not refresh or leave this page until you finish the exam.
+                    Your progress is automatically saved. Do not refresh or leave this page.
                   </p>
                 </div>
               </div>
@@ -312,14 +385,13 @@ export const Exams: React.FC = () => {
             </button>
             <button
               onClick={handleNext}
-              disabled={currentQuestionIndex === mockExam.questions.length - 1}
+              disabled={currentQuestionIndex === questions.length - 1}
               className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30 transition-colors"
             >
               <span className="hidden sm:inline">Next</span>
               <ChevronRight size={20} />
             </button>
           </div>
-
           <button
             onClick={() => handleSubmit()}
             disabled={isSubmitting}
@@ -329,10 +401,9 @@ export const Exams: React.FC = () => {
             <span>{isSubmitting ? 'Submitting...' : 'Finish Exam'}</span>
           </button>
         </div>
-    </footer>
-      </div>
+      </footer>
+    </div>
   );
 };
 
 export default Exams;
-
