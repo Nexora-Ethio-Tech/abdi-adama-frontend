@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, User } from 'lucide-react';
-import { getMySchedule, StudentSchedule } from '../services/studentPortalService';
+import { getMySchedule } from '../services/studentPortalService';
+import type { StudentSchedule } from '../services/studentPortalService';
 
 const StudentSchedulePage: React.FC = () => {
   const [schedule, setSchedule] = useState<StudentSchedule[]>([]);

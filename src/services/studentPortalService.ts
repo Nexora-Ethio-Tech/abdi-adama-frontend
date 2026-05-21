@@ -1,12 +1,4 @@
-const API_BASE_URL = 'https://api.abdi-adama.com/api';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('accessToken');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  };
-};
+import api from './api';
 
 // Student Dashboard Interface
 export interface StudentDashboard {
@@ -96,42 +88,26 @@ export interface Transcript {
 
 // Student Dashboard Methods
 export const getStudentDashboard = async (): Promise<StudentDashboard> => {
-  const response = await fetch(`${API_BASE_URL}/student/dashboard`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch dashboard');
-  return result.data;
+  const response = await api.get('/student/dashboard');
+  return response.data.data;
 };
 
 export const getMyCourses = async (): Promise<StudentCourse[]> => {
-  const response = await fetch(`${API_BASE_URL}/student/courses`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch courses');
-  return result.data;
+  const response = await api.get('/student/courses');
+  return response.data.data;
 };
 
 export const getMyGrades = async (courseId?: string): Promise<StudentGrade[]> => {
   const url = courseId 
-    ? `${API_BASE_URL}/student/grades/${courseId}`
-    : `${API_BASE_URL}/student/grades`;
-  const response = await fetch(url, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch grades');
-  return result.data;
+    ? `/student/grades/${courseId}`
+    : '/student/grades';
+  const response = await api.get(url);
+  return response.data.data;
 };
 
 export const getMySchedule = async (): Promise<StudentSchedule[]> => {
-  const response = await fetch(`${API_BASE_URL}/student/schedule`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch schedule');
-  return result.data;
+  const response = await api.get('/student/schedule');
+  return response.data.data;
 };
 
 export const getMyTranscript = async (academicYear?: string, semester?: string): Promise<Transcript[]> => {
@@ -139,19 +115,11 @@ export const getMyTranscript = async (academicYear?: string, semester?: string):
   if (academicYear) params.append('academicYear', academicYear);
   if (semester) params.append('semester', semester);
   
-  const response = await fetch(`${API_BASE_URL}/student/transcript?${params}`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch transcript');
-  return result.data;
+  const response = await api.get(`/student/transcript?${params}`);
+  return response.data.data;
 };
 
 export const getMyAttendance = async (): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/student/attendance`, {
-    headers: getAuthHeaders(),
-  });
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error?.message || 'Failed to fetch attendance');
-  return result.data;
+  const response = await api.get('/student/attendance');
+  return response.data.data;
 };

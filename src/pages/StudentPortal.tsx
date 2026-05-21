@@ -1,11 +1,11 @@
 
 import { BookOpen, Award, Clock, ArrowRight, Star, Trophy, CheckCircle2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { mockExams } from '../data/examData';
 import { mockTeachers } from '../data/mockData';
 import { useState, useEffect } from 'react';
-import { getStudentDashboard, StudentDashboard } from '../services/studentPortalService';
+import { getStudentDashboard } from '../services/studentPortalService';
+import type { StudentDashboard } from '../services/studentPortalService';
 
 export const StudentPortal = () => {
   const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
@@ -190,19 +190,15 @@ export const StudentPortal = () => {
               </div>
             </div>
 
-            <Link
-              to="/exam/math-101"
-              className="flex items-center justify-between p-4 rounded-lg border border-blue-100 bg-blue-50/50 hover:bg-blue-50 transition-colors group"
-            >
+            <div className="flex items-center justify-between p-4 rounded-lg border border-slate-100">
               <div>
-                <p className="text-sm font-medium text-blue-900">Mathematics Mid-term</p>
-                <p className="text-xs text-blue-600 font-semibold">Live Exam • 60 mins</p>
+                <p className="text-sm font-medium text-slate-800">Mathematics Mid-term</p>
+                <p className="text-xs text-slate-500">Live Exam • 60 mins</p>
               </div>
-              <div className="flex items-center gap-2 text-xs font-bold text-blue-700">
-                <span>Start Now</span>
-                <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+              <div className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                Tomorrow
               </div>
-            </Link>
+            </div>
 
             <div className="flex items-center justify-between p-4 rounded-lg border border-slate-100 opacity-60">
               <div>

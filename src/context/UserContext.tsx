@@ -153,9 +153,11 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const verifyToken = async () => {
       const token = localStorage.getItem('abdi_adama_token');
-      if (!token) {
-        // No token at all — clear any stale user data and stop loading
+      if (!token || token === 'undefined' || token === 'null' || !token.includes('.')) {
+        // No token or invalid token format — clear any stale user data and stop loading
         localStorage.removeItem('abdi_adama_user');
+        localStorage.removeItem('abdi_adama_token');
+        localStorage.removeItem('abdi_adama_refresh_token');
         setUser(null);
         setLoading(false);
         return;
@@ -228,8 +230,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { default: api } = await import('../services/api');
       const res = await api.post('/auth/login', {
-        email: credentials.digitalIdOrEmail,
-        password: credentials.password
+        custom_id: credentials.digitalIdOrEmail,
+        pin: credentials.password
       });
 
       if (res.data.success) {
