@@ -57,9 +57,9 @@ export default defineConfig({
         strictPort: false,
         proxy: {
             '/api': {
-                target: 'http://localhost:5000',
+                target: 'https://api.abdi-adama.com',
                 changeOrigin: true,
-                secure: false,
+                secure: true,
                 rewrite: (path) => path // Keep /api prefix
             }
         }
