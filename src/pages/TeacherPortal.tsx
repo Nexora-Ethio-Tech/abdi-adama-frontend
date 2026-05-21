@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { getTeacherDashboard, getMyWeeklyPlans, submitWeeklyPlan, updateWeeklyPlan } from '../services/teacherService';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-
 export const TeacherPortal = () => {
   const { user } = useUser();
   const [activeTab, setActiveTab] = useState<'overview' | 'plans'>('overview');

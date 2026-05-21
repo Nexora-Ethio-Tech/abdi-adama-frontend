@@ -2,10 +2,19 @@ import { useState } from 'react';
 import { Search, FileText, Award, Calendar, TrendingUp } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 
+interface StudentTranscript {
+  studentId: string;
+  studentName: string;
+  className?: string;
+  section?: string;
+  overallAverage?: number;
+  courses: Array<{ courseId: string; courseName: string; grades: Array<any> }>;
+}
+
 export const VPTranscripts = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [transcript, setTranscript] = useState<vicePrincipalService.StudentTranscript | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [transcript, setTranscript] = useState<StudentTranscript | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,8 +25,8 @@ export const VPTranscripts = () => {
       setLoading(true);
       setError(null);
       const data = await vicePrincipalService.getStudentTranscript(searchQuery);
-      setTranscript(data);
-      setSelectedStudent({ id: searchQuery, name: data.studentName });
+      setTranscript(data as any);
+      setSelectedStudent({ id: searchQuery, name: (data as any).studentName });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Student not found');
       setTranscript(null);
@@ -76,19 +85,19 @@ export const VPTranscripts = () => {
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">{transcript.studentName}</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">{transcript?.studentName || 'Unknown'}</h2>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span className="font-medium">ID: {transcript.studentId}</span>
+                  <span className="font-medium">ID: {transcript?.studentId || 'N/A'}</span>
                   <span>•</span>
-                  <span>{transcript.className}</span>
+                  <span>{transcript?.className || 'N/A'}</span>
                   <span>•</span>
-                  <span>{transcript.section}</span>
+                  <span>{transcript?.section || 'N/A'}</span>
                 </div>
               </div>
               <div className="text-right">
                 <div className="flex items-center gap-2 mb-1">
                   <TrendingUp className="w-5 h-5 text-blue-600" />
-                  <span className="text-3xl font-bold text-gray-900">{transcript.overallAverage}%</span>
+                  <span className="text-3xl font-bold text-gray-900">{transcript?.overallAverage || 0}%</span>
                 </div>
                 <span className="text-sm text-gray-600">Overall Average</span>
               </div>
@@ -116,7 +125,7 @@ export const VPTranscripts = () => {
                 <div>
                   <p className="text-sm text-gray-600">Highest Grade</p>
                   <p className="text-xl font-bold text-gray-900">
-                    {Math.max(...transcript.courses.flatMap(c => c.grades.map(g => g.percentage)))}%
+                    {Math.max(...(transcript?.courses || []).flatMap((c: any) => (c.grades || []).map((g: any) => g.percentage || 0)), 0)}%
                   </p>
                 </div>
               </div>
@@ -142,12 +151,12 @@ export const VPTranscripts = () => {
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
                   <p className={`text-xl font-bold ${
-                    transcript.overallAverage >= 75 ? 'text-green-600' :
-                    transcript.overallAverage >= 60 ? 'text-yellow-600' :
+                    (transcript?.overallAverage || 0) >= 75 ? 'text-green-600' :
+                    (transcript?.overallAverage || 0) >= 60 ? 'text-yellow-600' :
                     'text-red-600'
                   }`}>
-                    {transcript.overallAverage >= 75 ? 'Excellent' :
-                     transcript.overallAverage >= 60 ? 'Good' : 'Needs Support'}
+                    {(transcript?.overallAverage || 0) >= 75 ? 'Excellent' :
+                     (transcript?.overallAverage || 0) >= 60 ? 'Good' : 'Needs Support'}
                   </p>
                 </div>
               </div>
@@ -156,7 +165,7 @@ export const VPTranscripts = () => {
 
           {/* Courses */}
           <div className="space-y-4">
-            {transcript.courses.map((course) => (
+            {transcript.courses.map((course: any) => (
               <div key={course.courseId} className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="bg-gray-50 px-6 py-4 border-b">
                   <div className="flex items-center justify-between">
@@ -186,7 +195,7 @@ export const VPTranscripts = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {course.grades.map((grade, idx) => (
+                      {course.grades.map((grade: any, idx: number) => (
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-6 py-4 text-sm text-gray-900">{grade.type}</td>
                           <td className="px-6 py-4 text-center">

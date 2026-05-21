@@ -300,10 +300,10 @@ export const VicePrincipalDashboard = () => {
             </div>
 
             <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              {plan.course_name && (
+              {reviewModal.plan.course_name && (
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3">
                   <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-1">Course</p>
-                  <p className="text-sm font-bold text-indigo-900 dark:text-indigo-100">{plan.course_name}</p>
+                  <p className="text-sm font-bold text-indigo-900 dark:text-indigo-100">{reviewModal.plan.course_name}</p>
                 </div>
               )}
               {[

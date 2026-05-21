@@ -2,8 +2,20 @@ import { useState, useEffect } from 'react';
 import { Lock, Unlock, BookOpen, Calendar, User } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 
+interface GradeLock {
+  gradeLevel?: string;
+  isLocked: boolean;
+  academicYearId?: string;
+  // fields from incoming branch data
+  courseId?: string;
+  courseName?: string;
+  teacherName?: string;
+  className?: string;
+  lastModified?: string;
+}
+
 export const VPGradeLocks = () => {
-  const [locks, setLocks] = useState<vicePrincipalService.GradeLock[]>([]);
+  const [locks, setLocks] = useState<GradeLock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,9 +36,12 @@ export const VPGradeLocks = () => {
     }
   };
 
-  const handleToggleLock = async (courseId: string, currentStatus: boolean) => {
+  const handleToggleLock = async (gradeLevel: string, currentStatus: boolean) => {
     try {
-      await vicePrincipalService.toggleGradeLock(courseId, !currentStatus);
+      await vicePrincipalService.toggleGradeLock({
+        gradeLevel,
+        isLocked: !currentStatus
+      });
       fetchLocks();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to toggle grade lock');
@@ -104,18 +119,18 @@ export const VPGradeLocks = () => {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    {new Date(lock.lastModified).toLocaleDateString('en-US', {
+                    {lock.lastModified ? new Date(lock.lastModified).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) : 'N/A'}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-center">
                   <button
-                    onClick={() => handleToggleLock(lock.courseId, lock.isLocked)}
+                    onClick={() => handleToggleLock(lock.courseId || lock.gradeLevel || 'unknown', lock.isLocked)}
                     className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                       lock.isLocked
                         ? 'bg-green-600 text-white hover:bg-green-700'
