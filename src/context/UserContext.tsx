@@ -113,9 +113,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       if (!user) return;
       
       try {
-        const { default: api } = await import('../services/api');
-        
         if (user.role === 'super-admin') {
+          const { default: api } = await import('../services/api');
           // Super Admin: Fetch all branches
           const res = await api.get('/super-admin/branches');
           if (res.data.success && Array.isArray(res.data.data)) {
@@ -126,19 +125,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }));
             setBranches(apiBranches);
           }
-        } else if (user.role === 'school-admin' && (user as any).branchId) {
-          // School Admin: Fetch their specific branch
-          const res = await api.get('/super-admin/branches');
-          if (res.data.success && Array.isArray(res.data.data)) {
-            const userBranch = res.data.data.find((b: any) => b.id === (user as any).branchId);
-            if (userBranch) {
-              setBranches([{
-                id: userBranch.id,
-                name: userBranch.name,
-                location: userBranch.address || userBranch.location || 'N/A'
-              }]);
-            }
-          }
+        } else if ((user as any).branchId) {
+          // Branch-level users: Use their assigned branch from profile (avoids 403 routes)
+          setBranches([{
+            id: (user as any).branchId,
+            name: (user as any).branchName || 'My Branch',
+            location: 'N/A'
+          }]);
         }
       } catch (err) {
         console.error('Failed to fetch branches:', err);
@@ -175,6 +168,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             role: rawUser.role,
             digitalId: rawUser.digital_id || rawUser.digitalId,
             branchId: rawUser.branch_id || rawUser.branchId,
+            branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
             status: rawUser.status,
           };
           setUser(user);
@@ -241,6 +235,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           role: rawUser.role,
           digitalId: rawUser.digital_id || rawUser.digitalId,
           branchId: rawUser.branch_id || rawUser.branchId,
+          branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
           status: rawUser.status,
         };
         localStorage.setItem('abdi_adama_token', res.data.data.accessToken);

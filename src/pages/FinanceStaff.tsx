@@ -258,55 +258,34 @@ export const FinanceStaff = () => {
                       {staff.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 relative">
+                  <td className="px-6 py-4">
                     {isAdmin && (
-                      <>
+                      <div className="flex items-center gap-2">
+                        {staff.status === 'Pending' ? (
+                          <button
+                            onClick={() => setConfirmAction({ show: true, action: 'approve', staff })}
+                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                          >
+                            <CheckCircle size={14} />
+                            Approve
+                          </button>
+                        ) : staff.status === 'Approved' ? (
+                          <button
+                            onClick={() => setConfirmAction({ show: true, action: 'revoke', staff })}
+                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                          >
+                            <XCircle size={14} />
+                            Revoke
+                          </button>
+                        ) : null}
                         <button
-                          onClick={() => setActionMenu(actionMenu === staff.id ? null : staff.id)}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                          onClick={() => setConfirmAction({ show: true, action: 'delete', staff })}
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                          title="Delete User"
                         >
-                          <MoreVertical size={18} className="text-slate-500" />
+                          <Trash2 size={16} />
                         </button>
-                        
-                        {actionMenu === staff.id && (
-                          <div className="absolute right-0 top-12 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl z-10 min-w-[160px]">
-                            {staff.status === 'Pending' && (
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({ show: true, action: 'approve', staff });
-                                  setActionMenu(null);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-green-600"
-                              >
-                                <CheckCircle size={16} />
-                                Approve
-                              </button>
-                            )}
-                            {staff.status === 'Approved' && (
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({ show: true, action: 'revoke', staff });
-                                  setActionMenu(null);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-orange-600"
-                              >
-                                <XCircle size={16} />
-                                Revoke
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setConfirmAction({ show: true, action: 'delete', staff });
-                                setActionMenu(null);
-                              }}
-                              className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-red-600 border-t border-slate-200 dark:border-slate-700"
-                            >
-                              <Trash2 size={16} />
-                              Delete
-                            </button>
-                          </div>
-                        )}
-                      </>
+                      </div>
                     )}
                   </td>
                 </tr>

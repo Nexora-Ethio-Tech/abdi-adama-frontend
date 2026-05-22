@@ -45,20 +45,29 @@ export const Clinic = () => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [newVisit, setNewVisit] = useState({ reason: '', treatment: '', selectedMeds: [] as {id: string, quantity: number}[] });
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
   const fetchData = async () => {
     setLoading(true);
     const token = localStorage.getItem('abdi_adama_token');
     try {
       const [studentsRes, medRes, visitsRes] = await Promise.all([
-        fetch(`${API_URL}/api/students`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch(`${API_URL}/api/clinic/students`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/clinic/medicine`, { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch(`${API_URL}/api/clinic/visits`, { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch(`${API_URL}/api/clinic/visits/history`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
-      if (studentsRes.ok) setStudents(await studentsRes.json());
-      if (medRes.ok) setMedicines(await medRes.json());
-      if (visitsRes.ok) setVisitLogs(await visitsRes.json());
+      if (studentsRes.ok) {
+        const resJson = await studentsRes.json();
+        setStudents(resJson.data?.students || []);
+      }
+      if (medRes.ok) {
+        const resJson = await medRes.json();
+        setMedicines(resJson.data || []);
+      }
+      if (visitsRes.ok) {
+        const resJson = await visitsRes.json();
+        setVisitLogs(resJson.data || []);
+      }
     } catch (err) {
       console.error('Clinic data fetch failed:', err);
     } finally {
@@ -75,7 +84,7 @@ export const Clinic = () => {
     if (!selectedStudent) return;
     const token = localStorage.getItem('abdi_adama_token');
     try {
-      const res = await fetch(`${API_URL}/api/clinic/visit`, {
+      const res = await fetch(`${API_URL}/api/clinic/visits`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -35,7 +35,7 @@ export const Library = () => {
   const [showIssueModal, setShowIssueModal] = useState(false);
   const [issueData, setIssueData] = useState({ book_id: '', student_id: '', due_date: '' });
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
   const fetchData = async () => {
     setLoading(true);
@@ -45,8 +45,14 @@ export const Library = () => {
         fetch(`${API_URL}/api/library/books`, { headers: { 'Authorization': `Bearer ${token}` } }),
         fetch(`${API_URL}/api/library/loans`, { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
-      if (booksRes.ok) setBooks(await booksRes.json());
-      if (loansRes.ok) setLoans(await loansRes.json());
+      if (booksRes.ok) {
+        const resJson = await booksRes.json();
+        setBooks(resJson.data || []);
+      }
+      if (loansRes.ok) {
+        const resJson = await loansRes.json();
+        setLoans(resJson.data || []);
+      }
     } catch (err) {
       console.error('Failed to fetch library data:', err);
     } finally {

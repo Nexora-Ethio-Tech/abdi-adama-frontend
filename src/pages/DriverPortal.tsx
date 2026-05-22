@@ -24,7 +24,7 @@ export const DriverPortal = () => {
   const [content, setContent] = useState('');
   const [stations, setStations] = useState('');
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
   const fetchManifest = async () => {
     setLoading(true);
@@ -33,7 +33,10 @@ export const DriverPortal = () => {
       const res = await fetch(`${API_URL}/api/transport/manifest`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (res.ok) setManifest(await res.json());
+      if (res.ok) {
+        const resJson = await res.json();
+        setManifest(resJson.data?.manifest || []);
+      }
     } catch (err) {
       console.error('Failed to fetch manifest:', err);
     } finally {

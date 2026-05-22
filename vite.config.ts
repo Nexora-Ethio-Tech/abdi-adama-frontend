@@ -50,16 +50,15 @@ export default defineConfig({
         }
     },
 
-    // Server configuration for development
     server: {
         port: 5173,
         host: true,
         strictPort: false,
         proxy: {
             '/api': {
-                target: 'https://api.abdi-adama.com',
+                target: 'http://localhost:5000',
                 changeOrigin: true,
-                secure: true,
+                secure: false,
                 rewrite: (path) => path // Keep /api prefix
             }
         }

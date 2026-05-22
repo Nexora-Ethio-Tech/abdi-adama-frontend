@@ -8,7 +8,7 @@ import { exportToCSV } from '../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useCallback } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
 const getToken = () => localStorage.getItem('abdi_adama_token') || '';
 
