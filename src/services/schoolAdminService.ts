@@ -105,7 +105,7 @@ export interface Application {
 }
 
 export interface UpdateApplicationStatusData {
-  status: 'Approved' | 'Rejected';
+  status: string;
 }
 
 // Financial Policy Interface
@@ -189,6 +189,11 @@ export const activateBranchAcademicYear = async (id: string) => {
 };
 
 // Applications
+export const createPendingApplication = async (data: any) => {
+  const response = await api.post('/school-admin/applications', data);
+  return response.data;
+};
+
 export const getPendingApplications = async (): Promise<Application[]> => {
   const response = await api.get('/school-admin/applications');
   return response.data;

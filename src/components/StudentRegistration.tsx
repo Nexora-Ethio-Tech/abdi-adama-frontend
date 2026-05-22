@@ -4,6 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
+import { 
+  getPendingApplications, 
+  updateApplicationStatus, 
+  createPendingApplication,
+  registerUser 
+} from '../services/schoolAdminService';
 
 type RegistrationTab = 'new' | 'existing';
 type PipelineFilter = 'pending' | 'exam-queue' | 'awaiting-finance' | 'completed';
@@ -64,6 +71,35 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
     fee_notes: ''
   });
 
+  useEffect(() => {
+    if (isAdminView) {
+      const fetchApps = async () => {
+        try {
+          const res = await getPendingApplications();
+          if (res) {
+            // Map backend applications to frontend structure
+            const mapped = (res as any).map((app: any) => ({
+              id: app.id,
+              name: app.applicant_name,
+              dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
+              parentName: app.parent_name || 'N/A',
+              phone: app.applicant_phone || 'N/A',
+              email: app.applicant_email || 'N/A',
+              previousSchool: app.notes || 'None',
+              lastGrade: app.grade_applying || 'N/A',
+              date: new Date(app.created_at).toLocaleDateString(),
+              status: app.status as AppStatus,
+            }));
+            setPendingApps(mapped);
+          }
+        } catch (err) {
+          console.error('Failed to fetch pending applications:', err);
+        }
+      };
+      fetchApps();
+    }
+  }, [isAdminView]);
+
   const transcriptHistory = {
     '2024/2025': {
       'Semester 1': [
@@ -112,16 +148,70 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSuccessMessage(isAdminView ? 'Student registered successfully!' : 'Your application has been submitted successfully! We will contact you soon.');
-    if (!isAdminView) {
-      setTimeout(() => {
-        setSuccessMessage(null);
-        navigate('/');
-      }, 3000);
-    } else {
-      setTimeout(() => setSuccessMessage(null), 3000);
+    try {
+      const formData = new FormData(e.currentTarget);
+      const name = formData.get('name') as string;
+      const digital_id = formData.get('digital_id') as string;
+      const dob = formData.get('dob') as string;
+      const gender = formData.get('gender') as string;
+      const parentName = formData.get('parentName') as string;
+      const phone = formData.get('phone') as string;
+      const email = formData.get('email') as string || `${digital_id.toLowerCase().replace(/[^a-z0-9]/g, '')}@example.com`;
+      const address = formData.get('address') as string;
+      const previousSchool = formData.get('previousSchool') as string;
+      const grade = formData.get('grade') as string;
+      
+      const appData = {
+        applicantName: name,
+        applicantEmail: email,
+        applicantPhone: phone,
+        gradeApplying: grade || 'Grade 1',
+        parentName: parentName,
+        parentPhone: phone,
+        dob: dob,
+        gender: gender,
+        address: address,
+        notes: `Previous School: ${previousSchool || 'None'}`
+      };
+
+      await createPendingApplication(appData);
+
+      setSuccessMessage(isAdminView ? 'Student registered successfully!' : 'Your application has been submitted successfully! We will contact you soon.');
+      
+      if (isAdminView) {
+        const res = await getPendingApplications();
+        if (res) {
+          const mapped = (res as any).map((app: any) => ({
+            id: app.id,
+            name: app.applicant_name,
+            dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
+            parentName: app.parent_name || 'N/A',
+            phone: app.applicant_phone || 'N/A',
+            email: app.applicant_email || 'N/A',
+            previousSchool: app.notes || 'None',
+            lastGrade: app.grade_applying || 'N/A',
+            date: new Date(app.created_at).toLocaleDateString(),
+            status: app.status as AppStatus,
+          }));
+          setPendingApps(mapped);
+        }
+      }
+
+      if (!isAdminView) {
+        setTimeout(() => {
+          setSuccessMessage(null);
+          navigate('/');
+        }, 3000);
+      } else {
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (error: any) {
+      console.error(error);
+      const errMsg = error.response?.data?.error?.message || error.message || 'Failed to submit application';
+      setFileError(errMsg);
+      setTimeout(() => setFileError(null), 5000);
     }
   };
 
@@ -137,58 +227,104 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
     setTimeout(() => setEmailToast(null), 4000);
   };
 
-  const handleDecline = (appId: string) => {
-    const app = pendingApps.find(a => a.id === appId);
-    setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'declined' as AppStatus } : a));
-    setSuccessMessage(`Application ${appId} has been declined.`);
-    if (app) showEmailToast(app.email, 'Application Update: Not Accepted');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  const handlePass = (appId: string) => {
-    const app = pendingApps.find(a => a.id === appId);
-    setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
-    setSuccessMessage(`${app?.name} accepted! Forwarded to finance.`);
-    if (app) showEmailToast(app.email, 'Congratulations! Proceed to Finance');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  const handlePassAfterExam = (appId: string) => {
-    const app = pendingApps.find(a => a.id === appId);
-    setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-pending' as AppStatus, examDetails: { ...examConfig } } : a));
-    setSuccessMessage(`${app?.name} added to exam queue.`);
-    if (app) showEmailToast(app.email, 'Entrance Exam Required — Details Inside');
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  const handleExamResult = (appId: string, passed: boolean) => {
-    const app = pendingApps.find(a => a.id === appId);
-    if (passed) {
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} passed the exam! Forwarded to finance.`);
-      if (app) showEmailToast(app.email, 'Exam Passed! Proceed to Finance');
-    } else {
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-failed' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} did not pass the exam.`);
-      if (app) showEmailToast(app.email, 'Exam Result: Not Passed');
-    }
-    setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  const handlePaymentResult = (appId: string, paid: boolean, fees?: typeof customFees) => {
-    const app = pendingApps.find(a => a.id === appId);
-    if (paid) {
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'payment-confirmed' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} marked as Passed (Paid)!${fees?.fee_status === 'reduced' ? ' Pending auditor approval.' : ''}`);
-      if (app) showEmailToast(app.email, 'Payment Confirmed! Officially Enrolled');
-    } else {
+  const handleDecline = async (appId: string) => {
+    try {
+      await updateApplicationStatus(appId, { status: 'declined' });
+      const app = pendingApps.find(a => a.id === appId);
       setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'declined' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} marked as Failed (Unpaid)!`);
-      if (app) showEmailToast(app.email, 'Application Closed: Payment Not Received');
+      setSuccessMessage(`Application ${appId} has been declined.`);
+      if (app) showEmailToast(app.email, 'Application Update: Not Accepted');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setFileError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setFileError(null), 5000);
     }
-    setShowFeeModal(false);
-    setSelectedAppForFee(null);
-    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const handlePass = async (appId: string) => {
+    try {
+      await updateApplicationStatus(appId, { status: 'awaiting-payment' });
+      const app = pendingApps.find(a => a.id === appId);
+      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
+      setSuccessMessage(`${app?.name} accepted! Forwarded to finance.`);
+      if (app) showEmailToast(app.email, 'Congratulations! Proceed to Finance');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setFileError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setFileError(null), 5000);
+    }
+  };
+
+  const handlePassAfterExam = async (appId: string) => {
+    try {
+      await updateApplicationStatus(appId, { status: 'exam-pending' });
+      const app = pendingApps.find(a => a.id === appId);
+      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-pending' as AppStatus, examDetails: { ...examConfig } } : a));
+      setSuccessMessage(`${app?.name} added to exam queue.`);
+      if (app) showEmailToast(app.email, 'Entrance Exam Required — Details Inside');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setFileError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setFileError(null), 5000);
+    }
+  };
+
+  const handleExamResult = async (appId: string, passed: boolean) => {
+    try {
+      const newStatus = passed ? 'awaiting-payment' : 'exam-failed';
+      await updateApplicationStatus(appId, { status: newStatus });
+      const app = pendingApps.find(a => a.id === appId);
+      if (passed) {
+        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
+        setSuccessMessage(`${app?.name} passed the exam! Forwarded to finance.`);
+        if (app) showEmailToast(app.email, 'Exam Passed! Proceed to Finance');
+      } else {
+        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-failed' as AppStatus } : a));
+        setSuccessMessage(`${app?.name} did not pass the exam.`);
+        if (app) showEmailToast(app.email, 'Exam Result: Not Passed');
+      }
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setFileError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setFileError(null), 5000);
+    }
+  };
+
+  const handlePaymentResult = async (appId: string, paid: boolean, fees?: typeof customFees) => {
+    try {
+      const app = pendingApps.find(a => a.id === appId);
+      if (paid) {
+        if (app) {
+          // Proactively register user
+          await registerUser({
+            name: app.name,
+            email: app.email,
+            role: 'student',
+            grade: app.lastGrade,
+          });
+        }
+        await updateApplicationStatus(appId, { status: 'payment-confirmed' });
+        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'payment-confirmed' as AppStatus } : a));
+        setSuccessMessage(`${app?.name} marked as Passed (Paid)! Enrolled successfully.`);
+        if (app) showEmailToast(app.email, 'Payment Confirmed! Officially Enrolled');
+      } else {
+        await updateApplicationStatus(appId, { status: 'declined' });
+        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'declined' as AppStatus } : a));
+        setSuccessMessage(`${app?.name} marked as Failed (Unpaid)!`);
+        if (app) showEmailToast(app.email, 'Application Closed: Payment Not Received');
+      }
+      setShowFeeModal(false);
+      setSelectedAppForFee(null);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setFileError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setFileError(null), 5000);
+    }
   };
 
   const filteredPipelineApps = pendingApps.filter(app => {
