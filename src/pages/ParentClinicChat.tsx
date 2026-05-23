@@ -3,45 +3,112 @@ import { useState, useEffect, useRef } from 'react';
 import { Send, HeartPulse, User, Clock, ShieldAlert } from 'lucide-react';
 import { ShootingStars } from '../components/Effects';
 
+interface Child {
+  identity_id: string;
+  fullName?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  role: 'clinic' | 'parent';
+  child_id?: string;
+  text: string;
+  timestamp?: string;
+}
+
 export const ParentClinicChat = () => {
-  const [selectedChild, setSelectedChild] = useState('Abebe Bikila');
-  const [messages, setMessages] = useState([
-    { id: '1', role: 'clinic', child: 'Abebe Bikila', text: 'Hello! How can we help you today regarding Abebe\'s health?', timestamp: '09:00 AM' },
-  ]);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const children = ['Abebe Bikila', 'Sara Kebede'];
+  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/.?api$/, '');
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const msg = {
-      id: Date.now().toString(),
-      role: 'parent',
-      child: selectedChild,
-      text: newMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('abdi_adama_token');
+      try {
+        const res = await fetch(`${API_URL}/api/parent/dashboard`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const kids = data.data?.children || [];
+          setChildren(kids);
+          if (kids.length > 0) {
+            setSelectedChildId(kids[0].identity_id || kids[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load children:', err);
+      } finally {
+        setLoading(false);
+      }
     };
+    load();
+  }, []);
 
-    setMessages([...messages, msg]);
-    setNewMessage('');
+  useEffect(() => {
+    if (!selectedChildId) return;
+    const loadMessages = async () => {
+      setLoading(true);
+      const token = localStorage.getItem('abdi_adama_token');
+      try {
+        const url = `${API_URL}/api/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) {
+          const data = await res.json();
+          // normalize messages
+          const msgs = (data.data || []).map((m: any) => ({
+            id: m.id,
+            role: m.role === 'clinic' || m.sender_id?.toString() === m.receiver_id?.toString() ? 'clinic' : (m.role || (m.sender_id === (m.receiver_id) ? 'clinic' : 'parent')),
+            child_id: m.child_id || m.student_id || m.childId,
+            text: m.text || m.message,
+            timestamp: m.timestamp || m.created_at
+          }));
+          setMessages(msgs);
+        } else {
+          console.error('Failed to fetch messages');
+        }
+      } catch (err) {
+        console.error('Failed to fetch messages:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadMessages();
+  }, [selectedChildId]);
 
-    // Mock clinic response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'clinic',
-        child: selectedChild,
-        text: `Thank you for the information about ${selectedChild.split(' ')[0]}. The clinic administrator has been notified and will review your message shortly.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    }, 1500);
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedChildId) return;
+    const token = localStorage.getItem('abdi_adama_token');
+    try {
+      const res = await fetch(`${API_URL}/api/clinic/chat`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMessage, childId: selectedChildId })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const m = data.data || data;
+        setMessages(prev => [...prev, { id: m.id || Date.now().toString(), role: 'parent', child_id: selectedChildId, text: m.text || m.message, timestamp: m.timestamp }]);
+        setNewMessage('');
+      } else {
+        const err = await res.json();
+        alert(err.error?.message || 'Failed to send message');
+      }
+    } catch (err) {
+      console.error('Send failed:', err);
+      alert('Failed to send message');
+    }
   };
 
   return (
@@ -67,15 +134,21 @@ export const ParentClinicChat = () => {
           <div className="flex flex-col items-end">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Select Child</span>
             <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              {children.map(child => (
-                <button
-                  key={child}
-                  onClick={() => setSelectedChild(child)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChild === child ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}
-                >
-                  {child.split(' ')[0]}
-                </button>
-              ))}
+              {loading ? (
+                <div className="px-4 py-1.5 text-xs text-slate-400">Loading...</div>
+              ) : children.length === 0 ? (
+                <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
+              ) : (
+                children.map((child: any) => (
+                  <button
+                    key={child.identity_id}
+                    onClick={() => setSelectedChildId(child.identity_id)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChildId === (child.identity_id || child.id) ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    {(child.fullName || child.full_name || '').split(' ')[0] || 'Child'}
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -88,7 +161,7 @@ export const ParentClinicChat = () => {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar z-10">
-        {messages.filter(m => m.child === selectedChild).map((m) => (
+        {messages.filter(m => m.child_id === selectedChildId).map((m) => (
           <div key={m.id} className={`flex items-start gap-3 ${m.role === 'parent' ? 'flex-row-reverse' : ''}`}>
             <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${
               m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'

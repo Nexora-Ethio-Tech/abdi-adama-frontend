@@ -27,6 +27,7 @@ const ScheduleBuilder = lazy(() => import('./pages/ScheduleBuilder').then((m) =>
 const Inventory = lazy(() => import('./pages/Inventory').then((m) => ({ default: m.Inventory })));
 const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
 const Registration = lazy(() => import('./pages/Registration').then((m) => ({ default: m.Registration })));
+const AdmissionPage = lazy(() => import('./pages/AdmissionPage').then((m) => ({ default: m.AdmissionPage })));
 const Attendance = lazy(() => import('./pages/Attendance').then((m) => ({ default: m.Attendance })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const ExamSession = lazy(() => import('./pages/ExamSession').then((m) => ({ default: m.ExamSession })));
@@ -37,7 +38,6 @@ const ParentClinicChat = lazy(() => import('./pages/ParentClinicChat').then((m) 
 const DriverPortal = lazy(() => import('./pages/DriverPortal').then((m) => ({ default: m.DriverPortal })));
 const WebsitePosts = lazy(() => import('./pages/WebsitePosts').then((m) => ({ default: m.WebsitePosts })));
 const AuditorDashboard = lazy(() => import('./pages/AuditorDashboard').then((m) => ({ default: m.AuditorDashboard })));
-const AcademicManagement = lazy(() => import('./pages/AcademicManagement').then((m) => ({ default: m.AcademicManagement })));
 const VicePrincipalDashboard = lazy(() => import('./pages/VicePrincipalDashboard').then((m) => ({ default: m.VicePrincipalDashboard })));
 const BranchUsers = lazy(() => import('./pages/BranchUsers').then((m) => ({ default: m.BranchUsers })));
 const Classes = lazy(() => import('./pages/Classes').then((m) => ({ default: m.Classes })));
@@ -51,6 +51,9 @@ const VPGradeLocks = lazy(() => import('./pages/VPGradeLocks').then((m) => ({ de
 const VPTranscripts = lazy(() => import('./pages/VPTranscripts').then((m) => ({ default: m.VPTranscripts })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 const FinanceStaff = lazy(() => import('./pages/FinanceStaff').then((m) => ({ default: m.FinanceStaff })));
+const LibrarianStaff = lazy(() => import('./pages/LibrarianStaff').then((m) => ({ default: m.LibrarianStaff })));
+const DriverStaff = lazy(() => import('./pages/DriverStaff').then((m) => ({ default: m.DriverStaff })));
+const ClinicAdminStaff = lazy(() => import('./pages/ClinicAdminStaff').then((m) => ({ default: m.ClinicAdminStaff })));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
 
@@ -119,261 +122,272 @@ function App() {
   return (
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {!user ? (
-          <>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </>
-        ) : (
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Navigate to={getDashboardRoute(role)} replace />} />
+          {!user ? (
+            <>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </>
+          ) : (
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Navigate to={getDashboardRoute(role)} replace />} />
 
-            {/* Explicit Dashboard Routes */}
-            <Route path="dashboard/super-admin" element={<ProtectedRoute allowedRoles={['super-admin']}><Dashboard /></ProtectedRoute>} />
-            <Route path="dashboard/school-admin" element={<ProtectedRoute allowedRoles={['school-admin']}><Dashboard /></ProtectedRoute>} />
-            <Route path="dashboard/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherPortal /></ProtectedRoute>} />
-            <Route path="dashboard/student" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
-            <Route path="dashboard/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentPortal /></ProtectedRoute>} />
-            <Route path="dashboard/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverPortal /></ProtectedRoute>} />
-            <Route path="dashboard/finance" element={<ProtectedRoute allowedRoles={['finance-clerk']}><FinanceClerkDashboard /></ProtectedRoute>} />
-            <Route path="dashboard/vice-principal" element={<ProtectedRoute allowedRoles={['vice-principal']}><VicePrincipalDashboard /></ProtectedRoute>} />
-            <Route path="dashboard/librarian" element={<ProtectedRoute allowedRoles={['librarian']}><Library /></ProtectedRoute>} />
-            <Route path="dashboard/clinic-admin" element={<ProtectedRoute allowedRoles={['clinic-admin']}><Clinic /></ProtectedRoute>} />
-            <Route path="auditor-dashboard" element={<ProtectedRoute allowedRoles={['auditor']}><AuditorDashboard /></ProtectedRoute>} />
+              {/* Explicit Dashboard Routes */}
+              <Route path="dashboard/super-admin" element={<ProtectedRoute allowedRoles={['super-admin']}><Dashboard /></ProtectedRoute>} />
+              <Route path="dashboard/school-admin" element={<ProtectedRoute allowedRoles={['school-admin']}><Dashboard /></ProtectedRoute>} />
+              <Route path="dashboard/teacher" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherPortal /></ProtectedRoute>} />
+              <Route path="dashboard/student" element={<ProtectedRoute allowedRoles={['student']}><StudentPortal /></ProtectedRoute>} />
+              <Route path="dashboard/parent" element={<ProtectedRoute allowedRoles={['parent']}><ParentPortal /></ProtectedRoute>} />
+              <Route path="dashboard/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverPortal /></ProtectedRoute>} />
+              <Route path="dashboard/finance" element={<ProtectedRoute allowedRoles={['finance-clerk']}><FinanceClerkDashboard /></ProtectedRoute>} />
+              <Route path="dashboard/vice-principal" element={<ProtectedRoute allowedRoles={['vice-principal']}><VicePrincipalDashboard /></ProtectedRoute>} />
+              <Route path="dashboard/librarian" element={<ProtectedRoute allowedRoles={['librarian']}><Library /></ProtectedRoute>} />
+              <Route path="dashboard/clinic-admin" element={<ProtectedRoute allowedRoles={['clinic-admin']}><Clinic /></ProtectedRoute>} />
+              <Route path="auditor-dashboard" element={<ProtectedRoute allowedRoles={['auditor']}><AuditorDashboard /></ProtectedRoute>} />
 
-            {/* Role specific routes */}
-            <Route path="branches" element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
-                <Branches />
-              </ProtectedRoute>
-            } />
+              {/* Role specific routes */}
+              <Route path="branches" element={
+                <ProtectedRoute allowedRoles={['super-admin']}>
+                  <Branches />
+                </ProtectedRoute>
+              } />
 
-            <Route path="analytics" element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
-                <Analytics />
-              </ProtectedRoute>
-            } />
+              <Route path="analytics" element={
+                <ProtectedRoute allowedRoles={['super-admin']}>
+                  <Analytics />
+                </ProtectedRoute>
+              } />
 
-            <Route path="staff" element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
-                <Staff />
-              </ProtectedRoute>
-            } />
+              <Route path="staff" element={
+                <ProtectedRoute allowedRoles={['super-admin']}>
+                  <Staff />
+                </ProtectedRoute>
+              } />
 
-            <Route path="students" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'parent', 'vice-principal']}>
-                <Students />
-              </ProtectedRoute>
-            } />
+              <Route path="students" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'parent', 'vice-principal']}>
+                  <Students />
+                </ProtectedRoute>
+              } />
 
-            <Route path="branch-users" element={
-              <ProtectedRoute allowedRoles={['school-admin']}>
-                <BranchUsers />
-              </ProtectedRoute>
-            } />
+              <Route path="branch-users" element={
+                <ProtectedRoute allowedRoles={['school-admin']}>
+                  <BranchUsers />
+                </ProtectedRoute>
+              } />
 
-            <Route path="classes" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <Classes />
-              </ProtectedRoute>
-            } />
+              <Route path="classes" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <Classes />
+                </ProtectedRoute>
+              } />
 
-            <Route path="subjects" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <Subjects />
-              </ProtectedRoute>
-            } />
+              <Route path="subjects" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <Subjects />
+                </ProtectedRoute>
+              } />
 
-            <Route path="attendance-management" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <AttendanceManagement />
-              </ProtectedRoute>
-            } />
+              <Route path="attendance-management" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <AttendanceManagement />
+                </ProtectedRoute>
+              } />
 
-            <Route path="teacher-classes" element={
-              <ProtectedRoute allowedRoles={['teacher']}>
-                <TeacherClasses />
-              </ProtectedRoute>
-            } />
+              <Route path="teacher-classes" element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherClasses />
+                </ProtectedRoute>
+              } />
 
-            <Route path="teacher-grades" element={
-              <ProtectedRoute allowedRoles={['teacher']}>
-                <TeacherGrades />
-              </ProtectedRoute>
-            } />
+              <Route path="teacher-grades" element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherGrades />
+                </ProtectedRoute>
+              } />
 
-            <Route path="teacher-student-grades/:studentId" element={
-              <ProtectedRoute allowedRoles={['teacher']}>
-                <TeacherStudentGrades />
-              </ProtectedRoute>
-            } />
+              <Route path="teacher-student-grades/:studentId" element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherStudentGrades />
+                </ProtectedRoute>
+              } />
 
-            <Route path="vp-attendance" element={
-              <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
-                <VPAttendanceOversight />
-              </ProtectedRoute>
-            } />
+              <Route path="vp-attendance" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <VPAttendanceOversight />
+                </ProtectedRoute>
+              } />
 
-            <Route path="vp-grade-locks" element={
-              <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
-                <VPGradeLocks />
-              </ProtectedRoute>
-            } />
+              <Route path="vp-grade-locks" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <VPGradeLocks />
+                </ProtectedRoute>
+              } />
 
-            <Route path="vp-transcripts" element={
-              <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
-                <VPTranscripts />
-              </ProtectedRoute>
-            } />
+              <Route path="vp-transcripts" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <VPTranscripts />
+                </ProtectedRoute>
+              } />
 
-            <Route path="finance-dashboard" element={
-              <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
-                <FinanceClerkDashboard />
-              </ProtectedRoute>
-            } />
+              <Route path="finance-dashboard" element={
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                  <FinanceClerkDashboard />
+                </ProtectedRoute>
+              } />
 
-            <Route path="audit-logs" element={
-              <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
-                <AuditLogs />
-              </ProtectedRoute>
-            } />
+              <Route path="audit-logs" element={
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                  <AuditLogs />
+                </ProtectedRoute>
+              } />
 
-            <Route path="students/:id" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
-                <StudentProfile />
-              </ProtectedRoute>
-            } />
+              <Route path="students/:id" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
+                  <StudentProfile />
+                </ProtectedRoute>
+              } />
 
-            <Route path="teachers" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
-                <Teachers />
-              </ProtectedRoute>
-            } />
+              <Route path="teachers" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
+                  <Teachers />
+                </ProtectedRoute>
+              } />
 
-            <Route path="finance-staff" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <FinanceStaff />
-              </ProtectedRoute>
-            } />
+              <Route path="finance-staff" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <FinanceStaff />
+                </ProtectedRoute>
+              } />
 
-            <Route path="attendance" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'teacher', 'student', 'vice-principal']}>
-                {role === 'teacher' ? <TeacherAttendance /> :
-                 role === 'student' ? <AcademicHistory /> :
-                 <Attendance />}
-              </ProtectedRoute>
-            } />
-            <Route path="schedule-builder" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <ScheduleBuilder />
-              </ProtectedRoute>
-            } />
+              <Route path="librarian-staff" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <LibrarianStaff />
+                </ProtectedRoute>
+              } />
 
-            <Route path="inventory" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <Inventory />
-              </ProtectedRoute>
-            } />
+              <Route path="driver-staff" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <DriverStaff />
+                </ProtectedRoute>
+              } />
 
-            <Route path="library" element={
-              <ProtectedRoute allowedRoles={['librarian', 'super-admin']}>
-                <Library />
-              </ProtectedRoute>
-            } />
+              <Route path="clinic-admin-staff" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <ClinicAdminStaff />
+                </ProtectedRoute>
+              } />
 
-            <Route path="website-posts" element={
-              <ProtectedRoute allowedRoles={['super-admin']}>
-                <WebsitePosts />
-              </ProtectedRoute>
-            } />
+              <Route path="attendance" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'teacher', 'student', 'vice-principal']}>
+                  {role === 'teacher' ? <TeacherAttendance /> :
+                    role === 'student' ? <AcademicHistory /> :
+                      <Attendance />}
+                </ProtectedRoute>
+              } />
+              <Route path="schedule-builder" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <ScheduleBuilder />
+                </ProtectedRoute>
+              } />
 
-            <Route path="clinic" element={
-              <ProtectedRoute allowedRoles={['clinic-admin', 'super-admin']}>
-                <Clinic />
-              </ProtectedRoute>
-            } />
+              <Route path="inventory" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <Inventory />
+                </ProtectedRoute>
+              } />
 
-            <Route path="clinic-chat" element={
-              <ProtectedRoute allowedRoles={['parent']}>
-                <ParentClinicChat />
-              </ProtectedRoute>
-            } />
+              <Route path="library" element={
+                <ProtectedRoute allowedRoles={['librarian', 'super-admin']}>
+                  <Library />
+                </ProtectedRoute>
+              } />
 
-            <Route path="courses" element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <StudentCourses />
-              </ProtectedRoute>
-            } />
+              <Route path="website-posts" element={
+                <ProtectedRoute allowedRoles={['super-admin']}>
+                  <WebsitePosts />
+                </ProtectedRoute>
+              } />
 
-            <Route path="student-schedule" element={
-              <ProtectedRoute allowedRoles={['student']}>
-                <StudentSchedulePage />
-              </ProtectedRoute>
-            } />
+              <Route path="clinic" element={
+                <ProtectedRoute allowedRoles={['clinic-admin', 'super-admin']}>
+                  <Clinic />
+                </ProtectedRoute>
+              } />
 
-            <Route path="schedule" element={
-              <ProtectedRoute allowedRoles={['teacher']}>
-                <TeacherSchedule />
-              </ProtectedRoute>
-            } />
+              <Route path="clinic-chat" element={
+                <ProtectedRoute allowedRoles={['parent']}>
+                  <ParentClinicChat />
+                </ProtectedRoute>
+              } />
 
-            <Route path="grades" element={
-              <ProtectedRoute allowedRoles={['teacher', 'vice-principal', 'school-admin']}>
-                <GradeEntry />
-              </ProtectedRoute>
-            } />
+              <Route path="courses" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentCourses />
+                </ProtectedRoute>
+              } />
 
-            <Route path="transcripts" element={
-              <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
-                <Transcripts />
-              </ProtectedRoute>
-            } />
+              <Route path="student-schedule" element={
+                <ProtectedRoute allowedRoles={['student']}>
+                  <StudentSchedulePage />
+                </ProtectedRoute>
+              } />
 
-            <Route path="registration" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'finance-clerk']}>
-                <Registration />
-              </ProtectedRoute>
-            } />
+              <Route path="schedule" element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherSchedule />
+                </ProtectedRoute>
+              } />
 
-            <Route path="special-students" element={
-              <ProtectedRoute allowedRoles={['auditor', 'finance-clerk', 'super-admin']}>
-                <AuditorDashboard />
-              </ProtectedRoute>
-            } />
+              <Route path="grades" element={
+                <ProtectedRoute allowedRoles={['teacher', 'vice-principal', 'school-admin']}>
+                  <GradeEntry />
+                </ProtectedRoute>
+              } />
 
-            <Route path="academic-management" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <AcademicManagement />
-              </ProtectedRoute>
-            } />
+              <Route path="transcripts" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <Transcripts />
+                </ProtectedRoute>
+              } />
 
-            <Route path="admissions-dashboard" element={
-              <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                <div className="flex items-center justify-center min-h-screen text-slate-400 text-lg font-semibold">
-                  🚧 Admissions Dashboard — Coming Next!
-                </div>
-              </ProtectedRoute>
-            } />
+              <Route path="registration" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'finance-clerk']}>
+                  <Registration />
+                </ProtectedRoute>
+              } />
 
-            <Route path="finance" element={<Finance />} />
-            <Route path="exams" element={
-              <ProtectedRoute allowedRoles={['teacher', 'school-admin', 'vice-principal', 'student', 'parent']}>
-                <Exams />
-              </ProtectedRoute>
-            } />
-            <Route path="settings" element={<Settings />} />
-            <Route path="exam/:examId" element={<ExamSession />} />
+              <Route path="admission" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <AdmissionPage />
+                </ProtectedRoute>
+              } />
 
-            {/* Catch-all within layout */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Route>
-        )}
-      </Routes>
+              <Route path="special-students" element={
+                <ProtectedRoute allowedRoles={['auditor', 'finance-clerk', 'super-admin']}>
+                  <AuditorDashboard />
+                </ProtectedRoute>
+              } />
+
+
+              <Route path="finance" element={<Finance />} />
+              <Route path="exams" element={
+                <ProtectedRoute allowedRoles={['teacher', 'school-admin', 'vice-principal', 'student', 'parent']}>
+                  <Exams />
+                </ProtectedRoute>
+              } />
+              <Route path="settings" element={<Settings />} />
+              <Route path="exam/:examId" element={<ExamSession />} />
+
+              {/* Catch-all within layout */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+          )}
+        </Routes>
       </Suspense>
     </BrowserRouter>
   );

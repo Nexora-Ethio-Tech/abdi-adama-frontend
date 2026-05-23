@@ -53,8 +53,7 @@ export const Classes = () => {
         name: cls.name,
         capacity: cls.capacity,
         section: cls.section,
-        teacherId: cls.teacher_id,
-        teacherName: cls.teacher_name,
+        teachers: cls.teachers || [],
         branchId: cls.branch_id,
         studentCount: cls.student_count || cls.actual_student_count || 0
       }));
@@ -171,7 +170,7 @@ export const Classes = () => {
 
   const openAssignModal = (classItem: Class) => {
     setSelectedClass(classItem);
-    setSelectedTeacherId(classItem.teacherId || '');
+    setSelectedTeacherId('');
     setShowAssignModal(true);
   };
 
@@ -253,9 +252,11 @@ export const Classes = () => {
                     <span className="font-bold text-slate-800 dark:text-white">{classItem.capacity} students</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Teacher:</span>
+                    <span className="text-slate-500">Teachers:</span>
                     <span className="font-bold text-slate-800 dark:text-white">
-                      {classItem.teacherName || 'Not assigned'}
+                      {classItem.teachers && classItem.teachers.length > 0
+                        ? `${classItem.teachers.map((t: any) => t.teacher_name || t.teacherName || 'Teacher').join(', ')}`
+                        : 'Not assigned'}
                     </span>
                   </div>
                 </div>
@@ -281,6 +282,31 @@ export const Classes = () => {
                     <Trash2 size={14} />
                   </button>
                 </div>
+                {/* Assigned teachers list with unassign buttons */}
+                {classItem.teachers && classItem.teachers.length > 0 && (
+                  <div className="mt-4 flex flex-col gap-2">
+                    {classItem.teachers.map((t: any) => (
+                      <div key={t.teacher_id || t.teacher_user_id} className="flex items-center justify-between gap-3 text-sm">
+                        <div className="text-slate-700 dark:text-slate-200">{t.teacher_name || t.teacherName}</div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await classService.unassignTeacher(classItem.id, t.teacher_id || t.teacher_user_id || t.teacherId);
+                              showToast('Teacher unassigned successfully', 'success');
+                              fetchClasses();
+                            } catch (err: any) {
+                              console.error('❌ Error unassigning teacher:', err);
+                              showToast(err.response?.data?.error?.message || 'Failed to unassign teacher', 'error');
+                            }
+                          }}
+                          className="px-2 py-1 bg-rose-600 text-white rounded-lg text-xs font-bold hover:bg-rose-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))
           )}

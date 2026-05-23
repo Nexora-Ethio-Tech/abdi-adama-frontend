@@ -3,9 +3,7 @@ import { API_BASE_URL } from '../config/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Do not set a global Content-Type so FormData requests can set their own boundary
 });
 
 // Request interceptor - Add auth token

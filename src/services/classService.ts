@@ -49,7 +49,12 @@ export const classService = {
 
   // Assign teacher to class
   assignTeacher: async (classId: string, teacherId: string) => {
-    const response = await api.patch(`/school-admin/classes/${classId}/assign-teacher`, { teacherId });
+    const response = await api.post(`/school-admin/classes/${classId}/teachers`, { teacherId });
+    return response.data;
+  },
+  // Unassign teacher from class
+  unassignTeacher: async (classId: string, teacherId: string) => {
+    const response = await api.delete(`/school-admin/classes/${classId}/teachers/${teacherId}`);
     return response.data;
   },
 };

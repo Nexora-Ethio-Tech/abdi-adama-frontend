@@ -1,9 +1,11 @@
 import { CheckCircle, XCircle, Clock, ChevronDown, UserCheck, Users, ShieldAlert, ArrowRight, X, Send, Check, Loader2, ArrowLeft } from 'lucide-react';
 import { mockTeachers, mockStudents } from '../data/mockData';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import attendanceService from '../services/attendanceService';
+import studentService from '../services/studentService';
 
 export const Attendance = () => {
   const navigate = useNavigate();
@@ -13,6 +15,8 @@ export const Attendance = () => {
   const [selectedGrade, setSelectedGrade] = useState('10A');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+  const [students, setStudents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
   const [absentTeacher, setAbsentTeacher] = useState<any>(null);
   const [isProxyAnalysisRunning, setIsProxyAnalysisRunning] = useState(false);
@@ -22,7 +26,30 @@ export const Attendance = () => {
     { id: '2', studentName: 'Sara Mohammed', grade: '9B', reason: 'Family emergency', time: '08:45 AM' },
   ]);
 
-  const students = mockStudents.filter((s: any) => s.grade === selectedGrade);
+  // Fetch students for selected grade
+  useEffect(() => {
+    const fetchStudents = async () => {
+      setLoading(true);
+      try {
+        const data = await studentService.getAllStudents({ grade: selectedGrade });
+        setStudents(data || []);
+        // Initialize attendance state
+        const initialAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
+        data?.forEach((s: any) => {
+          initialAttendance[s.id] = 'present';
+        });
+        setAttendance(initialAttendance);
+      } catch (error) {
+        console.error('Failed to fetch students:', error);
+        // Fall back to mock data
+        const filtered = mockStudents.filter((s: any) => s.grade === selectedGrade);
+        setStudents(filtered);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStudents();
+  }, [selectedGrade]);
 
   const toggleStatus = (studentId: string, status: 'present' | 'absent' | 'late') => {
     setAttendance(prev => ({
@@ -255,7 +282,23 @@ export const Attendance = () => {
             <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold text-sm">
               Attendance Reports
             </button>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-100 dark:shadow-none">
+            <button 
+              onClick={async () => {
+                try {
+                  const records = Object.entries(attendance).map(([studentId, status]) => ({
+                    studentId,
+                    status
+                  }));
+                  await attendanceService.markAttendance({
+                    date: selectedDate,
+                    attendanceRecords: records
+                  } as any);
+                  alert('Attendance saved successfully!');
+                } catch (error) {
+                  alert('Failed to save attendance');
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-100 dark:shadow-none">
               Save Today's Records
             </button>
           </div>

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
 import classService from '../services/classService';
-import { registerUser, getBranchUsers, updateUser, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
+import { getBranchUsers, updateUser, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
 
 export const Students = () => {
@@ -18,9 +18,9 @@ export const Students = () => {
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState('');
   const [filterGrade, setFilterGrade] = useState('');
+  const [filterSection, setFilterSection] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke'; student: any }>({ show: false, action: 'approve', student: null });
@@ -29,9 +29,15 @@ export const Students = () => {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
-  const emptyForm = { name: '', email: '', grade: '' };
-  const [formData, setFormData] = useState(emptyForm);
   const [editFormData, setEditFormData] = useState<any>({});
+
+  const handlePhoneInput = (value: string) => {
+    let phone = value.replace(/[^\d+]/g, '');
+    if (!phone.startsWith('+')) phone = '+251' + phone.replace(/^0|^251/, '');
+    else if (phone.startsWith('+251')) phone = '+251' + phone.substring(4).replace(/^0/, '');
+    if (phone.length > 13) phone = phone.substring(0, 13);
+    setEditFormData({ ...editFormData, parentPhone: phone });
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -107,27 +113,6 @@ export const Students = () => {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await registerUser({
-        name: formData.name,
-        email: formData.email,
-        role: 'student',
-        grade: formData.grade
-      });
-      showToast('Student created successfully!', 'success');
-      setShowAddModal(false);
-      setFormData(emptyForm);
-      fetchStudents();
-    } catch (err: any) {
-      showToast(err.response?.data?.error?.message || 'Failed to create student', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) return;
@@ -137,6 +122,7 @@ export const Students = () => {
         name: editFormData.name,
         email: editFormData.email,
         grade: editFormData.grade,
+        parentPhone: editFormData.parentPhone
       });
       showToast('Student updated successfully!', 'success');
       setShowEditModal(false);
@@ -152,7 +138,8 @@ export const Students = () => {
   const handleDelete = async () => {
     if (!confirmDelete.student) return;
     try {
-      await studentService.deleteStudent(confirmDelete.student.id);
+      // Use userId for deletion to hit the users delete endpoint
+      await studentService.deleteStudent(confirmDelete.student.userId || confirmDelete.student.id);
       showToast('Student deleted successfully!', 'success');
       setConfirmDelete({ show: false, student: null });
       fetchStudents();
@@ -180,6 +167,7 @@ export const Students = () => {
       name: `${student.firstName} ${student.lastName}`.trim(),
       email: student.email,
       grade: student.grade || '',
+      parentPhone: student.parentPhone || '+251'
     });
     setShowEditModal(true);
   };
@@ -198,7 +186,14 @@ export const Students = () => {
   const filtered = students.filter(s => {
     const matchSearch = !search || `${s.firstName} ${s.lastName} ${s.email} ${s.digitalId}`.toLowerCase().includes(search.toLowerCase());
     const matchGrade = !filterGrade || s.grade === filterGrade;
-    return matchSearch && matchGrade;
+    // Section match: determine student's section from classes list by className
+    let matchSection = true;
+    if (filterSection) {
+      const cls = classes.find(c => c.name === s.className || `${c.name}` === s.className);
+      matchSection = !!cls && (cls.section === filterSection);
+    }
+
+    return matchSearch && matchGrade && matchSection;
   });
 
   return (
@@ -219,7 +214,7 @@ export const Students = () => {
         <div className="flex gap-3">
           {isSchoolAdmin && (
             <button
-              onClick={() => { setFormData(emptyForm); setShowAddModal(true); }}
+              onClick={() => navigate('/admission')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none"
             >
               <UserPlus size={18} />
@@ -249,13 +244,28 @@ export const Students = () => {
           />
         </div>
         <select
-          value={filterGrade}
-          onChange={(e) => setFilterGrade(e.target.value)}
+              value={filterGrade}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilterGrade(val);
+                // when grade selected, default section to A
+                if (val) setFilterSection('A'); else setFilterSection('');
+              }}
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
           {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
             <option key={g} value={String(g)}>Grade {g}</option>
+          ))}
+        </select>
+        <select
+          value={filterSection}
+          onChange={(e) => setFilterSection(e.target.value)}
+          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">All Sections</option>
+          {['A','B','C','D','E','F'].map(s => (
+            <option key={s} value={s}>Section {s}</option>
           ))}
         </select>
         <select
@@ -378,76 +388,6 @@ export const Students = () => {
       )}
 
       {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><UserPlus size={20} /></div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New Student</h3>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
-            </div>
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Abebe Bekele"
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="student@example.com"
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
-                <select
-                  required
-                  value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Grade</option>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
-                    <option key={g} value={String(g)}>Grade {g}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  <strong>Note:</strong> A 4-digit PIN will be auto-generated for the student.
-                </p>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
-                  disabled={submitting}>
-                  Cancel
-                </button>
-                <button type="submit"
-                  className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
-                  disabled={submitting}>
-                  {submitting ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-                  <span>{submitting ? 'Creating...' : 'Create Student'}</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Edit Modal */}
       {showEditModal && selectedStudent && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -490,6 +430,17 @@ export const Students = () => {
                     <option key={g} value={String(g)}>Grade {g}</option>
                   ))}
                 </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Parent Phone Number</label>
+                <input
+                  type="text"
+                  value={editFormData.parentPhone || ''}
+                  onChange={(e) => handlePhoneInput(e.target.value)}
+                  defaultValue="+251 "
+                  placeholder="+251911234567"
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)}

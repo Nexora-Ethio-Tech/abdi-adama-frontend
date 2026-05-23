@@ -249,10 +249,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           'student': '/dashboard/student',
           'parent': '/dashboard/parent',
           'finance-clerk': '/dashboard/finance',
-          'librarian': '/dashboard/library',
-          'clinic-admin': '/dashboard/clinic',
+          'librarian': '/dashboard/librarian',
+          'clinic-admin': '/dashboard/clinic-admin',
           'driver': '/dashboard/driver',
-          'auditor': '/dashboard/auditor'
+          'auditor': '/auditor-dashboard'
         };
         return { success: true, redirect: roleRoutes[user.role] || '/dashboard' };
       }

@@ -80,7 +80,8 @@ const studentService = {
   },
 
   deleteStudent: async (id: string): Promise<void> => {
-    await api.delete(`/school-admin/students/${id}`);
+    // Delete a student by user id using the users endpoint
+    await api.delete(`/school-admin/users/${id}`);
   },
 
   assignClass: async (id: string, classId: string): Promise<Student> => {

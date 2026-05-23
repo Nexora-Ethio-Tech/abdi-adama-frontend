@@ -1,10 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield } from 'lucide-react';
+import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield, AlertTriangle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
-import { useEffect } from 'react';
 import { 
   getPendingApplications, 
   updateApplicationStatus, 
@@ -24,8 +23,105 @@ interface PendingApp {
 
 interface StudentRegistrationProps {
   isAdminView?: boolean;
+  onCreated?: () => void;
 }
 
+// Validation helper functions
+interface ValidationErrors {
+  [key: string]: string;
+}
+
+function formatPhoneNumber(phone: string | null | undefined): string {
+  // Guard against null/undefined
+  const raw = (phone || '').toString();
+  if (!raw) return '';
+
+  // Remove all non-digit characters except leading +
+  const digitsOnly = raw.replace(/[^\d]/g, '');
+
+  // Handle different formats
+  if (digitsOnly.startsWith('251')) {
+    return '+' + digitsOnly; // +2519xxxxxxxx or 2519xxxxxxxx
+  } else if (digitsOnly.startsWith('09') || digitsOnly.startsWith('07')) {
+    return '+251' + digitsOnly.substring(1); // 09xxxxxxxx -> +2519xxxxxxxx
+  } else if (digitsOnly.startsWith('9') || digitsOnly.startsWith('7')) {
+    return '+251' + digitsOnly; // 9xxxxxxxx -> +2519xxxxxxxx
+  }
+
+  // Default: assume it needs +251 prefix
+  return '+251' + digitsOnly;
+}
+
+function validatePhoneNumber(phone: string | null | undefined): { isValid: boolean; error?: string } {
+  const raw = (phone || '').toString();
+  const cleaned = raw.replace(/[^\d]/g, '');
+
+  if (!raw || !cleaned) {
+    return { isValid: false, error: 'Phone number is required' };
+  }
+
+  // Allow 9 digits after country code (+251) => full digits length 12 (251 + 9)
+  // Accept cleaned lengths between 9 (local without leading 0) and 12 (with country code)
+  if (cleaned.length < 9 || cleaned.length > 12) {
+    return { isValid: false, error: 'Phone number must be 9-12 digits' };
+  }
+
+  // Check that the significant local part starts with 9 or 7
+  const localPart = cleaned.length > 9 ? cleaned.slice(-9) : cleaned.slice(-9);
+  if (!localPart.startsWith('9') && !localPart.startsWith('7')) {
+    return { isValid: false, error: 'Phone must start with 9 or 7' };
+  }
+
+  return { isValid: true };
+}
+
+function validateRegistrationStep(step: number, formData: any): ValidationErrors {
+  const errors: ValidationErrors = {};
+
+  if (step === 1) {
+    if (!formData.name || !formData.name.trim()) {
+      errors.name = 'Full Name is required';
+    }
+    if (!formData.digital_id || !formData.digital_id.trim()) {
+      errors.digital_id = 'Fayda Alias Number is required';
+    }
+    if (!formData.dob) {
+      errors.dob = 'Date of Birth is required';
+    }
+    if (!formData.gender) {
+      errors.gender = 'Gender is required';
+    }
+  } else if (step === 2) {
+    if (!formData.parentName || !formData.parentName.trim()) {
+      errors.parentName = 'Parent/Guardian Name is required';
+    }
+    if (!formData.phone || !formData.phone.trim()) {
+      errors.phone = 'Parent Phone is required';
+    } else {
+      const phoneValidation = validatePhoneNumber(formData.phone);
+      if (!phoneValidation.isValid) {
+        errors.phone = phoneValidation.error || 'Invalid phone number';
+      }
+    }
+    if (!formData.address || !formData.address.trim()) {
+      errors.address = 'Address is required';
+    }
+  } else if (step === 3) {
+    if (!formData.previousSchool || !formData.previousSchool.trim()) {
+      errors.previousSchool = 'Previous School is required';
+    }
+    if (!formData.grade || !formData.grade.trim()) {
+      errors.grade = 'Last Grade Completed is required';
+    }
+    if (!formData.feeStatus) {
+      errors.feeStatus = 'Registration Fee Status is required';
+    }
+  }
+
+  return errors;
+}
+
+// Applications are fetched from backend on mount; this is an empty default
 const initialPendingApplications: PendingApp[] = [
   { id: 'APP1', name: 'Zekarias Teshome', dob: '2012-08-20', parentName: 'Teshome G/Mariam', phone: '+251911445566', email: 'teshome@gmail.com', previousSchool: 'St. Joseph School', lastGrade: '7', date: '2026-04-12', status: 'pending' },
   { id: 'APP2', name: 'Liyu Solomon', dob: '2013-05-10', parentName: 'Solomon Ayele', phone: '+251911778899', email: 'solomon.a@gmail.com', previousSchool: 'Future Talent Academy', lastGrade: '6', date: '2026-04-13', status: 'pending' },
@@ -33,7 +129,7 @@ const initialPendingApplications: PendingApp[] = [
   { id: 'APP4', name: 'Dawit Abebe', dob: '2013-02-15', parentName: 'Abebe Kebede', phone: '+251933556677', email: 'abebe.k@gmail.com', previousSchool: 'Unity School', lastGrade: '7', date: '2026-04-08', status: 'awaiting-payment' },
 ];
 
-export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationProps) => {
+export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { role } = useUser();
@@ -46,6 +142,7 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingApps, setPendingApps] = useState<PendingApp[]>(initialPendingApplications);
   const [viewingTranscript, setViewingTranscript] = useState<any>(null);
@@ -132,8 +229,39 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
     }
   } as const;
 
-  const nextStep = () => setRegistrationStep(prev => Math.min(3, prev + 1));
-  const prevStep = () => setRegistrationStep(prev => Math.max(1, prev - 1));
+  const nextStep = () => {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const currentStepData = {
+      name: formData.get('name'),
+      digital_id: formData.get('digital_id'),
+      dob: formData.get('dob'),
+      gender: formData.get('gender'),
+      parentName: formData.get('parentName'),
+      phone: formData.get('phone'),
+      address: formData.get('address'),
+      previousSchool: formData.get('previousSchool'),
+      grade: formData.get('grade'),
+      feeStatus: formData.get('feeStatus'),
+    };
+
+    const errors = validateRegistrationStep(registrationStep, currentStepData);
+    
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+    setRegistrationStep(prev => Math.min(3, prev + 1));
+  };
+
+  const prevStep = () => {
+    setValidationErrors({});
+    setRegistrationStep(prev => Math.max(1, prev - 1));
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -150,6 +278,8 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setValidationErrors({});
+
     try {
       const formData = new FormData(e.currentTarget);
       const name = formData.get('name') as string;
@@ -158,27 +288,86 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
       const gender = formData.get('gender') as string;
       const parentName = formData.get('parentName') as string;
       const phone = formData.get('phone') as string;
-      const email = formData.get('email') as string || `${digital_id.toLowerCase().replace(/[^a-z0-9]/g, '')}@example.com`;
+      const email = formData.get('email') as string || `${digital_id?.toLowerCase?.()?.replace?.(/[^a-z0-9]/g, '') || 'applicant'}@example.com`;
       const address = formData.get('address') as string;
       const previousSchool = formData.get('previousSchool') as string;
       const grade = formData.get('grade') as string;
-      
-      const appData = {
-        applicantName: name,
-        applicantEmail: email,
-        applicantPhone: phone,
-        gradeApplying: grade || 'Grade 1',
-        parentName: parentName,
-        parentPhone: phone,
-        dob: dob,
-        gender: gender,
-        address: address,
-        notes: `Previous School: ${previousSchool || 'None'}`
+      const feeStatus = formData.get('feeStatus') as string;
+      const bloodGroup = formData.get('bloodGroup') as string;
+      const allergies = formData.get('allergies') as string;
+      const chronicConditions = formData.get('chronicConditions') as string;
+      const medications = formData.get('medications') as string;
+
+      // Validate all required fields for final submission
+      const allFormData = {
+        name,
+        digital_id,
+        dob,
+        gender,
+        parentName,
+        phone,
+        address,
+        previousSchool,
+        grade,
+        feeStatus,
       };
 
-      await createPendingApplication(appData);
+      const errors = validateRegistrationStep(3, allFormData);
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        return;
+      }
+
+      // Format phone number
+      const formattedPhone = formatPhoneNumber(phone);
+
+      if (fileError) {
+        setFileError('Please fix the file upload issue before submitting.');
+        return;
+      }
+
+      // Create FormData for file upload (only append non-empty values)
+      const submitData = new FormData();
+      submitData.append('name', name?.trim() || '');
+      submitData.append('digital_id', digital_id?.trim() || '');
+      submitData.append('dob', dob || '');
+      submitData.append('gender', gender || '');
+      submitData.append('parentName', parentName?.trim() || '');
+      submitData.append('parentPhone', formattedPhone);
+      submitData.append('email', email?.trim() || '');
+      submitData.append('address', address?.trim() || '');
+      submitData.append('previousSchool', previousSchool?.trim() || '');
+      submitData.append('grade', grade || '');
+      submitData.append('feeStatus', feeStatus || '');
+      if (bloodGroup?.trim()) submitData.append('bloodGroup', bloodGroup.trim());
+      if (allergies?.trim()) submitData.append('allergies', allergies.trim());
+      if (chronicConditions?.trim()) submitData.append('chronicConditions', chronicConditions.trim());
+      if (medications?.trim()) submitData.append('medications', medications.trim());
+
+      // Add file if uploaded
+      const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+      if (fileInput?.files?.[0]) {
+        const file = fileInput.files[0];
+        // Validate file on client side again before sending
+        if (file.size > 2 * 1024 * 1024) {
+          setFileError('File is larger than 2MB. Please choose a smaller file.');
+          return;
+        }
+        submitData.append('transcript', file);
+      }
+
+      // Call API to create pending application
+      const response = await createPendingApplication(submitData as any);
+
+      if (response?.errors) {
+        setValidationErrors(response.errors);
+        setFileError(response.message || 'Validation failed');
+        setTimeout(() => setFileError(null), 5000);
+        return;
+      }
 
       setSuccessMessage(isAdminView ? 'Student registered successfully!' : 'Your application has been submitted successfully! We will contact you soon.');
+      setValidationErrors({});
       
       if (isAdminView) {
         const res = await getPendingApplications();
@@ -190,13 +379,23 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
             parentName: app.parent_name || 'N/A',
             phone: app.applicant_phone || 'N/A',
             email: app.applicant_email || 'N/A',
-            previousSchool: app.notes || 'None',
+            previousSchool: app.previous_school || 'N/A',
             lastGrade: app.grade_applying || 'N/A',
             date: new Date(app.created_at).toLocaleDateString(),
             status: app.status as AppStatus,
           }));
           setPendingApps(mapped);
+          
+          if (onCreated) {
+            onCreated();
+            return;
+          }
         }
+      }
+
+      if (onCreated) {
+        onCreated();
+        return;
       }
 
       if (!isAdminView) {
@@ -209,8 +408,11 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
       }
     } catch (error: any) {
       console.error(error);
-      const errMsg = error.response?.data?.error?.message || error.message || 'Failed to submit application';
-      setFileError(errMsg);
+      const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to submit application';
+      const errorObj = error.response?.data?.errors || {};
+      
+      setValidationErrors(errorObj);
+      setFileError(errorMessage);
       setTimeout(() => setFileError(null), 5000);
     }
   };
@@ -618,38 +820,60 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Full Name</label>
-                      <input required type="text" placeholder="Enter student full name" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
+                      <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.name 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Fayda Alias Number (FAN)</label>
-                      <input required type="text" placeholder="e.g. FAN-12345678" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-rose-500">*</span></label>
+                      <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.digital_id 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
                       <p className="text-[10px] text-slate-400 pl-1">Alias number from the Ethiopia Digital ID (Fayda) card</p>
+                      {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Date of Birth</label>
-                      <input required type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
+                      <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.dob 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.dob && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.dob}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Gender</label>
-                      <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
+                      <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.gender 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`}>
+                        <option value="">Select Gender</option>
                         <option>Male</option>
                         <option>Female</option>
                         <option>Other</option>
                       </select>
+                      {validationErrors.gender && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.gender}</p>}
                     </div>
                   </div>
 
                   {/* Clinic Required Fields */}
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                     <h4 className="text-xs font-black text-rose-500 uppercase tracking-widest flex items-center gap-2 mb-4">
+                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
                         <HeartPulse size={16} />
-                        Confidential Medical Details (Clinic Required)
+                        Medical Information (Optional)
                      </h4>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
-                          <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                          <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">Select Blood Group</option>
                             <option>O+</option>
                             <option>O-</option>
                             <option>A+</option>
@@ -662,15 +886,15 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Known Allergies</label>
-                          <input type="text" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="text" name="allergies" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Chronic Conditions</label>
-                          <input type="text" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="text" name="chronicConditions" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                         <div className="space-y-1 md:col-span-3">
                           <label className="text-[10px] font-bold text-slate-500 uppercase">Current Home Medications</label>
-                          <input type="text" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                          <input type="text" name="medications" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                      </div>
                   </div>
@@ -681,16 +905,52 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Parent/Guardian Name</label>
-                      <input required type="text" placeholder="Enter parent name" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
+                      <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.parentName 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.parentName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.parentName}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Parent Phone</label>
-                      <input required type="tel" placeholder="+251..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
+                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${
+                        validationErrors.phone
+                          ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
+                          : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
+                      }`}>
+                        <span className="text-slate-400 dark:text-slate-500 font-bold mr-1">+251</span>
+                        <input
+                          required
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={9}
+                          placeholder="9xxxxxxxx"
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
+                            e.target.value = value;
+                          }}
+                          onKeyPress={(e) => {
+                            if (!/\d/.test(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          name="phone"
+                          className="w-full bg-transparent outline-none font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400 pl-1">Format: 9xxxxxxxx (9 digits only)</p>
+                      {validationErrors.phone && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.phone}</p>}
                     </div>
                     <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Address</label>
-                      <input required type="text" placeholder="City, Sub-city, Woreda" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
+                      <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.address 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.address && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.address}</p>}
                     </div>
                   </div>
                 </div>
@@ -700,19 +960,35 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Previous School</label>
-                      <input type="text" placeholder="Name of previous school" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-rose-500">*</span></label>
+                      <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.previousSchool 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.previousSchool && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.previousSchool}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Last Grade Completed</label>
-                      <input type="text" placeholder="e.g. Grade 9" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
+                      <input name="grade" type="text" placeholder="e.g. Grade 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.grade 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                      {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Registration Fee Status</label>
-                      <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Registration Fee Status <span className="text-rose-500">*</span></label>
+                      <select name="feeStatus" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
+                        validationErrors.feeStatus 
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`}>
+                        <option value="">Select Fee Status</option>
                         <option>Paid</option>
                         <option>Pending</option>
                       </select>
+                      {validationErrors.feeStatus && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.feeStatus}</p>}
                     </div>
                   </div>
 
@@ -723,6 +999,7 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                     }`}>
                       <input
                         type="file"
+                        name="transcript"
                         accept=".pdf,.jpg,.jpeg,.png"
                         onChange={handleFileUpload}
                         className="absolute inset-0 opacity-0 cursor-pointer"
@@ -737,12 +1014,7 @@ export const StudentRegistration = ({ isAdminView = true }: StudentRegistrationP
                         <p className="text-xs text-slate-500 mt-1">PDF, PNG, JPG (Max 2MB)</p>
                       </div>
                     </div>
-                    {fileError && (
-                      <div className="flex items-center gap-2 text-rose-600 text-xs font-bold">
-                        <AlertCircle size={14} />
-                        <span>{fileError}</span>
-                      </div>
-                    )}
+                    {fileError && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {fileError}</p>}
                   </div>
                 </div>
               )}

@@ -1,4 +1,6 @@
 import api from './api';
+import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 // Dashboard Interface
 export interface SchoolAdminDashboard {
@@ -190,8 +192,20 @@ export const activateBranchAcademicYear = async (id: string) => {
 
 // Applications
 export const createPendingApplication = async (data: any) => {
-  const response = await api.post('/school-admin/applications', data);
-  return response.data;
+  // When sending FormData, let axios set the Content-Type with proper boundary
+  // Do NOT manually set Content-Type; axios handles it correctly with FormData
+  const token = localStorage.getItem('abdi_adama_token');
+  try {
+    const response = await axios.post(`${API_BASE_URL}/school-admin/applications`, data, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error submitting application:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
 export const getPendingApplications = async (): Promise<Application[]> => {

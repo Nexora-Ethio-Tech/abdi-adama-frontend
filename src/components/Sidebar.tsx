@@ -21,7 +21,8 @@ import {
   GraduationCap,
   ClipboardCheck,
   Lock,
-  DollarSign
+  DollarSign,
+  Truck
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -91,6 +92,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
           { icon: DollarSign, label: 'Finance Staff', path: '/finance-staff' },
+          { icon: BookOpen, label: 'Librarian Staff', path: '/librarian-staff' },
+          { icon: Truck, label: 'Driver Staff', path: '/driver-staff' },
+          { icon: HeartPulse, label: 'Clinic Admin Staff', path: '/clinic-admin-staff' },
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
           { icon: BookOpen, label: t('nav.scheduleBuilder'), path: '/schedule-builder' },
           { icon: Package, label: t('nav.inventory'), path: '/inventory' },
@@ -190,7 +194,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => (
           <NavLink
-            key={item.path}
+            key={`${item.path}-${item.label}`}
             to={isExamLockedDown ? '#' : item.path}
             onClick={(e) => {
               if (isExamLockedDown) {
