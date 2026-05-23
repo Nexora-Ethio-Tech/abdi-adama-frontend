@@ -69,7 +69,7 @@ export const StudentCourses = () => {
 
   const loadHistoryData = () => {
     if (!selectedAcademicYear || !selectedHistorySemester) return;
-    
+
     setHistoryLoading(true);
     // Simulate fetching history data
     setTimeout(() => {
@@ -105,21 +105,19 @@ export const StudentCourses = () => {
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
           <button
             onClick={() => setViewMode('current')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              viewMode === 'current'
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'current'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
                 : 'text-slate-500 hover:text-slate-700'
-            }`}
+              }`}
           >
             Current Term
           </button>
           <button
             onClick={() => setViewMode('history')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              viewMode === 'history'
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'history'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
                 : 'text-slate-500 hover:text-slate-700'
-            }`}
+              }`}
           >
             Academic History
           </button>
@@ -212,11 +210,10 @@ export const StudentCourses = () => {
                               setCourseSearchQuery('');
                               setDropdownOpen(false);
                             }}
-                            className={`w-full text-left p-3 rounded-xl transition-all ${
-                              selectedCourse?.id === course.id
+                            className={`w-full text-left p-3 rounded-xl transition-all ${selectedCourse?.id === course.id
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white hover:bg-blue-50 dark:hover:bg-slate-600'
-                            }`}
+                              }`}
                           >
                             <p className="font-bold">{course.name}</p>
                             <p className="text-xs opacity-70">{course.code}</p>
