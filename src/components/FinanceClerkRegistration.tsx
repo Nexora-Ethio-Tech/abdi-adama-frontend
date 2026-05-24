@@ -54,7 +54,7 @@ export const FinanceClerkRegistration = () => {
       }
 
       const result = await response.json();
-      setPendingApplications(result.data || []);
+      setPendingApplications(Array.isArray(result) ? result : (result.data || []));
     } catch (err: any) {
       console.error('Error fetching applications:', err);
       setError(err.message || 'Failed to load applications');

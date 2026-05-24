@@ -174,7 +174,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const fetchApps = async () => {
         try {
           const res = await getPendingApplications();
-          const applications = Array.isArray(res) ? res : (res?.data || []);
+          const applications = Array.isArray(res) ? res : (res || []);
           if (Array.isArray(applications)) {
             const mapped = applications.map((app: any) => ({
               id: app.id,

@@ -2,9 +2,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, HeartPulse, User, Clock, ShieldAlert } from 'lucide-react';
 import { ShootingStars } from '../components/Effects';
+import api from '../services/api';
+import { getParentDashboard } from '../services/parentService';
 
 interface Child {
-  identity_id: string;
+  id: string;
   fullName?: string;
 }
 
@@ -24,8 +26,6 @@ export const ParentClinicChat = () => {
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/.?api$/, '');
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -33,18 +33,12 @@ export const ParentClinicChat = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const token = localStorage.getItem('abdi_adama_token');
       try {
-        const res = await fetch(`${API_URL}/api/parent/dashboard`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const kids = data.data?.children || [];
-          setChildren(kids);
-          if (kids.length > 0) {
-            setSelectedChildId(kids[0].identity_id || kids[0].id);
-          }
+        const data = await getParentDashboard();
+        const kids = data.children || [];
+        setChildren(kids);
+        if (kids.length > 0) {
+          setSelectedChildId(kids[0].id);
         }
       } catch (err) {
         console.error('Failed to load children:', err);
@@ -59,24 +53,17 @@ export const ParentClinicChat = () => {
     if (!selectedChildId) return;
     const loadMessages = async () => {
       setLoading(true);
-      const token = localStorage.getItem('abdi_adama_token');
       try {
-        const url = `${API_URL}/api/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-          // normalize messages
-          const msgs = (data.data || []).map((m: any) => ({
-            id: m.id,
-            role: m.role === 'clinic' || m.sender_id?.toString() === m.receiver_id?.toString() ? 'clinic' : (m.role || (m.sender_id === (m.receiver_id) ? 'clinic' : 'parent')),
-            child_id: m.child_id || m.student_id || m.childId,
-            text: m.text || m.message,
-            timestamp: m.timestamp || m.created_at
-          }));
-          setMessages(msgs);
-        } else {
-          console.error('Failed to fetch messages');
-        }
+        const res = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`);
+        // normalize messages
+        const msgs = (res.data?.data || []).map((m: any) => ({
+          id: m.id,
+          role: m.role || m.sender_role || 'parent',
+          child_id: m.child_id || m.student_id || m.childId,
+          text: m.text || m.message,
+          timestamp: m.timestamp || m.created_at
+        }));
+        setMessages(msgs);
       } catch (err) {
         console.error('Failed to fetch messages:', err);
       } finally {
@@ -89,25 +76,17 @@ export const ParentClinicChat = () => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedChildId) return;
-    const token = localStorage.getItem('abdi_adama_token');
     try {
-      const res = await fetch(`${API_URL}/api/clinic/chat`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: newMessage, childId: selectedChildId })
+      const res = await api.post('/clinic/chat', {
+        message: newMessage,
+        childId: selectedChildId
       });
-      if (res.ok) {
-        const data = await res.json();
-        const m = data.data || data;
-        setMessages(prev => [...prev, { id: m.id || Date.now().toString(), role: 'parent', child_id: selectedChildId, text: m.text || m.message, timestamp: m.timestamp }]);
-        setNewMessage('');
-      } else {
-        const err = await res.json();
-        alert(err.error?.message || 'Failed to send message');
-      }
-    } catch (err) {
+      const m = res.data?.data || res.data;
+      setMessages(prev => [...prev, { id: m.id || Date.now().toString(), role: 'parent', child_id: selectedChildId, text: m.text || m.message, timestamp: m.timestamp }]);
+      setNewMessage('');
+    } catch (err: any) {
       console.error('Send failed:', err);
-      alert('Failed to send message');
+      alert(err.response?.data?.error?.message || 'Failed to send message');
     }
   };
 
@@ -139,13 +118,13 @@ export const ParentClinicChat = () => {
               ) : children.length === 0 ? (
                 <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
               ) : (
-                children.map((child: any) => (
+                children.map((child: Child) => (
                   <button
-                    key={child.identity_id}
-                    onClick={() => setSelectedChildId(child.identity_id)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChildId === (child.identity_id || child.id) ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}
+                    key={child.id}
+                    onClick={() => setSelectedChildId(child.id)}
+                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChildId === child.id ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}
                   >
-                    {(child.fullName || child.full_name || '').split(' ')[0] || 'Child'}
+                    {(child.fullName || '').split(' ')[0] || 'Child'}
                   </button>
                 ))
               )}
