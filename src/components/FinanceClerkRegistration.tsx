@@ -44,7 +44,7 @@ export const FinanceClerkRegistration = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(`${API}/api/finance-clerk/applications?status=awaiting-payment`, {
         headers: authHeaders(),
       });
@@ -74,7 +74,7 @@ export const FinanceClerkRegistration = () => {
 
   const handleApprove = async () => {
     if (!selectedApp) return;
-    
+
     try {
       setApproving(true);
       setError(null);
@@ -101,9 +101,9 @@ export const FinanceClerkRegistration = () => {
       const result = await response.json();
       setApprovedApp(result.data);
       setSuccessMessage(`✅ Payment approved! Student ID: ${result.data.application?.student_id_generated || 'Generated'}`);
-      
+
       // Remove from pending list
-      setPendingApplications(prev => 
+      setPendingApplications(prev =>
         prev.filter(app => app.id !== selectedApp.id)
       );
 

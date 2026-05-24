@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield, AlertTriangle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
-import { 
-  getPendingApplications, 
-  updateApplicationStatus, 
+import {
+  getPendingApplications,
+  updateApplicationStatus,
   createPendingApplication,
   createPublicPendingApplication,
-  registerUser 
+  registerUser
 } from '../services/schoolAdminService';
 
 type RegistrationTab = 'new' | 'existing';
@@ -135,7 +135,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const { t } = useTranslation();
   const { role } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
-  
+
   const [activeTab, setActiveTab] = useState<RegistrationTab>('new');
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>(isFinance ? 'awaiting-finance' : 'pending');
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -251,7 +251,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     };
 
     const errors = validateRegistrationStep(registrationStep, currentStepData);
-    
+
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
       return;
@@ -372,7 +372,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
       setSuccessMessage(isAdminView ? 'Student registered successfully!' : 'Your application has been submitted successfully! We will contact you soon.');
       setValidationErrors({});
-      
+
       if (isAdminView) {
         const res = await getPendingApplications();
         const applications = Array.isArray(res) ? res : (res || []);
@@ -390,7 +390,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             status: app.status as AppStatus,
           }));
           setPendingApps(mapped);
-          
+
           if (onCreated) {
             onCreated();
             return;
@@ -415,7 +415,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       console.error(error);
       const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to submit application';
       const errorObj = error.response?.data?.errors || {};
-      
+
       setValidationErrors(errorObj);
       setFileError(errorMessage);
       setTimeout(() => setFileError(null), 5000);
@@ -568,22 +568,20 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         <div className="flex flex-col sm:flex-row gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/50 rounded-2xl w-fit border border-slate-200 dark:border-slate-800">
           <button
             onClick={() => setActiveTab('new')}
-            className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              activeTab === 'new'
+            className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'new'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
+              }`}
           >
             {t('registration.newAdmissions')}
           </button>
           {(!isFinance ? false : true) && (
             <button
               onClick={() => setActiveTab('existing')}
-              className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                activeTab === 'existing'
+              className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'existing'
                   ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
+                }`}
             >
               {t('registration.reEnrollment')}
             </button>
@@ -598,9 +596,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             {!isFinance && (
               <div
                 onClick={() => setRegistrationOpen(!registrationOpen)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
-                  registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'
-                }`}
+                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl text-white ${registrationOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
@@ -624,51 +621,51 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             {/* Global Exam Configuration */}
             {!isFinance && (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-800/30 overflow-hidden">
-              <button
-                onClick={() => setShowExamConfig(!showExamConfig)}
-                className="w-full p-4 flex items-center justify-between hover:bg-amber-50/50 dark:hover:bg-amber-900/5 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
-                    <BookOpen size={18} />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">Entrance Exam Configuration</p>
-                    <p className="text-[10px] text-amber-600/70 font-medium">
-                      {examConfig.date ? `${examConfig.date} at ${examConfig.time} — ${examConfig.location}` : 'Not configured yet'}
-                    </p>
-                  </div>
-                </div>
-                <Clock size={16} className={`text-amber-400 transition-transform ${showExamConfig ? 'rotate-180' : ''}`} />
-              </button>
-              {showExamConfig && (
-                <div className="p-4 pt-0 space-y-4 border-t border-amber-100 dark:border-amber-800/30">
-                  <div className="grid grid-cols-2 gap-3 pt-4">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Exam Date</label>
-                      <input type="date" value={examConfig.date} onChange={e => setExamConfig({...examConfig, date: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                <button
+                  onClick={() => setShowExamConfig(!showExamConfig)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-amber-50/50 dark:hover:bg-amber-900/5 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
+                      <BookOpen size={18} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</label>
-                      <input type="time" value={examConfig.time} onChange={e => setExamConfig({...examConfig, time: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                    <div className="text-left">
+                      <p className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">Entrance Exam Configuration</p>
+                      <p className="text-[10px] text-amber-600/70 font-medium">
+                        {examConfig.date ? `${examConfig.date} at ${examConfig.time} — ${examConfig.location}` : 'Not configured yet'}
+                      </p>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Location</label>
-                    <input type="text" value={examConfig.location} onChange={e => setExamConfig({...examConfig, location: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                  <Clock size={16} className={`text-amber-400 transition-transform ${showExamConfig ? 'rotate-180' : ''}`} />
+                </button>
+                {showExamConfig && (
+                  <div className="p-4 pt-0 space-y-4 border-t border-amber-100 dark:border-amber-800/30">
+                    <div className="grid grid-cols-2 gap-3 pt-4">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Exam Date</label>
+                        <input type="date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</label>
+                        <input type="time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Location</label>
+                      <input type="text" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subjects</label>
+                      <input type="text" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instructions for Students</label>
+                      <textarea rows={2} value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+                    </div>
+                    <p className="text-[10px] text-amber-600 font-medium">💡 These details are sent to every applicant you assign to "Pass After Exam".</p>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subjects</label>
-                    <input type="text" value={examConfig.subjects} onChange={e => setExamConfig({...examConfig, subjects: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instructions for Students</label>
-                    <textarea rows={2} value={examConfig.notes} onChange={e => setExamConfig({...examConfig, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
-                  </div>
-                  <p className="text-[10px] text-amber-600 font-medium">💡 These details are sent to every applicant you assign to "Pass After Exam".</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
             )}
 
             {/* Pipeline Filter Tabs */}
@@ -682,16 +679,14 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 <button
                   key={tab.key}
                   onClick={() => setPipelineFilter(tab.key)}
-                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${
-                    pipelineFilter === tab.key
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${pipelineFilter === tab.key
                       ? `bg-${tab.color}-600 text-white shadow-lg shadow-${tab.color}-500/20`
                       : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   {tab.label}
-                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                    pipelineFilter === tab.key ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${pipelineFilter === tab.key ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                    }`}>
                     {pipelineCounts[tab.key]}
                   </span>
                 </button>
@@ -712,13 +707,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Grade {app.lastGrade} • {app.date} • {app.email}</p>
                       </div>
                     </div>
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                      app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
-                      app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                      app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
-                      app.status === 'declined' || app.status === 'exam-failed' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
-                      'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
-                    }`}>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
+                        app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
+                          app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
+                            app.status === 'declined' || app.status === 'exam-failed' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
+                              'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
+                      }`}>
                       {app.status.replace('-', ' ')}
                     </span>
                   </div>
@@ -759,19 +753,19 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         <button onClick={() => handleExamResult(app.id, false)} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><X size={14} /> Exam Failed</button>
                       </>
                     )}
-                     {app.status === 'awaiting-payment' && (
-                       isFinance ? (
-                         <>
-                           <button onClick={() => {
-                             setSelectedAppForFee(app);
-                             setShowFeeModal(true);
-                           }} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass (Paid)</button>
-                           <button onClick={() => handlePaymentResult(app.id, false)} className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"><X size={16} /> Fail (Unpaid)</button>
-                         </>
-                       ) : (
-                         <span className="text-xs font-bold text-purple-600 flex items-center gap-1.5"><MapPin size={14} /> Waiting for finance clerk to confirm payment</span>
-                       )
-                     )}
+                    {app.status === 'awaiting-payment' && (
+                      isFinance ? (
+                        <>
+                          <button onClick={() => {
+                            setSelectedAppForFee(app);
+                            setShowFeeModal(true);
+                          }} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass (Paid)</button>
+                          <button onClick={() => handlePaymentResult(app.id, false)} className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"><X size={16} /> Fail (Unpaid)</button>
+                        </>
+                      ) : (
+                        <span className="text-xs font-bold text-purple-600 flex items-center gap-1.5"><MapPin size={14} /> Waiting for finance clerk to confirm payment</span>
+                      )
+                    )}
                     {(app.status === 'declined' || app.status === 'exam-failed') && (
                       <span className="text-xs font-bold text-rose-500">Application closed</span>
                     )}
@@ -783,8 +777,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               ))}
               {filteredPipelineApps.length === 0 && (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-12 text-center space-y-3">
-                   <CheckCircle size={48} className="mx-auto text-slate-200" />
-                   <p className="text-slate-500 font-medium">No applications in this category.</p>
+                  <CheckCircle size={48} className="mx-auto text-slate-200" />
+                  <p className="text-slate-500 font-medium">No applications in this category.</p>
                 </div>
               )}
             </div>
@@ -805,16 +799,15 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <UserPlus size={20} className="text-blue-600" />
                   Admission Form (New Student)
                 </h3>
-                  <div className="flex items-center gap-1 md:gap-2">
+                <div className="flex items-center gap-1 md:gap-2">
                   {[1, 2, 3].map((step) => (
                     <div key={step} className="flex items-center">
-                        <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all ${
-                        registrationStep === step ? 'bg-blue-600 text-white' :
-                        registrationStep > step ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
-                      }`}>
-                          {registrationStep > step ? <Check size={14} className="w-3 h-3 md:w-4 md:h-4" /> : step}
+                      <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all ${registrationStep === step ? 'bg-blue-600 text-white' :
+                          registrationStep > step ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                        {registrationStep > step ? <Check size={14} className="w-3 h-3 md:w-4 md:h-4" /> : step}
                       </div>
-                        {step < 3 && <div className={`w-4 md:w-8 h-0.5 ${registrationStep > step ? 'bg-emerald-200' : 'bg-slate-100'}`} />}
+                      {step < 3 && <div className={`w-4 md:w-8 h-0.5 ${registrationStep > step ? 'bg-emerald-200' : 'bg-slate-100'}`} />}
                     </div>
                   ))}
                 </div>
@@ -826,39 +819,35 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
-                      <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.name 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.name
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-rose-500">*</span></label>
-                      <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.digital_id 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.digital_id
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       <p className="text-[10px] text-slate-400 pl-1">Alias number from the Ethiopia Digital ID (Fayda) card</p>
                       {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
-                      <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.dob 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.dob && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.dob}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
-                      <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.gender 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`}>
+                        }`}>
                         <option value="">Select Gender</option>
                         <option>Male</option>
                         <option>Female</option>
@@ -870,38 +859,38 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
                   {/* Clinic Required Fields */}
                   <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                        <HeartPulse size={16} />
-                        Medical Information (Optional)
-                     </h4>
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
-                          <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="">Select Blood Group</option>
-                            <option>O+</option>
-                            <option>O-</option>
-                            <option>A+</option>
-                            <option>A-</option>
-                            <option>B+</option>
-                            <option>B-</option>
-                            <option>AB+</option>
-                            <option>AB-</option>
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Known Allergies</label>
-                          <input type="text" name="allergies" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Chronic Conditions</label>
-                          <input type="text" name="chronicConditions" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div className="space-y-1 md:col-span-3">
-                          <label className="text-[10px] font-bold text-slate-500 uppercase">Current Home Medications</label>
-                          <input type="text" name="medications" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                     </div>
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                      <HeartPulse size={16} />
+                      Medical Information (Optional)
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
+                        <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                          <option value="">Select Blood Group</option>
+                          <option>O+</option>
+                          <option>O-</option>
+                          <option>A+</option>
+                          <option>A-</option>
+                          <option>B+</option>
+                          <option>B-</option>
+                          <option>AB+</option>
+                          <option>AB-</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Known Allergies</label>
+                        <input type="text" name="allergies" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Chronic Conditions</label>
+                        <input type="text" name="chronicConditions" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div className="space-y-1 md:col-span-3">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Current Home Medications</label>
+                        <input type="text" name="medications" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -911,20 +900,18 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
-                      <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.parentName 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.parentName
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.parentName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.parentName}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
-                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${
-                        validationErrors.phone
+                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${validationErrors.phone
                           ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
-                      }`}>
+                        }`}>
                         <span className="text-slate-400 dark:text-slate-500 font-bold mr-1">+251</span>
                         <input
                           required
@@ -950,11 +937,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
-                      <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.address 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.address && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.address}</p>}
                     </div>
                   </div>
@@ -966,29 +952,26 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-rose-500">*</span></label>
-                      <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.previousSchool 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.previousSchool
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.previousSchool && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.previousSchool}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
-                      <input name="grade" type="text" placeholder="e.g. Grade 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.grade 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <input name="grade" type="text" placeholder="e.g. Grade 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                        }`} />
                       {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Registration Fee Status <span className="text-rose-500">*</span></label>
-                      <select name="feeStatus" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${
-                        validationErrors.feeStatus 
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700' 
+                      <select name="feeStatus" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.feeStatus
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`}>
+                        }`}>
                         <option value="">Select Fee Status</option>
                         <option>Paid</option>
                         <option>Pending</option>
@@ -999,9 +982,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
                   <div className="space-y-3">
                     <label className="text-[10px] font-bold text-slate-500 uppercase block">Last Transcript (Max 2MB)</label>
-                    <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${
-                      fileError ? 'border-rose-300 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600'
-                    }`}>
+                    <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${fileError ? 'border-rose-300 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600'
+                      }`}>
                       <input
                         type="file"
                         name="transcript"
@@ -1074,9 +1056,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <button
                       key={student.id}
                       onClick={() => setSelectedStudent(student)}
-                      className={`w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
-                        selectedStudent?.id === student.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
-                      }`}
+                      className={`w-full p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedStudent?.id === student.id ? 'bg-blue-50/50 dark:bg-blue-900/20 border-l-4 border-blue-600' : ''
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-700 font-bold">
@@ -1106,9 +1087,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <RefreshCw size={20} className="text-blue-600" />
                   Promotion
                 </h3>
-                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  selectedStudent.id === '1' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                }`}>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${selectedStudent.id === '1' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
                   Fee Status: {selectedStudent.id === '1' ? 'Paid' : 'Pending'}
                 </span>
               </div>
@@ -1170,11 +1150,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <button
                     onClick={handlePromote}
                     disabled={selectedStudent.id !== '1'}
-                    className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${
-                      selectedStudent.id === '1'
+                    className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${selectedStudent.id === '1'
                         ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none'
                         : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
-                    }`}
+                      }`}
                   >
                     Confirm Promotion
                   </button>
@@ -1244,32 +1223,32 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   {/* Mock content rendering */}
                   <div className="absolute inset-4 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col p-8 bg-white dark:bg-slate-950/50 backdrop-blur-sm shadow-inner">
                     <div className="flex justify-between mb-8 border-b-2 border-slate-100 dark:border-slate-800 pb-4">
-                       <div className="font-black text-xs">OFFICIAL ACADEMIC RECORD</div>
-                       <div className="font-bold text-[10px] text-slate-400">PAGE 1 OF 1</div>
+                      <div className="font-black text-xs">OFFICIAL ACADEMIC RECORD</div>
+                      <div className="font-bold text-[10px] text-slate-400">PAGE 1 OF 1</div>
                     </div>
                     <div className="space-y-4 flex-1">
-                        <div className="grid grid-cols-2 gap-4">
-                          {transcriptHistory[selectedAcademicYear as keyof typeof transcriptHistory][selectedSemester as keyof (typeof transcriptHistory)[keyof typeof transcriptHistory]].map((item, i) => (
-                            <div key={i} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                               <span className="text-[10px] font-bold text-slate-600 uppercase">{item.s}</span>
-                               <span className="text-xs font-black text-blue-600">{item.g}</span>
-                            </div>
-                          ))}
-                       </div>
-                       <div className="mt-8 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
-                          <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-1">Cumulative GPA</p>
-                          <p className="text-2xl font-black text-emerald-600">3.85 / 4.00</p>
-                       </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {transcriptHistory[selectedAcademicYear as keyof typeof transcriptHistory][selectedSemester as keyof (typeof transcriptHistory)[keyof typeof transcriptHistory]].map((item, i) => (
+                          <div key={i} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                            <span className="text-[10px] font-bold text-slate-600 uppercase">{item.s}</span>
+                            <span className="text-xs font-black text-blue-600">{item.g}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-8 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
+                        <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-1">Cumulative GPA</p>
+                        <p className="text-2xl font-black text-emerald-600">3.85 / 4.00</p>
+                      </div>
                     </div>
                     <div className="mt-8 flex justify-between items-end">
-                       <div className="space-y-1">
-                          <div className="w-24 h-0.5 bg-slate-300"></div>
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Principal's Signature</p>
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Verified Academic History</p>
-                          <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">ABDI ADAMA SMART SCHOOL</p>
-                       </div>
+                      <div className="space-y-1">
+                        <div className="w-24 h-0.5 bg-slate-300"></div>
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Principal's Signature</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Verified Academic History</p>
+                        <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">ABDI ADAMA SMART SCHOOL</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1296,10 +1275,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 </div>
 
                 <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-3xl">
-                   <p className="text-xs font-bold text-blue-900 dark:text-blue-100 mb-2">Academic Counselor Note:</p>
-                   <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed italic">
-                     "Student shows exceptional performance in STEM subjects. Recommended for Advanced Track in Grade {viewingTranscript.lastGrade}."
-                   </p>
+                  <p className="text-xs font-bold text-blue-900 dark:text-blue-100 mb-2">Academic Counselor Note:</p>
+                  <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed italic">
+                    "Student shows exceptional performance in STEM subjects. Recommended for Advanced Track in Grade {viewingTranscript.lastGrade}."
+                  </p>
                 </div>
 
                 <div className="pt-4 space-y-3">
@@ -1342,28 +1321,28 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Tuition (ETB)</label>
-                  <input 
-                    type="number" 
-                    value={customFees.monthly_fee} 
-                    onChange={(e) => setCustomFees({...customFees, monthly_fee: Number(e.target.value)})}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10" 
+                  <input
+                    type="number"
+                    value={customFees.monthly_fee}
+                    onChange={(e) => setCustomFees({ ...customFees, monthly_fee: Number(e.target.value) })}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transport Fee (ETB)</label>
-                  <input 
-                    type="number" 
-                    value={customFees.bus_fee} 
-                    onChange={(e) => setCustomFees({...customFees, bus_fee: Number(e.target.value)})}
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10" 
+                  <input
+                    type="number"
+                    value={customFees.bus_fee}
+                    onChange={(e) => setCustomFees({ ...customFees, bus_fee: Number(e.target.value) })}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
                   />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Status</label>
-                <select 
-                  value={customFees.fee_status} 
-                  onChange={(e) => setCustomFees({...customFees, fee_status: e.target.value as any})}
+                <select
+                  value={customFees.fee_status}
+                  onChange={(e) => setCustomFees({ ...customFees, fee_status: e.target.value as any })}
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none"
                 >
                   <option value="standard">Standard Fee</option>
@@ -1373,23 +1352,23 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               {customFees.fee_status === 'reduced' && (
                 <div className="space-y-1 animate-in fade-in slide-in-from-top-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reason for Reduction</label>
-                  <textarea 
+                  <textarea
                     value={customFees.fee_notes}
-                    onChange={(e) => setCustomFees({...customFees, fee_notes: e.target.value})}
+                    onChange={(e) => setCustomFees({ ...customFees, fee_notes: e.target.value })}
                     placeholder="Explain why this student has a reduced fee..."
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none min-h-[100px] resize-none"
                   />
                   <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl mt-2">
-                     <AlertCircle size={14} className="text-amber-600" />
-                     <p className="text-[10px] text-amber-700 font-medium">Reduced fees will be marked for Auditor approval.</p>
+                    <AlertCircle size={14} className="text-amber-600" />
+                    <p className="text-[10px] text-amber-700 font-medium">Reduced fees will be marked for Auditor approval.</p>
                   </div>
                 </div>
               )}
             </div>
             <div className="p-8 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
               <button onClick={() => setShowFeeModal(false)} className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-700">Cancel</button>
-              <button 
-                onClick={() => handlePaymentResult(selectedAppForFee.id, true, customFees)} 
+              <button
+                onClick={() => handlePaymentResult(selectedAppForFee.id, true, customFees)}
                 className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 shadow-xl shadow-emerald-500/20 active:scale-95"
               >
                 Confirm & Enroll

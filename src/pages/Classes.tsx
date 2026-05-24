@@ -151,7 +151,7 @@ export const Classes = () => {
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error assigning teacher:', err);
-      const errorMsg = err.response?.status === 500 
+      const errorMsg = err.response?.status === 500
         ? 'Backend error: Teacher assignment endpoint not implemented or has a bug. Contact backend team.'
         : err.response?.data?.error?.message || 'Failed to assign teacher';
       showToast(errorMsg, 'error');
@@ -490,19 +490,17 @@ export const Classes = () => {
       {/* Toast Notification */}
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
-            toast.type === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
               : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-          }`}>
+            }`}>
             {toast.type === 'success' ? (
               <CheckCircle2 className="text-green-600" size={20} />
             ) : (
               <XCircle className="text-red-600" size={20} />
             )}
-            <p className={`text-sm font-bold ${
-              toast.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-            }`}>
+            <p className={`text-sm font-bold ${toast.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+              }`}>
               {toast.message}
             </p>
           </div>

@@ -241,11 +241,10 @@ export const SchoolAdminRegistration = () => {
           <button
             key={status}
             onClick={() => setFilterStatus(status as any)}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
-              filterStatus === status
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${filterStatus === status
                 ? 'bg-blue-600 text-white shadow-lg'
                 : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-            }`}
+              }`}
           >
             {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
           </button>

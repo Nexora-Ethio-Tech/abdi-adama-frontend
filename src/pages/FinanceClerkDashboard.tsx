@@ -114,7 +114,7 @@ export const FinanceClerkDashboard = () => {
   return (
     <div className="space-y-6">
       <Breadcrumbs />
-      
+
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Finance Clerk Dashboard</h1>
@@ -158,7 +158,7 @@ export const FinanceClerkDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -171,7 +171,7 @@ export const FinanceClerkDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -184,7 +184,7 @@ export const FinanceClerkDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -232,31 +232,28 @@ export const FinanceClerkDashboard = () => {
       <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
         <button
           onClick={() => setActiveTab('all')}
-          className={`px-6 py-3 font-bold text-sm transition-all ${
-            activeTab === 'all'
+          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
+            }`}
         >
           All Students ({students.length})
         </button>
         <button
           onClick={() => setActiveTab('overdue')}
-          className={`px-6 py-3 font-bold text-sm transition-all ${
-            activeTab === 'overdue'
+          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'overdue'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
+            }`}
         >
           Overdue ({overdueStudents.length})
         </button>
         <button
           onClick={() => setActiveTab('registrations')}
-          className={`px-6 py-3 font-bold text-sm transition-all ${
-            activeTab === 'registrations'
+          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'registrations'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
+            }`}
         >
           Registrations
         </button>
@@ -269,130 +266,129 @@ export const FinanceClerkDashboard = () => {
       ) : (
         <>
           {/* Filters */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name or ID..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                fetchData();
-              }}
-              className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name or ID..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    fetchData();
+                  }}
+                  className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <select
+                value={feeStatusFilter}
+                onChange={(e) => {
+                  setFeeStatusFilter(e.target.value as any);
+                  fetchData();
+                }}
+                className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">All Fee Status</option>
+                <option value="standard">Standard</option>
+                <option value="reduced">Reduced</option>
+              </select>
+              <button
+                onClick={fetchData}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm transition-all"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
-          <select
-            value={feeStatusFilter}
-            onChange={(e) => {
-              setFeeStatusFilter(e.target.value as any);
-              fetchData();
-            }}
-            className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          >
-            <option value="">All Fee Status</option>
-            <option value="standard">Standard</option>
-            <option value="reduced">Reduced</option>
-          </select>
-          <button
-            onClick={fetchData}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm transition-all"
-          >
-            Apply Filters
-          </button>
-        </div>
-      </div>
 
-      {/* Students Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Monthly Fee</th>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Bus Fee</th>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Penalty</th>
-                <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {(activeTab === 'all' ? filteredStudents : overdueStudents).map((student) => {
-                const _totalDue = student.monthly_fee + student.bus_fee + student.penalty_fee;
-                return (
-                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
-                        <p className="text-xs text-slate-500">{student.digital_id} • {student.email}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
-                        Grade {student.grade}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                      {student.monthly_fee.toLocaleString()} ETB
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                      {student.bus_fee.toLocaleString()} ETB
-                    </td>
-                    <td className="px-6 py-4">
-                      {student.penalty_fee > 0 ? (
-                        <span className="text-sm font-bold text-red-600">{student.penalty_fee.toLocaleString()} ETB</span>
-                      ) : (
-                        <span className="text-sm text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${
-                          student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                        }`}>
-                          {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
-                        </span>
-                        {student.fee_approval_status === 'pending' && (
-                          <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
-                            Pending Approval
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openPaymentModal(student)}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
-                        >
-                          Record Payment
-                        </button>
-                        <button
-                          onClick={() => openPaymentHistory(student)}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
-                        >
-                          History
-                        </button>
-                      </div>
-                    </td>
+          {/* Students Table */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Monthly Fee</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Bus Fee</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Penalty</th>
+                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {(activeTab === 'all' ? filteredStudents : overdueStudents).map((student) => {
+                    const _totalDue = student.monthly_fee + student.bus_fee + student.penalty_fee;
+                    return (
+                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                            <p className="text-xs text-slate-500">{student.digital_id} • {student.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
+                            Grade {student.grade}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                          {student.monthly_fee.toLocaleString()} ETB
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                          {student.bus_fee.toLocaleString()} ETB
+                        </td>
+                        <td className="px-6 py-4">
+                          {student.penalty_fee > 0 ? (
+                            <span className="text-sm font-bold text-red-600">{student.penalty_fee.toLocaleString()} ETB</span>
+                          ) : (
+                            <span className="text-sm text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
+                              }`}>
+                              {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
+                            </span>
+                            {student.fee_approval_status === 'pending' && (
+                              <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Pending Approval
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => openPaymentModal(student)}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                            >
+                              Record Payment
+                            </button>
+                            <button
+                              onClick={() => openPaymentHistory(student)}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+                            >
+                              History
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-      {(activeTab === 'all' ? filteredStudents : overdueStudents).length === 0 && !loading && (
-        <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-          <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
-        </div>
-      )}
+          {(activeTab === 'all' ? filteredStudents : overdueStudents).length === 0 && !loading && (
+            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
+            </div>
+          )}
         </>
       )}
 
