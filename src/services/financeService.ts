@@ -135,6 +135,19 @@ const financeClerkService = {
     const response = await api.get('/finance-clerk/reports/daily', { params: { date } });
     return response.data.data;
   },
+
+  // 8. Get pending applications assigned to finance
+  getPendingApplications: async (params?: { status?: string }) => {
+    const response = await api.get('/finance-clerk/applications', { params });
+    return response.data.data || [];
+  },
+
+  // 9. Approve a pending application (finalize registration)
+  approveApplication: async (applicationId: string, data: { amount: number; reference?: string }) => {
+    const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
+    return response.data.data;
+  }
+
 };
 
 export default financeClerkService;

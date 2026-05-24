@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
-import { mockExams } from '../data/examData';
+import { getAvailableExams, createExam } from '../services/examService';
 import type { Exam, ExamCategory } from '../data/examData';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -32,7 +32,9 @@ const Exams = () => {
   const { role, user } = useUser();
   const navigate = useNavigate();
   const { examControls, ensureExamControl, examinerTeacherIds } = useStore();
-  const [exams, setExams] = useState<Exam[]>(mockExams);
+  const [exams, setExams] = useState<Exam[]>([]);
+  const [loadingExams, setLoadingExams] = useState(false);
+  const [examError, setExamError] = useState('');
   const [adminAuthModal, setAdminAuthModal] = useState<string | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -46,6 +48,24 @@ const Exams = () => {
   const activeTeacherId = 'T1';
 
   const canCreateOfficialExam = isTeacher && examinerTeacherIds.includes(activeTeacherId);
+
+  const fetchExams = async () => {
+    setLoadingExams(true);
+    setExamError('');
+    try {
+      const examsData = await getAvailableExams();
+      setExams(examsData);
+    } catch (error: any) {
+      console.error('Failed to load exams:', error);
+      setExamError(error?.message || 'Unable to load exams.');
+    } finally {
+      setLoadingExams(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExams();
+  }, []);
 
   useEffect(() => {
     exams.forEach((exam) => ensureExamControl(exam.id));
@@ -135,11 +155,10 @@ const Exams = () => {
       <div className="flex flex-wrap gap-3">
         <button
           onClick={() => setFilterCategory('All')}
-          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-            filterCategory === 'All'
-            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-            : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
-          }`}
+          className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterCategory === 'All'
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+              : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+            }`}
         >
           All Items
         </button>
@@ -147,11 +166,10 @@ const Exams = () => {
           <button
             key={cat}
             onClick={() => setFilterCategory(cat)}
-            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              filterCategory === cat
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-              : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
-            }`}
+            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${filterCategory === cat
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+              }`}
           >
             {cat}s
           </button>
@@ -218,29 +236,29 @@ const Exams = () => {
               You are accessing an official examination as a School Admin. Please enter the Principal-set password to proceed.
             </p>
             <div className="space-y-4">
-               <input
-                 type="password"
-                 placeholder="Enter Principal Password"
-                 autoFocus
-                 className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-500 transition-all text-center font-bold tracking-widest dark:text-white"
-                 value={adminPassword}
-                 onChange={(e) => setAdminPassword(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && handleAdminStart(adminAuthModal)}
-               />
-               <div className="flex gap-3">
-                  <button
-                    onClick={() => { setAdminAuthModal(null); setAdminPassword(''); }}
-                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black transition-all hover:bg-slate-200"
-                  >
-                    CANCEL
-                  </button>
-                  <button
-                    onClick={() => handleAdminStart(adminAuthModal)}
-                    className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-lg shadow-blue-200 dark:shadow-none transition-all"
-                  >
-                    AUTHORIZE
-                  </button>
-               </div>
+              <input
+                type="password"
+                placeholder="Enter Principal Password"
+                autoFocus
+                className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-500 transition-all text-center font-bold tracking-widest dark:text-white"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAdminStart(adminAuthModal)}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setAdminAuthModal(null); setAdminPassword(''); }}
+                  className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-black transition-all hover:bg-slate-200"
+                >
+                  CANCEL
+                </button>
+                <button
+                  onClick={() => handleAdminStart(adminAuthModal)}
+                  className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black shadow-lg shadow-blue-200 dark:shadow-none transition-all"
+                >
+                  AUTHORIZE
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -637,20 +655,46 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
     setQuestions(updateQs(questions));
   };
 
-  const handleSave = () => {
-    const newExam: Exam = {
-      id: Date.now().toString(),
-      title: examData.title || `Untitled ${type}`,
-      courseId: 'mock-course',
-      courseName: examData.courseName || 'General Course',
-      teacherId: 't1',
-      teacherName: 'Current Teacher',
-      category: examData.category as ExamCategory,
-      durationMinutes: examData.durationMinutes || 60,
-      questions: assignmentDetails.isDocumentOnly ? [] : questions as any,
-      status: 'available'
-    };
-    onSave(newExam);
+  const handleSave = async () => {
+    const examQuestions = assignmentDetails.isDocumentOnly
+      ? []
+      : questions.map((question) => ({
+        id: question.id,
+        text: question.text,
+        correctOptionId: question.correctOptionId || null,
+        options: question.options?.map((option) => ({ id: option.id, text: option.text })) || []
+      }));
+
+    try {
+      const createdExam = await createExam({
+        title: examData.title || `Untitled ${type}`,
+        courseId: null,
+        courseName: examData.courseName || 'General Course',
+        category: examData.category as ExamCategory,
+        durationMinutes: examData.durationMinutes || 60,
+        questions: examQuestions
+      });
+
+      onSave({
+        id: createdExam.id,
+        title: createdExam.title,
+        courseId: createdExam.courseId,
+        courseName: createdExam.courseName,
+        teacherId: createdExam.teacherId,
+        teacherName: createdExam.teacherName,
+        category: createdExam.category,
+        durationMinutes: createdExam.durationMinutes,
+        questions: createdExam.questions || examQuestions,
+        status: createdExam.status || 'available',
+        isLocked: createdExam.isLocked,
+        lockPassword: createdExam.lockPassword,
+        isHidden: createdExam.isHidden,
+        principalSetPassword: createdExam.principalSetPassword
+      } as Exam);
+    } catch (error: any) {
+      console.error('Exam creation failed:', error);
+      alert(error?.message || 'Could not create exam.');
+    }
   };
 
   return (
@@ -683,7 +727,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               placeholder="e.g. Mid-term Calculus"
               className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
               value={examData.title}
-              onChange={e => setExamData({...examData, title: e.target.value})}
+              onChange={e => setExamData({ ...examData, title: e.target.value })}
             />
           </div>
           <div className="space-y-1">
@@ -693,7 +737,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               placeholder="e.g. Mathematics"
               className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
               value={examData.courseName}
-              onChange={e => setExamData({...examData, courseName: e.target.value})}
+              onChange={e => setExamData({ ...examData, courseName: e.target.value })}
             />
           </div>
           <div className="space-y-1">
@@ -701,7 +745,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
             <select
               className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold"
               value={examData.category}
-              onChange={e => setExamData({...examData, category: e.target.value as ExamCategory})}
+              onChange={e => setExamData({ ...examData, category: e.target.value as ExamCategory })}
             >
               <option value="Mid-term" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Mid-term</option>
               <option value="Final" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Final</option>
@@ -713,7 +757,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               type="number"
               className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
               value={examData.durationMinutes}
-              onChange={e => setExamData({...examData, durationMinutes: parseInt(e.target.value)})}
+              onChange={e => setExamData({ ...examData, durationMinutes: parseInt(e.target.value) })}
             />
           </div>
         </div>
@@ -728,12 +772,11 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               <h3 className="font-bold dark:text-white">Assignment Mode</h3>
             </div>
             <button
-              onClick={() => setAssignmentDetails({...assignmentDetails, isDocumentOnly: !assignmentDetails.isDocumentOnly})}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                assignmentDetails.isDocumentOnly
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-slate-100 dark:bg-slate-900 text-slate-500'
-              }`}
+              onClick={() => setAssignmentDetails({ ...assignmentDetails, isDocumentOnly: !assignmentDetails.isDocumentOnly })}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${assignmentDetails.isDocumentOnly
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-slate-100 dark:bg-slate-900 text-slate-500'
+                }`}
             >
               {assignmentDetails.isDocumentOnly ? 'DOCUMENT-ONLY MODE ACTIVE' : 'SWITCH TO DOCUMENT-ONLY'}
             </button>
@@ -747,7 +790,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
                 placeholder="Provide clear instructions for the assignment..."
                 className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
                 value={assignmentDetails.description}
-                onChange={e => setAssignmentDetails({...assignmentDetails, description: e.target.value})}
+                onChange={e => setAssignmentDetails({ ...assignmentDetails, description: e.target.value })}
               />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -757,7 +800,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
                   type="date"
                   className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
                   value={assignmentDetails.dueDate}
-                  onChange={e => setAssignmentDetails({...assignmentDetails, dueDate: e.target.value})}
+                  onChange={e => setAssignmentDetails({ ...assignmentDetails, dueDate: e.target.value })}
                 />
               </div>
               <div className="space-y-1">

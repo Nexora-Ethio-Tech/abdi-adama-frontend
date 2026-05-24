@@ -7,6 +7,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 import { exportToCSV } from '../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useCallback } from 'react';
+import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
@@ -91,7 +92,7 @@ export const Finance = () => {
 
   const [paymentStatus, setPaymentStatus] = useState<Record<string, PaymentLog[]>>({});
 
-  const [activeView, setActiveView] = useState<'main' | 'audit'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'audit' | 'registration'>('main');
   const [dbSummary, setDbSummary] = useState<any>(null);
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
   const [txCategory, setTxCategory] = useState('Student Fee');
@@ -287,6 +288,14 @@ export const Finance = () => {
                   {t('finance.systemAudit')}
                 </button>
               )}
+              {isClerk && (
+                <button
+                  onClick={() => setActiveView('registration')}
+                  className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'registration' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                >
+                  📋 Registrations
+                </button>
+              )}
             </div>
             {canCreateTransaction && (
               <button
@@ -364,7 +373,11 @@ export const Finance = () => {
           )}
         </div>
         <div className="overflow-x-auto -mx-4 sm:mx-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-          {activeView === 'audit' ? (
+          {activeView === 'registration' ? (
+            <div className="p-6">
+              <FinanceClerkRegistration />
+            </div>
+          ) : activeView === 'audit' ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
                 {/* Filter Header */}

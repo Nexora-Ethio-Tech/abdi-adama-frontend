@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, FileText, Trophy, Loader2, AlertCircle, BookOpen, ChevronRight, RefreshCw } from 'lucide-react';
-import { getAvailableExams, type ExamListItem } from '../services/examService';
-import { mockExams } from '../data/examData';
+import { getAvailableExams } from '../services/examService';
+import { mockExams, type Exam } from '../data/examData';
+
+interface ExamListItem extends Exam {
+  startWindow?: string;
+  questionCount?: number;
+  createdAt?: string;
+  sessionStatus?: 'active' | 'submitted' | 'terminated' | 'timed_out' | null;
+  finalScore?: number | null;
+}
 
 interface ExamListProps {
   onSelectExam: (examId: string) => void;
@@ -24,14 +32,17 @@ export const ExamList: React.FC<ExamListProps> = ({ onSelectExam }) => {
       console.warn('Failed to fetch exams from API, falling back to mock data:', err);
       // Fallback to mock data
       const fallback: ExamListItem[] = mockExams.map(m => ({
-        id: m.id,
-        title: m.title,
-        durationMinutes: m.durationMinutes,
+        ...m,
+        courseId: m.courseId || '',
+        teacherId: m.teacherId || '',
+        teacherName: m.teacherName || '',
+        status: 'available',
+        questions: m.questions || [],
         startWindow: new Date().toISOString(),
-        questionCount: m.questions.length,
         createdAt: new Date().toISOString(),
         sessionStatus: null,
         finalScore: null,
+        questionCount: m.questions.length,
       }));
       setExams(fallback);
       setUsingMock(true);
@@ -129,11 +140,10 @@ export const ExamList: React.FC<ExamListProps> = ({ onSelectExam }) => {
                 key={exam.id}
                 onClick={() => !isCompleted && onSelectExam(exam.id)}
                 disabled={isCompleted}
-                className={`w-full text-left p-6 rounded-2xl border-2 transition-all group ${
-                  isCompleted
+                className={`w-full text-left p-6 rounded-2xl border-2 transition-all group ${isCompleted
                     ? 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 opacity-70 cursor-not-allowed'
                     : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-lg hover:shadow-blue-500/5 cursor-pointer'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -150,7 +160,7 @@ export const ExamList: React.FC<ExamListProps> = ({ onSelectExam }) => {
                       </span>
                       <span className="flex items-center gap-1.5">
                         <FileText size={14} className="text-slate-400" />
-                        {exam.questionCount} question{exam.questionCount !== 1 ? 's' : ''}
+                        {(exam.questionCount ?? exam.questions?.length ?? 0)} question{(exam.questionCount ?? exam.questions?.length ?? 0) !== 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>

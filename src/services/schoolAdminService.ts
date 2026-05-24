@@ -223,7 +223,7 @@ export const getPendingApplications = async (): Promise<Application[]> => {
   return response.data?.data || response.data || [];
 };
 
-export const updateApplicationStatus = async (id: string, data: UpdateApplicationStatusData) => {
+export const updateApplicationStatus = async (id: string, data: UpdateApplicationStatusData & { parentPhone?: string }) => {
   const response = await api.patch(`/school-admin/applications/${id}/status`, data);
   return response.data;
 };
@@ -266,7 +266,7 @@ export const deleteTeacher = async (userId: string) => {
 };
 
 // Student Management
-export const updateUser = async (userId: string, data: { name?: string; email?: string; grade?: string }) => {
+export const updateUser = async (userId: string, data: { name?: string; email?: string; grade?: string; parentPhone?: string }) => {
   const response = await api.patch(`/school-admin/users/${userId}`, data);
   return response.data;
 };

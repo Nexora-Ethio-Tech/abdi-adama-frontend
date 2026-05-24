@@ -349,8 +349,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
       // Add file if uploaded
       const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
-      if (fileInput?.files?.[0]) {
-        const file = fileInput.files[0];
+      const fileList = fileInput?.files;
+      if (fileList?.[0]) {
+        const file = fileList[0];
         // Validate file on client side again before sending
         if (file.size > 2 * 1024 * 1024) {
           setFileError('File is larger than 2MB. Please choose a smaller file.');
@@ -374,8 +375,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       
       if (isAdminView) {
         const res = await getPendingApplications();
-        if (res) {
-          const mapped = (res as any).map((app: any) => ({
+        const applications = Array.isArray(res) ? res : (res || []);
+        if (Array.isArray(applications)) {
+          const mapped = applications.map((app: any) => ({
             id: app.id,
             name: app.applicant_name,
             dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',

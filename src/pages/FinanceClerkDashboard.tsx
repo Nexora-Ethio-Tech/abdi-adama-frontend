@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, FileText } from 'lucide-react';
 import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 
 export const FinanceClerkDashboard = () => {
   const [dashboard, setDashboard] = useState<FinanceClerkDashboardType | null>(null);
@@ -10,7 +11,7 @@ export const FinanceClerkDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations'>('all');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
@@ -249,9 +250,25 @@ export const FinanceClerkDashboard = () => {
         >
           Overdue ({overdueStudents.length})
         </button>
+        <button
+          onClick={() => setActiveTab('registrations')}
+          className={`px-6 py-3 font-bold text-sm transition-all ${
+            activeTab === 'registrations'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Registrations
+        </button>
       </div>
 
-      {/* Filters */}
+      {activeTab === 'registrations' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
+          <FinanceClerkRegistration />
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
@@ -375,6 +392,8 @@ export const FinanceClerkDashboard = () => {
           <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
           <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
         </div>
+      )}
+        </>
       )}
 
       {/* Payment Modal */}

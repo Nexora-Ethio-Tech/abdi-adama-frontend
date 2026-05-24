@@ -259,7 +259,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: res.data.error?.message || 'Invalid credentials' };
     } catch (err: any) {
       console.error('Login error:', err);
-      return { success: false, error: err.response?.data?.error?.message || 'Unable to connect to server' };
+      return {
+        success: false,
+        error: err.response?.data?.error?.message || err.response?.data?.message || err.message || 'Unable to connect to server'
+      };
     }
   };
 

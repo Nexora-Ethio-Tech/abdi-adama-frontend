@@ -46,6 +46,15 @@ export interface StudentCourse {
   room: string;
   credits: number;
   currentGrade?: number;
+  total?: number | null;
+  final_50?: number | null;
+  max_quiz?: number | null;
+  quiz_10?: number | null;
+  assignment_10?: number | null;
+  max_assignment?: number | null;
+  max_mid?: number | null;
+  mid_30?: number | null;
+  max_final?: number | null;
 }
 
 // Grade Interface
@@ -98,7 +107,7 @@ export const getMyCourses = async (): Promise<StudentCourse[]> => {
 };
 
 export const getMyGrades = async (courseId?: string): Promise<StudentGrade[]> => {
-  const url = courseId 
+  const url = courseId
     ? `/student/grades/${courseId}`
     : '/student/grades';
   const response = await api.get(url);
@@ -114,7 +123,7 @@ export const getMyTranscript = async (academicYear?: string, semester?: string):
   const params = new URLSearchParams();
   if (academicYear) params.append('academicYear', academicYear);
   if (semester) params.append('semester', semester);
-  
+
   const response = await api.get(`/student/transcript?${params.toString()}`);
   return response.data.data;
 };
@@ -123,7 +132,7 @@ export const getMyHistory = async (year: string, semester?: number): Promise<any
   const params = new URLSearchParams();
   params.append('year', year);
   if (semester) params.append('semester', semester.toString());
-  
+
   const response = await api.get(`/student/history?${params.toString()}`);
   return response.data.data;
 };

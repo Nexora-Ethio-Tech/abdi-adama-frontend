@@ -6,8 +6,8 @@ import { QuestionCard } from './components/QuestionCard';
 import { QuestionPalette } from './components/QuestionPalette';
 import { SubmitOverlay } from './components/SubmitOverlay';
 import { useAntiCheat } from './hooks/useAntiCheat';
-import { mockExam } from '../../data/examData';
-import type { AnswerPayload } from '../../data/examData';
+import { getExamById, saveExamAnswer, submitExam } from '../../services/examService';
+import type { ExamDetail } from '../../services/examService';
 
 export const ExamSession: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
@@ -27,27 +27,59 @@ export const ExamSession: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [reentryPassword, setReentryPassword] = useState('');
   const [showReentryModal, setShowReentryModal] = useState(false);
+  const [examDetail, setExamDetail] = useState<ExamDetail | null>(null);
+  const [loadingExam, setLoadingExam] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // --- Persistence ---
   const STORAGE_KEY = `exam_session_${examId}`;
 
   useEffect(() => {
+    if (!examId) return;
+
+    const fetchExam = async () => {
+      setLoadingExam(true);
+      setLoadError('');
+
+      try {
+        const data = await getExamById(examId);
+        setExamDetail(data);
+        setAnswers(data.savedAnswers || {});
+        setExamStartedAt(data.session.startTime || new Date().toISOString());
+        setExamEndTime(data.session.endTime || Date.now() + data.exam.durationMinutes * 60 * 1000);
+        setHasStarted(false);
+        if (data.session.status === 'submitted') {
+          setSubmitStatus('success');
+        }
+      } catch (error: any) {
+        console.error('Failed to load exam:', error);
+        setLoadError(error?.message || 'Unable to load exam.');
+      } finally {
+        setLoadingExam(false);
+      }
+    };
+
+    fetchExam();
+  }, [examId]);
+
+  useEffect(() => {
+    if (!examId) return;
+
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
-      const { savedAnswers, savedIndex, savedStartTime, savedEndTime, savedViolations, savedFlagged } = JSON.parse(saved);
-      setAnswers(savedAnswers || {});
-      setFlaggedQuestions(new Set(savedFlagged || []));
-      setCurrentQuestionIndex(savedIndex || 0);
-      setExamStartedAt(savedStartTime || new Date().toISOString());
-      setExamEndTime(savedEndTime || (Date.now() + mockExam.durationMinutes * 60 * 1000));
-      setViolations(savedViolations || []);
-    } else {
-      const startTime = new Date().toISOString();
-      const endTime = Date.now() + mockExam.durationMinutes * 60 * 1000;
-      setExamStartedAt(startTime);
-      setExamEndTime(endTime);
+      try {
+        const parsed = JSON.parse(saved);
+        setAnswers(parsed.savedAnswers || {});
+        setFlaggedQuestions(new Set(parsed.savedFlagged || []));
+        setCurrentQuestionIndex(parsed.savedIndex || 0);
+        setExamStartedAt(parsed.savedStartTime || examStartedAt);
+        setExamEndTime(parsed.savedEndTime || examEndTime);
+        setViolations(parsed.savedViolations || []);
+      } catch {
+        localStorage.removeItem(STORAGE_KEY);
+      }
     }
-  }, [STORAGE_KEY]);
+  }, [STORAGE_KEY, examId, examStartedAt, examEndTime]);
 
   useEffect(() => {
     if (examEndTime > 0) {
@@ -87,30 +119,15 @@ export const ExamSession: React.FC = () => {
   }, []);
 
   const handleSubmit = useCallback(async (auto = false) => {
-    if (isSubmitting) return;
+    if (!examId || isSubmitting || submitStatus === 'success') return;
 
     setIsSubmitting(true);
     setSubmitStatus('submitting');
 
-    const payload: AnswerPayload = {
-      examId: examId || 'unknown',
-      studentId: 'current-student-id', // Would come from context
-      answers,
-      warningCount: violations.length,
-      startedAt: examStartedAt,
-      submittedAt: new Date().toISOString(),
-      autoSubmitted: auto
-    };
-
-    console.log('Submitting Payload:', payload);
-
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
+      await submitExam(examId, auto);
       localStorage.removeItem(STORAGE_KEY);
       setSubmitStatus('success');
-
       if (document.fullscreenElement) {
         document.exitFullscreen();
       }
@@ -120,17 +137,25 @@ export const ExamSession: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [examId, answers, violations.length, examStartedAt, STORAGE_KEY, isSubmitting]);
+  }, [examId, isSubmitting, submitStatus, STORAGE_KEY]);
 
   const { requestFullscreen } = useAntiCheat({
-    onViolation: isSubmitting || submitStatus === 'success' || showReentryModal ? () => {} : handleViolation,
+    onViolation: isSubmitting || submitStatus === 'success' || showReentryModal ? () => { } : handleViolation,
     maxWarnings: 3,
     autoSubmit: () => handleSubmit(true)
   });
 
-  const handleSelectOption = (optionId: string) => {
-    const questionId = mockExam.questions[currentQuestionIndex].id;
+  const handleSelectOption = async (optionId: string) => {
+    if (!examId || !examDetail) return;
+    const questionId = examDetail.questions[currentQuestionIndex]?.id;
+    if (!questionId) return;
+
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
+    try {
+      await saveExamAnswer(examId, questionId, optionId);
+    } catch (error) {
+      console.error('Failed to save answer:', error);
+    }
   };
 
   const handleToggleFlag = (questionId: string) => {
@@ -146,9 +171,9 @@ export const ExamSession: React.FC = () => {
   };
 
   const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
-  const handleNext = () => setCurrentQuestionIndex(prev => Math.min(mockExam.questions.length - 1, prev + 1));
+  const handleNext = () => setCurrentQuestionIndex(prev => Math.min((examDetail?.questions.length ?? 1) - 1, prev + 1));
 
-  const questionIds = useMemo(() => mockExam.questions.map(q => q.id), []);
+  const questionIds = useMemo(() => examDetail?.questions.map(q => q.id) || [], [examDetail]);
 
   if (!hasStarted) {
     return (
@@ -157,7 +182,7 @@ export const ExamSession: React.FC = () => {
           <div className="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <ShieldCheck size={40} />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-4">{mockExam.title}</h2>
+          <h2 className="text-3xl font-bold text-white mb-4">{examDetail?.exam.title}</h2>
           <div className="bg-slate-800 rounded-xl p-6 text-left mb-8 space-y-4">
             <h3 className="text-slate-300 font-semibold uppercase text-xs tracking-wider">Exam Rules</h3>
             <ul className="text-slate-400 text-sm space-y-2">
@@ -175,7 +200,7 @@ export const ExamSession: React.FC = () => {
               </li>
               <li className="flex gap-2">
                 <span className="text-blue-400">•</span>
-                Duration: {mockExam.durationMinutes} minutes.
+                Duration: {examDetail?.exam.durationMinutes} minutes.
               </li>
             </ul>
           </div>
@@ -272,7 +297,7 @@ export const ExamSession: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-              {mockExam.title}
+              {examDetail?.exam.title}
             </h1>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -289,12 +314,12 @@ export const ExamSession: React.FC = () => {
           {/* Question Area */}
           <div className="lg:col-span-8 space-y-6">
             <QuestionCard
-              question={mockExam.questions[currentQuestionIndex]}
-              selectedOptionId={answers[mockExam.questions[currentQuestionIndex].id]}
+              question={examDetail?.questions[currentQuestionIndex]!}
+              selectedOptionId={answers[examDetail?.questions[currentQuestionIndex]?.id || '']}
               onSelectOption={handleSelectOption}
               index={currentQuestionIndex}
-              isFlagged={flaggedQuestions.has(mockExam.questions[currentQuestionIndex].id)}
-              onToggleFlag={() => handleToggleFlag(mockExam.questions[currentQuestionIndex].id)}
+              isFlagged={examDetail ? flaggedQuestions.has(examDetail.questions[currentQuestionIndex]?.id || '') : false}
+              onToggleFlag={() => examDetail?.questions[currentQuestionIndex]?.id && handleToggleFlag(examDetail.questions[currentQuestionIndex].id)}
             />
           </div>
 
@@ -302,7 +327,7 @@ export const ExamSession: React.FC = () => {
           <div className="lg:col-span-4">
             <div className="sticky top-24 space-y-6">
               <QuestionPalette
-                totalQuestions={mockExam.questions.length}
+                totalQuestions={examDetail?.questions.length ?? 0}
                 currentIndex={currentQuestionIndex}
                 answers={answers}
                 flaggedQuestions={flaggedQuestions}
@@ -337,7 +362,7 @@ export const ExamSession: React.FC = () => {
             </button>
             <button
               onClick={handleNext}
-              disabled={currentQuestionIndex === mockExam.questions.length - 1}
+              disabled={currentQuestionIndex === (examDetail?.questions.length ?? 1) - 1}
               className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30 transition-colors"
             >
               <span className="hidden sm:inline">Next</span>

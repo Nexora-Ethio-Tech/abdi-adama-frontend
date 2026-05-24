@@ -28,6 +28,15 @@ export const StudentCourses = () => {
   // Available academic years
   const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
 
+  // Status check helper
+  const getStatus = (course: any) => {
+    if (course.final_50 === null || course.final_50 === undefined) {
+      return 'PENDING';
+    }
+    const totalScore = Number(course.total) || 0;
+    return totalScore >= 50 ? 'PASSED' : 'FAILED';
+  };
+
   // Fetch current term courses and grades
   const fetchCourses = async () => {
     try {
@@ -122,21 +131,19 @@ export const StudentCourses = () => {
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
           <button
             onClick={() => navigate('/courses')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              viewMode === 'current'
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'current'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-            }`}
+              }`}
           >
             Current Term
           </button>
           <button
             onClick={() => navigate('/attendance')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-              viewMode === 'history'
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'history'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-            }`}
+              }`}
           >
             Academic History
           </button>
@@ -157,32 +164,6 @@ export const StudentCourses = () => {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Course Progress Summary Card - KEEP EXACTLY AS IS */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-[2rem] border border-blue-100 dark:border-slate-700 p-8 shadow-lg">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                  <BookOpen size={24} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Course Progress</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Overview of your current semester</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {courses.map((course) => {
-                  const courseProgress = (course as any).progress || 65;
-                  return (
-                    <div key={course.id} className="bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-blue-100 dark:border-slate-700">
-                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2">{course.name}</p>
-                      <div className="flex items-baseline gap-2">
-                        <p className="text-2xl font-black text-blue-600">{courseProgress}%</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* First Div: Controls Row */}
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -262,11 +243,10 @@ export const StudentCourses = () => {
                               setCourseSearchQuery(course.name);
                               setDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                              selectedCourse?.id === course.id
+                            className={`w-full text-left px-4 py-3 rounded-xl transition-all ${selectedCourse?.id === course.id
                                 ? 'bg-blue-600 text-white'
                                 : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                            }`}
+                              }`}
                           >
                             <p className="text-sm font-bold">{course.name}</p>
                             <p className="text-xs opacity-75">{course.code}</p>
@@ -284,19 +264,57 @@ export const StudentCourses = () => {
             {/* Second Div: Selected Course Metadata & Grades */}
             {selectedCourse ? (
               <div className="space-y-6">
-                {/* Course Metadata Card */}
+                {/* Course Metadata Card with Course Progress on Right */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-                  <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
-                      <BookOpen size={32} />
+                  <div className="flex items-start gap-8 justify-between">
+                    <div className="flex items-center gap-5 flex-1">
+                      <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                        <BookOpen size={32} />
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
+                        <div className="flex flex-wrap items-center gap-4 mt-3">
+                          <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
+                            <User size={14} />
+                            Instructor: {typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
-                      <div className="flex flex-wrap items-center gap-4 mt-3">
-                        <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
-                          <User size={14} />
-                          Instructor: {typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}
+
+                    {/* Course Progress - Compact Version on Right */}
+                    <div className="shrink-0 w-48">
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-4 border border-blue-100 dark:border-slate-600">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                            <BookOpen size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-slate-900 dark:text-white">Course Progress</h4>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Your score</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-end">
+                            <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
+                              {selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) : 0}%
+                            </span>
+                          </div>
+
+                          <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
+                                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                                  : getStatus(selectedCourse) === 'FAILED'
+                                    ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                }`}
+                              style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
                         </div>
                       </div>
                     </div>
@@ -308,58 +326,121 @@ export const StudentCourses = () => {
                   <div className="p-8">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-center text-sm">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                           <tr>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 1</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Test</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Mid</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 2</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Assignment</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Final</th>
-                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Total</th>
+                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">Assessment Component</th>
+                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Weight</th>
+                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Your Mark</th>
                           </tr>
                         </thead>
-                        <tbody>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-t border-slate-100 dark:border-slate-800">
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).quiz_1 ?? '--'}
-                              </div>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                              {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
                             </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).test_1 ?? '--'}
-                              </div>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                              {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
                             </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).mid_exam ?? '--'}
-                              </div>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                              {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
                             </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).quiz_2 ?? '--'}
-                              </div>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                          </tr>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
+                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
+                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                              {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
                             </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).participation ?? '--'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                                {(selectedCourse as any).final_exam ?? '--'}
-                              </div>
-                            </td>
-                            <td className="px-4 py-6">
-                              <div className="flex justify-center items-center min-w-[3rem] h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-sm mx-auto px-2">
-                                {(selectedCourse as any).total ?? '--'}
-                              </div>
+                          </tr>
+                          <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
+                            <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>
+                            <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400">100%</td>
+                            <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 text-base">
+                              {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
                             </td>
                           </tr>
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Status and Progress Bar Container */}
+                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Standing</p>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Course Status:</span>
+                            {(() => {
+                              const status = getStatus(selectedCourse);
+                              if (status === 'PASSED') {
+                                return (
+                                  <span className="px-3.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                    PASSED
+                                  </span>
+                                );
+                              } else if (status === 'FAILED') {
+                                return (
+                                  <span className="px-3.5 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                    FAILED
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="px-3.5 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                    PENDING
+                                  </span>
+                                );
+                              }
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="text-2xl font-black text-slate-800 dark:text-white">
+                            {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
+                          </span>
+                          <span className="text-sm text-slate-400 font-bold"> / 100</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                          <span>Total Score Progress</span>
+                          <span>{selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) + '%' : '0%'}</span>
+                        </div>
+                        <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
+                                ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                                : getStatus(selectedCourse) === 'FAILED'
+                                  ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                              }`}
+                            style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

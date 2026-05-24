@@ -1,17 +1,7 @@
 import api from './api';
+import type { Exam, ExamCategory } from '../data/examData';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface ExamListItem {
-  id: string;
-  title: string;
-  durationMinutes: number;
-  startWindow: string;
-  questionCount: number;
-  createdAt: string;
-  sessionStatus: 'active' | 'submitted' | 'terminated' | 'timed_out' | null;
-  finalScore: number | null;
-}
 
 export interface ExamQuestion {
   id: string;
@@ -51,7 +41,7 @@ export interface SubmitResult {
 
 // ─── API Calls ───────────────────────────────────────────────────────────────
 
-export const getAvailableExams = async (): Promise<ExamListItem[]> => {
+export const getAvailableExams = async (): Promise<Exam[]> => {
   const response = await api.get('/student/exams');
   return response.data.data;
 };
@@ -74,5 +64,22 @@ export const submitExam = async (
   autoSubmitted: boolean = false
 ): Promise<SubmitResult> => {
   const response = await api.post(`/student/exams/${examId}/submit`, { autoSubmitted });
+  return response.data.data;
+};
+
+export const createExam = async (examData: {
+  title: string;
+  courseId?: string | null;
+  courseName: string;
+  category: 'Mid-term' | 'Final' | 'Quiz' | 'Assignment';
+  durationMinutes: number;
+  questions?: Array<{
+    id: string;
+    text: string;
+    correctOptionId?: string | null;
+    options?: Array<{ id: string; text: string }>;
+  }>;
+}): Promise<any> => {
+  const response = await api.post('/teacher/exams', examData);
   return response.data.data;
 };

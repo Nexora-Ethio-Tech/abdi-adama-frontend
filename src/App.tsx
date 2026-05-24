@@ -56,6 +56,7 @@ const DriverStaff = lazy(() => import('./pages/DriverStaff').then((m) => ({ defa
 const ClinicAdminStaff = lazy(() => import('./pages/ClinicAdminStaff').then((m) => ({ default: m.ClinicAdminStaff })));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
+const AdminApplications = lazy(() => import('./pages/AdminApplications').then((m) => ({ default: m.AdminApplications })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -183,6 +184,12 @@ function App() {
               <Route path="classes" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
                   <Classes />
+                </ProtectedRoute>
+              } />
+
+              <Route path="applications" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <AdminApplications />
                 </ProtectedRoute>
               } />
 

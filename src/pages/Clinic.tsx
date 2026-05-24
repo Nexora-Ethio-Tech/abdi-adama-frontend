@@ -52,7 +52,7 @@ export const Clinic = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showLogModal, setShowLogModal] = useState(false);
   const [newVisit, setNewVisit] = useState({ reason: '', treatment: '', selectedMeds: [] as {id: string, quantity: number}[] });
-  const [studentSearchTimeout, setStudentSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [studentSearchTimeout, setStudentSearchTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [studentPageInfo, setStudentPageInfo] = useState({ total: 0, page: 1, limit: 20 });
   const [branchId, setBranchId] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -398,9 +398,7 @@ const trimmedQuery = query.trim();
 
           <div className="lg:col-span-8">
             {selectedStudent ? (
-              (() => {
-                if (activeTab === 'chat') {
-                  return (
+              activeTab === 'chat' ? (
                     <div className="space-y-4">
                       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 h-[60vh] flex flex-col">
                         <div className="flex items-center justify-between mb-4">
@@ -436,10 +434,7 @@ const trimmedQuery = query.trim();
                         </div>
                       </div>
                     </div>
-                  );
-                }
-
-                return (
+                  ) : (
                   <div className="space-y-6">
                     <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
                       <div className="flex justify-between mb-8">
@@ -484,8 +479,7 @@ const trimmedQuery = query.trim();
                       </div>
                     </div>
                   </div>
-                );
-              })()
+              )
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-2xl">
                 <HeartPulse size={48} className="text-slate-200 mb-4" />
