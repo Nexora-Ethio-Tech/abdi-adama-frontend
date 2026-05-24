@@ -285,8 +285,8 @@ export const Classes = () => {
                 {/* Assigned teachers list with unassign buttons */}
                 {classItem.teachers && classItem.teachers.length > 0 && (
                   <div className="mt-4 flex flex-col gap-2">
-                    {classItem.teachers.map((t: any) => (
-                      <div key={t.teacher_id || t.teacher_user_id} className="flex items-center justify-between gap-3 text-sm">
+                    {classItem.teachers.map((t: any, index: number) => (
+                      <div key={`${t.teacher_id || t.teacher_user_id || t.teacherId || t.teacherName || 'teacher'}-${index}`} className="flex items-center justify-between gap-3 text-sm">
                         <div className="text-slate-700 dark:text-slate-200">{t.teacher_name || t.teacherName}</div>
                         <button
                           onClick={async () => {

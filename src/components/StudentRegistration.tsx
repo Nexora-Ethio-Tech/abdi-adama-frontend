@@ -8,6 +8,7 @@ import {
   getPendingApplications, 
   updateApplicationStatus, 
   createPendingApplication,
+  createPublicPendingApplication,
   registerUser 
 } from '../services/schoolAdminService';
 
@@ -173,9 +174,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const fetchApps = async () => {
         try {
           const res = await getPendingApplications();
-          if (res) {
-            // Map backend applications to frontend structure
-            const mapped = (res as any).map((app: any) => ({
+          const applications = Array.isArray(res) ? res : (res?.data || []);
+          if (Array.isArray(applications)) {
+            const mapped = applications.map((app: any) => ({
               id: app.id,
               name: app.applicant_name,
               dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
@@ -188,6 +189,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               status: app.status as AppStatus,
             }));
             setPendingApps(mapped);
+          } else {
+            console.warn('Unexpected pending applications response:', res);
           }
         } catch (err) {
           console.error('Failed to fetch pending applications:', err);
@@ -357,7 +360,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       }
 
       // Call API to create pending application
-      const response = await createPendingApplication(submitData as any);
+      const response = await (isAdminView ? createPendingApplication(submitData as any) : createPublicPendingApplication(submitData as any));
 
       if (response?.errors) {
         setValidationErrors(response.errors);

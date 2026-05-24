@@ -192,8 +192,7 @@ export const activateBranchAcademicYear = async (id: string) => {
 
 // Applications
 export const createPendingApplication = async (data: any) => {
-  // When sending FormData, let axios set the Content-Type with proper boundary
-  // Do NOT manually set Content-Type; axios handles it correctly with FormData
+  // Authenticated application submission for admin users
   const token = localStorage.getItem('abdi_adama_token');
   try {
     const response = await axios.post(`${API_BASE_URL}/school-admin/applications`, data, {
@@ -208,9 +207,20 @@ export const createPendingApplication = async (data: any) => {
   }
 };
 
+export const createPublicPendingApplication = async (data: any) => {
+  // Public landing-page application submission without auth token
+  try {
+    const response = await axios.post(`${API_BASE_URL}/school-admin/public/applications`, data);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error submitting public application:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
 export const getPendingApplications = async (): Promise<Application[]> => {
   const response = await api.get('/school-admin/applications');
-  return response.data;
+  return response.data?.data || response.data || [];
 };
 
 export const updateApplicationStatus = async (id: string, data: UpdateApplicationStatusData) => {

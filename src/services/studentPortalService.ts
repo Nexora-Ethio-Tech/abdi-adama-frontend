@@ -119,6 +119,23 @@ export const getMyTranscript = async (academicYear?: string, semester?: string):
   return response.data.data;
 };
 
+export const getMyHistory = async (year: string, semester?: number): Promise<any> => {
+  const params = new URLSearchParams();
+  params.append('year', year);
+  if (semester) params.append('semester', semester.toString());
+  
+  const response = await api.get(`/student/history?${params.toString()}`);
+  return response.data.data;
+};
+
+export const getMyGradesForSemester = async (semester: number, year?: string): Promise<any> => {
+  const params = new URLSearchParams();
+  params.append('semester', semester.toString());
+  if (year) params.append('year', year);
+  const response = await api.get(`/student/grades?${params.toString()}`);
+  return response.data.data;
+};
+
 export const getMyAttendance = async (): Promise<any> => {
   const response = await api.get('/student/attendance');
   return response.data.data;

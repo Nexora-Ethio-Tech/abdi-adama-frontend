@@ -1,4 +1,21 @@
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl || envUrl.startsWith('/') || envUrl === '') {
+    return '/api';
+  }
+  let url = envUrl;
+  // Ensure URL has protocol
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'http://' + url;
+  }
+  // Append /api if not already present
+  if (!url.endsWith('/api')) {
+    url = url + '/api';
+  }
+  return url;
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const API_ENDPOINTS = {
   // Auth

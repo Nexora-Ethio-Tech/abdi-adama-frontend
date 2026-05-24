@@ -1,91 +1,108 @@
-
-import { studentCurrentCourses, studentAcademicHistory } from '../data/mockData';
-import { BookOpen, User, Calendar, GraduationCap, Search } from 'lucide-react';
+import { BookOpen, User, Calendar, GraduationCap, Search, Award } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
-import { getMyCourses, getMyGrades, StudentCourse, StudentGrade } from '../services/studentPortalService';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { StudentCourse, getMyGradesForSemester, getMyHistory } from '../services/studentPortalService';
 
 export const StudentCourses = () => {
-  const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
-  const [courses, setCourses] = useState<StudentCourse[]>([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const viewMode = location.pathname === '/attendance' ? 'history' : 'current';
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Current Term state
-  const [selectedSemester, setSelectedSemester] = useState('First Semester');
+  const [selectedSemester, setSelectedSemester] = useState('Second Semester');
+  const [selectedYear, setSelectedYear] = useState('2025/2026');
+  const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<StudentCourse | null>(null);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Academic History state
-  const [selectedAcademicYear, setSelectedAcademicYear] = useState<string | null>(null);
-  const [selectedHistorySemester, setSelectedHistorySemester] = useState<string | null>(null);
+  const [historyYear, setHistoryYear] = useState<string | null>(null);
+  const [historySemester, setHistorySemester] = useState<string | null>(null);
   const [historyData, setHistoryData] = useState<any>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  useEffect(() => {
-    if (viewMode === 'current') {
-      fetchCourses();
-    }
-  }, [viewMode]);
+  // Available academic years
+  const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
 
+  // Fetch current term courses and grades
   const fetchCourses = async () => {
     try {
       setLoading(true);
       setError('');
-      const coursesData = await getMyCourses();
+      const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+      const data = await getMyGradesForSemester(semNum, selectedYear);
+      const coursesData = data.courses || [];
       setCourses(coursesData);
+      if (coursesData.length > 0) {
+        setSelectedCourse(coursesData[0]);
+      } else {
+        setSelectedCourse(null);
+      }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || 'Failed to fetch courses.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate past academic years relative to 2026
-  const academicYears = useMemo(() => {
-    const years = [];
-    for (let i = 3; i >= 0; i--) {
-      const startYear = 2026 - i - 1;
-      const endYear = startYear + 1;
-      years.push(`${startYear}/${String(endYear).slice(-2)}`);
-    }
-    return years;
-  }, []);
-
-  // Filter courses by search query
-  const filteredCourses = useMemo(() => {
-    return courses.filter(c =>
-      c.name.toLowerCase().includes(courseSearchQuery.toLowerCase()) ||
-      c.code.toLowerCase().includes(courseSearchQuery.toLowerCase())
-    );
-  }, [courses, courseSearchQuery]);
-
-  // Auto-load history data when both year and semester are selected
   useEffect(() => {
-    if (selectedAcademicYear && selectedHistorySemester) {
-      loadHistoryData();
+    if (viewMode === 'current') {
+      fetchCourses();
     }
-  }, [selectedAcademicYear, selectedHistorySemester]);
+  }, [viewMode, selectedSemester, selectedYear]);
 
-  const loadHistoryData = () => {
-    if (!selectedAcademicYear || !selectedHistorySemester) return;
+  // Sync search input query when selected course changes
+  useEffect(() => {
+    if (selectedCourse) {
+      setCourseSearchQuery(selectedCourse.name);
+    } else {
+      setCourseSearchQuery('');
+    }
+  }, [selectedCourse]);
 
-    setHistoryLoading(true);
-    // Simulate fetching history data
-    setTimeout(() => {
-      const matchingHistory = studentAcademicHistory.find(
-        h => h.year === selectedAcademicYear && h.semester.toLowerCase().includes(selectedHistorySemester.toLowerCase())
-      );
-      setHistoryData(matchingHistory || null);
+  // Filter courses for searchable combobox
+  const filteredCourses = useMemo(() => {
+    const query = courseSearchQuery.trim().toLowerCase();
+    if (!query || (selectedCourse && query === selectedCourse.name.toLowerCase())) {
+      return courses;
+    }
+    return courses.filter(c =>
+      c.name.toLowerCase().includes(query) ||
+      c.code.toLowerCase().includes(query)
+    );
+  }, [courses, courseSearchQuery, selectedCourse]);
+
+  // Fetch history data when both selections are made
+  const loadHistoryData = async () => {
+    if (!historyYear || !historySemester) return;
+
+    try {
+      setHistoryLoading(true);
+      const semNum = historySemester === 'First Semester' ? 1 : 2;
+      const data = await getMyHistory(historyYear, semNum);
+      setHistoryData(data && data.length > 0 ? data[0] : null);
+    } catch (err: any) {
+      console.error(err);
+      setHistoryData(null);
+    } finally {
       setHistoryLoading(false);
-    }, 300);
+    }
   };
 
-  // Calculate semester average
+  useEffect(() => {
+    if (viewMode === 'history') {
+      loadHistoryData();
+    }
+  }, [viewMode, historyYear, historySemester]);
+
+  // Calculate semester average for history metrics
   const semesterAverage = useMemo(() => {
     if (!historyData || !historyData.courses) return 0;
     const scores = historyData.courses.map((c: any) => {
-      // Extract numeric value from percentage string if needed
       const numScore = typeof c.score === 'string' ? parseFloat(c.score) : c.score;
       return isNaN(numScore) ? 0 : numScore;
     });
@@ -104,20 +121,22 @@ export const StudentCourses = () => {
 
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
           <button
-            onClick={() => setViewMode('current')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'current'
+            onClick={() => navigate('/courses')}
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              viewMode === 'current'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                : 'text-slate-500 hover:text-slate-700'
-              }`}
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
           >
             Current Term
           </button>
           <button
-            onClick={() => setViewMode('history')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'history'
+            onClick={() => navigate('/attendance')}
+            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+              viewMode === 'history'
                 ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                : 'text-slate-500 hover:text-slate-700'
-              }`}
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+            }`}
           >
             Academic History
           </button>
@@ -130,7 +149,7 @@ export const StudentCourses = () => {
         </div>
       )}
 
-      {/* CURRENT TERM TAB */}
+      {/* CURRENT TERM VIEW */}
       {viewMode === 'current' ? (
         loading ? (
           <div className="flex justify-center items-center h-64">
@@ -150,7 +169,7 @@ export const StudentCourses = () => {
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {(courses.length > 0 ? courses : studentCurrentCourses).map((course) => {
+                {courses.map((course) => {
                   const courseProgress = (course as any).progress || 65;
                   return (
                     <div key={course.id} className="bg-white dark:bg-slate-800/50 rounded-xl p-4 border border-blue-100 dark:border-slate-700">
@@ -164,24 +183,44 @@ export const StudentCourses = () => {
               </div>
             </div>
 
-            {/* Controls Row - Semester & Course Selector */}
+            {/* First Div: Controls Row */}
             <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-              <div className="space-y-6">
-                {/* Semester Dropdown */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Year Selector */}
                 <div>
-                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => {
+                      setSelectedYear(e.target.value);
+                      setSelectedCourse(null);
+                    }}
+                    className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                  >
+                    {academicYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Semester Selector */}
+                <div>
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
                   <select
                     value={selectedSemester}
-                    onChange={(e) => setSelectedSemester(e.target.value)}
-                    className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer"
+                    onChange={(e) => {
+                      setSelectedSemester(e.target.value);
+                      setSelectedCourse(null);
+                    }}
+                    className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
                   >
                     <option>First Semester</option>
                     <option>Second Semester</option>
                   </select>
                 </div>
 
-                {/* Searchable Course Combobox */}
-                <div>
+                {/* Searchable Course Dropdown (Combobox) */}
+                <div className="relative">
                   <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Search & Select Course</label>
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -193,34 +232,48 @@ export const StudentCourses = () => {
                         setCourseSearchQuery(e.target.value);
                         setDropdownOpen(true);
                       }}
-                      onFocus={() => setDropdownOpen(true)}
-                      className="w-full pl-12 pr-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all"
+                      onFocus={() => {
+                        setDropdownOpen(true);
+                        if (selectedCourse && courseSearchQuery === selectedCourse.name) {
+                          setCourseSearchQuery('');
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          setDropdownOpen(false);
+                          if (selectedCourse) {
+                            setCourseSearchQuery(selectedCourse.name);
+                          }
+                        }, 250);
+                      }}
+                      className="w-full pl-12 pr-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
                     />
                   </div>
 
-                  {/* Dropdown List */}
                   {dropdownOpen && (
-                    <div className="mt-3 max-h-[300px] overflow-y-auto space-y-2 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4 border border-slate-200 dark:border-slate-700">
+                    <div className="absolute z-50 left-0 right-0 mt-2 max-h-[250px] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 space-y-1">
                       {filteredCourses.length > 0 ? (
                         filteredCourses.map((course) => (
                           <button
                             key={course.id}
-                            onClick={() => {
+                            type="button"
+                            onMouseDown={() => {
                               setSelectedCourse(course);
-                              setCourseSearchQuery('');
+                              setCourseSearchQuery(course.name);
                               setDropdownOpen(false);
                             }}
-                            className={`w-full text-left p-3 rounded-xl transition-all ${selectedCourse?.id === course.id
+                            className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                              selectedCourse?.id === course.id
                                 ? 'bg-blue-600 text-white'
-                                : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white hover:bg-blue-50 dark:hover:bg-slate-600'
-                              }`}
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                            }`}
                           >
-                            <p className="font-bold">{course.name}</p>
-                            <p className="text-xs opacity-70">{course.code}</p>
+                            <p className="text-sm font-bold">{course.name}</p>
+                            <p className="text-xs opacity-75">{course.code}</p>
                           </button>
                         ))
                       ) : (
-                        <p className="text-sm text-slate-500 text-center py-4">No courses found</p>
+                        <p className="text-xs text-slate-500 text-center py-4">No courses found</p>
                       )}
                     </div>
                   )}
@@ -228,97 +281,102 @@ export const StudentCourses = () => {
               </div>
             </div>
 
-            {/* Selected Course Details - Metadata Card */}
-            {selectedCourse && (
-              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
-                    <BookOpen size={32} />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
-                    <div className="flex items-center gap-4 mt-3">
-                      <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
-                      <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
-                        <User size={14} />
-                        Instructor: {selectedCourse.teacher.name}
+            {/* Second Div: Selected Course Metadata & Grades */}
+            {selectedCourse ? (
+              <div className="space-y-6">
+                {/* Course Metadata Card */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
+                  <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                      <BookOpen size={32} />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
+                      <div className="flex flex-wrap items-center gap-4 mt-3">
+                        <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
+                          <User size={14} />
+                          Instructor: {typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* Grade Detail Table - Raw Numerical Scores Only */}
-            {selectedCourse && (
-              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
-                <div className="p-8">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-800/50">
-                        <tr>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 1</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Test</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Mid</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 2</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Assignment</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Final</th>
-                          <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-t border-slate-100 dark:border-slate-800">
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).quiz_1 ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).test_1 ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).mid_exam ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).quiz_2 ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).participation ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center w-10 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).final_exam ?? '--'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-6">
-                            <div className="flex justify-center items-center min-w-12 h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-sm mx-auto">
-                              {(selectedCourse as any).total ?? '--'}
-                            </div>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                {/* Grade Detail Table */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
+                  <div className="p-8">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-center text-sm">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50">
+                          <tr>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 1</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Test</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Mid</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Quiz 2</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Assignment</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Final</th>
+                            <th className="px-4 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-t border-slate-100 dark:border-slate-800">
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).quiz_1 ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).test_1 ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).mid_exam ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).quiz_2 ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).participation ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center w-12 h-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold text-sm mx-auto">
+                                {(selectedCourse as any).final_exam ?? '--'}
+                              </div>
+                            </td>
+                            <td className="px-4 py-6">
+                              <div className="flex justify-center items-center min-w-[3rem] h-10 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-lg font-bold text-sm mx-auto px-2">
+                                {(selectedCourse as any).total ?? '--'}
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
+              </div>
+            ) : (
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
+                <p className="font-bold text-lg">No courses found for the selected Academic Year and Semester.</p>
               </div>
             )}
           </div>
         )
       ) : (
-        // ACADEMIC HISTORY TAB
+        // ACADEMIC HISTORY VIEW
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
             <div className="flex items-center gap-4 mb-8">
-              <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg">
+              <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
                 <GraduationCap size={28} />
               </div>
               <div>
@@ -327,18 +385,17 @@ export const StudentCourses = () => {
               </div>
             </div>
 
-            {/* Filter Controls - Dependent Dropdowns */}
+            {/* First Div: Year and Semester selectors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
                 <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
                 <select
-                  value={selectedAcademicYear || ''}
+                  value={historyYear || ''}
                   onChange={(e) => {
-                    setSelectedAcademicYear(e.target.value || null);
-                    setSelectedHistorySemester(null);
+                    setHistoryYear(e.target.value || null);
                     setHistoryData(null);
                   }}
-                  className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer"
+                  className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
                 >
                   <option value="">-- Select Year --</option>
                   {academicYears.map((year) => (
@@ -350,27 +407,30 @@ export const StudentCourses = () => {
               <div>
                 <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
                 <select
-                  value={selectedHistorySemester || ''}
-                  onChange={(e) => setSelectedHistorySemester(e.target.value || null)}
-                  disabled={!selectedAcademicYear}
-                  className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  value={historySemester || ''}
+                  onChange={(e) => {
+                    setHistorySemester(e.target.value || null);
+                    setHistoryData(null);
+                  }}
+                  disabled={!historyYear}
+                  className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white"
                 >
                   <option value="">-- Select Semester --</option>
-                  <option value="First Semester">First Semester</option>
-                  <option value="Second Semester">Second Semester</option>
+                  <option>First Semester</option>
+                  <option>Second Semester</option>
                 </select>
               </div>
             </div>
 
-            {/* Metrics Header - Shows only when both selections made */}
-            {selectedAcademicYear && selectedHistorySemester && (
+            {/* Metrics Header */}
+            {historyYear && historySemester && historyData && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-3 mb-3">
                     <Calendar size={16} className="text-blue-600" />
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</span>
                   </div>
-                  <p className="text-xl font-black text-slate-800 dark:text-white">{selectedAcademicYear}</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-white">{historyYear}</p>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
@@ -378,7 +438,7 @@ export const StudentCourses = () => {
                     <BookOpen size={16} className="text-purple-600" />
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester</span>
                   </div>
-                  <p className="text-xl font-black text-slate-800 dark:text-white">{selectedHistorySemester}</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-white">{historySemester}</p>
                 </div>
 
                 <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
@@ -391,7 +451,7 @@ export const StudentCourses = () => {
               </div>
             )}
 
-            {/* Academic History Table - Two Columns Only */}
+            {/* Second Div: History Data Table with Subject and Total columns */}
             {historyLoading ? (
               <div className="flex justify-center items-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -401,8 +461,8 @@ export const StudentCourses = () => {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 dark:bg-slate-800/50">
                     <tr>
-                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Subject/Course Name</th>
-                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Numeric Score</th>
+                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Subject</th>
+                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -421,13 +481,13 @@ export const StudentCourses = () => {
                   </tbody>
                 </table>
               </div>
-            ) : selectedAcademicYear && selectedHistorySemester ? (
+            ) : historyYear && historySemester ? (
               <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                <p className="font-medium">No data available for the selected period</p>
+                <p className="font-medium">No results found for the selected period.</p>
               </div>
             ) : (
               <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-                <p className="font-medium">Select both Academic Year and Semester to view historical data</p>
+                <p className="font-medium">Select both Academic Year and Semester to load results.</p>
               </div>
             )}
           </div>
@@ -436,4 +496,3 @@ export const StudentCourses = () => {
     </div>
   );
 };
-

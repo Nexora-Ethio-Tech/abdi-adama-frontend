@@ -111,7 +111,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchBranches = async () => {
       if (!user) return;
-      
+
       try {
         if (user.role === 'super-admin') {
           const { default: api } = await import('../services/api');
