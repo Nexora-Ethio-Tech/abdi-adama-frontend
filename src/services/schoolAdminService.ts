@@ -174,22 +174,6 @@ export const getSchedules = async (): Promise<Schedule[]> => {
   return response.data;
 };
 
-// Branch Academic Years
-export const createBranchAcademicYear = async (data: CreateBranchAcademicYearData): Promise<BranchAcademicYear> => {
-  const response = await api.post('/school-admin/academic-years', data);
-  return response.data;
-};
-
-export const getBranchAcademicYears = async (): Promise<BranchAcademicYear[]> => {
-  const response = await api.get('/school-admin/academic-years');
-  return response.data;
-};
-
-export const activateBranchAcademicYear = async (id: string) => {
-  const response = await api.patch(`/school-admin/academic-years/${id}/activate`);
-  return response.data;
-};
-
 // Applications
 export const createPendingApplication = async (data: any) => {
   // Authenticated application submission for admin users
@@ -207,6 +191,11 @@ export const createPendingApplication = async (data: any) => {
   }
 };
 
+export const getPendingApplications = async (): Promise<Application[]> => {
+  const response = await api.get('/school-admin/applications');
+  return response.data?.data || response.data || [];
+};
+
 export const createPublicPendingApplication = async (data: any) => {
   // Public landing-page application submission without auth token
   try {
@@ -216,11 +205,6 @@ export const createPublicPendingApplication = async (data: any) => {
     console.error('Error submitting public application:', error.response?.data || error.message);
     throw error;
   }
-};
-
-export const getPendingApplications = async (): Promise<Application[]> => {
-  const response = await api.get('/school-admin/applications');
-  return response.data?.data || response.data || [];
 };
 
 export const updateApplicationStatus = async (id: string, data: UpdateApplicationStatusData & { parentPhone?: string }) => {

@@ -26,8 +26,6 @@ const GradeEntry = lazy(() => import('./pages/GradeEntry').then((m) => ({ defaul
 const ScheduleBuilder = lazy(() => import('./pages/ScheduleBuilder').then((m) => ({ default: m.ScheduleBuilder })));
 const Inventory = lazy(() => import('./pages/Inventory').then((m) => ({ default: m.Inventory })));
 const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
-const Registration = lazy(() => import('./pages/Registration').then((m) => ({ default: m.Registration })));
-const AdmissionPage = lazy(() => import('./pages/AdmissionPage').then((m) => ({ default: m.AdmissionPage })));
 const Attendance = lazy(() => import('./pages/Attendance').then((m) => ({ default: m.Attendance })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
 const ExamSession = lazy(() => import('./pages/ExamSession').then((m) => ({ default: m.ExamSession })));
@@ -56,7 +54,6 @@ const DriverStaff = lazy(() => import('./pages/DriverStaff').then((m) => ({ defa
 const ClinicAdminStaff = lazy(() => import('./pages/ClinicAdminStaff').then((m) => ({ default: m.ClinicAdminStaff })));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
-const AdminApplications = lazy(() => import('./pages/AdminApplications').then((m) => ({ default: m.AdminApplications })));
 const PayrollManagement = lazy(() => import('./pages/PayrollManagement'));
 const LoanManagement = lazy(() => import('./pages/LoanManagement'));
 const EmployeeProfiles = lazy(() => import('./pages/EmployeeProfiles'));
@@ -188,12 +185,6 @@ function App() {
               <Route path="classes" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
                   <Classes />
-                </ProtectedRoute>
-              } />
-
-              <Route path="applications" element={
-                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                  <AdminApplications />
                 </ProtectedRoute>
               } />
 
@@ -387,18 +378,6 @@ function App() {
               <Route path="transcripts" element={
                 <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
                   <Transcripts />
-                </ProtectedRoute>
-              } />
-
-              <Route path="registration" element={
-                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'finance-clerk']}>
-                  <Registration />
-                </ProtectedRoute>
-              } />
-
-              <Route path="admission" element={
-                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
-                  <AdmissionPage />
                 </ProtectedRoute>
               } />
 

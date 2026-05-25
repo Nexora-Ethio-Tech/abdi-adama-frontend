@@ -28,11 +28,12 @@ export const Layout = () => {
     }
 
     if (role === 'parent') {
-      switch (path) {
-        case '/': return 'Parental Dashboard';
-        case '/students': return 'My Children';
-        case '/finance': return 'Tuition & Fees';
-        case '/clinic-chat': return 'Clinic Support';
+      const tab = new URLSearchParams(location.search).get('tab') || 'dashboard';
+      switch (tab) {
+        case 'dashboard': return 'Family Dashboard';
+        case 'grades': return 'Grades & Courses';
+        case 'history': return 'Academic History';
+        case 'clinic': return 'Clinic Support';
         default: return 'Parent Portal';
       }
     }
@@ -80,16 +81,14 @@ export const Layout = () => {
         />
       )}
 
-      {role !== 'parent' && (
-        <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-      )}
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 min-h-screen">
         <Header
           title={getTitle(location.pathname)}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
-        <main className={`p-4 md:p-8 flex-1 w-full ${role === 'parent' ? 'max-w-7xl mx-auto' : ''}`}>
+        <main className="p-4 md:p-8 flex-1 w-full">
           <Outlet />
         </main>
         {!isExamPage && <Chatbot />}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Filter, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
-import * as financeService from '../services/financeService';
+import financeService from '../services/financeService';
 
 interface AuditLog {
   id: string;

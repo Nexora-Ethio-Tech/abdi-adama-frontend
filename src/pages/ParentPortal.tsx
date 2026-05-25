@@ -1,515 +1,1300 @@
-
-import { Calendar, BookOpen, Award, User, History, Megaphone, HeartPulse, Star, ChevronRight, ClipboardList, TrendingUp } from 'lucide-react';
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { mockCommunicationLogs, commFields, ratingLabels } from '../data/mockData';
-import { useTranslation } from 'react-i18next';
+import {
+  BookOpen,
+  User,
+  Award,
+  Megaphone,
+  HeartPulse,
+  Star,
+  ChevronRight,
+  ClipboardList,
+  TrendingUp,
+  Search,
+  GraduationCap,
+  ArrowLeft,
+  History,
+  Send,
+  Clock,
+  ShieldCheck,
+  Bell,
+  MessageSquare,
+  LayoutDashboard,
+  Calendar
+} from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { commFields, ratingLabels } from '../data/mockData';
+import api from '../services/api';
+import {
+  getParentDashboard,
+  getChildCommunicationLogs,
+  getParentChildGrades,
+  getParentChildHistory,
+  ParentChild,
+  ParentAnnouncement,
+  CommunicationLog
+} from '../services/parentService';
 
 export const ParentPortal = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const [selectedChild, setSelectedChild] = useState<any>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
-  const [activePortalTab, setActivePortalTab] = useState<'academic' | 'communication'>('academic');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activePortalTab = searchParams.get('tab') || 'dashboard';
 
-  const academicYears = ['2015', '2016', '2017'];
-  const historyData: Record<string, any[]> = {
-    '2015': [
-      { name: 'Mathematics', teacher: 'Ato Solomon', grades: { mid: '25/30', quiz: '8/10', assignment: '9/10', final: '42/50', total: '84%' } },
-      { name: 'Amharic', teacher: 'W/ro Aster', grades: { mid: '28/30', quiz: '9/10', assignment: '10/10', final: '45/50', total: '92%' } },
-    ],
-    '2016': [
-      { name: 'Physics', teacher: 'Ato Solomon', grades: { mid: '22/30', quiz: '7/10', assignment: '8/10', final: '40/50', total: '77%' } },
-      { name: 'English', teacher: 'W/ro Aster', grades: { mid: '29/30', quiz: '10/10', assignment: '10/10', final: '48/50', total: '97%' } },
-    ]
-  };
+  // Core State
+  const [children, setChildren] = useState<ParentChild[]>([]);
+  const [announcements, setAnnouncements] = useState<ParentAnnouncement[]>([]);
+  const [selectedChild, setSelectedChild] = useState<ParentChild | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [notices] = useState([
-    { id: 1, title: 'Term 3 Exams Schedule', content: 'The final schedule for Term 3 exams has been posted in the academic office.', priority: 'High', time: '1 hour ago' },
-    { id: 2, title: 'School Bus Maintenance', content: 'Route B buses will be undergoing maintenance this Friday. Please expect minor delays.', priority: 'Medium', time: 'Yesterday' }
-  ]);
+  // Grades (Current Term) State
+  const [selectedSemester, setSelectedSemester] = useState('Second Semester');
+  const [selectedYear, setSelectedYear] = useState('2025/2026');
+  const [courses, setCourses] = useState<any[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [courseSearchQuery, setCourseSearchQuery] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [gradesLoading, setGradesLoading] = useState(false);
+  const [gradesError, setGradesError] = useState('');
+  const [viewMode, setViewMode] = useState<'current' | 'history'>('current');
 
-  const children = [
-    {
-      id: '1',
-      name: 'Abebe Bikila',
-      grade: '10A',
-      attendance: '96%',
-      performance: 'Excellent',
-      courses: [
-        { name: 'Mathematics', teacher: 'Ato Solomon', grades: { mid: '28/30', quiz: '9/10', assignment: '10/10', final: 'Not Yet' } },
-        { name: 'Physics', teacher: 'Ato Solomon', grades: { mid: '25/30', quiz: '8/10', assignment: '9/10', final: 'Not Yet' } },
-        { name: 'English', teacher: 'W/ro Aster', grades: { mid: '29/30', quiz: '10/10', assignment: '10/10', final: 'Not Yet' } },
-      ]
-    },
-    {
-      id: '2',
-      name: 'Sara Bikila',
-      grade: '7B',
-      attendance: '94%',
-      performance: 'Good',
-      courses: [
-        { name: 'Biology', teacher: 'W/ro Selam', grades: { mid: '24/30', quiz: '8/10', assignment: '8/10', final: 'Not Yet' } },
-        { name: 'Amharic', teacher: 'W/ro Aster', grades: { mid: '27/30', quiz: '9/10', assignment: '10/10', final: 'Not Yet' } },
-      ]
-    },
-  ];
+  // History State
+  const [historyYear, setHistoryYear] = useState<string | null>(null);
+  const [historySemester, setHistorySemester] = useState<string | null>(null);
+  const [historyData, setHistoryData] = useState<any>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
-  const CommunicationBook = ({ studentId }: { studentId: string }) => {
-    const studentLogs = useMemo(() => {
-      return mockCommunicationLogs.filter(log => log.studentId === studentId);
-    }, [studentId]);
+  // Communication Book State
+  const [showCommBook, setShowCommBook] = useState(false);
+  const [commLogs, setCommLogs] = useState<CommunicationLog[]>([]);
+  const [currentLogIndex, setCurrentLogIndex] = useState(0);
+  const [commLoading, setCommLoading] = useState(false);
+  const currentLog = useMemo(() => commLogs[currentLogIndex] || null, [commLogs, currentLogIndex]);
 
-    const [currentLogIndex, setCurrentLogIndex] = useState(0);
-    const currentLog = studentLogs[currentLogIndex];
+  // Clinic Chat State
+  const [clinicChildren, setClinicChildren] = useState<ParentChild[]>([]);
+  const [selectedClinicChildId, setSelectedClinicChildId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [newChatMessage, setNewChatMessage] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [allClinicMessages, setAllClinicMessages] = useState<any[]>([]); // For Dashboard Previews
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-    const getRatingColor = (rating: number) => {
-      switch (rating) {
-        case 3: return 'bg-emerald-500';
-        case 2: return 'bg-blue-500';
-        case 1: return 'bg-amber-500';
-        case 0: return 'bg-rose-500';
-        default: return 'bg-slate-200';
-      }
-    };
+  const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
 
-    if (studentLogs.length === 0) {
-      return (
-        <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-          <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ClipboardList className="text-slate-400" size={32} />
-          </div>
-          <p className="text-slate-500">{t('parentPortal.noLogs')}</p>
-        </div>
-      );
+  const familyIdText = useMemo(() => {
+    // Extract numeric part from digitalId (e.g., "PAR-MB-0001" -> "#0001")
+    const userStr = localStorage.getItem('abdi_adama_user');
+    if (!userStr) return '';
+    try {
+      const user = JSON.parse(userStr);
+      const digitalId = user.digitalId || '';
+      const match = digitalId.match(/(\d+)$/);
+      return match ? `#${match[1].padStart(4, '0')}` : '';
+    } catch {
+      return '';
     }
+  }, []);
 
-    return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <Star className="text-amber-500" size={24} />
-              {t('parentPortal.communicationBook')}
-            </h3>
-            <p className="text-xs text-slate-500 font-medium mt-1">{t('parentPortal.subtitle')}</p>
-          </div>
-          <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl self-start md:self-auto shadow-inner">
-            <button
-              disabled={currentLogIndex === 0}
-              onClick={() => setCurrentLogIndex(prev => prev - 1)}
-              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
-            >
-              <ChevronRight size={20} />
-            </button>
-            <div className="flex flex-col items-center min-w-[120px]">
-               <span className="text-[10px] uppercase font-black text-slate-400">{t('parentPortal.weekEnding')}</span>
-               <span className="text-xs font-bold text-blue-600 dark:text-blue-400">{currentLog.weekEnding}</span>
-            </div>
-            <button
-              disabled={currentLogIndex === 0}
-              onClick={() => setCurrentLogIndex(prev => prev - 1)}
-              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
-        </div>
+  const parentName = useMemo(() => {
+    try {
+      const u = localStorage.getItem('abdi_adama_user');
+      return u ? JSON.parse(u).name : 'Parent';
+    } catch {
+      return 'Parent';
+    }
+  }, []);
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {commFields.map(field => {
-            const rating = (currentLog.ratings as any)[field.id];
-            return (
-              <div key={field.id} className="group bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className="flex flex-col items-center text-center">
-                  <div className={`w-14 h-14 rounded-2xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
-                    {rating + 1}
-                  </div>
-                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">{field.label}</h4>
-                  <p className="text-[10px] text-slate-500 font-medium leading-tight mb-4 min-h-[20px]">{field.description}</p>
-                  <span className={`w-full py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${getRatingColor(rating)} text-white shadow-sm`}>
-                    {ratingLabels[rating]}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-blue-50 dark:bg-blue-900/10 p-8 rounded-[2rem] border border-blue-100 dark:border-blue-900/20 relative overflow-hidden group">
-            <h4 className="text-sm font-bold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2">
-              <ClipboardList size={18} />
-              {t('parentPortal.teacherObservation')}
-            </h4>
-            <p className="text-base text-blue-800 dark:text-blue-300 leading-relaxed italic font-medium relative z-10">
-              "{currentLog.teacherNote || "Student has shown consistent engagement this week. Maintain current focus on home assignments for continued progress."}"
-            </p>
-            <Star size={100} className="absolute -bottom-10 -right-10 text-blue-600/5 rotate-12 group-hover:scale-110 transition-transform duration-700" />
-          </div>
-
-          <div className="bg-slate-900 rounded-[2rem] p-8 text-white flex flex-col justify-between shadow-2xl shadow-slate-200 dark:shadow-none">
-            <div>
-              <TrendingUp className="text-blue-400 mb-4" size={32} />
-              <h4 className="text-xl font-bold mb-2">{t('parentPortal.progressInsight')}</h4>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Consistent "Excellent" ratings in Participation often correlate with higher academic performance in final exams.
-              </p>
-            </div>
-            <button className="mt-8 w-full py-4 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl font-bold text-xs transition-all">
-              {t('parentPortal.downloadReport')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+  const getStatus = (course: any) => {
+    if (course.final_50 === null || course.final_50 === undefined) return 'PENDING';
+    return Number(course.total) >= 50 ? 'PASSED' : 'FAILED';
   };
 
-  if (selectedChild) {
+  const getFieldRating = (log: any, fieldId: string) => {
+    if (fieldId === 'noteTaking') return log.rating_note_taking ?? 0;
+    return log[`rating_${fieldId}`] ?? 0;
+  };
+
+  const getRatingColor = (r: number) => {
+    switch (r) {
+      case 3: return 'bg-emerald-500';
+      case 2: return 'bg-blue-500';
+      case 1: return 'bg-amber-500';
+      case 0: return 'bg-rose-500';
+      default: return 'bg-slate-200';
+    }
+  };
+
+  const handleViewModeChange = (mode: 'current' | 'history') => {
+    setViewMode(mode);
+    setSearchParams({ tab: mode === 'current' ? 'grades' : 'history' });
+    setShowCommBook(false);
+  };
+
+  // Sync activePortalTab with viewMode
+  useEffect(() => {
+    if (activePortalTab === 'grades') {
+      setViewMode('current');
+    } else if (activePortalTab === 'history') {
+      setViewMode('history');
+    }
+  }, [activePortalTab]);
+
+  // Load Main Dashboard data
+  useEffect(() => {
+    getParentDashboard()
+      .then(d => {
+        const kids = d.children || [];
+        setChildren(kids);
+        setClinicChildren(kids);
+        setAnnouncements(d.announcements || []);
+        if (kids.length > 0) {
+          setSelectedChild(kids[0]);
+          setSelectedClinicChildId(kids[0].id);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Fetch all clinic messages for previews on Dashboard
+  useEffect(() => {
+    if (activePortalTab === 'dashboard') {
+      api.get('/clinic/chat')
+        .then(res => {
+          const msgs = (res.data?.data || []).map((m: any) => ({
+            id: m.id,
+            role: m.role || m.sender_role || 'parent',
+            child_id: m.child_id || m.student_id,
+            student_name: m.student_name,
+            text: m.text || m.message,
+            timestamp: m.timestamp || m.created_at
+          }));
+          setAllClinicMessages(msgs);
+        })
+        .catch(console.error);
+    }
+  }, [activePortalTab]);
+
+  // Fetch specific child grades
+  useEffect(() => {
+    if (!selectedChild || (activePortalTab !== 'grades' && activePortalTab !== 'history')) return;
+    if (viewMode !== 'current') return;
+    setGradesLoading(true);
+    setGradesError('');
+    const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+    getParentChildGrades(selectedChild.id, semNum, selectedYear)
+      .then(d => {
+        const c = d?.courses || [];
+        setCourses(c);
+        setSelectedCourse(c[0] || null);
+      })
+      .catch(e => {
+        setGradesError(e.message || 'Failed to fetch child courses.');
+        setCourses([]);
+        setSelectedCourse(null);
+      })
+      .finally(() => setGradesLoading(false));
+  }, [selectedChild, selectedSemester, selectedYear, activePortalTab, viewMode]);
+
+  useEffect(() => {
+    setCourseSearchQuery(selectedCourse?.name || '');
+    setDropdownOpen(false);
+  }, [selectedCourse]);
+
+  const filteredCourses = useMemo(() => {
+    const q = courseSearchQuery.trim().toLowerCase();
+    if (!q || (selectedCourse && q === selectedCourse.name.toLowerCase())) return courses;
+    return courses.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+  }, [courses, courseSearchQuery, selectedCourse]);
+
+  // Fetch child academic history
+  useEffect(() => {
+    if (!selectedChild || (activePortalTab !== 'grades' && activePortalTab !== 'history') || !historyYear || !historySemester) return;
+    if (viewMode !== 'history') return;
+    setHistoryLoading(true);
+    const semNum = historySemester === 'First Semester' ? 1 : 2;
+    getParentChildHistory(selectedChild.id, historyYear, semNum)
+      .then(d => {
+        setHistoryData(d && d.length > 0 ? d[0] : null);
+      })
+      .catch(() => setHistoryData(null))
+      .finally(() => setHistoryLoading(false));
+  }, [selectedChild, historyYear, historySemester, activePortalTab, viewMode]);
+
+  const semesterAverage = useMemo(() => {
+    if (!historyData?.courses) return 0;
+    const scores = historyData.courses.map((c: any) => parseFloat(c.score) || 0);
+    return scores.length ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+  }, [historyData]);
+
+  // Fetch communication book logs when requested
+  useEffect(() => {
+    if (!selectedChild || !showCommBook) return;
+    setCommLoading(true);
+    getChildCommunicationLogs(selectedChild.id)
+      .then(logs => {
+        setCommLogs(logs || []);
+        setCurrentLogIndex(0);
+      })
+      .catch(() => setCommLogs([]))
+      .finally(() => setCommLoading(false));
+  }, [selectedChild, showCommBook]);
+
+  // Fetch active clinic chat thread
+  useEffect(() => {
+    if (!selectedClinicChildId || activePortalTab !== 'clinic') return;
+    setChatLoading(true);
+    api.get(`/clinic/chat?childId=${encodeURIComponent(selectedClinicChildId)}`)
+      .then(res => {
+        const msgs = (res.data?.data || []).map((m: any) => ({
+          id: m.id,
+          role: m.role || m.sender_role || 'parent',
+          child_id: m.child_id || m.student_id,
+          student_name: m.student_name,
+          text: m.text || m.message,
+          timestamp: m.timestamp || m.created_at
+        }));
+        setChatMessages(msgs);
+      })
+      .catch(console.error)
+      .finally(() => setChatLoading(false));
+  }, [selectedClinicChildId, activePortalTab]);
+
+  // Scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendChatMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChatMessage.trim() || !selectedClinicChildId) return;
+    try {
+      const res = await api.post('/clinic/chat', {
+        message: newChatMessage,
+        childId: selectedClinicChildId
+      });
+      const m = res.data?.data || res.data;
+      setChatMessages(prev => [...prev, {
+        id: m.id || Date.now().toString(),
+        role: 'parent',
+        child_id: selectedClinicChildId,
+        text: m.text || m.message,
+        timestamp: m.timestamp || 'Just now'
+      }]);
+      setNewChatMessage('');
+    } catch (err: any) {
+      console.error('Send failed:', err);
+      alert(err.response?.data?.error?.message || 'Failed to send message');
+    }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab });
+    setShowCommBook(false);
+  };
+
+  // Filter school announcements, driver notices, etc.
+  const schoolAnnouncements = useMemo(() => {
+    return announcements.filter(a => a.category === 'School');
+  }, [announcements]);
+
+  const driverNotifications = useMemo(() => {
+    return announcements.filter(a => a.category === 'Logistics');
+  }, [announcements]);
+
+  const clinicPreviews = useMemo(() => {
+    const latest: { [key: string]: any } = {};
+    allClinicMessages.forEach(m => {
+      if (!latest[m.student_name] || new Date(m.timestamp) > new Date(latest[m.student_name].timestamp)) {
+        latest[m.student_name] = m;
+      }
+    });
+    return Object.values(latest);
+  }, [allClinicMessages]);
+
+  if (loading) {
     return (
-      <div className="space-y-8 animate-in fade-in duration-500">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => {
-              setSelectedChild(null);
-              setShowHistory(false);
-              setSelectedYear(null);
-            }}
-            className="text-blue-600 hover:underline flex items-center gap-2 font-medium"
-          >
-            ← {t('parentPortal.backToChildren')}
-          </button>
-
-          <div className="flex gap-2">
-            {activePortalTab === 'academic' && (
-              <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium text-sm"
-              >
-                <History size={18} />
-                {showHistory ? t('parentPortal.activeCourses') : t('parentPortal.academicHistory')}
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 md:p-8 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm transition-colors duration-300">
-          <div className="flex gap-4 border-b border-slate-100 dark:border-slate-800 mb-8">
-            <button
-              onClick={() => setActivePortalTab('academic')}
-              className={`pb-4 px-2 text-sm font-bold transition-all relative ${activePortalTab === 'academic' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              {t('parentPortal.academicProfile')}
-              {activePortalTab === 'academic' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-full" />}
-            </button>
-            <button
-              onClick={() => setActivePortalTab('communication')}
-              className={`pb-4 px-2 text-sm font-bold transition-all relative ${activePortalTab === 'communication' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              {t('parentPortal.communicationBook')}
-              {activePortalTab === 'communication' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 rounded-t-full" />}
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6 mb-8 text-center sm:text-left">
-            <div className="w-16 h-16 md:w-20 md:h-20 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl md:text-3xl">
-              {selectedChild.name.charAt(0)}
-            </div>
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-800 dark:text-slate-100">{selectedChild.name}</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg">Grade {selectedChild.grade} Student</p>
-            </div>
-          </div>
-
-          {activePortalTab === 'academic' ? (
-            !showHistory ? (
-              <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-2 md:gap-3 text-slate-500 dark:text-slate-400 mb-2">
-                    <Calendar size={18} />
-                    <span className="text-xs md:text-sm font-medium">{t('parentPortal.attendance')}</span>
-                  </div>
-                  <p className="text-xl md:text-2xl font-bold text-emerald-600">{selectedChild.attendance}</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 mb-2">
-                    <BookOpen size={18} />
-                    <span className="text-sm font-medium">{t('parentPortal.activeCourses')}</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-600">{selectedChild.courses.length}</p>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 mb-2">
-                    <Award size={18} />
-                    <span className="text-sm font-medium">{t('parentPortal.academicRank')}</span>
-                  </div>
-                  <p className="text-2xl font-bold text-purple-600">{selectedChild.performance}</p>
-                </div>
-              </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Course Progress & Grades</h3>
-                  </div>
-                  <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
-                    <table className="w-full text-left text-sm min-w-[600px]">
-                      <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
-                        <tr>
-                          <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Course</th>
-                          <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Mid (30)</th>
-                          <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Quiz (10)</th>
-                          <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Assig. (10)</th>
-                          <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Final (50)</th>
-                          <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase text-right">Teacher</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {selectedChild.courses.map((course: any, i: number) => (
-                          <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                            <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{course.name}</td>
-                            <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.mid}</td>
-                            <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.quiz}</td>
-                            <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.assignment}</td>
-                            <td className="px-4 py-4">
-                              <span className={`text-xs font-bold px-2 py-1 rounded ${
-                                course.grades.final === 'Not Yet'
-                                  ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
-                                  : 'text-slate-600 dark:text-slate-400'
-                              }`}>
-                                {course.grades.final}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-right text-slate-500 dark:text-slate-400">{course.teacher}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('parentPortal.academicHistory')}</h3>
-                <div className="flex gap-4">
-                  {academicYears.map(year => (
-                    <button
-                      key={year}
-                      onClick={() => setSelectedYear(year)}
-                      className={`px-6 py-3 rounded-xl border transition-all ${
-                        selectedYear === year
-                          ? 'bg-blue-600 border-blue-600 text-white shadow-md'
-                          : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-400'
-                      }`}
-                    >
-                      EC {year}
-                    </button>
-                  ))}
-                </div>
-
-                {selectedYear && historyData[selectedYear] ? (
-                  <div className="animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
-                      <table className="w-full text-left text-sm min-w-[500px]">
-                        <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
-                          <tr>
-                            <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Course</th>
-                            <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Mid</th>
-                            <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Quiz</th>
-                            <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Assig.</th>
-                            <th className="px-4 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase">Final</th>
-                            <th className="px-6 py-4 font-semibold text-slate-500 dark:text-slate-400 uppercase text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {historyData[selectedYear].map((course: any, i: number) => (
-                            <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
-                              <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-200">{course.name}</td>
-                              <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.mid}</td>
-                              <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.quiz}</td>
-                              <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.assignment}</td>
-                              <td className="px-4 py-4 text-slate-600 dark:text-slate-400">{course.grades.final}</td>
-                              <td className="px-6 py-4 text-right font-bold text-blue-600 dark:text-blue-400">{course.grades.total}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ) : selectedYear ? (
-                  <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-                    <p className="text-slate-500">{t('parentPortal.noRecords', { year: selectedYear })}</p>
-                  </div>
-                ) : (
-                  <div className="p-12 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-2xl">
-                    <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <History className="text-slate-400" size={32} />
-                    </div>
-                    <p className="text-slate-500">{t('parentPortal.selectYear')}</p>
-                  </div>
-                )}
-              </div>
-            )
-          ) : (
-            <CommunicationBook studentId={selectedChild.id} />
-          )}
-        </div>
+      <div className="flex justify-center items-center h-[calc(100vh-16rem)]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-1000">
-      {/* Hero Welcome Section - Enhanced Visuals */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 md:p-16 text-white shadow-2xl relative overflow-hidden border border-slate-700/30">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.2em]">
-              {t('parentPortal.title')}
-            </div>
-            <h2 className="text-5xl md:text-6xl font-black tracking-tight leading-none">
-              {t('parentPortal.greeting', { name: 'Mr. Bikila' })}
-            </h2>
-            <p className="text-slate-300 text-lg max-w-lg leading-relaxed font-medium">
-              {t('parentPortal.subtitle')}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-8 bg-white/5 backdrop-blur-2xl p-6 rounded-[2.5rem] border border-white/10 shadow-2xl">
-            <div className="w-20 h-20 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center text-white shadow-xl rotate-6 transition-transform hover:rotate-0 duration-500">
-              <User size={40} />
-            </div>
-            <div>
-              <p className="text-lg font-black text-white">{t('parentPortal.familyId')}: #8824</p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <p className="text-xs text-blue-300 font-bold uppercase tracking-widest">{t('parentPortal.verified')}</p>
-              </div>
-            </div>
-          </div>
+    <div className="space-y-10 animate-in fade-in duration-500 pb-16">
+      {/* Persistent Title & Tab Bar on the Top Left-Hand Side */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8 gap-6">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Parent Portal</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">
+            Family Administration & Student Performance Tracker
+          </p>
         </div>
 
-        {/* Abstract Background Art */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-[150px] -mr-64 -mt-64" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[120px] -ml-48 -mb-48" />
-      </div>
-
-      {/* Primary Navigation: My Children (Promoted to Top) */}
-      <div className="space-y-8">
-        <div className="flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-               <Award size={24} />
-            </div>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t('parentPortal.myChildren')}</h3>
-          </div>
-          <span className="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl text-xs font-black text-slate-500 uppercase tracking-widest">
-            {children.length} {t('parentPortal.enrolled')}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {children.map((child, i) => (
-            <div
-              key={i}
-              onClick={() => {
-                setSelectedChild(child);
-                setActivePortalTab('academic');
-              }}
-              className="group relative cursor-pointer"
+        {/* Top Left-Hand Side Navigation Tabs */}
+        <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 w-full xl:w-fit self-start xl:self-center">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'grades', label: 'Grades & Courses', icon: BookOpen },
+            { id: 'history', label: 'Academic History', icon: GraduationCap },
+            { id: 'clinic', label: 'Clinic Support', icon: HeartPulse }
+          ].map(tabItem => (
+            <button
+              key={tabItem.id}
+              onClick={() => handleTabChange(tabItem.id)}
+              className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-1 md:flex-none justify-center ${
+                activePortalTab === tabItem.id
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-450 hover:bg-white/50 dark:hover:bg-white/5'
+              }`}
             >
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2rem] sm:rounded-[3rem] blur-lg opacity-0 group-hover:opacity-20 transition duration-500" />
-              <div className="relative bg-white dark:bg-slate-900 p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm group-hover:shadow-2xl group-hover:-translate-y-2 transition-all duration-500">
-                <div className="flex items-center justify-between mb-10">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-3xl shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
-                      {child.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{child.name}</h4>
-                      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Grade {child.grade}</p>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
-                    <ChevronRight size={24} />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6 mb-4">
-                  <div className="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] border border-slate-100 dark:border-slate-700/50">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('parentPortal.attendance')}</p>
-                    <p className="text-2xl font-black text-emerald-600">{child.attendance}</p>
-                  </div>
-                  <div className="p-6 bg-slate-50 dark:bg-slate-800/40 rounded-[2rem] border border-slate-100 dark:border-slate-700/50">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('parentPortal.academicRank')}</p>
-                    <p className="text-2xl font-black text-blue-600">{child.performance}</p>
-                  </div>
-                </div>
-
-                <p className="text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-4 group-hover:text-blue-600 transition-colors">
-                  {t('parentPortal.clickToView')}
-                </p>
-              </div>
-            </div>
+              <tabItem.icon size={16} />
+              {tabItem.label}
+            </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* School Notices - Balanced Layout */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="flex items-center gap-3 px-2">
-            <Megaphone className="text-blue-600 dark:text-blue-400" size={24} />
-            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">{t('parentPortal.announcements')}</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {notices.map(notice => (
-              <div key={notice.id} className="group bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.1em] ${
-                    notice.priority === 'High'
-                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
-                    : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    {notice.priority}
-                  </span>
-                  <span className="text-xs font-bold text-slate-400">{notice.time}</span>
+      {/* ==================== 1. DASHBOARD TAB ==================== */}
+      {activePortalTab === 'dashboard' && (
+        <div className="space-y-12 animate-in fade-in duration-500">
+          {/* Welcome Header – Premium Family Dashboard Banner */}
+          <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden border border-white/5">
+            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[10px] font-black uppercase tracking-widest">
+                  FAMILY DASHBOARD
                 </div>
-                <h4 className="text-lg font-black text-slate-900 dark:text-white mb-3 leading-tight group-hover:text-blue-600 transition-colors">{notice.title}</h4>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{notice.content}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Clinic Support - Unified Card */}
-        <div className="lg:col-span-4">
-          <div
-            className="h-full bg-slate-900 dark:bg-slate-800 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden group hover:scale-[1.02] transition-all cursor-pointer border border-white/5"
-            onClick={() => navigate('/clinic-chat')}
-          >
-            <div className="relative z-10 h-full flex flex-col justify-between">
-              <div>
-                <div className="w-16 h-16 bg-blue-600 rounded-[1.5rem] flex items-center justify-center mb-8 shadow-xl shadow-blue-900/50 group-hover:scale-110 transition-transform">
-                  <HeartPulse size={32} />
-                </div>
-                <h3 className="text-3xl font-black mb-4 leading-tight">{t('parentPortal.clinicSupport').split(' ')[0]}<br />{t('parentPortal.clinicSupport').split(' ')[1]}</h3>
-                <p className="text-slate-400 text-sm font-medium leading-relaxed">
-                  {t('parentPortal.clinicDesc')}
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
+                  Hello, {parentName}
+                </h2>
+                <p className="text-sm md:text-base max-w-lg leading-relaxed font-medium">
+                  Your central hub for tracking educational milestones, health updates, and school announcements.
                 </p>
               </div>
-              <div className="mt-12">
-                <button className="w-full py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-900/20">
-                   {t('parentPortal.openMedicalChat')}
+              <div className="bg-[#162744]/60 backdrop-blur-lg border border-white/10 p-5 rounded-3xl flex items-center gap-4 min-w-[240px]">
+                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white">
+                  <User size={24} />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Family ID: {familyIdText}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <div className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse" />
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">VERIFIED ACCOUNT</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Subtle decorative blurred circle */}
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+          </div>
+
+          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 md:p-12 text-white shadow-2xl relative overflow-hidden border border-slate-700/30">
+            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.2em]">
+                  Dashboard Overview
+                </div>
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
+                  Welcome back, {parentName}!
+                </h2>
+                <p className="text-slate-300 text-sm md:text-base max-w-lg leading-relaxed font-medium">
+                  Monitor your children's real-time academic growth, grades, clinic activity, and driver logs.
+                </p>
+              </div>
+              <div className="flex items-center gap-6 bg-white/5 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 shadow-2xl">
+                <div className="w-14 h-14 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-6">
+                  <User size={28} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white">Family Account</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Verified Parent</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+          </div>
+
+          {/* Children Grid */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                <Award className="text-blue-600 dark:text-blue-400" size={24} />
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">My Children</h3>
+              </div>
+              <span className="bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-black text-slate-500 uppercase tracking-widest">
+                {children.length} Enrolled
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {children.map((child) => (
+                <div
+                  key={child.id}
+                  onClick={() => {
+                    setSelectedChild(child);
+                    handleTabChange('grades');
+                  }}
+                  className="group relative cursor-pointer"
+                >
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg opacity-0 group-hover:opacity-10 transition duration-500" />
+                  <div className="relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm group-hover:shadow-xl group-hover:-translate-y-1.5 transition-all duration-500">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-850 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-2xl shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                          {child.fullName.charAt(0)}
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-black text-slate-900 dark:text-white mb-1">{child.fullName}</h4>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grade {child.grade}</p>
+                        </div>
+                      </div>
+                      <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                        <ChevronRight size={20} />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-5">
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
+                        <p className="text-xl font-black text-emerald-600">{child.attendance || '0.0%'}</p>
+                      </div>
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance Rank</p>
+                        <p className="text-lg font-black text-blue-600 truncate">{child.performance || 'Pending'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Announcements & Notices Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* School Announcements */}
+            <div className="lg:col-span-8 space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <Megaphone className="text-blue-600 dark:text-blue-400" size={22} />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Announcements from School Admin</h3>
+              </div>
+
+              <div className="space-y-6">
+                {schoolAnnouncements.length > 0 ? (
+                  schoolAnnouncements.map((notice) => (
+                    <div key={notice.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          notice.priority === 'High' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'
+                        }`}>
+                          {notice.priority}
+                        </span>
+                        <span className="text-xs text-slate-400 font-bold">{new Date(notice.timestamp).toLocaleDateString()}</span>
+                      </div>
+                      <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{notice.content}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-100 dark:border-slate-800 text-center text-slate-500 text-sm">
+                    No admin announcements available.
+                  </div>
+                )}
+              </div>
+
+              {/* Logistics/Driver notifications */}
+              <div className="pt-4 space-y-6">
+                <div className="flex items-center gap-3 px-2">
+                  <Bell className="text-indigo-600 dark:text-indigo-400" size={22} />
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Notifications & Driver Logs</h3>
+                </div>
+
+                <div className="space-y-6">
+                  {driverNotifications.length > 0 ? (
+                    driverNotifications.map((notice) => (
+                      <div key={notice.id} className="bg-slate-50 dark:bg-slate-800/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-wider">
+                            Logistics
+                          </span>
+                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.timestamp).toLocaleDateString()}</span>
+                        </div>
+                        <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">{notice.content}</p>
+                        {notice.driverName && (
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
+                            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                            Bus Driver: {notice.driverName}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-100 dark:border-slate-800 text-center text-slate-500 text-sm">
+                      No notifications or bus driver logs found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Clinic Support previews */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="flex items-center gap-3 px-2">
+                <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 space-y-6 shadow-sm">
+                <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
+                    <HeartPulse size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Clinic Administrator</h4>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Health & Medical Reviews</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {clinicPreviews.length > 0 ? (
+                    clinicPreviews.map((m, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSelectedClinicChildId(m.child_id);
+                          handleTabChange('clinic');
+                        }}
+                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
+                            {m.student_name}
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-400">{m.timestamp}</span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate group-hover:text-slate-800 dark:group-hover:text-white">
+                          {m.role === 'clinic' ? 'Admin: ' : 'You: '}{m.text}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase">
+                      No recent clinic messages.
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleTabChange('clinic')}
+                  className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
+                >
+                  <HeartPulse size={16} />
+                  Open Clinic Chat Room
                 </button>
               </div>
             </div>
-            {/* Background Decoration */}
-            <HeartPulse size={200} className="absolute -bottom-20 -right-20 text-white/5 rotate-12 opacity-50 group-hover:scale-110 group-hover:rotate-0 transition-all duration-1000" />
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ==================== 2 & 3. GRADES & COURSES / ACADEMIC HISTORY VIEWS ==================== */}
+      {(activePortalTab === 'grades' || activePortalTab === 'history') && (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Header & Tab Selector (Identical to Student Portal) */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Grades & Courses</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track your real-time academic performance across semesters.</p>
+            </div>
+
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
+              <button
+                onClick={() => handleViewModeChange('current')}
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'current'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                }`}
+              >
+                Current Term
+              </button>
+              <button
+                onClick={() => handleViewModeChange('history')}
+                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                  viewMode === 'history'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
+                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+                }`}
+              >
+                Academic History
+              </button>
+            </div>
+          </div>
+
+          {/* Child Picker (Scope to Parent Role) */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+            {children.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => {
+                  setSelectedChild(c);
+                  setShowCommBook(false);
+                }}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  selectedChild?.id === c.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+                }`}
+              >
+                {c.fullName}
+              </button>
+            ))}
+          </div>
+
+          {selectedChild ? (
+            viewMode === 'current' ? (
+              // ================= CURRENT TERM VIEW (Identical UI/UX to Student Portal) =================
+              <div className="space-y-8">
+                {/* First Div: Controls Row */}
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Year Selector */}
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
+                      <select
+                        value={selectedYear}
+                        onChange={(e) => {
+                          setSelectedYear(e.target.value);
+                          setSelectedCourse(null);
+                        }}
+                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                      >
+                        {academicYears.map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Semester Selector */}
+                    <div>
+                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
+                      <select
+                        value={selectedSemester}
+                        onChange={(e) => {
+                          setSelectedSemester(e.target.value);
+                          setSelectedCourse(null);
+                        }}
+                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                      >
+                        <option>First Semester</option>
+                        <option>Second Semester</option>
+                      </select>
+                    </div>
+
+                    {/* Searchable Course Dropdown (Combobox) */}
+                    <div className="relative">
+                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Search & Select Course</label>
+                      <div className="relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                          type="text"
+                          placeholder="Type course name or code..."
+                          value={courseSearchQuery}
+                          onChange={(e) => {
+                            setCourseSearchQuery(e.target.value);
+                            setDropdownOpen(true);
+                          }}
+                          onFocus={() => {
+                            setDropdownOpen(true);
+                            if (selectedCourse && courseSearchQuery === selectedCourse.name) {
+                              setCourseSearchQuery('');
+                            }
+                          }}
+                          onBlur={() => {
+                            setTimeout(() => {
+                              setDropdownOpen(false);
+                              if (selectedCourse) {
+                                setCourseSearchQuery(selectedCourse.name);
+                              }
+                            }, 250);
+                          }}
+                          className="w-full pl-12 pr-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
+                        />
+                      </div>
+
+                      {dropdownOpen && (
+                        <div className="absolute z-50 left-0 right-0 mt-2 max-h-[250px] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 space-y-1">
+                          {filteredCourses.length > 0 ? (
+                            filteredCourses.map((c) => (
+                              <button
+                                key={c.id || c.name}
+                                type="button"
+                                onMouseDown={() => {
+                                  setSelectedCourse(c);
+                                  setCourseSearchQuery(c.name);
+                                  setDropdownOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                                  selectedCourse?.name === c.name
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                                }`}
+                              >
+                                <p className="text-sm font-bold">{c.name}</p>
+                                <p className="text-xs opacity-75">{c.code}</p>
+                              </button>
+                            ))
+                          ) : (
+                            <p className="text-xs text-slate-500 text-center py-4">No courses found</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub-Header Row: Communication Book Toggle (Exclusive to Parent role) */}
+                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-md">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Teacher Observations</h3>
+                    <p className="text-xs text-slate-400 font-bold uppercase mt-0.5">Click to view direct classroom ratings</p>
+                  </div>
+                  <button
+                    onClick={() => setShowCommBook(!showCommBook)}
+                    className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all border flex items-center gap-2 ${
+                      showCommBook
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-md'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:border-amber-400'
+                    }`}
+                  >
+                    <ClipboardList size={16} />
+                    {showCommBook ? 'Close Communication Book' : 'Open Communication Book'}
+                  </button>
+                </div>
+
+                {/* RENDER COMMUNICATION BOOK */}
+                {showCommBook ? (
+                  <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg space-y-8 animate-in slide-in-from-top-4 duration-300">
+                    {commLoading ? (
+                      <div className="flex justify-center items-center h-48">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
+                      </div>
+                    ) : commLogs.length === 0 ? (
+                      <div className="p-8 text-center border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl space-y-2">
+                        <ClipboardList className="text-slate-400 mx-auto" size={28} />
+                        <p className="text-slate-500 font-bold text-sm">No active weekly review published yet.</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Old reviews automatically delete on Friday mornings. Teachers post new updates on weekends.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-8">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                              <Star className="text-amber-500 animate-pulse" size={20} />
+                              Weekly Progress Book
+                            </h4>
+                            <p className="text-xs text-slate-500 mt-1">Review ratings provided by your child's teachers.</p>
+                          </div>
+                          <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <button
+                              disabled={currentLogIndex === 0}
+                              onClick={() => setCurrentLogIndex(prev => prev - 1)}
+                              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
+                            >
+                              <ChevronRight className="rotate-180" size={18} />
+                            </button>
+                            <div className="flex flex-col items-center min-w-[100px]">
+                              <span className="text-[8px] uppercase font-black text-slate-400">Week Ending</span>
+                              <span className="text-xs font-black text-blue-600 dark:text-blue-400">{currentLog.week_ending_formatted || currentLog.week_ending}</span>
+                            </div>
+                            <button
+                              disabled={currentLogIndex === commLogs.length - 1}
+                              onClick={() => setCurrentLogIndex(prev => prev + 1)}
+                              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                          {commFields.map(field => {
+                            const rating = getFieldRating(currentLog, field.id);
+                            return (
+                              <div key={field.id} className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center">
+                                <div className={`w-12 h-12 rounded-xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-xl mb-3`}>
+                                  {rating + 1}
+                                </div>
+                                <h5 className="font-bold text-slate-800 dark:text-slate-100 text-xs mb-1">{field.label}</h5>
+                                <p className="text-[9px] text-slate-500 leading-tight mb-3 min-h-[24px]">{field.description}</p>
+                                <span className={`w-full py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${getRatingColor(rating)} text-white`}>
+                                  {ratingLabels[rating]}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="p-6 bg-amber-500/10 rounded-2xl border border-amber-500/20">
+                          <h5 className="text-xs font-black uppercase text-amber-600 mb-2 flex items-center gap-2 tracking-widest">
+                            <ClipboardList size={14} />
+                            Teacher Observation Notes
+                          </h5>
+                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic font-medium">
+                            "${currentLog.teacher_note || "Student has shown consistent engagement this week. Maintain current focus on home assignments for continued progress."}"
+                          </p>
+                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mt-4">
+                            Submitted by: {currentLog.teacher_name || 'Class Room Teacher'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // COURSE PROGRESS AND GRADES DETAILS
+                  gradesLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : gradesError ? (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
+                      {gradesError}
+                    </div>
+                  ) : selectedCourse ? (
+                    <div className="space-y-6 animate-in fade-in duration-500">
+                      {/* Course Metadata Card with Course Progress on Right */}
+                      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+                          <div className="flex items-center gap-5 flex-1">
+                            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                              <BookOpen size={32} />
+                            </div>
+                            <div className="flex-1">
+                              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
+                              <div className="flex flex-wrap items-center gap-4 mt-3">
+                                <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
+                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
+                                  <User size={14} />
+                                  Instructor: {selectedCourse.teacher || 'N/A'}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Course Progress - Compact Version on Right */}
+                          <div className="shrink-0 w-full md:w-48 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-850 dark:to-slate-800 rounded-xl p-4 border border-blue-100 dark:border-slate-700">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                                <BookOpen size={16} />
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-black text-slate-900 dark:text-white">Course Progress</h4>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400">Student score</p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-end">
+                                <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
+                                  {selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) : 0}%
+                                </span>
+                              </div>
+
+                              <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-1000 ${
+                                    getStatus(selectedCourse) === 'PASSED'
+                                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                                      : getStatus(selectedCourse) === 'FAILED'
+                                        ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                        : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                  }`}
+                                  style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
+                                ></div>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Grade Detail Table */}
+                      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
+                        <div className="p-8">
+                          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
+                                <tr>
+                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">Assessment Component</th>
+                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Weight</th>
+                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Student Mark</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                    {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                    {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                                </tr>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">30%</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                    {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                                </tr>
+                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">50%</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                    {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                                <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
+                                  <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>
+                                  <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400">100%</td>
+                                  <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 text-base">
+                                    {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Status and Progress Bar Container */}
+                          <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Standing</p>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Course Status:</span>
+                                  {(() => {
+                                    const status = getStatus(selectedCourse);
+                                    if (status === 'PASSED') {
+                                      return (
+                                        <span className="px-3.5 py-1 bg-emerald-50 dark:bg-emerald-955/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-black tracking-widest uppercase">
+                                          PASSED
+                                        </span>
+                                      );
+                                    } else if (status === 'FAILED') {
+                                      return (
+                                        <span className="px-3.5 py-1 bg-rose-50 dark:bg-rose-955/40 text-rose-600 border border-rose-200 dark:border-rose-800 rounded-full text-xs font-black tracking-widest uppercase">
+                                          FAILED
+                                        </span>
+                                      );
+                                    } else {
+                                      return (
+                                        <span className="px-3.5 py-1 bg-amber-50 dark:bg-amber-955/40 text-amber-600 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-black tracking-widest uppercase">
+                                          PENDING
+                                        </span>
+                                      );
+                                    }
+                                  })()}
+                                </div>
+                              </div>
+
+                              <div className="text-right">
+                                <span className="text-2xl font-black text-slate-800 dark:text-white">
+                                  {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
+                                </span>
+                                <span className="text-sm text-slate-400 font-bold"> / 100</span>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                                <span>Total Score Progress</span>
+                                <span>{selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) + '%' : '0%'}</span>
+                              </div>
+                              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-1000 ${
+                                    getStatus(selectedCourse) === 'PASSED'
+                                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                                      : getStatus(selectedCourse) === 'FAILED'
+                                        ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                        : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                  }`}
+                                  style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
+                      <p className="font-bold text-lg">No courses found for the selected Academic Year and Semester.</p>
+                    </div>
+                  )
+                )}
+              </div>
+            ) : (
+              // ================= ACADEMIC HISTORY VIEW (Identical UI/UX to Student Portal) =================
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                      <GraduationCap size={28} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white">Academic History</h3>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">Archive of verified results</p>
+                    </div>
+                  </div>
+
+                  {/* First Div: Year and Semester selectors */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div>
+                      <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
+                      <select
+                        value={historyYear || ''}
+                        onChange={(e) => {
+                          setHistoryYear(e.target.value || null);
+                          setHistoryData(null);
+                        }}
+                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                      >
+                        <option value="">-- Select Year --</option>
+                        {academicYears.map((year) => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
+                      <select
+                        value={historySemester || ''}
+                        onChange={(e) => {
+                          setHistorySemester(e.target.value || null);
+                          setHistoryData(null);
+                        }}
+                        disabled={!historyYear}
+                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white"
+                      >
+                        <option value="">-- Select Semester --</option>
+                        <option>First Semester</option>
+                        <option>Second Semester</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Metrics Header */}
+                  {historyYear && historySemester && historyData && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-3">
+                          <Calendar size={16} className="text-blue-600" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</span>
+                        </div>
+                        <p className="text-xl font-black text-slate-800 dark:text-white">{historyYear}</p>
+                      </div>
+
+                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-3">
+                          <BookOpen size={16} className="text-purple-600" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester</span>
+                        </div>
+                        <p className="text-xl font-black text-slate-800 dark:text-white">{historySemester}</p>
+                      </div>
+
+                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-3 mb-3">
+                          <GraduationCap size={16} className="text-emerald-600" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester Average</span>
+                        </div>
+                        <p className="text-xl font-black text-slate-800 dark:text-white">{semesterAverage}%</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Second Div: History Data Table with Subject and Total columns */}
+                  {historyLoading ? (
+                    <div className="flex justify-center items-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : historyData && historyData.courses ? (
+                    <div className="overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800">
+                      <table className="w-full text-left">
+                        <thead className="bg-slate-50 dark:bg-slate-800/50">
+                          <tr>
+                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Subject</th>
+                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {historyData.courses.map((course: any, i: number) => (
+                            <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                              <td className="px-8 py-5">
+                                <p className="font-bold text-slate-800 dark:text-white">{course.name}</p>
+                              </td>
+                              <td className="px-8 py-5 text-right">
+                                <span className="inline-flex items-center px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-sm font-black">
+                                  {typeof course.score === 'string' && course.score.includes('%') ? course.score : `${course.score}%`}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : historyYear && historySemester ? (
+                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
+                      <p className="font-medium">No results archived for the selected period.</p>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
+                      <p className="font-medium">Select both Academic Year and Semester to load historical records.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl text-center text-slate-500 text-sm border border-slate-100 dark:border-slate-800 animate-pulse">
+              Please link a child student account to verify academic courses and progress.
+            </div>
+          )}
+        </div>
+      )}
+      {/* ==================== 4. CLINIC SUPPORT TAB ==================== */}
+      {activePortalTab === 'clinic' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[calc(100vh-16rem)]">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-6 z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
+                  <HeartPulse size={24} />
+                </div>
+                <div>
+                  <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Support Tab</h2>
+                  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    Direct Private Channel
+                  </p>
+                </div>
+              </div>
+
+              {/* Select Child Section */}
+              <div className="flex flex-col items-start md:items-end">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Select Child</span>
+                <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                  {clinicChildren.length === 0 ? (
+                    <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
+                  ) : (
+                    clinicChildren.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedClinicChildId(c.id)}
+                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                          selectedClinicChildId === c.id
+                            ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {c.fullName.split(' ')[0]}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Private & Encrypted Column */}
+              <div className="hidden xl:flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                <ShieldCheck size={14} className="text-emerald-500" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Private & Encrypted</span>
+              </div>
+            </div>
+
+            {/* Messages Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-[350px]">
+              {chatLoading ? (
+                <div className="flex justify-center items-center h-48">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
+                </div>
+              ) : chatMessages.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 space-y-3">
+                  <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
+                  <p className="text-xs font-bold uppercase tracking-widest">No clinic reports or messages logged yet for this child.</p>
+                  <p className="text-[10px] opacity-75">Send a message below to start a chat with the clinic administration.</p>
+                </div>
+              ) : (
+                chatMessages.map((m) => (
+                  <div key={m.id} className={`flex items-start gap-3 ${m.role === 'parent' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${
+                      m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
+                    }`}>
+                      {m.role === 'parent' ? <User size={14} /> : <HeartPulse size={14} />}
+                    </div>
+                    <div className={`max-w-[75%] space-y-1 ${m.role === 'parent' ? 'text-right' : ''}`}>
+                      <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
+                        m.role === 'parent'
+                          ? 'bg-blue-600 text-white rounded-tr-none'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
+                      }`}>
+                        {m.text}
+                      </div>
+                      <div className="flex items-center gap-2 justify-end px-1">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
+                        {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Form Input */}
+            <div className="p-6 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
+              <form onSubmit={handleSendChatMessage} className="flex gap-4">
+                <input
+                  type="text"
+                  value={newChatMessage}
+                  onChange={(e) => setNewChatMessage(e.target.value)}
+                  placeholder="Type a health request or update for the clinic admin..."
+                  className="flex-1 px-6 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-medium outline-none focus:border-rose-500 transition-all shadow-sm"
+                />
+                <button
+                  type="submit"
+                  className="bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-200 dark:shadow-none group shrink-0"
+                >
+                  <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                  <span className="hidden sm:inline">Send Message</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

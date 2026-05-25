@@ -146,6 +146,21 @@ const financeClerkService = {
   approveApplication: async (applicationId: string, data: { amount: number; reference?: string }) => {
     const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
+  },
+
+  // 10. Get all audit logs
+  getAllAuditLogs: async (params?: Record<string, any>) => {
+    const response = await api.get('/finance-clerk/audit-logs', { params });
+    return response.data.data || { logs: [], pagination: { currentPage: 1, totalPages: 1, totalRecords: 0 } };
+  },
+
+  // 11. Export audit logs
+  exportAuditLogs: async (params?: Record<string, any>) => {
+    const response = await api.get('/finance-clerk/audit-logs/export', {
+      params,
+      responseType: 'blob'
+    });
+    return response.data;
   }
 
 };

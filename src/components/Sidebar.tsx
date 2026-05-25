@@ -1,5 +1,5 @@
 
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -45,6 +45,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const { user, role, logout, schoolName } = useUser();
   const { isExamLockedDown, selectedBranchId } = useStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, i18n } = useTranslation();
 
   const getLocalizedSchoolName = () => {
@@ -90,11 +91,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       case 'school-admin':
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
-          { icon: GraduationCap, label: 'Academic Structure', path: '/academic-management' },
-          { icon: ClipboardCheck, label: 'Admissions', path: '/admissions-dashboard' },
           { icon: BookOpen, label: 'Classes', path: '/classes' },
           { icon: Users, label: t('nav.students'), path: '/students' },
-          { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
           { icon: DollarSign, label: 'Finance Staff', path: '/finance-staff' },
           { icon: BookOpen, label: 'Librarian Staff', path: '/librarian-staff' },
@@ -134,15 +132,14 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         ];
       case 'parent':
         return [
-          { icon: LayoutDashboard, label: t('nav.myDashboard'), path: '/' },
-          { icon: Users, label: t('nav.myChildren'), path: '/students' },
-          { icon: HeartPulse, label: t('nav.clinicSupport'), path: '/clinic-chat' },
-          { icon: ClipboardList, label: t('nav.exams'), path: '/exams' },
+          { icon: LayoutDashboard, label: t('nav.myDashboard') || 'My Dashboard', path: '/dashboard/parent?tab=dashboard' },
+          { icon: BookOpen, label: 'Grades & Courses', path: '/dashboard/parent?tab=grades' },
+          { icon: GraduationCap, label: 'Academic History', path: '/dashboard/parent?tab=history' },
+          { icon: HeartPulse, label: 'Clinic Support', path: '/dashboard/parent?tab=clinic' },
         ];
       case 'finance-clerk':
         return [
           { icon: LayoutDashboard, label: t('nav.overview'), path: '/dashboard/finance' },
-          { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: Wallet, label: t('nav.finance'), path: '/finance-dashboard' },
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
@@ -182,11 +179,47 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     }
   };
 
+  const getDashboardRoute = (role: string | null) => {
+    switch (role) {
+      case 'super-admin': return '/dashboard/super-admin';
+      case 'school-admin': return '/dashboard/school-admin';
+      case 'teacher': return '/dashboard/teacher';
+      case 'student': return '/dashboard/student';
+      case 'parent': return '/dashboard/parent';
+      case 'finance-clerk': return '/dashboard/finance';
+      case 'vice-principal': return '/dashboard/vice-principal';
+      case 'driver': return '/dashboard/driver';
+      case 'librarian': return '/dashboard/librarian';
+      case 'clinic-admin': return '/dashboard/clinic-admin';
+      case 'auditor': return '/auditor-dashboard';
+      default: return '/login';
+    }
+  };
+
+  const checkActive = (itemPath: string) => {
+    if (isExamLockedDown) return false;
+    const currentFull = location.pathname + location.search;
+    
+    if (role === 'parent') {
+      const itemTab = new URLSearchParams(itemPath.split('?')[1] || '').get('tab') || 'dashboard';
+      const currentTab = new URLSearchParams(location.search).get('tab') || 'dashboard';
+      return itemTab === currentTab;
+    }
+    
+    if (itemPath === '/') {
+      return location.pathname === '/' || location.pathname === getDashboardRoute(role);
+    }
+    return location.pathname === itemPath;
+  };
+
   const navItems = getNavItems();
 
   return (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-30 w-72 bg-white dark:bg-black text-slate-900 dark:text-white flex flex-col h-screen transition-all duration-300 lg:translate-x-0 lg:static lg:inset-auto border-r border-slate-200 dark:border-slate-800/50",
+      "fixed inset-y-0 left-0 z-30 w-72 flex flex-col h-screen transition-all duration-300 lg:translate-x-0 lg:static lg:inset-auto border-r border-slate-200 dark:border-slate-800/50",
+      role === 'parent'
+        ? "bg-slate-950 text-white border-slate-900"
+        : "bg-white dark:bg-black text-slate-900 dark:text-white",
       isOpen ? "translate-x-0" : "-translate-x-full"
     )}>
       <div className="p-8 mt-8 flex items-center justify-between">
@@ -208,33 +241,36 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       </div>
 
       <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
-        {navItems.map((item) => (
-          <NavLink
-            key={`${item.path}-${item.label}`}
-            to={isExamLockedDown ? '#' : item.path}
-            onClick={(e) => {
-              if (isExamLockedDown) {
-                e.preventDefault();
-                return;
-              }
-              if (window.innerWidth < 1024) onClose();
-            }}
-            className={({ isActive }) => cn(
-              "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group",
-              isExamLockedDown && "opacity-50 cursor-not-allowed",
-              isActive && !isExamLockedDown
-                ? "bg-school-primary text-white shadow-lg shadow-school-primary/20 scale-[1.02]"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
-            )}
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive ? "text-white" : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
-                <span className="font-bold text-sm tracking-wide">{item.label}</span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const isActive = checkActive(item.path);
+          return (
+            <NavLink
+              key={`${item.path}-${item.label}`}
+              to={isExamLockedDown ? '#' : item.path}
+              onClick={(e) => {
+                if (isExamLockedDown) {
+                  e.preventDefault();
+                  return;
+                }
+                if (window.innerWidth < 1024) onClose();
+              }}
+              className={cn(
+                "flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300 group",
+                isExamLockedDown && "opacity-50 cursor-not-allowed",
+                isActive
+                  ? role === 'parent'
+                    ? "bg-blue-600/10 text-blue-400 font-bold"
+                    : "bg-school-primary text-white shadow-lg shadow-school-primary/20 scale-[1.02]"
+                  : role === 'parent'
+                    ? "text-slate-400 hover:text-white hover:bg-white/5"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+              )}
+            >
+              <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
+              <span className="font-bold text-sm tracking-wide">{item.label}</span>
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="p-6 border-t border-slate-200 dark:border-slate-800/50 space-y-4">
@@ -247,7 +283,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           )}
         >
           <LogOut size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="font-bold text-sm tracking-wide">{t('sidebar.logout')}</span>
+          <span className="font-bold text-sm tracking-wide">{t('sidebar.logout') || 'Logout Session'}</span>
         </button>
       </div>
     </aside>
