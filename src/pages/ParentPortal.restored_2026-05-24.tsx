@@ -1,4 +1,3 @@
-
 import { Calendar, BookOpen, Award, User, History, Megaphone, HeartPulse, Star, ChevronRight, ClipboardList, TrendingUp } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -513,3 +512,5 @@ export const ParentPortal = () => {
     </div>
   );
 };
+
+export default ParentPortal;
