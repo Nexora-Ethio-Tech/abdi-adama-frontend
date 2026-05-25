@@ -185,7 +185,7 @@ export const Students = () => {
 
   const filtered = students.filter(s => {
     const matchSearch = !search || `${s.firstName} ${s.lastName} ${s.email} ${s.digitalId}`.toLowerCase().includes(search.toLowerCase());
-    const matchGrade = !filterGrade || s.grade === filterGrade;
+    const matchGrade = !filterGrade || String(s.grade) === filterGrade;
     // Section match: determine student's section from classes list by className
     let matchSection = true;
     if (filterSection) {
@@ -248,8 +248,7 @@ export const Students = () => {
               onChange={(e) => {
                 const val = e.target.value;
                 setFilterGrade(val);
-                // when grade selected, default section to A
-                if (val) setFilterSection('A'); else setFilterSection('');
+                if (!val) setFilterSection('');
               }}
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >

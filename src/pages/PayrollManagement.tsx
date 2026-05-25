@@ -17,14 +17,14 @@ export const PayrollManagement = () => {
 
   // Generate Run Form State
   const [isGenerating, setIsGenerating] = useState(false);
-  const [month, setMonth] = useState('May');
-  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const ethiopianMonths = ['Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit', 'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'];
+  const [month, setMonth] = useState(ethiopianMonths[0]);
+  const currentEthiopianYear = new Date().getFullYear() - 8;
+  const [year, setYear] = useState(currentEthiopianYear.toString());
   const [selectedBranchId, setSelectedBranchId] = useState('');
   const [employeesForOt, setEmployeesForOt] = useState<EmployeePayrollProfile[]>([]);
   const [overtimeHoursMap, setOvertimeHoursMap] = useState<{ [employeeId: string]: number }>({});
   const [generationStep, setGenerationStep] = useState<1 | 2>(1); // Step 1: Period, Step 2: Overtime Entry
-
-  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
   useEffect(() => {
     loadPayrollRuns();
@@ -482,7 +482,7 @@ export const PayrollManagement = () => {
                         onChange={(e) => setMonth(e.target.value)}
                         required
                       >
-                        {months.map(m => (
+                        {ethiopianMonths.map(m => (
                           <option key={m} value={m} className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900">{m}</option>
                         ))}
                       </select>
