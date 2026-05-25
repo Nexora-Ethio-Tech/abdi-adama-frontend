@@ -142,6 +142,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -366,7 +367,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       if (response?.errors) {
         setValidationErrors(response.errors);
         setFileError(response.message || 'Validation failed');
-        setTimeout(() => setFileError(null), 5000);
+        setTimeout(() => setSubmitError(null), 5000);
         return;
       }
 
@@ -415,10 +416,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       console.error(error);
       const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to submit application';
       const errorObj = error.response?.data?.errors || {};
+      const errorCode = error.response?.data?.error?.code;
 
       setValidationErrors(errorObj);
-      setFileError(errorMessage);
-      setTimeout(() => setFileError(null), 5000);
+      
+      if (errorCode === 'FILE_SIZE_EXCEEDED' || errorCode === 'LIMIT_FILE_COUNT' || errorCode === 'UPLOAD_ERROR') {
+        setFileError(errorMessage);
+        setTimeout(() => setFileError(null), 5000);
+      } else {
+        setSubmitError(errorMessage);
+        setTimeout(() => setSubmitError(null), 5000);
+      }
     }
   };
 
@@ -444,8 +452,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
-      setFileError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setFileError(null), 5000);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -459,8 +467,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
-      setFileError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setFileError(null), 5000);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -474,8 +482,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
-      setFileError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setFileError(null), 5000);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -496,8 +504,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
-      setFileError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setFileError(null), 5000);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -529,8 +537,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
-      setFileError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setFileError(null), 5000);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
     }
   };
 
@@ -561,6 +569,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 shadow-lg shadow-emerald-500/5">
           <CheckCircle size={20} className="text-emerald-500" />
           <span className="font-bold text-sm">{successMessage}</span>
+        </div>
+      )}
+      {submitError && (
+        <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 px-6 py-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 shadow-lg shadow-rose-500/5">
+          <AlertCircle size={20} className="text-rose-500" />
+          <span className="font-bold text-sm">{submitError}</span>
         </div>
       )}
 

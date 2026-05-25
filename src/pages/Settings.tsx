@@ -1,14 +1,68 @@
-
 import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock, Eye, EyeOff, CheckCircle, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
 import { mockGradingConfigs } from '../data/mockData';
 import { useUser } from '../context/UserContext';
+import payrollService, { FinanceSetting, FinanceSettingsAudit } from '../services/payrollService';
 
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
   const { style, setStyle, autoDarkMode, setAutoDarkMode } = useAppearance();
   const { schoolName, setSchoolName, schoolMotto, setSchoolMotto, role, branches, gradesLocked, setGradesLocked, registrationOpen, setRegistrationOpen } = useUser();
+
+  // Finance Module Settings & Auditing State
+  const [financeSettings, setFinanceSettings] = useState<FinanceSetting[]>([]);
+  const [financeAuditLog, setFinanceAuditLog] = useState<FinanceSettingsAudit[]>([]);
+  const [dailyPenaltyRate, setDailyPenaltyRate] = useState<number>(150);
+  const [maxLoanMonths, setMaxLoanMonths] = useState<number>(3);
+  const [loanDeductionPct, setLoanDeductionPct] = useState<number>(30);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeSuccessMsg, setFinanceSuccessMsg] = useState('');
+  const [financeErrorMsg, setFinanceErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (role === 'super-admin') {
+      loadFinanceSettings();
+    }
+  }, [role]);
+
+  const loadFinanceSettings = async () => {
+    try {
+      const settings = await payrollService.getFinanceSettings();
+      setFinanceSettings(settings);
+      
+      const penalty = settings.find(s => s.key === 'daily_penalty_rate');
+      if (penalty) setDailyPenaltyRate(Number(penalty.value));
+
+      const maxLoan = settings.find(s => s.key === 'max_loan_months');
+      if (maxLoan) setMaxLoanMonths(Number(maxLoan.value));
+
+      const deduction = settings.find(s => s.key === 'loan_deduction_percentage');
+      if (deduction) setLoanDeductionPct(Number(deduction.value));
+
+      const audit = await payrollService.getFinanceSettingsAuditLog();
+      setFinanceAuditLog(audit);
+    } catch (err) {
+      console.error('Failed to load finance settings:', err);
+    }
+  };
+
+  const handleUpdateFinanceSetting = async (key: string, value: number) => {
+    setFinanceLoading(true);
+    setFinanceSuccessMsg('');
+    setFinanceErrorMsg('');
+    try {
+      await payrollService.updateFinanceSetting(key, value);
+      setFinanceSuccessMsg(`Setting '${key.replace(/_/g, ' ')}' updated successfully!`);
+      await loadFinanceSettings();
+      setTimeout(() => setFinanceSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to update setting');
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
+
 
   const tabs = [
     { id: 'General', icon: Building },
@@ -443,7 +497,154 @@ export const Settings = () => {
                 </div>
 
                 {role === 'super-admin' && (
-                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-8">
+                    {/* Global Finance Configuration */}
+                    <div className="pb-6 border-b border-slate-100 dark:border-slate-800 space-y-6">
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Global Finance Configuration</h4>
+                        <p className="text-xs text-slate-500 font-medium">Configure global parameters for employee payroll penalties and loans.</p>
+                      </div>
+
+                      {financeSuccessMsg && (
+                        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                          {financeSuccessMsg}
+                        </div>
+                      )}
+
+                      {financeErrorMsg && (
+                        <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                          {financeErrorMsg}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Daily Penalty Rate (ETB)</label>
+                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Deduction amount from basic salary per day of absenteeism.</p>
+                            <input
+                              type="number"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={dailyPenaltyRate}
+                              onChange={(e) => setDailyPenaltyRate(Number(e.target.value))}
+                            />
+                            {(() => {
+                              const audit = financeAuditLog.find(a => a.setting_key === 'daily_penalty_rate');
+                              return audit ? (
+                                <p className="text-[9px] text-slate-400 font-semibold mt-2">
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                </p>
+                              ) : null;
+                            })()}
+                          </div>
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('daily_penalty_rate', dailyPenaltyRate)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Rate
+                          </button>
+                        </div>
+
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Max Loan Duration (Months)</label>
+                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Maximum duration for employee loan repayments (Default to 3).</p>
+                            <input
+                              type="number"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={maxLoanMonths}
+                              onChange={(e) => setMaxLoanMonths(Number(e.target.value))}
+                            />
+                            {(() => {
+                              const audit = financeAuditLog.find(a => a.setting_key === 'max_loan_months');
+                              return audit ? (
+                                <p className="text-[9px] text-slate-400 font-semibold mt-2">
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                </p>
+                              ) : null;
+                            })()}
+                          </div>
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('max_loan_months', maxLoanMonths)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Duration
+                          </button>
+                        </div>
+
+                        <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                          <div>
+                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Loan Deduction Percentage (%)</label>
+                            <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Percentage cut from basic salary monthly for loan repayment.</p>
+                            <input
+                              type="number"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={loanDeductionPct}
+                              onChange={(e) => setLoanDeductionPct(Number(e.target.value))}
+                            />
+                            {(() => {
+                              const audit = financeAuditLog.find(a => a.setting_key === 'loan_deduction_percentage');
+                              return audit ? (
+                                <p className="text-[9px] text-slate-400 font-semibold mt-2">
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                </p>
+                              ) : null;
+                            })()}
+                          </div>
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('loan_deduction_percentage', loanDeductionPct)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Percentage
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Settings Audit Log Table */}
+                      <div className="pt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log (Activity Trail)</h5>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase">Updates list in real-time</span>
+                        </div>
+                        <div className="overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
+                          <table className="w-full text-left text-[10px] sm:text-xs min-w-[500px]">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                              <tr>
+                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Setting</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Old Value</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">New Value</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Changed By</th>
+                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Date / Time</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30 text-slate-600 dark:text-slate-300">
+                              {financeAuditLog.length === 0 ? (
+                                <tr>
+                                  <td colSpan={5} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px] tracking-wider">No change activities audited yet.</td>
+                                </tr>
+                              ) : (
+                                financeAuditLog.slice(0, 10).map((log) => (
+                                  <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                                    <td className="px-6 py-3 font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">{log.setting_key.replace(/_/g, ' ')}</td>
+                                    <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value} ETB/Units` : 'N/A'}</td>
+                                    <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value} ETB/Units</td>
+                                    <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
+                                    <td className="px-6 py-3 font-medium text-slate-400">{new Date(log.changed_at).toLocaleString()}</td>
+                                  </tr>
+                                ))
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure Management</h4>
                       <p className="text-xs text-slate-500 font-medium">Configure school fees per branch and grade level.</p>

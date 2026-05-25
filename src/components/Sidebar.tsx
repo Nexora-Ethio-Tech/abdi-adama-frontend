@@ -22,7 +22,8 @@ import {
   ClipboardCheck,
   Lock,
   DollarSign,
-  Truck
+  Truck,
+  Landmark
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -79,6 +80,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         baseItems.push(
           { icon: Users, label: t('nav.staffManagement') || 'Staff Management', path: '/staff' },
           { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
+          { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
+          { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
+          { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
         return baseItems;
@@ -98,7 +103,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
           { icon: BookOpen, label: t('nav.scheduleBuilder'), path: '/schedule-builder' },
           { icon: Package, label: t('nav.inventory'), path: '/inventory' },
-          { icon: Wallet, label: t('nav.finance'), path: '/finance' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' },
         ];
       case 'vice-principal':
@@ -109,6 +114,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
           { icon: Lock, label: 'Grade Locks', path: '/vp-grade-locks' },
           { icon: ClipboardList, label: 'Grade Management', path: '/grades' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
         ];
       case 'teacher':
         return [
@@ -117,6 +123,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
           { icon: BookOpen, label: t('nav.mySchedule'), path: '/schedule' },
           { icon: ClipboardList, label: t('nav.exams'), path: '/exams' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
         ];
       case 'student':
         return [
@@ -137,28 +144,37 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: LayoutDashboard, label: t('nav.overview'), path: '/dashboard/finance' },
           { icon: UserPlus, label: t('nav.registration'), path: '/registration' },
           { icon: Wallet, label: t('nav.finance'), path: '/finance-dashboard' },
+          { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
+          { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
+          { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
           ...(user?.isBranchAuditor ? [{ icon: Users, label: t('nav.specialStudents'), path: '/special-students' }] : []),
         ];
       case 'librarian':
         return [
           { icon: LayoutDashboard, label: t('nav.librarianPortal'), path: '/' },
           { icon: BookOpen, label: t('nav.library'), path: '/library' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
         ];
       case 'clinic-admin':
         return [
           { icon: LayoutDashboard, label: t('nav.clinicDashboard'), path: '/' },
           { icon: HeartPulse, label: t('nav.clinicManagement'), path: '/clinic' },
           { icon: ClipboardList, label: t('nav.chats'), path: '/clinic?tab=chat' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
         ];
       case 'driver':
         return [
           { icon: LayoutDashboard, label: t('nav.myDashboard'), path: '/' },
           { icon: Megaphone, label: t('nav.postNotice'), path: '/' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
         ];
       case 'auditor':
         return [
           { icon: LayoutDashboard, label: t('nav.auditorDashboard'), path: '/auditor-dashboard' },
           { icon: Wallet, label: t('nav.finance'), path: '/finance' },
+          { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
           { icon: Users, label: t('nav.specialStudents'), path: '/special-students' },
         ];
       default:

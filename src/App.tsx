@@ -57,6 +57,10 @@ const ClinicAdminStaff = lazy(() => import('./pages/ClinicAdminStaff').then((m) 
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
 const AdminApplications = lazy(() => import('./pages/AdminApplications').then((m) => ({ default: m.AdminApplications })));
+const PayrollManagement = lazy(() => import('./pages/PayrollManagement'));
+const LoanManagement = lazy(() => import('./pages/LoanManagement'));
+const EmployeeProfiles = lazy(() => import('./pages/EmployeeProfiles'));
+const MyFinance = lazy(() => import('./pages/MyFinance'));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -250,6 +254,30 @@ function App() {
               <Route path="audit-logs" element={
                 <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
                   <AuditLogs />
+                </ProtectedRoute>
+              } />
+
+              <Route path="payroll" element={
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin', 'auditor']}>
+                  <PayrollManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="loans" element={
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                  <LoanManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="employee-profiles" element={
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                  <EmployeeProfiles />
+                </ProtectedRoute>
+              } />
+
+              <Route path="my-finance" element={
+                <ProtectedRoute allowedRoles={['super-admin', 'school-admin', 'vice-principal', 'teacher', 'finance-clerk', 'librarian', 'clinic-admin', 'driver', 'auditor']}>
+                  <MyFinance />
                 </ProtectedRoute>
               } />
 
