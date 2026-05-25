@@ -1,7 +1,7 @@
 import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
-import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { userService } from '../services/userService';
 import { branchService } from '../services/branchService';
@@ -24,13 +24,66 @@ export const Staff = () => {
   const [errorModal, setErrorModal] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
+  const staffTabs = [
+    { label: 'Teachers', path: 'teachers' },
+    { label: 'Finance Staff', path: 'finance' },
+    { label: 'Librarian Staff', path: 'librarian' },
+    { label: 'Driver Staff', path: 'driver' },
+    { label: 'Clinic Admin Staff', path: 'clinic-admin' }
+  ];
+
   useEffect(() => {
+    if (currentUserRole !== 'super-admin') return;
     const init = async () => {
       const branchList = await fetchBranches();
       await fetchUsers(branchList);
     };
     init();
-  }, [roleFilter, statusFilter]);
+  }, [roleFilter, statusFilter, currentUserRole]);
+
+  if (currentUserRole !== 'super-admin' && currentUserRole !== 'school-admin') {
+    return (
+      <div className="p-8 text-center text-rose-500">
+        <ShieldAlert className="mx-auto mb-4" size={48} />
+        <h2 className="text-2xl font-bold">Access Denied</h2>
+        <p>You do not have permission to view staff management.</p>
+      </div>
+    );
+  }
+
+  if (currentUserRole === 'school-admin') {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Staff Management</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Manage teachers, finance personnel, librarians, drivers, and clinic admins from one unified view.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2">
+          {staffTabs.map((tab) => (
+            <NavLink
+              key={tab.path}
+              to={`/staff/${tab.path}`}
+              className={({ isActive }) =>
+                `rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm font-bold text-center transition ${
+                  isActive ? 'bg-white text-slate-900 shadow dark:bg-slate-950 dark:text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                }`
+              }
+            >
+              {tab.label}
+            </NavLink>
+          ))}
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <Outlet />
+        </div>
+      </div>
+    );
+  }
+
 
   const fetchBranches = async () => {
     try {

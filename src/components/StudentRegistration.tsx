@@ -114,9 +114,6 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
     if (!formData.grade || !formData.grade.trim()) {
       errors.grade = 'Last Grade Completed is required';
     }
-    if (!formData.feeStatus) {
-      errors.feeStatus = 'Registration Fee Status is required';
-    }
   }
 
   return errors;
@@ -247,8 +244,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       phone: formData.get('phone'),
       address: formData.get('address'),
       previousSchool: formData.get('previousSchool'),
-      grade: formData.get('grade'),
-      feeStatus: formData.get('feeStatus'),
+      grade: formData.get('grade')
     };
 
     const errors = validateRegistrationStep(registrationStep, currentStepData);
@@ -296,7 +292,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const address = formData.get('address') as string;
       const previousSchool = formData.get('previousSchool') as string;
       const grade = formData.get('grade') as string;
-      const feeStatus = formData.get('feeStatus') as string;
       const bloodGroup = formData.get('bloodGroup') as string;
       const allergies = formData.get('allergies') as string;
       const chronicConditions = formData.get('chronicConditions') as string;
@@ -312,8 +307,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         phone,
         address,
         previousSchool,
-        grade,
-        feeStatus,
+        grade
       };
 
       const errors = validateRegistrationStep(3, allFormData);
@@ -342,7 +336,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       submitData.append('address', address?.trim() || '');
       submitData.append('previousSchool', previousSchool?.trim() || '');
       submitData.append('grade', grade || '');
-      submitData.append('feeStatus', feeStatus || '');
       if (bloodGroup?.trim()) submitData.append('bloodGroup', bloodGroup.trim());
       if (allergies?.trim()) submitData.append('allergies', allergies.trim());
       if (chronicConditions?.trim()) submitData.append('chronicConditions', chronicConditions.trim());
@@ -419,6 +412,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const errorCode = error.response?.data?.error?.code;
 
       setValidationErrors(errorObj);
+      
+      // Auto-jump to the step containing the error so the user can actually see it
+      if (errorObj) {
+        if (errorObj.name || errorObj.digital_id || errorObj.dob || errorObj.gender) {
+          setRegistrationStep(1);
+        } else if (errorObj.parentName || errorObj.parentPhone || errorObj.phone || errorObj.address) {
+          setRegistrationStep(2);
+        } else if (errorObj.previousSchool || errorObj.grade) {
+          setRegistrationStep(3);
+        }
+      }
       
       if (errorCode === 'FILE_SIZE_EXCEEDED' || errorCode === 'LIMIT_FILE_COUNT' || errorCode === 'UPLOAD_ERROR') {
         setFileError(errorMessage);
@@ -828,8 +832,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
             </div>
             <form onSubmit={handleRegister} className="p-6 space-y-6">
-              {registrationStep === 1 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 1 ? 'hidden' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
@@ -907,10 +910,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </div>
                   </div>
                 </div>
-              )}
 
-              {registrationStep === 2 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+              <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 2 ? 'hidden' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
@@ -922,7 +923,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
-                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${validationErrors.phone
+                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${(validationErrors.phone || validationErrors.parentPhone)
                           ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
                         }`}>
@@ -947,7 +948,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         />
                       </div>
                       <p className="text-[10px] text-slate-400 pl-1">Format: 9xxxxxxxx (9 digits only)</p>
-                      {validationErrors.phone && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.phone}</p>}
+                      {(validationErrors.phone || validationErrors.parentPhone) && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {(validationErrors.phone || validationErrors.parentPhone)}</p>}
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
@@ -959,11 +960,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </div>
                   </div>
                 </div>
-              )}
 
-              {registrationStep === 3 && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 3 ? 'hidden' : ''}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-rose-500">*</span></label>
                       <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.previousSchool
@@ -979,18 +978,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                         }`} />
                       {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Registration Fee Status <span className="text-rose-500">*</span></label>
-                      <select name="feeStatus" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.feeStatus
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`}>
-                        <option value="">Select Fee Status</option>
-                        <option>Paid</option>
-                        <option>Pending</option>
-                      </select>
-                      {validationErrors.feeStatus && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.feeStatus}</p>}
                     </div>
                   </div>
 
@@ -1018,7 +1005,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     {fileError && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {fileError}</p>}
                   </div>
                 </div>
-              )}
 
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row justify-between gap-4">
                 <button

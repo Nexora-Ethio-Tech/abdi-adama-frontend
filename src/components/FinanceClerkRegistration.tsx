@@ -20,6 +20,7 @@ interface PendingApplication {
   status: string;
   registration_fee_status?: string;
   created_at: string;
+  transcript_file_name?: string;
 }
 
 interface ApprovalPayload {
@@ -147,8 +148,12 @@ export const FinanceClerkRegistration = () => {
   };
 
   const handleDownloadTranscript = (app: PendingApplication) => {
-    // This would download the transcript if available
-    alert('Download transcript for: ' + app.applicant_name);
+    if (!app.transcript_file_name) {
+      alert('No transcript uploaded for this application.');
+      return;
+    }
+    // Open the backend endpoint to download the file directly from DB
+    window.open(`http://localhost:5000/api/school-admin/applications/${app.id}/transcript`, '_blank');
   };
 
   if (loading) {

@@ -343,3 +343,146 @@ export const updateEvent = async (eventId: string, data: UpdateEventData): Promi
 export const deleteEvent = async (eventId: string): Promise<void> => {
   await api.delete(`/school-admin/events/${eventId}`);
 };
+
+// ============================================================
+// SCHEDULE BUILDER
+// ============================================================
+
+export interface ScheduleConfig {
+  id: string;
+  branchId: string;
+  academicYear: string;
+  periodsPerDay: number;
+  startTime: string;
+  endTime: string;
+  maxConsecutivePeriods: number;
+  distributeSubjects: boolean;
+}
+
+export interface ScheduleConfigInput {
+  periodsPerDay: number;
+  startTime: string;
+  endTime: string;
+  maxConsecutivePeriods: number;
+  distributeSubjects: boolean;
+  academicYear?: string;
+}
+
+export interface TeacherConstraintInput {
+  dayOfWeek: string;
+  periodNumber: number;
+}
+
+export interface CourseFrequencyInput {
+  courseId: string;
+  sessionsPerWeek: number;
+}
+
+export interface ScheduleCandidate {
+  index: number;
+  slotsFilled: number;
+  totalSlots: number;
+  fillRate: string;
+  entries: Array<{
+    teacherId: string;
+    teacherName: string;
+    day: string;
+    period: number;
+    timeSlot: string;
+    classId: string;
+    className: string;
+    courseId: string;
+    subject: string;
+  }>;
+}
+
+export interface GenerateTimetableResult {
+  runId: string;
+  candidateCount: number;
+  totalSlotsPossible: number;
+  candidates: ScheduleCandidate[];
+}
+
+export interface TimetableRun {
+  id: string;
+  branch_id: string;
+  academic_year: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approved_candidate: number | null;
+  total_slots_filled: number;
+  total_slots_possible: number;
+  candidate_count: number;
+  created_at: string;
+}
+
+// Schedule Config
+export const saveScheduleConfig = async (config: ScheduleConfigInput): Promise<ScheduleConfig> => {
+  const response = await api.put('/schedule/config', config);
+  return response.data.data;
+};
+
+export const getScheduleConfig = async (academicYear?: string): Promise<ScheduleConfig | null> => {
+  const params = academicYear ? { academicYear } : {};
+  const response = await api.get('/schedule/config', { params });
+  return response.data.data;
+};
+
+// Teacher Constraints
+export const saveTeacherConstraints = async (
+  teacherId: string, constraints: TeacherConstraintInput[], academicYear?: string
+) => {
+  const response = await api.put(`/schedule/teachers/${teacherId}/constraints`, {
+    constraints, academicYear
+  });
+  return response.data.data;
+};
+
+export const getTeacherConstraintsApi = async (academicYear?: string) => {
+  const params = academicYear ? { academicYear } : {};
+  const response = await api.get('/schedule/teachers/constraints', { params });
+  return response.data.data;
+};
+
+// Course Frequencies
+export const saveCourseFrequencies = async (
+  frequencies: CourseFrequencyInput[], academicYear?: string
+) => {
+  const response = await api.put('/schedule/courses/frequencies', {
+    frequencies, academicYear
+  });
+  return response.data.data;
+};
+
+export const getCourseFrequencies = async (academicYear?: string) => {
+  const params = academicYear ? { academicYear } : {};
+  const response = await api.get('/schedule/courses/frequencies', { params });
+  return response.data.data;
+};
+
+// Timetable Generation
+export const generateTimetable = async (academicYear?: string): Promise<GenerateTimetableResult> => {
+  const response = await api.post('/schedule/generate', { academicYear });
+  return response.data.data;
+};
+
+export const approveScheduleCandidate = async (runId: string, candidateIndex: number) => {
+  const response = await api.post(`/schedule/runs/${runId}/approve`, { candidateIndex });
+  return response.data.data;
+};
+
+// Query
+export const getTimetableRuns = async (academicYear?: string): Promise<TimetableRun[]> => {
+  const params = academicYear ? { academicYear } : {};
+  const response = await api.get('/schedule/runs', { params });
+  return response.data.data;
+};
+
+export const getTimetableRunDetail = async (runId: string) => {
+  const response = await api.get(`/schedule/runs/${runId}`);
+  return response.data.data;
+};
+
+export const getGeneratedSchedule = async () => {
+  const response = await api.get('/schedule/timetable');
+  return response.data.data;
+};

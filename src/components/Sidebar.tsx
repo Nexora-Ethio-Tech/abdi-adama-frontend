@@ -94,6 +94,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: BookOpen, label: 'Classes', path: '/classes' },
           { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
+          { icon: Users, label: 'Staff Management', path: '/staff' },
           { icon: DollarSign, label: 'Finance Staff', path: '/finance-staff' },
           { icon: BookOpen, label: 'Librarian Staff', path: '/librarian-staff' },
           { icon: Truck, label: 'Driver Staff', path: '/driver-staff' },
