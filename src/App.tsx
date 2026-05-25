@@ -167,11 +167,22 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="staff" element={
-                <ProtectedRoute allowedRoles={['super-admin']}>
+              <Route path="staff/*" element={
+                <ProtectedRoute allowedRoles={['super-admin', 'school-admin']}>
                   <Staff />
                 </ProtectedRoute>
-              } />
+              }>
+                <Route index element={
+                  <div className="p-12 text-center">
+                    <p className="text-slate-500">Select a staff category to continue.</p>
+                  </div>
+                } />
+                <Route path="teachers" element={<Teachers />} />
+                <Route path="finance" element={<FinanceStaff />} />
+                <Route path="librarian" element={<LibrarianStaff />} />
+                <Route path="driver" element={<DriverStaff />} />
+                <Route path="clinic-admin" element={<ClinicAdminStaff />} />
+              </Route>
 
               <Route path="students" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'parent', 'vice-principal']}>
