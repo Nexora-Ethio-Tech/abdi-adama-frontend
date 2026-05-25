@@ -25,6 +25,8 @@ export const PayrollManagement = () => {
   const [employeesForOt, setEmployeesForOt] = useState<EmployeePayrollProfile[]>([]);
   const [overtimeHoursMap, setOvertimeHoursMap] = useState<{ [employeeId: string]: number }>({});
   const [generationStep, setGenerationStep] = useState<1 | 2>(1); // Step 1: Period, Step 2: Overtime Entry
+  const [otRoleFilter, setOtRoleFilter] = useState('');
+  const [otSearchFilter, setOtSearchFilter] = useState('');
 
   useEffect(() => {
     loadPayrollRuns();
@@ -512,26 +514,49 @@ export const PayrollManagement = () => {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-5">
-                  <div className="bg-slate-50 dark:bg-slate-800/30 p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-start gap-3 mb-2">
+                <div className="space-y-5 flex flex-col h-full">
+                  <div className="bg-slate-50 dark:bg-slate-800/30 p-4 border border-slate-100 dark:border-slate-800 rounded-2xl flex items-start gap-3 mb-2 shrink-0">
                     <HelpCircle size={20} className="text-blue-500 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                      Enter the total **overtime hours** worked by each employee in the month of **{month} {year}**. Absent days penalty calculations will be automatically pulled from the attendance registry.
+                      Search and enter **overtime hours** worked by each employee in **{month} {year}**. Absent days penalty calculations will be automatically pulled from the attendance registry.
                     </p>
                   </div>
 
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
-                    {employeesForOt.map((e) => (
-                      <div key={e.user_id} className="flex items-center justify-between border-b border-slate-50 dark:border-slate-800 pb-3">
+                  <div className="flex gap-2 shrink-0">
+                    <input 
+                      type="text" 
+                      placeholder="Search employee..." 
+                      className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      value={otSearchFilter}
+                      onChange={(e) => setOtSearchFilter(e.target.value)}
+                    />
+                    <select 
+                      className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      value={otRoleFilter}
+                      onChange={(e) => setOtRoleFilter(e.target.value)}
+                    >
+                      <option value="">All Roles</option>
+                      {Array.from(new Set(employeesForOt.map(e => e.role))).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-2 shrink-0 no-scrollbar">
+                    {employeesForOt
+                      .filter(e => !otRoleFilter || e.role === otRoleFilter)
+                      .filter(e => !otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))
+                      .map((e) => (
+                      <div key={e.user_id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
                         <div>
                           <p className="font-bold text-slate-850 dark:text-white text-xs">{e.name}</p>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg">{e.role}</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{e.role}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <input
                             type="number"
-                            className="w-20 px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                            placeholder="Hours"
+                            className="w-16 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:ring-2 focus:ring-blue-500 transition-all"
+                            placeholder="Hrs"
                             min="0"
                             value={overtimeHoursMap[e.user_id] || ''}
                             onChange={(evt) => setOvertimeHoursMap({
@@ -539,13 +564,38 @@ export const PayrollManagement = () => {
                               [e.user_id]: Number(evt.target.value)
                             })}
                           />
-                          <span className="text-[10px] text-slate-400 font-bold">hrs</span>
                         </div>
                       </div>
                     ))}
+                    {employeesForOt.filter(e => (!otRoleFilter || e.role === otRoleFilter) && (!otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))).length === 0 && (
+                      <p className="text-center text-xs text-slate-400 py-4">No employees match your search.</p>
+                    )}
                   </div>
 
-                  <div className="pt-6 flex gap-3">
+                  <div className="flex-1 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-4 overflow-y-auto min-h-[120px] transition-all duration-300">
+                    <h4 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-3 flex justify-between">
+                      <span>Added Overtime Logs</span>
+                      <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-lg">
+                        {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).length}
+                      </span>
+                    </h4>
+                    <div className="space-y-2">
+                      {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).map(e => (
+                        <div key={'added-'+e.user_id} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{e.name}</span>
+                          <span className="text-xs font-black text-blue-600 dark:text-blue-400">+{overtimeHoursMap[e.user_id]} hrs</span>
+                        </div>
+                      ))}
+                      {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50 py-4">
+                          <Award size={24} className="mb-2" />
+                          <p className="text-[10px] font-bold text-center">No overtime entries added yet.<br/>Type hours above to add.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex gap-3 shrink-0">
                     <button
                       type="button"
                       onClick={() => setGenerationStep(1)}
