@@ -175,6 +175,10 @@ export const ScheduleBuilder = () => {
       });
     } catch (err: any) {
       console.error('Failed to save config:', err);
+      const errorObj = err.response?.data?.error;
+      if (errorObj?.code === 'VALIDATION_ERROR' && Array.isArray(errorObj?.details)) {
+        alert(`Failed to save config: ${errorObj.details.join(', ')}`);
+      }
     } finally {
       setSavingConfig(false);
     }
@@ -197,6 +201,10 @@ export const ScheduleBuilder = () => {
       await saveTeacherConstraintsApi(selectedTeacher.id, constraints);
     } catch (err: any) {
       console.error('Failed to save constraints:', err);
+      const errorObj = err.response?.data?.error;
+      if (errorObj?.code === 'VALIDATION_ERROR' && Array.isArray(errorObj?.details)) {
+        alert(`Failed to save constraints: ${errorObj.details.join(', ')}`);
+      }
     } finally {
       setSavingConstraints(false);
     }
@@ -228,7 +236,14 @@ export const ScheduleBuilder = () => {
       setIsTeachersExpanded(false);
       setIsRulesExpanded(false);
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || err.message || 'Generation failed';
+      const errorObj = err.response?.data?.error;
+      let msg = errorObj?.message || err.message || 'Generation failed';
+      
+      // Handle validation errors specifically (Joi details array)
+      if (errorObj?.code === 'VALIDATION_ERROR' && Array.isArray(errorObj?.details)) {
+        msg = `Validation failed: ${errorObj.details.join(', ')}`;
+      }
+      
       setGenerationError(msg);
       setIsResultsExpanded(true);
     } finally {
