@@ -1,13 +1,32 @@
-import { Plus, Trash2, Clock, BookOpen, Users, Search, Save, X, Settings2, LayoutGrid, ArrowLeft, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Trash2, Clock, BookOpen, Users, Search, Save, X, Settings2, LayoutGrid, ArrowLeft, ChevronDown, Zap, CheckCircle2, Loader2, AlertTriangle, Eye } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { mockTeachers } from '../data/mockData';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import {
+  getBranchTeachers,
+  saveScheduleConfig,
+  getScheduleConfig,
+  saveTeacherConstraints as saveTeacherConstraintsApi,
+  getTeacherConstraintsApi,
+  saveCourseFrequencies as saveCourseFrequenciesApi,
+  getCourseFrequencies as getCourseFrequenciesApi,
+  generateTimetable,
+  approveScheduleCandidate,
+  type ScheduleCandidate,
+  type GenerateTimetableResult
+} from '../services/schoolAdminService';
 
 interface CourseFrequency {
   id: string;
   subject: string;
   sessions: string;
+}
+
+interface Teacher {
+  id: string;
+  teacher_id: string;
+  name: string;
+  subjects: string[];
 }
 
 export const ScheduleBuilder = () => {
@@ -20,20 +39,108 @@ export const ScheduleBuilder = () => {
 
   const [startTime, setStartTime] = useState('08:00');
   const [endTime, setEndTime] = useState('15:30');
+  const [maxConsecutive, setMaxConsecutive] = useState(3);
+  const [distributeSubjects, setDistributeSubjects] = useState(true);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
   const [teacherConstraints, setTeacherConstraints] = useState<Record<string, number[]>>({});
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(true);
 
   // Collapsible section states
   const [isParamsExpanded, setIsParamsExpanded] = useState(true);
-  const [isTeachersExpanded, setIsTeachersExpanded] = useState(true);
-  const [isRulesExpanded, setIsRulesExpanded] = useState(true);
+  const [isTeachersExpanded, setIsTeachersExpanded] = useState(false);
+  const [isRulesExpanded, setIsRulesExpanded] = useState(false);
+  const [isResultsExpanded, setIsResultsExpanded] = useState(false);
+
+  // Generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationResult, setGenerationResult] = useState<GenerateTimetableResult | null>(null);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [expandedCandidate, setExpandedCandidate] = useState<number | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
+  const [approvalSuccess, setApprovalSuccess] = useState<string | null>(null);
+
+  // Saving states
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [savingConstraints, setSavingConstraints] = useState(false);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const periods = Array.from({ length: periodsPerDay }, (_, i) => i + 1);
 
-  const filteredTeachers = mockTeachers.filter(t =>
+  // Load teachers from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoadingTeachers(true);
+        const response = await getBranchTeachers();
+        console.log('getBranchTeachers response:', response);
+        const teachersData = response?.data || response || [];
+        console.log('teachersData before mapping:', teachersData);
+
+        // Map to expected format
+        const mapped = teachersData.map((t: any) => ({
+          id: t.teacher_id || t.id,
+          teacher_id: t.teacher_id || t.id,
+          name: t.name || t.full_name || 'Unknown',
+          subjects: t.subjects || []
+        }));
+
+        console.log('mapped teachers:', mapped);
+        setTeachers(mapped);
+      } catch (err) {
+        console.error('Failed to load teachers:', err);
+        setTeachers([]);
+      } finally {
+        setLoadingTeachers(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Load config on mount
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getScheduleConfig();
+        if (config) {
+          setPeriodsPerDay(config.periodsPerDay || (config as any).periods_per_day || 8);
+          setStartTime(config.startTime || (config as any).start_time || '08:00');
+          setEndTime(config.endTime || (config as any).end_time || '15:30');
+          setMaxConsecutive(config.maxConsecutivePeriods || (config as any).max_consecutive_periods || 3);
+          setDistributeSubjects(config.distributeSubjects ?? (config as any).distribute_subjects ?? true);
+        }
+      } catch (err) {
+        // No config yet, keep defaults
+      }
+    };
+    loadConfig();
+  }, []);
+
+  // Load teacher constraints on mount
+  useEffect(() => {
+    const loadConstraints = async () => {
+      try {
+        const constraints = await getTeacherConstraintsApi();
+        if (Array.isArray(constraints)) {
+          const mapped: Record<string, number[]> = {};
+          for (const c of constraints) {
+            const key = `${c.teacher_id}-${c.day_of_week}`;
+            if (!mapped[key]) mapped[key] = [];
+            mapped[key].push(c.period_number);
+          }
+          setTeacherConstraints(mapped);
+        }
+      } catch (err) {
+        // No constraints yet
+      }
+    };
+    loadConstraints();
+  }, []);
+
+  const filteredTeachers = teachers.filter(t =>
     t.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -53,6 +160,174 @@ export const ScheduleBuilder = () => {
 
   const removeFrequency = (id: string) => {
     setFrequencies(frequencies.filter(f => f.id !== id));
+  };
+
+  // Save config to API
+  const handleSaveConfig = useCallback(async () => {
+    try {
+      setSavingConfig(true);
+      await saveScheduleConfig({
+        periodsPerDay,
+        startTime,
+        endTime,
+        maxConsecutivePeriods: maxConsecutive,
+        distributeSubjects
+      });
+    } catch (err: any) {
+      console.error('Failed to save config:', err);
+    } finally {
+      setSavingConfig(false);
+    }
+  }, [periodsPerDay, startTime, endTime, maxConsecutive, distributeSubjects]);
+
+  // Save teacher constraints to API
+  const handleSaveConstraints = useCallback(async () => {
+    if (!selectedTeacher) return;
+    try {
+      setSavingConstraints(true);
+      // Extract constraints for this teacher
+      const constraints: Array<{ dayOfWeek: string; periodNumber: number }> = [];
+      for (const day of days) {
+        const key = `${selectedTeacher.id}-${day}`;
+        const blockedPeriods = teacherConstraints[key] || [];
+        for (const period of blockedPeriods) {
+          constraints.push({ dayOfWeek: day, periodNumber: period });
+        }
+      }
+      await saveTeacherConstraintsApi(selectedTeacher.id, constraints);
+    } catch (err: any) {
+      console.error('Failed to save constraints:', err);
+    } finally {
+      setSavingConstraints(false);
+    }
+  }, [selectedTeacher, teacherConstraints, days]);
+
+  // Generate timetable
+  const handleGenerate = useCallback(async () => {
+    try {
+      setIsGenerating(true);
+      setGenerationError(null);
+      setGenerationResult(null);
+      setApprovalSuccess(null);
+
+      // Save config first
+      await saveScheduleConfig({
+        periodsPerDay,
+        startTime,
+        endTime,
+        maxConsecutivePeriods: maxConsecutive,
+        distributeSubjects
+      });
+
+      const result = await generateTimetable();
+      setGenerationResult(result);
+      setIsResultsExpanded(true);
+      setExpandedCandidate(0); // Expand the first candidate
+      // Collapse other sections
+      setIsParamsExpanded(false);
+      setIsTeachersExpanded(false);
+      setIsRulesExpanded(false);
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || err.message || 'Generation failed';
+      setGenerationError(msg);
+      setIsResultsExpanded(true);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [periodsPerDay, startTime, endTime, maxConsecutive, distributeSubjects]);
+
+  // Approve a candidate
+  const handleApprove = useCallback(async (candidateIndex: number) => {
+    if (!generationResult) return;
+    try {
+      setIsApproving(true);
+      const result = await approveScheduleCandidate(generationResult.runId, candidateIndex);
+      setApprovalSuccess(result.message || 'Schedule approved and published!');
+    } catch (err: any) {
+      const msg = err.response?.data?.error?.message || err.message || 'Approval failed';
+      setGenerationError(msg);
+    } finally {
+      setIsApproving(false);
+    }
+  }, [generationResult]);
+
+  // Render a candidate timetable preview
+  const renderCandidatePreview = (candidate: ScheduleCandidate) => {
+    // Group entries by class for a compact grid view
+    const classDayPeriods = new Map<string, Map<string, Map<number, { subject: string; teacher: string }>>>();
+
+    for (const entry of candidate.entries) {
+      if (!classDayPeriods.has(entry.className)) {
+        classDayPeriods.set(entry.className, new Map());
+      }
+      const classDays = classDayPeriods.get(entry.className)!;
+      if (!classDays.has(entry.day)) {
+        classDays.set(entry.day, new Map());
+      }
+      classDays.get(entry.day)!.set(entry.period, {
+        subject: entry.subject,
+        teacher: entry.teacherName
+      });
+    }
+
+    const classNames = Array.from(classDayPeriods.keys()).sort();
+
+    return (
+      <div className="space-y-4">
+        {classNames.map(className => (
+          <div key={className}>
+            <h5 className="text-sm font-black text-slate-700 dark:text-slate-300 mb-2">{className}</h5>
+            <div className="overflow-x-auto">
+              <div
+                className="min-w-[700px] grid gap-1"
+                style={{ gridTemplateColumns: `90px repeat(${periodsPerDay}, minmax(0, 1fr))` }}
+              >
+                <div />
+                {periods.map(p => (
+                  <div key={p} className="text-center text-[9px] font-black text-slate-400 uppercase pb-1">
+                    P{p}
+                  </div>
+                ))}
+
+                {days.map(day => (
+                  <div key={day} className="contents">
+                    <div className="flex items-center text-[10px] font-black text-slate-500 uppercase">
+                      {day.substring(0, 3)}
+                    </div>
+                    {periods.map(period => {
+                      const entry = classDayPeriods.get(className)?.get(day)?.get(period);
+                      return (
+                        <div
+                          key={`${day}-${period}`}
+                          className={`h-10 rounded-lg border text-center flex flex-col items-center justify-center transition-all ${
+                            entry
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                              : 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800'
+                          }`}
+                        >
+                          {entry ? (
+                            <>
+                              <span className="text-[9px] font-black text-blue-700 dark:text-blue-300 truncate max-w-full px-1">
+                                {entry.subject.length > 8 ? entry.subject.substring(0, 8) + '…' : entry.subject}
+                              </span>
+                              <span className="text-[7px] text-slate-400 dark:text-slate-500 truncate max-w-full px-1">
+                                {entry.teacher.split(' ').pop()}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-[8px] text-slate-300">—</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -78,10 +353,128 @@ export const ScheduleBuilder = () => {
             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Schedule Architect</h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 uppercase font-bold tracking-widest">Ethiopian High School Standards</p>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-black transition-all shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95">
-            Generate Timetable
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 py-3 rounded-2xl font-black transition-all shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 disabled:scale-100 flex items-center gap-2"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Zap size={18} />
+                Generate Timetable
+              </>
+            )}
           </button>
         </div>
+
+        {/* Approval success banner */}
+        {approvalSuccess && (
+          <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl animate-in fade-in zoom-in-95">
+            <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" size={22} />
+            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">{approvalSuccess}</p>
+          </div>
+        )}
+
+        {/* SECTION 4: Generated Results (Collapsible) — shown at top when available */}
+        {(generationResult || generationError) && (
+          <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
+            <button
+              onClick={() => setIsResultsExpanded(!isResultsExpanded)}
+              className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
+            >
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl ${generationError ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400' : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'}`}>
+                  {generationError ? <AlertTriangle size={22} /> : <CheckCircle2 size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white">
+                    {generationError ? 'Generation Failed' : `${generationResult!.candidateCount} Candidate${generationResult!.candidateCount !== 1 ? 's' : ''} Generated`}
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+                    {generationError ? 'Review constraints and try again' : 'Select a timetable to approve and publish'}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                size={20}
+                className={`text-slate-400 transform transition-transform duration-300 ${isResultsExpanded ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            <div
+              className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                isResultsExpanded ? 'max-h-[3000px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8' : 'max-h-0 opacity-0'
+              }`}
+            >
+              {generationError ? (
+                <div className="flex items-center gap-3 p-6 bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800 rounded-2xl">
+                  <AlertTriangle className="text-rose-500 flex-shrink-0" size={24} />
+                  <p className="text-sm font-bold text-rose-700 dark:text-rose-300">{generationError}</p>
+                </div>
+              ) : generationResult && (
+                <div className="space-y-4">
+                  {generationResult.candidates.map((candidate, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 overflow-hidden shadow-sm"
+                    >
+                      {/* Candidate header */}
+                      <div
+                        className="flex items-center justify-between p-5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                        onClick={() => setExpandedCandidate(expandedCandidate === idx ? null : idx)}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-black flex items-center justify-center text-lg">
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <h4 className="font-black text-slate-800 dark:text-white">
+                              Option {idx + 1}
+                            </h4>
+                            <p className="text-xs text-slate-400 font-bold">
+                              {candidate.slotsFilled}/{candidate.totalSlots} slots filled • {candidate.fillRate} coverage
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {!approvalSuccess && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleApprove(idx); }}
+                              disabled={isApproving}
+                              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-5 py-2.5 rounded-xl font-bold text-xs uppercase transition-all hover:scale-105 active:scale-95"
+                            >
+                              {isApproving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                              Approve & Publish
+                            </button>
+                          )}
+                          <button className="p-2 text-slate-400 hover:text-blue-500 transition-colors">
+                            <Eye size={18} />
+                          </button>
+                          <ChevronDown
+                            size={18}
+                            className={`text-slate-400 transform transition-transform ${expandedCandidate === idx ? 'rotate-180' : ''}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Expanded candidate view */}
+                      {expandedCandidate === idx && (
+                        <div className="border-t border-slate-100 dark:border-slate-800 p-5 bg-slate-50/30 dark:bg-slate-800/10">
+                          {renderCandidatePreview(candidate)}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* SECTION 1: Core Parameters (Collapsible) */}
         <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
@@ -129,9 +522,19 @@ export const ScheduleBuilder = () => {
 
               {/* School Day Parameters */}
               <div className="p-6 bg-slate-100/40 dark:bg-slate-800/20 rounded-2xl border border-slate-200/50 dark:border-slate-850 space-y-4 lg:col-span-2">
-                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-black text-xs uppercase tracking-widest">
-                  <Clock size={16} />
-                  <span>School Day Parameters</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-black text-xs uppercase tracking-widest">
+                    <Clock size={16} />
+                    <span>School Day Parameters</span>
+                  </div>
+                  <button
+                    onClick={handleSaveConfig}
+                    disabled={savingConfig}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-xl font-bold text-xs uppercase transition-all"
+                  >
+                    {savingConfig ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    Save Config
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
@@ -186,10 +589,15 @@ export const ScheduleBuilder = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Individual weekly unavailability and session blocking</p>
               </div>
             </div>
-            <ChevronDown
-              size={20}
-              className={`text-slate-400 transform transition-transform duration-300 ${isTeachersExpanded ? 'rotate-180' : ''}`}
-            />
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                {loadingTeachers ? '...' : `${teachers.length} teachers`}
+              </span>
+              <ChevronDown
+                size={20}
+                className={`text-slate-400 transform transition-transform duration-300 ${isTeachersExpanded ? 'rotate-180' : ''}`}
+              />
+            </div>
           </button>
 
           <div
@@ -214,35 +622,43 @@ export const ScheduleBuilder = () => {
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
               {/* Teacher List */}
               <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-md rounded-2xl border border-slate-200/50 dark:border-slate-700 p-2 max-h-[400px] overflow-y-auto">
-                {filteredTeachers.map(teacher => (
-                  <button
-                    key={teacher.id}
-                    onClick={() => setSelectedTeacher(teacher)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all ${
-                      selectedTeacher?.id === teacher.id
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
-                        : 'hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
-                        selectedTeacher?.id === teacher.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-900'
+                {loadingTeachers ? (
+                  <div className="flex items-center justify-center h-32">
+                    <Loader2 className="animate-spin text-blue-500" size={24} />
+                  </div>
+                ) : filteredTeachers.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-sm font-bold">No teachers found</div>
+                ) : (
+                  filteredTeachers.map(teacher => (
+                    <button
+                      key={teacher.id}
+                      onClick={() => setSelectedTeacher(teacher)}
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all ${
+                        selectedTeacher?.id === teacher.id
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
+                          : 'hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                       }`}
                     >
-                      {teacher.name.charAt(0)}
-                    </div>
-                    <div className="text-left">
-                      <p className="font-bold text-sm">{teacher.name}</p>
-                      <p
-                        className={`text-[10px] uppercase tracking-tighter font-black ${
-                          selectedTeacher?.id === teacher.id ? 'text-blue-100' : 'text-slate-400'
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
+                          selectedTeacher?.id === teacher.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-900'
                         }`}
                       >
-                        {teacher.subjects.join(' • ')}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+                        {teacher.name.charAt(0)}
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-sm">{teacher.name}</p>
+                        <p
+                          className={`text-[10px] uppercase tracking-tighter font-black ${
+                            selectedTeacher?.id === teacher.id ? 'text-blue-100' : 'text-slate-400'
+                          }`}
+                        >
+                          {(teacher.subjects || []).join(' • ') || 'No subjects'}
+                        </p>
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
 
               {/* Unavailability Grid */}
@@ -259,8 +675,13 @@ export const ScheduleBuilder = () => {
                           <p className="text-[10px] font-bold text-slate-450 uppercase tracking-widest">Weekly Session Blocking</p>
                         </div>
                       </div>
-                      <button className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase hover:bg-emerald-700 transition-all">
-                        <Save size={14} /> Save Constraints
+                      <button
+                        onClick={handleSaveConstraints}
+                        disabled={savingConstraints}
+                        className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2 rounded-xl font-bold text-xs uppercase hover:bg-emerald-700 transition-all disabled:bg-emerald-400"
+                      >
+                        {savingConstraints ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        Save Constraints
                       </button>
                     </div>
 
@@ -353,10 +774,14 @@ export const ScheduleBuilder = () => {
                       <p className="font-bold text-slate-800 dark:text-white text-sm">Max Consecutive Periods</p>
                       <p className="text-[9px] text-slate-450 font-bold uppercase">Prevents teacher fatigue</p>
                     </div>
-                    <select className="bg-slate-100 dark:bg-slate-700 p-2 rounded-xl font-bold text-sm border-none dark:text-white outline-none">
-                      <option>2 Periods</option>
-                      <option>3 Periods</option>
-                      <option>4 Periods</option>
+                    <select
+                      value={maxConsecutive}
+                      onChange={(e) => setMaxConsecutive(parseInt(e.target.value))}
+                      className="bg-slate-100 dark:bg-slate-700 p-2 rounded-xl font-bold text-sm border-none dark:text-white outline-none"
+                    >
+                      <option value={2}>2 Periods</option>
+                      <option value={3}>3 Periods</option>
+                      <option value={4}>4 Periods</option>
                     </select>
                   </div>
                   <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-amber-100/40 dark:border-amber-900/10 shadow-sm">
@@ -364,9 +789,16 @@ export const ScheduleBuilder = () => {
                       <p className="font-bold text-slate-800 dark:text-white text-sm">Subject Distribution</p>
                       <p className="text-[9px] text-slate-450 font-bold uppercase">Even spread across week</p>
                     </div>
-                    <div className="flex h-8 w-16 bg-slate-100 dark:bg-slate-700 rounded-full p-1 relative">
-                      <div className="absolute right-1 w-6 h-6 bg-amber-500 rounded-full shadow-sm cursor-pointer" />
-                    </div>
+                    <button
+                      onClick={() => setDistributeSubjects(!distributeSubjects)}
+                      className="flex h-8 w-16 bg-slate-100 dark:bg-slate-700 rounded-full p-1 relative cursor-pointer transition-colors"
+                    >
+                      <div className={`absolute w-6 h-6 rounded-full shadow-sm transition-all ${
+                        distributeSubjects
+                          ? 'right-1 bg-amber-500'
+                          : 'left-1 bg-slate-400'
+                      }`} />
+                    </button>
                   </div>
                 </div>
               </div>

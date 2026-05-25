@@ -360,7 +360,13 @@ export const SchoolAdminRegistration = () => {
                   )}
 
                   <button
-                    onClick={() => alert('Download transcript for: ' + app.applicant_name)}
+                    onClick={() => {
+                      if (!app.transcript_file_name) {
+                        alert('No transcript uploaded for this application.');
+                      } else {
+                        window.open(`http://localhost:5000/api/school-admin/applications/${app.id}/transcript`, '_blank');
+                      }
+                    }}
                     className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm transition-all"
                   >
                     <Download size={16} />
