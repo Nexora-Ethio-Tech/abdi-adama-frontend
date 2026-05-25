@@ -322,101 +322,63 @@ export const ParentPortal = () => {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-16">
-      {/* Persistent Title & Tab Bar on the Top Left-Hand Side */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-8 gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Parent Portal</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">
-            Family Administration & Student Performance Tracker
-          </p>
+      {/* Premium Family Dashboard Header Banner (Second Screenshot Design) */}
+      <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden border border-white/5">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          <div className="space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[10px] font-black uppercase tracking-widest">
+              FAMILY DASHBOARD
+            </div>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
+              Hello, {parentName}
+            </h2>
+            <p className="text-sm md:text-base max-w-lg leading-relaxed font-medium">
+              Your central hub for tracking educational milestones, health updates, and school announcements.
+            </p>
+          </div>
+          <div className="bg-[#162744]/60 backdrop-blur-lg border border-white/10 p-5 rounded-3xl flex items-center gap-4 min-w-[240px]">
+            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white">
+              <User size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Family ID: {familyIdText}</p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <div className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse" />
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">VERIFIED ACCOUNT</p>
+              </div>
+            </div>
+          </div>
         </div>
+        {/* Subtle decorative blurred circle */}
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
+      </div>
 
-        {/* Top Left-Hand Side Navigation Tabs */}
-        <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 w-full xl:w-fit self-start xl:self-center">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { id: 'grades', label: 'Grades & Courses', icon: BookOpen },
-            { id: 'history', label: 'Academic History', icon: GraduationCap },
-            { id: 'clinic', label: 'Clinic Support', icon: HeartPulse }
-          ].map(tabItem => (
-            <button
-              key={tabItem.id}
-              onClick={() => handleTabChange(tabItem.id)}
-              className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-1 md:flex-none justify-center ${
-                activePortalTab === tabItem.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-450 hover:bg-white/50 dark:hover:bg-white/5'
-              }`}
-            >
-              <tabItem.icon size={16} />
-              {tabItem.label}
-            </button>
-          ))}
-        </div>
+      {/* Top Navigation Tabs Bar */}
+      <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full md:w-fit">
+        {[
+          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'grades', label: 'Grades & Courses', icon: BookOpen },
+          { id: 'history', label: 'Academic History', icon: GraduationCap },
+          { id: 'clinic', label: 'Clinic Support', icon: HeartPulse }
+        ].map(tabItem => (
+          <button
+            key={tabItem.id}
+            onClick={() => handleTabChange(tabItem.id)}
+            className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-1 md:flex-none justify-center ${
+              activePortalTab === tabItem.id
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-white/5'
+            }`}
+          >
+            <tabItem.icon size={16} />
+            {tabItem.label}
+          </button>
+        ))}
       </div>
 
       {/* ==================== 1. DASHBOARD TAB ==================== */}
       {activePortalTab === 'dashboard' && (
         <div className="space-y-12 animate-in fade-in duration-500">
-          {/* Welcome Header – Premium Family Dashboard Banner */}
-          <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden border border-white/5">
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[10px] font-black uppercase tracking-widest">
-                  FAMILY DASHBOARD
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
-                  Hello, {parentName}
-                </h2>
-                <p className="text-sm md:text-base max-w-lg leading-relaxed font-medium">
-                  Your central hub for tracking educational milestones, health updates, and school announcements.
-                </p>
-              </div>
-              <div className="bg-[#162744]/60 backdrop-blur-lg border border-white/10 p-5 rounded-3xl flex items-center gap-4 min-w-[240px]">
-                <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white">
-                  <User size={24} />
-                </div>
-                <div>
-                  <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Family ID: {familyIdText}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <div className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse" />
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">VERIFIED ACCOUNT</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Subtle decorative blurred circle */}
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
-          </div>
-
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-blue-900 rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 md:p-12 text-white shadow-2xl relative overflow-hidden border border-slate-700/30">
-            <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-[10px] font-black uppercase tracking-[0.2em]">
-                  Dashboard Overview
-                </div>
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
-                  Welcome back, {parentName}!
-                </h2>
-                <p className="text-slate-300 text-sm md:text-base max-w-lg leading-relaxed font-medium">
-                  Monitor your children's real-time academic growth, grades, clinic activity, and driver logs.
-                </p>
-              </div>
-              <div className="flex items-center gap-6 bg-white/5 backdrop-blur-2xl p-5 rounded-[2rem] border border-white/10 shadow-2xl">
-                <div className="w-14 h-14 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-6">
-                  <User size={28} />
-                </div>
-                <div>
-                  <p className="text-sm font-black text-white">Family Account</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                    <p className="text-[10px] text-blue-300 font-bold uppercase tracking-widest">Verified Parent</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
-          </div>
 
           {/* Children Grid */}
           <div className="space-y-6">
