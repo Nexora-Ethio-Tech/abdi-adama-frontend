@@ -278,6 +278,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (registrationStep < 3) {
+      nextStep();
+      return;
+    }
+
     setValidationErrors({});
 
     try {
@@ -310,7 +316,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         grade
       };
 
-      const errors = validateRegistrationStep(3, allFormData);
+      const errors = {
+        ...validateRegistrationStep(1, allFormData),
+        ...validateRegistrationStep(2, allFormData),
+        ...validateRegistrationStep(3, allFormData)
+      };
+      
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
         return;
@@ -1017,8 +1028,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 </button>
                 {registrationStep < 3 ? (
                   <button
-                    type="button"
-                    onClick={nextStep}
+                    type="submit"
                     className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg"
                   >
                     Next Step

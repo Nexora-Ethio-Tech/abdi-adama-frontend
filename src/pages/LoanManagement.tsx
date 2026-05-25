@@ -310,14 +310,14 @@ export const LoanManagement = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Select Employee *</label>
                   <select
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     value={selectedEmployeeId}
                     onChange={(e) => setSelectedEmployeeId(e.target.value)}
                     required
                   >
                     <option value="">-- Choose Employee --</option>
                     {employees.map(e => (
-                      <option key={e.user_id} value={e.user_id}>
+                      <option key={e.user_id} value={e.user_id} className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900">
                         {e.name} ({e.role}) &mdash; Basic: {e.basic_salary.toLocaleString()} ETB
                       </option>
                     ))}
@@ -328,7 +328,7 @@ export const LoanManagement = () => {
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Loan Amount (ETB) *</label>
                   <input
                     type="number"
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     placeholder="Enter total principal amount"
                     value={loanAmount}
                     onChange={(e) => setLoanAmount(e.target.value)}
@@ -356,7 +356,7 @@ export const LoanManagement = () => {
                   <textarea
                     rows={3}
                     placeholder="Add brief details regarding the loan approval..."
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
