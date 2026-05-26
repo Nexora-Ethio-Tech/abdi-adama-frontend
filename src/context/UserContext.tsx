@@ -29,7 +29,7 @@ const normalizeUserRole = (role?: string): UserRole | null => {
   return role.toString().toLowerCase().replace(/[_\s]+/g, '-') as UserRole;
 };
 
-const getDashboardRoute = (role?: string | null) => {
+const getDashboardRoute = (role?: string) => {
   const normalizedRole = normalizeUserRole(role);
   switch (normalizedRole) {
     case 'super-admin': return '/dashboard/super-admin';
@@ -170,7 +170,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     const verifyToken = async () => {
       const token = localStorage.getItem('abdi_adama_token');
       console.log('[VerifyToken] Token exists:', !!token);
-      
+
       if (!token) {
         // No token at all — clear any stale user data and stop loading
         localStorage.removeItem('abdi_adama_user');
@@ -189,7 +189,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           const rawUser = res.data.data;
           const normalizedRole = normalizeUserRole(rawUser.role) || (rawUser.role as UserRole);
           console.log('[VerifyToken] Got user from /auth/me:', { role: rawUser.role, normalizedRole, email: rawUser.email });
-          
+
           const user = {
             id: rawUser.id,
             name: rawUser.name,
@@ -211,7 +211,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
       } catch (err) {
-        console.error('[VerifyToken] Error:', err instanceof Error ? err.message : err, 
+        console.error('[VerifyToken] Error:', err instanceof Error ? err.message : err,
           err instanceof Error && (err as any).response?.data ? (err as any).response.data : '');
         // Token expired or invalid — force logout
         localStorage.removeItem('abdi_adama_user');
@@ -265,7 +265,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         const rawUser = res.data.data.user;
         const normalizedRole = normalizeUserRole(rawUser.role) || (rawUser.role as UserRole);
         console.log('[Login] Backend returned user:', { role: rawUser.role, normalizedRole, email: rawUser.email });
-        
+
         const user = {
           id: rawUser.id,
           name: rawUser.name,
@@ -276,15 +276,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
           status: rawUser.status,
         };
-        
+
         // Store tokens BEFORE updating user state
         localStorage.setItem('abdi_adama_token', res.data.data.accessToken);
         localStorage.setItem('abdi_adama_refresh_token', res.data.data.refreshToken);
         localStorage.setItem('abdi_adama_user', JSON.stringify(user));
-        
+
         console.log('[Login] Tokens stored, setting user state...');
         setUser(user);
-        
+
         const redirectUrl = getDashboardRoute(user.role);
         console.log('[Login] Redirecting to:', redirectUrl, 'User role:', user.role);
         return { success: true, redirect: redirectUrl };

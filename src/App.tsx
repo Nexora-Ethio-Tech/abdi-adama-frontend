@@ -261,7 +261,7 @@ function App() {
 
               <Route path="finance-dashboard" element={
                 <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
-                  <FinanceClerkDashboard />
+                  <FinanceClerkDashboard initialTab="all" />
                 </ProtectedRoute>
               } />
 
@@ -272,26 +272,20 @@ function App() {
               } />
 
               <Route path="payroll" element={
-                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin', 'auditor']}>
+                <ProtectedRoute allowedRoles={['super-admin', 'auditor']}>
                   <PayrollManagement />
                 </ProtectedRoute>
               } />
 
               <Route path="loans" element={
-                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin', 'auditor']}>
                   <LoanManagement />
                 </ProtectedRoute>
               } />
 
               <Route path="employee-profiles" element={
-                <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
+                <ProtectedRoute allowedRoles={['super-admin', 'auditor']}>
                   <EmployeeProfiles />
-                </ProtectedRoute>
-              } />
-
-              <Route path="my-finance" element={
-                <ProtectedRoute allowedRoles={['super-admin', 'school-admin', 'vice-principal', 'teacher', 'finance-clerk', 'librarian', 'clinic-admin', 'driver', 'auditor']}>
-                  <MyFinance />
                 </ProtectedRoute>
               } />
 

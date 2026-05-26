@@ -1028,7 +1028,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 </button>
                 {registrationStep < 3 ? (
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={nextStep}
                     className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg"
                   >
                     Next Step

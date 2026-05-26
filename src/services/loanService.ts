@@ -10,9 +10,13 @@ export interface Loan {
   monthly_deduction: number;
   max_months: number;
   months_paid: number;
-  status: 'active' | 'completed' | 'cancelled';
+  status: 'pending' | 'approved' | 'active' | 'completed' | 'rejected' | 'cancelled';
   issued_by: string;
   issued_by_name?: string;
+  audited_by?: string | null;
+  audited_at?: string | null;
+  paid_at?: string | null;
+  rejection_reason?: string | null;
   issued_at: string;
   completed_at: string | null;
   notes: string | null;
@@ -64,6 +68,21 @@ const loanService = {
    */
   cancelLoan: async (id: string): Promise<Loan> => {
     const response = await api.patch(`/loans/${id}/cancel`);
+    return response.data.data;
+  },
+
+  approveLoan: async (id: string): Promise<Loan> => {
+    const response = await api.post(`/loans/${id}/confirm`);
+    return response.data.data;
+  },
+
+  rejectLoan: async (id: string, reason?: string): Promise<Loan> => {
+    const response = await api.post(`/loans/${id}/reject`, { reason });
+    return response.data.data;
+  },
+
+  payLoan: async (id: string): Promise<Loan> => {
+    const response = await api.post(`/loans/${id}/pay`);
     return response.data.data;
   }
 };

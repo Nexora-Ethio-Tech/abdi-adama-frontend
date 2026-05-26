@@ -16,6 +16,9 @@ export const Settings = () => {
   const [dailyPenaltyRate, setDailyPenaltyRate] = useState<number>(150);
   const [maxLoanMonths, setMaxLoanMonths] = useState<number>(3);
   const [loanDeductionPct, setLoanDeductionPct] = useState<number>(30);
+  const [studentLatePenaltyRate, setStudentLatePenaltyRate] = useState<number>(150);
+  const [studentPaymentDeadline, setStudentPaymentDeadline] = useState<number>(10);
+  const [staffSalaryDeadline, setStaffSalaryDeadline] = useState<number>(28);
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeSuccessMsg, setFinanceSuccessMsg] = useState('');
   const [financeErrorMsg, setFinanceErrorMsg] = useState('');
@@ -39,6 +42,15 @@ export const Settings = () => {
 
       const deduction = settings.find(s => s.key === 'loan_deduction_percentage');
       if (deduction) setLoanDeductionPct(Number(deduction.value));
+
+      const studentPenalty = settings.find(s => s.key === 'student_late_penalty_rate');
+      if (studentPenalty) setStudentLatePenaltyRate(Number(studentPenalty.value));
+
+      const studentDeadlineSetting = settings.find(s => s.key === 'student_payment_deadline');
+      if (studentDeadlineSetting) setStudentPaymentDeadline(Number(studentDeadlineSetting.value));
+
+      const staffDeadlineSetting = settings.find(s => s.key === 'staff_salary_deadline');
+      if (staffDeadlineSetting) setStaffSalaryDeadline(Number(staffDeadlineSetting.value));
 
       const audit = await payrollService.getFinanceSettingsAuditLog();
       setFinanceAuditLog(audit);
@@ -480,19 +492,98 @@ export const Settings = () => {
 
             {activeTab === 'Financial Policy' && (
               <div className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Monthly Late Penalty (ETB)</label>
-                    <input type="number" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="150" />
-                    <p className="text-[10px] text-slate-400">Applied automatically when payment exceeds the deadline.</p>
+                {financeSuccessMsg && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                    {financeSuccessMsg}
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Payment Deadline (Day of Month)</label>
-                    <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue={10}>
-                      {[5, 10, 15, 20, 25, 30].map(day => (
-                        <option key={day} value={day}>Day {day}</option>
-                      ))}
-                    </select>
+                )}
+
+                {financeErrorMsg && (
+                  <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                    {financeErrorMsg}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Student Payment Penalty */}
+                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Penalty fee applied automatically to students who miss deadlines.</p>
+                      <input
+                        type="number"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        value={studentLatePenaltyRate}
+                        onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
+                        disabled={role !== 'super-admin'}
+                      />
+                    </div>
+                    {role === 'super-admin' && (
+                      <button
+                        onClick={() => handleUpdateFinanceSetting('student_late_penalty_rate', studentLatePenaltyRate)}
+                        disabled={financeLoading}
+                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Save size={14} />
+                        Save Penalty
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Student Fee Deadline */}
+                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Fee Deadline (Day)</label>
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which all student fee payments must be settled.</p>
+                      <select
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        value={studentPaymentDeadline}
+                        onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
+                        disabled={role !== 'super-admin'}
+                      >
+                        {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                          <option key={day} value={day}>Day {day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {role === 'super-admin' && (
+                      <button
+                        onClick={() => handleUpdateFinanceSetting('student_payment_deadline', studentPaymentDeadline)}
+                        disabled={financeLoading}
+                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Save size={14} />
+                        Save Deadline
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Staff Salary Deadline */}
+                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Staff Salary Deadline (Day)</label>
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which employee salaries must be disbursed.</p>
+                      <select
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        value={staffSalaryDeadline}
+                        onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
+                        disabled={role !== 'super-admin'}
+                      >
+                        {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                          <option key={day} value={day}>Day {day}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {role === 'super-admin' && (
+                      <button
+                        onClick={() => handleUpdateFinanceSetting('staff_salary_deadline', staffSalaryDeadline)}
+                        disabled={financeLoading}
+                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Save size={14} />
+                        Save Deadline
+                      </button>
+                    )}
                   </div>
                 </div>
 

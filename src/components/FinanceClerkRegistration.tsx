@@ -51,7 +51,8 @@ export const FinanceClerkRegistration = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch pending applications');
+        const errBody = await response.json().catch(() => null);
+        throw new Error(errBody?.error?.message || errBody?.message || 'Failed to fetch pending applications');
       }
 
       const result = await response.json();
@@ -95,8 +96,8 @@ export const FinanceClerkRegistration = () => {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to approve application');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to approve application');
       }
 
       const result = await response.json();

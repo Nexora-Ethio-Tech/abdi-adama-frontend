@@ -68,6 +68,7 @@ export const Students = () => {
         grade: s.grade,
         classId: s.class_id || s.classId,
         className: s.class_name || s.className,
+        section: s.class_section || s.section,
         status: s.status,
       }));
       
@@ -186,11 +187,10 @@ export const Students = () => {
   const filtered = students.filter(s => {
     const matchSearch = !search || `${s.firstName} ${s.lastName} ${s.email} ${s.digitalId}`.toLowerCase().includes(search.toLowerCase());
     const matchGrade = !filterGrade || String(s.grade) === filterGrade;
-    // Section match: determine student's section from classes list by className
+    // Section match: determine student's section
     let matchSection = true;
     if (filterSection) {
-      const cls = classes.find(c => c.name === s.className || `${c.name}` === s.className);
-      matchSection = !!cls && (cls.section === filterSection);
+      matchSection = s.section === filterSection;
     }
 
     return matchSearch && matchGrade && matchSection;

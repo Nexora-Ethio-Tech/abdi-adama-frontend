@@ -1,29 +1,117 @@
 
 import { useState } from 'react';
 import { MessageSquare, X, Send, MinusCircle, Maximize2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { useEffect, useRef } from 'react';
+
 
 export const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'assistant', text: 'Hello! I am the Abdi-Adama Smart Assistant. I can help you with school policies, schedules, and academic reports. How can I assist you today?' }
+    { role: 'assistant', content: 'Hello! I am the Abdi-Adama Smart Assistant. I can help you with school policies, schedules, and academic reports. How can I assist you today?' }
   ]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = (e: React.FormEvent) => {
+  useEffect(() => {
+    const saved = localStorage.getItem('abdi_adama_chatbot_position');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+          setPosition(parsed);
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved chatbot position', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (position) {
+      localStorage.setItem('abdi_adama_chatbot_position', JSON.stringify(position));
+    }
+  }, [position]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
+
+  const handlePointerMove = (e: PointerEvent) => {
+    if (!isDragging) return;
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const newX = e.clientX - dragOffsetRef.current.x;
+    const newY = e.clientY - dragOffsetRef.current.y;
+    const maxX = window.innerWidth - rect.width - 16;
+    const maxY = window.innerHeight - rect.height - 16;
+
+    setPosition({
+      x: Math.max(16, Math.min(maxX, newX)),
+      y: Math.max(16, Math.min(maxY, newY))
+    });
+  };
+
+  const handlePointerUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    const button = target.closest('button');
+    if (button && button.dataset.dragHandle !== 'true') return;
+
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    dragOffsetRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    setIsDragging(true);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    wrapperRef.current?.setPointerCapture(e.pointerId);
+  };
+  const handleSend = async (e: React.FormEvent) => {
+    setIsLoading(true);
     e.preventDefault();
-    if (!message.trim()) return;
-
-    setMessages([...messages, { role: 'user', text: message }]);
+    if (!message.trim() || isLoading) return;
+    const userMessage = { role: "user", content: message };
+    setMessages(prev => [...prev, userMessage]);
     setMessage('');
+    setIsLoading(true);
 
-    // Mock response
-    setTimeout(() => {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        text: 'I am currently in training mode. Soon I will be able to answer all your questions about our school!'
-      }]);
-    }, 1000);
+    try {
+      const response = await fetch('https://kaleabbelayhun-abdiragbackend.hf.space/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          "Authorization": `Bearer ${import.meta.env.VITE_HF_TOKEN}`
+        },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      });
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: "assistant", content: data.content }]);
+    } catch (err) {
+      setMessages(prev => [...prev, { role: "assistant", content: "**Error:** Could not reach the server. Please try again." }]);
+    } finally {
+      setIsLoading(false);
+    }
+
   };
 
   if (!isOpen) {
@@ -40,11 +128,14 @@ export const Chatbot = () => {
     );
   }
 
+  const positionStyle = position ? { left: position.x, top: position.y, touchAction: 'none' } : undefined;
+  const floatingClasses = position ? '' : 'right-6 bottom-6';
+
   return (
-    <div className={`fixed right-6 z-50 transition-all duration-300 ${isMinimized ? 'bottom-6 w-64' : 'bottom-6 w-80 md:w-96 h-[500px]'}`}>
+    <div ref={wrapperRef} style={positionStyle} className={`fixed z-50 transition-all duration-300 ${floatingClasses} ${isMinimized ? 'w-64' : 'w-80 md:w-96 h-[500px]'} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="bg-blue-600 p-4 text-white flex items-center justify-between">
+        <div onPointerDown={handlePointerDown} className={`bg-blue-600 p-4 text-white flex items-center justify-between ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2 rounded-lg">
               <MessageSquare size={20} />
@@ -58,6 +149,15 @@ export const Chatbot = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              data-drag-handle="true"
+              onPointerDown={handlePointerDown}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Drag chatbot"
+            >
+              <span className="text-xs font-bold">⋮⋮</span>
+            </button>
             <button onClick={() => setIsMinimized(!isMinimized)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
               {isMinimized ? <Maximize2 size={16} /> : <MinusCircle size={16} />}
             </button>
@@ -73,15 +173,30 @@ export const Chatbot = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950/50">
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${
-                    m.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-none'
-                      : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700'
-                  }`}>
-                    {m.text}
+                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${m.role === 'user'
+                    ? 'bg-blue-600 text-white rounded-tr-none'
+                    : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700'
+                    }`}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {m.content}
+                    </ReactMarkdown>
                   </div>
                 </div>
               ))}
+
+              {isLoading && (
+                <div className="flex w-full justify-start">
+                  <div className="flex max-w-[85%] flex-row gap-3">
+                    <div className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-slate-700 rounded-3xl rounded-bl-md px-5 py-4 shadow-sm flex items-center gap-1.5 h-[52px]">
+                      <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={scrollRef} className="h-2" />
             </div>
 
             {/* Input */}

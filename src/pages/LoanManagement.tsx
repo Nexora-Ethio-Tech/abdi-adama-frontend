@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Search, Landmark, FileText, X, Plus, AlertCircle, RefreshCw, CheckCircle, Ban, History, HelpCircle } from 'lucide-react';
 import loanService, { Loan } from '../services/loanService';
 import payrollService, { EmployeePayrollProfile } from '../services/payrollService';
+import { useUser } from '../context/UserContext';
 
 export const LoanManagement = () => {
+  const { role } = useUser();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [employees, setEmployees] = useState<EmployeePayrollProfile[]>([]);
   const [globalDeductionPct, setGlobalDeductionPct] = useState(30);
@@ -16,13 +18,15 @@ export const LoanManagement = () => {
 
   // Filtering / Search
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'active' | 'history'>('pending');
 
   // Issue Loan Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [loanAmount, setLoanAmount] = useState('');
   const [notes, setNotes] = useState('');
+  const [loanRoleFilter, setLoanRoleFilter] = useState('');
+  const [loanSearchFilter, setLoanSearchFilter] = useState('');
 
   useEffect(() => {
     loadData();
@@ -41,11 +45,15 @@ export const LoanManagement = () => {
       setEmployees(profiles.filter(p => p.profile_id !== null && p.basic_salary > 0));
 
       // 3. Load global settings to display as guidance
-      const settings = await payrollService.getFinanceSettings();
-      const pct = settings.find(s => s.key === 'loan_deduction_percentage');
-      if (pct) setGlobalDeductionPct(Number(pct.value));
-      const duration = settings.find(s => s.key === 'max_loan_months');
-      if (duration) setGlobalMaxMonths(Number(duration.value));
+      try {
+        const settings = await payrollService.getFinanceSettings();
+        const pct = settings.find(s => s.key === 'loan_deduction_percentage');
+        if (pct) setGlobalDeductionPct(Number(pct.value));
+        const duration = settings.find(s => s.key === 'max_loan_months');
+        if (duration) setGlobalMaxMonths(Number(duration.value));
+      } catch (settingsErr) {
+        console.warn('Could not load global finance settings, using defaults.', settingsErr);
+      }
 
     } catch (err: any) {
       setErrorMsg(err.response?.data?.error?.message || 'Failed to load loan information.');
@@ -63,13 +71,15 @@ export const LoanManagement = () => {
     setSuccessMsg('');
     try {
       await loanService.issueLoan(selectedEmployeeId, Number(loanAmount), notes);
-      setSuccessMsg('Loan successfully issued to employee and notification triggered!');
+      setSuccessMsg('Loan request submitted successfully and is now pending auditor approval.');
       setIsModalOpen(false);
       
       // Reset form
       setSelectedEmployeeId('');
       setLoanAmount('');
       setNotes('');
+      setLoanRoleFilter('');
+      setLoanSearchFilter('');
 
       // Reload
       await loadData();
@@ -99,6 +109,59 @@ export const LoanManagement = () => {
     }
   };
 
+  const handleApproveLoan = async (loanId: string) => {
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await loanService.approveLoan(loanId);
+      setSuccessMsg('Loan request approved. Finance can now mark it as paid.');
+      await loadData();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error?.message || 'Failed to approve loan.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectLoan = async (loanId: string) => {
+    const reason = window.prompt('Enter rejection reason for the employee (optional):');
+    if (reason === null) return;
+
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await loanService.rejectLoan(loanId, reason || undefined);
+      setSuccessMsg('Loan request rejected. The employee will be notified.');
+      await loadData();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error?.message || 'Failed to reject loan.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePayLoan = async (loanId: string) => {
+    if (!window.confirm('Confirm that finance has paid out this approved loan?')) return;
+
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await loanService.payLoan(loanId);
+      setSuccessMsg('Loan has been marked as paid and is now active.');
+      await loadData();
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.error?.message || 'Failed to mark loan as paid.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Live Deduction calculation
   const getSelectedEmployeeSalary = () => {
     const emp = employees.find(e => e.user_id === selectedEmployeeId);
@@ -110,12 +173,17 @@ export const LoanManagement = () => {
   const filteredLoans = loans.filter(l => {
     const matchesSearch = l.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           l.employee_digital_id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
+    if (activeTab === 'pending') {
+      return matchesSearch && l.status === 'pending';
+    }
+    if (activeTab === 'approved') {
+      return matchesSearch && l.status === 'approved';
+    }
     if (activeTab === 'active') {
       return matchesSearch && l.status === 'active';
-    } else {
-      return matchesSearch && l.status !== 'active';
     }
+    return matchesSearch && ['completed', 'cancelled', 'rejected'].includes(l.status);
   });
 
   return (
@@ -125,20 +193,16 @@ export const LoanManagement = () => {
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Employee Loan Management</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">Issue and review internal company loans for company employees. Deductions are processed automatically via payroll cycles.</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-slate-900 dark:bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
-        >
-          <Plus size={16} />
-          Issue New Loan
-        </button>
+        {(role === 'finance-clerk' || role === 'super-admin') && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-slate-900 dark:bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
+          >
+            <Plus size={16} />
+            Issue New Loan
+          </button>
+        )}
       </div>
-
-      {successMsg && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
-          {successMsg}
-        </div>
-      )}
 
       {errorMsg && (
         <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
@@ -149,6 +213,26 @@ export const LoanManagement = () => {
       {/* Tabs and Search Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/30 dark:shadow-none flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              activeTab === 'pending'
+                ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
+          >
+            Pending Approval
+          </button>
+          <button
+            onClick={() => setActiveTab('approved')}
+            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              activeTab === 'approved'
+                ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
+                : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+            }`}
+          >
+            Approved / Awaiting Payment
+          </button>
           <button
             onClick={() => setActiveTab('active')}
             className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
@@ -167,7 +251,7 @@ export const LoanManagement = () => {
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
             }`}
           >
-            Loan History / Paid
+            History / Rejected
           </button>
         </div>
 
@@ -207,7 +291,7 @@ export const LoanManagement = () => {
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Duration</th>
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Issued Date</th>
-                  {activeTab === 'active' && (
+                  {(activeTab === 'active' || activeTab === 'approved' || activeTab === 'pending') && (
                     <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
                   )}
                 </tr>
@@ -245,6 +329,10 @@ export const LoanManagement = () => {
                       <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${
                         l.status === 'active'
                           ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-600'
+                          : l.status === 'approved'
+                          ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
+                          : l.status === 'pending'
+                          ? 'bg-slate-50 dark:bg-slate-950/20 text-slate-600 dark:text-slate-200'
                           : l.status === 'completed'
                           ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
                           : 'bg-rose-50 dark:bg-rose-950/20 text-rose-600'
@@ -255,15 +343,46 @@ export const LoanManagement = () => {
                     <td className="px-6 py-4 font-semibold text-slate-400">
                       {new Date(l.issued_at).toLocaleDateString()}
                     </td>
-                    {activeTab === 'active' && (
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleCancelLoan(l.id)}
-                          className="bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/20 text-rose-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ml-auto"
-                        >
-                          <Ban size={12} />
-                          Void Loan
-                        </button>
+                    {(activeTab === 'active' || activeTab === 'approved' || activeTab === 'pending') && (
+                      <td className="px-6 py-4 text-right space-y-2">
+                        {activeTab === 'pending' && role === 'auditor' && (
+                          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveLoan(l.id)}
+                              className="bg-emerald-50 hover:bg-emerald-600 hover:text-white dark:bg-emerald-950/20 text-emerald-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider"
+                            >
+                              <CheckCircle size={12} />
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleRejectLoan(l.id)}
+                              className="bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/20 text-rose-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider"
+                            >
+                              <Ban size={12} />
+                              Reject
+                            </button>
+                          </div>
+                        )}
+
+                        {activeTab === 'approved' && (role === 'finance-clerk' || role === 'super-admin') && (
+                          <button
+                            onClick={() => handlePayLoan(l.id)}
+                            className="bg-blue-50 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 text-blue-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ml-auto"
+                          >
+                            <CheckCircle size={12} />
+                            Mark Paid
+                          </button>
+                        )}
+
+                        {activeTab === 'active' && (role === 'finance-clerk' || role === 'super-admin') && (
+                          <button
+                            onClick={() => handleCancelLoan(l.id)}
+                            className="bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/20 text-rose-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ml-auto"
+                          >
+                            <Ban size={12} />
+                            Void Loan
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -307,21 +426,64 @@ export const LoanManagement = () => {
               </div>
 
               <form onSubmit={handleIssueLoan} className="space-y-5">
-                <div className="space-y-1">
+                <div className="space-y-3">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Select Employee *</label>
-                  <select
-                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                    value={selectedEmployeeId}
-                    onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Choose Employee --</option>
-                    {employees.map(e => (
-                      <option key={e.user_id} value={e.user_id} className="text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900">
-                        {e.name} ({e.role}) &mdash; Basic: {e.basic_salary.toLocaleString()} ETB
-                      </option>
+                  
+                  <div className="flex gap-2">
+                    <select 
+                      className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      value={loanRoleFilter}
+                      onChange={(e) => {
+                        setLoanRoleFilter(e.target.value);
+                        setSelectedEmployeeId('');
+                      }}
+                    >
+                      <option value="">All Roles</option>
+                      {Array.from(new Set(employees.map(e => e.role))).map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                    
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                      <input 
+                        type="text" 
+                        placeholder="Search by name..." 
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                        value={loanSearchFilter}
+                        onChange={(e) => {
+                          setLoanSearchFilter(e.target.value);
+                          setSelectedEmployeeId('');
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
+                    {employees
+                      .filter(e => !loanRoleFilter || e.role === loanRoleFilter)
+                      .filter(e => !loanSearchFilter || e.name.toLowerCase().includes(loanSearchFilter.toLowerCase()))
+                      .map(e => (
+                        <div 
+                          key={e.user_id} 
+                          onClick={() => setSelectedEmployeeId(e.user_id)}
+                          className={`p-3 text-xs cursor-pointer transition-colors flex justify-between items-center ${
+                            selectedEmployeeId === e.user_id 
+                              ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' 
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-200">{e.name}</p>
+                            <p className="text-[9px] text-slate-500 uppercase">{e.role}</p>
+                          </div>
+                          <span className="font-black text-slate-700 dark:text-slate-300">Basic: {e.basic_salary.toLocaleString()} ETB</span>
+                        </div>
                     ))}
-                  </select>
+                    {employees.filter(e => (!loanRoleFilter || e.role === loanRoleFilter) && (!loanSearchFilter || e.name.toLowerCase().includes(loanSearchFilter.toLowerCase()))).length === 0 && (
+                      <div className="p-4 text-center text-xs text-slate-500">No employees found.</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1">

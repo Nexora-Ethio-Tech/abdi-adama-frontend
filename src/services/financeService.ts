@@ -38,7 +38,7 @@ export interface StudentFeeInfo {
 export interface RecordPaymentRequest {
   studentId: string;  // Will be sent as studentId in body
   amount: number;
-  type: string;
+  type: string | string[];
   date: string;
 }
 
@@ -103,7 +103,11 @@ const financeClerkService = {
 
   // 3. Record Payment
   recordPayment: async (data: RecordPaymentRequest): Promise<Transaction> => {
-    const response = await api.post('/finance-clerk/payments', data);
+    const payload = {
+      ...data,
+      type: Array.isArray(data.type) ? data.type.join(', ') : data.type
+    };
+    const response = await api.post('/finance-clerk/payments', payload);
     return response.data.data;
   },
 

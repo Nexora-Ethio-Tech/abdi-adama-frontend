@@ -10,9 +10,11 @@ export const EmployeeProfiles = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Filtering
+  // Filtering & Pagination
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Editing Profile Modal
   const [editingProfile, setEditingProfile] = useState<EmployeePayrollProfile | null>(null);
@@ -92,6 +94,9 @@ export const EmployeeProfiles = () => {
     p.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredProfiles.length / itemsPerPage);
+  const paginatedProfiles = filteredProfiles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -153,99 +158,129 @@ export const EmployeeProfiles = () => {
             <p className="font-bold uppercase text-[11px] tracking-widest">No active staff payroll accounts matching criteria.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Employee Details</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Salary</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Allowances (Sum)</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Rate (Hr)</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TIN Number</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bank Account</th>
-                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
-                {filteredProfiles.map((p) => {
-                  const allowancesSum = p.transport_allowance + p.housing_allowance + p.position_allowance;
-                  const hasProfile = p.profile_id !== null;
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Employee Details</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Salary</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Allowances (Sum)</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Rate (Hr)</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TIN Number</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bank Account</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
+                  {paginatedProfiles.map((p) => {
+                    const allowancesSum = p.transport_allowance + p.housing_allowance + p.position_allowance;
+                    const hasProfile = p.profile_id !== null;
+                    return (
+                      <tr key={p.user_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-300">
+                              {p.name.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-white">{p.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">{p.role}</span>
+                                <span className="text-[9px] font-bold text-slate-400">{p.digital_id}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {hasProfile ? (
+                            <span className="font-black text-slate-800 dark:text-white">{p.basic_salary.toLocaleString()} ETB</span>
+                          ) : (
+                            <span className="text-rose-500 font-bold uppercase text-[9px] tracking-wider bg-rose-50 dark:bg-rose-950/20 px-2.5 py-1 rounded-xl flex items-center gap-1.5 w-fit">
+                              <AlertCircle size={10} /> Not Configured
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {hasProfile ? (
+                            <div>
+                              <span className="font-bold text-slate-700 dark:text-slate-300">+{allowancesSum.toLocaleString()} ETB</span>
+                              <div className="flex gap-1.5 text-[8px] text-slate-400 font-semibold mt-1">
+                                <span>T: {p.transport_allowance}</span>
+                                <span>H: {p.housing_allowance}</span>
+                                <span>P: {p.position_allowance}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">&mdash;</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {hasProfile ? (
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{p.overtime_rate_per_hour} ETB/hr</span>
+                          ) : (
+                            <span className="text-slate-400">&mdash;</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-mono text-slate-600 dark:text-slate-400 font-medium">{p.tin_number || 'N/A'}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {p.bank_account ? (
+                            <div className="flex items-center gap-1.5">
+                              <Landmark size={12} className="text-slate-400" />
+                              <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">{p.bank_account}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">N/A</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleEditClick(p)}
+                            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2 rounded-xl transition-all shadow-md"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-                  return (
-                    <tr key={p.user_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-300">
-                            {p.name.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-white">{p.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">{p.role}</span>
-                              <span className="text-[9px] font-bold text-slate-400">{p.digital_id}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {hasProfile ? (
-                          <span className="font-black text-slate-800 dark:text-white">{p.basic_salary.toLocaleString()} ETB</span>
-                        ) : (
-                          <span className="text-rose-500 font-bold uppercase text-[9px] tracking-wider bg-rose-50 dark:bg-rose-950/20 px-2.5 py-1 rounded-xl flex items-center gap-1.5 w-fit">
-                            <AlertCircle size={10} /> Not Configured
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {hasProfile ? (
-                          <div>
-                            <span className="font-bold text-slate-700 dark:text-slate-300">+{allowancesSum.toLocaleString()} ETB</span>
-                            <div className="flex gap-1.5 text-[8px] text-slate-400 font-semibold mt-1">
-                              <span>T: {p.transport_allowance}</span>
-                              <span>H: {p.housing_allowance}</span>
-                              <span>P: {p.position_allowance}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">&mdash;</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {hasProfile ? (
-                          <span className="font-bold text-slate-700 dark:text-slate-300">{p.overtime_rate_per_hour} ETB/hr</span>
-                        ) : (
-                          <span className="text-slate-400">&mdash;</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-mono text-slate-600 dark:text-slate-400 font-medium">{p.tin_number || 'N/A'}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {p.bank_account ? (
-                          <div className="flex items-center gap-1.5">
-                            <Landmark size={12} className="text-slate-400" />
-                            <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">{p.bank_account}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400">N/A</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleEditClick(p)}
-                          className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2 rounded-xl transition-all shadow-md"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
+                <span className="text-xs text-slate-500 font-medium">
+                  Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredProfiles.length)} of {filteredProfiles.length} entries
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                  >
+                    Prev
+                  </button>
+                  <span className="px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
+
 
       {/* Editing Sliding/Modal Panel */}
       {editingProfile && (
