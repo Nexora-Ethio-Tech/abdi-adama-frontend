@@ -14,10 +14,77 @@ export const Chatbot = () => {
     { role: 'assistant', content: 'Hello! I am the Abdi-Adama Smart Assistant. I can help you with school policies, schedules, and academic reports. How can I assist you today?' }
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+    const saved = localStorage.getItem('abdi_adama_chatbot_position');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+          setPosition(parsed);
+        }
+      } catch (error) {
+        console.warn('Failed to parse saved chatbot position', error);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (position) {
+      localStorage.setItem('abdi_adama_chatbot_position', JSON.stringify(position));
+    }
+  }, [position]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
+
+  const handlePointerMove = (e: PointerEvent) => {
+    if (!isDragging) return;
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const newX = e.clientX - dragOffsetRef.current.x;
+    const newY = e.clientY - dragOffsetRef.current.y;
+    const maxX = window.innerWidth - rect.width - 16;
+    const maxY = window.innerHeight - rect.height - 16;
+
+    setPosition({
+      x: Math.max(16, Math.min(maxX, newX)),
+      y: Math.max(16, Math.min(maxY, newY))
+    });
+  };
+
+  const handlePointerUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', handlePointerUp);
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement | HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    const button = target.closest('button');
+    if (button && button.dataset.dragHandle !== 'true') return;
+
+    const rect = wrapperRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    dragOffsetRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    setIsDragging(true);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    wrapperRef.current?.setPointerCapture(e.pointerId);
+  };
   const handleSend = async (e: React.FormEvent) => {
     setIsLoading(true);
     e.preventDefault();
@@ -61,11 +128,14 @@ export const Chatbot = () => {
     );
   }
 
+  const positionStyle = position ? { left: position.x, top: position.y, touchAction: 'none' } : undefined;
+  const floatingClasses = position ? '' : 'right-6 bottom-6';
+
   return (
-    <div className={`fixed right-6 z-50 transition-all duration-300 ${isMinimized ? 'bottom-6 w-64' : 'bottom-6 w-80 md:w-96 h-[500px]'}`}>
+    <div ref={wrapperRef} style={positionStyle} className={`fixed z-50 transition-all duration-300 ${floatingClasses} ${isMinimized ? 'w-64' : 'w-80 md:w-96 h-[500px]'} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <div className="bg-blue-600 p-4 text-white flex items-center justify-between">
+        <div onPointerDown={handlePointerDown} className={`bg-blue-600 p-4 text-white flex items-center justify-between ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}>
           <div className="flex items-center gap-3">
             <div className="bg-white/20 p-2 rounded-lg">
               <MessageSquare size={20} />
@@ -79,6 +149,15 @@ export const Chatbot = () => {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              data-drag-handle="true"
+              onPointerDown={handlePointerDown}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              aria-label="Drag chatbot"
+            >
+              <span className="text-xs font-bold">⋮⋮</span>
+            </button>
             <button onClick={() => setIsMinimized(!isMinimized)} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
               {isMinimized ? <Maximize2 size={16} /> : <MinusCircle size={16} />}
             </button>

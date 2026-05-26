@@ -82,6 +82,47 @@ export const AuditorDashboard = () => {
     }
   };
 
+  const handleExportReport = () => {
+    if (!financialReport) return;
+
+    const rows: string[][] = [
+      ['Auditor Financial Report'],
+      ['Period', `${financialReport.period.startDate} to ${financialReport.period.endDate}`],
+      [],
+      ['Summary'],
+      ['Total Transactions', financialReport.summary.totalTransactions.toString()],
+      ['Total Collected', financialReport.summary.totalCollected.toString()],
+      [],
+      ['By Type'],
+      ['Type', 'Transactions', 'Total Collected'],
+      ...financialReport.byType.map((item) => [
+        item.type,
+        item.count.toString(),
+        Number(item.total).toLocaleString()
+      ]),
+      [],
+      ['Daily Breakdown'],
+      ['Date', 'Transactions', 'Total Collected'],
+      ...financialReport.dailyBreakdown.map((item) => [
+        new Date(item.date).toLocaleDateString(),
+        item.transactions.toString(),
+        Number(item.total).toLocaleString()
+      ])
+    ];
+
+    const csvContent = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `auditor-financial-report-${financialReport.period.startDate}-${financialReport.period.endDate}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredPayments = payments.filter(payment =>
     payment.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     payment.student_id.toLowerCase().includes(searchQuery.toLowerCase())
@@ -428,12 +469,23 @@ export const AuditorDashboard = () => {
                   />
                 </div>
               </div>
-              <button
-                onClick={handleGenerateReport}
-                className="w-full bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20 mb-6"
-              >
-                Generate Report
-              </button>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+                <button
+                  onClick={handleGenerateReport}
+                  className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20"
+                >
+                  Generate Report
+                </button>
+                {financialReport && (
+                  <button
+                    onClick={handleExportReport}
+                    className="w-full md:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-lg shadow-emerald-500/20"
+                  >
+                    <FileText size={16} />
+                    <span>Download CSV</span>
+                  </button>
+                )}
+              </div>
 
               {financialReport && (
                 <div className="space-y-6">

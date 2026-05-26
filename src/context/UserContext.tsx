@@ -1,5 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { normalizeRole } from '../utils/roleUtils';
 
 export type UserRole = 'super-admin' | 'school-admin' | 'vice-principal' | 'teacher' | 'student' | 'parent' | 'finance-clerk' | 'librarian' | 'clinic-admin' | 'driver' | 'auditor';
 
@@ -165,7 +166,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             id: rawUser.id,
             name: rawUser.name,
             email: rawUser.email,
-            role: rawUser.role,
+            role: normalizeRole(rawUser.role) || rawUser.role,
             digitalId: rawUser.digital_id || rawUser.digitalId,
             branchId: rawUser.branch_id || rawUser.branchId,
             branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
@@ -232,7 +233,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
           id: rawUser.id,
           name: rawUser.name,
           email: rawUser.email,
-          role: rawUser.role,
+          role: normalizeRole(rawUser.role) || rawUser.role,
           digitalId: rawUser.digital_id || rawUser.digitalId,
           branchId: rawUser.branch_id || rawUser.branchId,
           branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',

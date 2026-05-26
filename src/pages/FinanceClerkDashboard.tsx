@@ -29,6 +29,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<string[]>(['Monthly Tuition']);
   
+  // Student List Pagination
+  const [studentPage, setStudentPage] = useState(1);
+  const studentsPerPage = 12;
+
+  // Staff Payment Filters & Pagination
+  const [staffSearchTerm, setStaffSearchTerm] = useState('');
+  const [minSalaryFilter, setMinSalaryFilter] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'paid' | 'not_paid'>('not_paid');
+  const [staffPage, setStaffPage] = useState(1);
+  const staffPerPage = 10;
+  
   const [confirmedStaffPayments, setConfirmedStaffPayments] = useState<Record<string, { date: string }>>(() => {
     try {
       const saved = localStorage.getItem('confirmed_staff_payments');
@@ -65,6 +76,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setOverdueStudents(overdueData);
       setStaffProfiles(staffData);
       setFinanceSettings(settingsData);
+      setStudentPage(1);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to fetch data');
     } finally {
@@ -181,6 +193,15 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredOverdueStudents = overdueStudents.filter(student =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const displayedStudents = activeTab === 'all' ? filteredStudents : filteredOverdueStudents;
+  const paginatedStudents = displayedStudents.slice((studentPage - 1) * studentsPerPage, studentPage * studentsPerPage);
+  const totalStudentPages = Math.max(1, Math.ceil(displayedStudents.length / studentsPerPage));
 
   if (loading && !dashboard) {
     return (
@@ -381,7 +402,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Tabs */}
       <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
         <button
-          onClick={() => setActiveTab('all')}
+          onClick={() => { setActiveTab('all'); setStudentPage(1); }}
           className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
@@ -390,7 +411,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           All Students ({students.length})
         </button>
         <button
-          onClick={() => setActiveTab('overdue')}
+          onClick={() => { setActiveTab('overdue'); setStudentPage(1); }}
           className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'overdue'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
@@ -436,6 +457,48 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             </span>
           </div>
 
+          {/* Staff Filters */}
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search name or ID..."
+                value={staffSearchTerm}
+                onChange={(e) => {
+                  setStaffSearchTerm(e.target.value);
+                  setStaffPage(1);
+                }}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div className="relative">
+              <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="number"
+                placeholder="Min Salary (ETB)..."
+                value={minSalaryFilter}
+                onChange={(e) => {
+                  setMinSalaryFilter(e.target.value);
+                  setStaffPage(1);
+                }}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <select
+              value={paymentStatusFilter}
+              onChange={(e) => {
+                setPaymentStatusFilter(e.target.value as any);
+                setStaffPage(1);
+              }}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <option value="all">All Payment Status</option>
+              <option value="paid">Paid</option>
+              <option value="not_paid">Not Paid</option>
+            </select>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
@@ -449,7 +512,19 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {staffProfiles.map((staff) => {
+                {(() => {
+                  const filtered = staffProfiles.filter(staff => {
+                    const isPaid = confirmedStaffPayments[staff.user_id];
+                    const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
+                    if (staffSearchTerm && !staff.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) && !staff.digital_id.toLowerCase().includes(staffSearchTerm.toLowerCase())) return false;
+                    if (minSalaryFilter && netPay < Number(minSalaryFilter)) return false;
+                    if (paymentStatusFilter === 'paid' && !isPaid) return false;
+                    if (paymentStatusFilter === 'not_paid' && isPaid) return false;
+                    return true;
+                  });
+                  const paginated = filtered.slice((staffPage - 1) * staffPerPage, staffPage * staffPerPage);
+                  
+                  return paginated.map((staff) => {
                   const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
                   const isPaid = confirmedStaffPayments[staff.user_id];
                   return (
@@ -493,16 +568,52 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       </td>
                     </tr>
                   );
-                })}
+                });
+              })()}
               </tbody>
             </table>
           </div>
-          {staffProfiles.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600 dark:text-slate-400 font-medium">No staff members found.</p>
-            </div>
-          )}
+          {(() => {
+            const filtered = staffProfiles.filter(staff => {
+              const isPaid = confirmedStaffPayments[staff.user_id];
+              const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
+              if (staffSearchTerm && !staff.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) && !staff.digital_id.toLowerCase().includes(staffSearchTerm.toLowerCase())) return false;
+              if (minSalaryFilter && netPay < Number(minSalaryFilter)) return false;
+              if (paymentStatusFilter === 'paid' && !isPaid) return false;
+              if (paymentStatusFilter === 'not_paid' && isPaid) return false;
+              return true;
+            });
+            const totalPages = Math.ceil(filtered.length / staffPerPage);
+            return (
+              <>
+                {filtered.length === 0 && (
+                  <div className="text-center py-12">
+                    <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">No staff members found matching filters.</p>
+                  </div>
+                )}
+                {totalPages > 1 && (
+                  <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+                    <button 
+                      onClick={() => setStaffPage(prev => Math.max(1, prev - 1))}
+                      disabled={staffPage === 1}
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-slate-500 font-medium">Page {staffPage} of {totalPages}</span>
+                    <button 
+                      onClick={() => setStaffPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={staffPage === totalPages}
+                      className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
 
@@ -519,6 +630,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
+                    setStudentPage(1);
                     fetchData();
                   }}
                   className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -528,6 +640,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 value={feeStatusFilter}
                 onChange={(e) => {
                   setFeeStatusFilter(e.target.value as any);
+                  setStudentPage(1);
                   fetchData();
                 }}
                 className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -561,7 +674,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {(activeTab === 'all' ? filteredStudents : overdueStudents).map((student) => {
+                  {paginatedStudents.map((student) => {
                     const _totalDue = (student.monthly_fee || 0) + (student.bus_fee || 0) + (student.penalty_fee || 0);
                     return (
                       <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -591,8 +704,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
-                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'
-                              }`}>
+                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}> 
                               {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
                             </span>
                             {student.fee_approval_status === 'pending' && (
@@ -624,14 +736,34 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 </tbody>
               </table>
             </div>
-          </div>
 
-          {(activeTab === 'all' ? filteredStudents : overdueStudents).length === 0 && !loading && (
+            {displayedStudents.length === 0 && !loading && (
             <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
               <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
               <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
             </div>
           )}
+
+          {displayedStudents.length > 0 && totalStudentPages > 1 && (
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+              <button
+                onClick={() => setStudentPage((prev) => Math.max(1, prev - 1))}
+                disabled={studentPage === 1}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-slate-500 font-medium">Page {studentPage} of {totalStudentPages}</span>
+              <button
+                onClick={() => setStudentPage((prev) => Math.min(totalStudentPages, prev + 1))}
+                disabled={studentPage === totalStudentPages}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+          </div>
         </>
       )}
 
