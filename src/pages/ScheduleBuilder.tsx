@@ -4,16 +4,21 @@ import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
   getBranchTeachers,
+  getBranchClasses,
   saveScheduleConfig,
   getScheduleConfig,
   saveTeacherConstraints as saveTeacherConstraintsApi,
   getTeacherConstraintsApi,
   saveCourseFrequencies as saveCourseFrequenciesApi,
   getCourseFrequencies as getCourseFrequenciesApi,
+  saveScheduleStructure,
+  getScheduleStructure,
   generateTimetable,
   approveScheduleCandidate,
   type ScheduleCandidate,
-  type GenerateTimetableResult
+  type GenerateTimetableResult,
+  type ClassRecord,
+  type StructureRowInput
 } from '../services/schoolAdminService';
 
 interface CourseFrequency {
@@ -27,6 +32,14 @@ interface Teacher {
   teacher_id: string;
   name: string;
   subjects: string[];
+}
+
+interface StructureRow {
+  id: string;
+  classId: string;
+  teacherId: string;
+  subject: string;
+  sessionsPerWeek: number;
 }
 
 export const ScheduleBuilder = () => {
@@ -47,6 +60,10 @@ export const ScheduleBuilder = () => {
   const [teacherConstraints, setTeacherConstraints] = useState<Record<string, number[]>>({});
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [structureRows, setStructureRows] = useState<StructureRow[]>([]);
+  const [savingStructure, setSavingStructure] = useState(false);
+  const [loadingClasses, setLoadingClasses] = useState(true);
 
   // Collapsible section states
   const [isParamsExpanded, setIsParamsExpanded] = useState(true);
@@ -162,6 +179,59 @@ export const ScheduleBuilder = () => {
     setFrequencies(frequencies.filter(f => f.id !== id));
   };
 
+  const addStructureRow = () => {
+    setStructureRows(prev => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        classId: classes[0]?.id || '',
+        teacherId: teachers[0]?.id || '',
+        subject: '',
+        sessionsPerWeek: 3
+      }
+    ]);
+  };
+
+  const removeStructureRow = (id: string) => {
+    setStructureRows(prev => prev.filter(row => row.id !== id));
+  };
+
+  const updateStructureRow = (id: string, changes: Partial<StructureRow>) => {
+    setStructureRows(prev => prev.map(row => row.id === id ? { ...row, ...changes } : row));
+  };
+
+  const handleSaveStructure = useCallback(async () => {
+    if (structureRows.length === 0) {
+      alert('Add at least one timetable structure row before saving.');
+      return;
+    }
+
+    for (const row of structureRows) {
+      if (!row.classId || !row.teacherId || !row.subject || row.sessionsPerWeek < 1) {
+        alert('Please complete all timetable structure rows before saving.');
+        return;
+      }
+    }
+
+    try {
+      setSavingStructure(true);
+      await saveScheduleStructure(
+        structureRows.map(row => ({
+          classId: row.classId,
+          teacherId: row.teacherId,
+          subject: row.subject,
+          sessionsPerWeek: row.sessionsPerWeek
+        }))
+      );
+      alert('Timetable structure saved successfully.');
+    } catch (err: any) {
+      console.error('Failed to save schedule structure:', err);
+      alert('Unable to save timetable structure. Please try again.');
+    } finally {
+      setSavingStructure(false);
+    }
+  }, [structureRows]);
+
   // Save config to API
   const handleSaveConfig = useCallback(async () => {
     try {
@@ -226,6 +296,17 @@ export const ScheduleBuilder = () => {
         maxConsecutivePeriods: maxConsecutive,
         distributeSubjects
       });
+
+      if (structureRows.length > 0) {
+        await saveScheduleStructure(
+          structureRows.map(row => ({
+            classId: row.classId,
+            teacherId: row.teacherId,
+            subject: row.subject,
+            sessionsPerWeek: row.sessionsPerWeek
+          }))
+        );
+      }
 
       const result = await generateTimetable();
       setGenerationResult(result);
@@ -820,40 +901,106 @@ export const ScheduleBuilder = () => {
 
               {/* Timetable Structure & Frequencies */}
               <div className="p-6 bg-purple-50/20 dark:bg-purple-900/5 rounded-2xl border border-purple-100/50 dark:border-purple-900/20 space-y-6">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black text-xs uppercase tracking-widest">
                     <BookOpen size={16} />
                     <span>Timetable Structure</span>
                   </div>
                   <button
-                    onClick={addFrequency}
-                    className="p-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg hover:scale-110 transition-transform"
+                    onClick={addStructureRow}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 transition-all text-sm font-bold"
                   >
-                    <Plus size={16} />
+                    Add Row
                   </button>
                 </div>
-                <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2">
-                  {frequencies.map((f) => (
-                    <div
-                      key={f.id}
-                      className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 border border-purple-100/30 dark:border-purple-900/10 rounded-xl shadow-sm"
-                    >
-                      <input
-                        type="text"
-                        className="bg-transparent text-sm font-bold outline-none w-1/2 dark:text-white"
-                        defaultValue={f.subject}
-                      />
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-slate-400 uppercase">{f.sessions}</span>
-                        <button
-                          onClick={() => removeFrequency(f.id)}
-                          className="text-slate-300 hover:text-rose-500 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
+                  {loadingClasses || loadingTeachers ? (
+                    <div className="flex items-center justify-center py-16 text-slate-500 dark:text-slate-400">
+                      Loading class and teacher lists...
                     </div>
-                  ))}
+                  ) : structureRows.length === 0 ? (
+                    <div className="p-8 border border-dashed border-purple-200 dark:border-purple-900/30 rounded-3xl text-center bg-white/80 dark:bg-slate-900/80">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No timetable structure rows defined yet.</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Create class and teacher assignments so generation can use the saved structure.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {structureRows.map((row, index) => (
+                        <div key={row.id} className="grid grid-cols-1 gap-3 p-4 bg-white dark:bg-slate-800 border border-purple-100/30 dark:border-purple-900/10 rounded-2xl shadow-sm">
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Class</label>
+                            <select
+                              value={row.classId}
+                              onChange={(e) => updateStructureRow(row.id, { classId: e.target.value })}
+                              className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                            >
+                              <option value="">Select class</option>
+                              {classes.map((clazz) => (
+                                <option key={clazz.id} value={clazz.id}>
+                                  {clazz.name}{clazz.section ? ` ${clazz.section}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher</label>
+                            <select
+                              value={row.teacherId}
+                              onChange={(e) => updateStructureRow(row.id, { teacherId: e.target.value })}
+                              className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                            >
+                              <option value="">Select teacher</option>
+                              {teachers.map((teacher) => (
+                                <option key={teacher.id} value={teacher.id}>
+                                  {teacher.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div>
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Subject</label>
+                              <input
+                                type="text"
+                                value={row.subject}
+                                onChange={(e) => updateStructureRow(row.id, { subject: e.target.value })}
+                                className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                                placeholder="Subject name"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Sessions / Week</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={row.sessionsPerWeek}
+                                onChange={(e) => updateStructureRow(row.id, { sessionsPerWeek: Number(e.target.value) })}
+                                className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                              />
+                            </div>
+                            <div className="flex items-end justify-end">
+                              <button
+                                onClick={() => removeStructureRow(row.id)}
+                                className="px-4 py-2 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all text-sm font-bold"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    onClick={handleSaveStructure}
+                    disabled={savingStructure || loadingClasses || loadingTeachers}
+                    className="w-full sm:w-auto px-5 py-3 bg-white text-purple-600 border border-purple-300 rounded-2xl font-bold hover:bg-purple-100 transition-all disabled:opacity-60"
+                  >
+                    {savingStructure ? 'Saving...' : 'Save Structure'}
+                  </button>
                 </div>
               </div>
             </div>

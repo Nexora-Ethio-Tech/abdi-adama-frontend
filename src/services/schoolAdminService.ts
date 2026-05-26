@@ -378,6 +378,20 @@ export interface CourseFrequencyInput {
   sessionsPerWeek: number;
 }
 
+export interface ClassRecord {
+  id: string;
+  name: string;
+  section?: string;
+  capacity?: number;
+}
+
+export interface StructureRowInput {
+  classId: string;
+  teacherId: string;
+  subject: string;
+  sessionsPerWeek: number;
+}
+
 export interface ScheduleCandidate {
   index: number;
   slotsFilled: number;
@@ -456,6 +470,26 @@ export const saveCourseFrequencies = async (
 export const getCourseFrequencies = async (academicYear?: string) => {
   const params = academicYear ? { academicYear } : {};
   const response = await api.get('/schedule/courses/frequencies', { params });
+  return response.data.data;
+};
+
+// Classes
+export const getBranchClasses = async (): Promise<ClassRecord[]> => {
+  const response = await api.get('/school-admin/classes');
+  return response.data.data;
+};
+
+// Timetable Structure
+export const saveScheduleStructure = async (
+  structures: StructureRowInput[], academicYear?: string
+) => {
+  const response = await api.post('/schedule/structure', { structures, academicYear });
+  return response.data.data;
+};
+
+export const getScheduleStructure = async (academicYear?: string) => {
+  const params = academicYear ? { academicYear } : {};
+  const response = await api.get('/schedule/structure', { params });
   return response.data.data;
 };
 
