@@ -5,6 +5,7 @@ import studentService, { type UpdateStudentData } from '../services/studentServi
 import classService from '../services/classService';
 import { getBranchUsers, updateUser, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
+import { StudentRegistration } from '../components/StudentRegistration';
 
 export const Students = () => {
   const navigate = useNavigate();
@@ -20,6 +21,7 @@ export const Students = () => {
   const [filterGrade, setFilterGrade] = useState('');
   const [filterSection, setFilterSection] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [activeView, setActiveView] = useState<'students' | 'registration' | 'add'>('students');
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -211,15 +213,35 @@ export const Students = () => {
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Students</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Manage student records and class assignments</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           {isSchoolAdmin && (
-            <button
-              onClick={() => navigate('/registration')}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none"
-            >
-              <UserPlus size={18} />
-              Add Student
-            </button>
+            <>
+              <button
+                onClick={() => setActiveView('students')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'students'
+                  ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                Students
+              </button>
+              <button
+                onClick={() => setActiveView('registration')}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'registration'
+                  ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
+                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                Pending Applications
+              </button>
+              <button
+                onClick={() => setActiveView('add')}
+                className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none ${activeView === 'add' ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''}`}
+              >
+                <UserPlus size={18} />
+                Add Student
+              </button>
+            </>
           )}
           <button
             onClick={handleExport}
@@ -280,110 +302,125 @@ export const Students = () => {
         </select>
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+      {isSchoolAdmin && activeView === 'registration' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
+          <StudentRegistration isAdminView={true} />
         </div>
-      )}
-
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="animate-spin text-blue-600" size={32} />
+      ) : isSchoolAdmin && activeView === 'add' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
+          <StudentRegistration
+            isAdminView={false}
+            onCreated={() => setActiveView('students')}
+          />
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <tr>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grade</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Class</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                    No students found. Add your first student!
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((student) => (
-                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center font-bold text-sm">
-                          {student.firstName?.[0]}{student.lastName?.[0]}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-white">{student.firstName} {student.lastName}</p>
-                          <p className="text-xs text-slate-500">{student.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{student.className || 'Unassigned'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                        student.status === 'Active' ? 'bg-green-100 text-green-700' :
-                        student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
-                        student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {student.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => { setSelectedStudent(student); setShowAssignModal(true); }}
-                          className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 rounded-lg transition-colors"
-                          title="Assign Class"
-                        >
-                          <Users size={16} />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(student)}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 rounded-lg transition-colors"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        {student.status === 'Pending' && (
-                          <button
-                            onClick={() => setConfirmAction({ show: true, action: 'approve', student })}
-                            className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
-                            title="Approve"
-                          >
-                            <Check size={16} />
-                          </button>
-                        )}
-                        {student.status === 'Approved' && (
-                          <button
-                            onClick={() => setConfirmAction({ show: true, action: 'revoke', student })}
-                            className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 rounded-lg transition-colors"
-                            title="Revoke"
-                          >
-                            <XCircle size={16} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setConfirmDelete({ show: true, student })}
-                          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+        <>
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <Loader2 className="animate-spin text-blue-600" size={32} />
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grade</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Class</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                        No students found. Add your first student!
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((student) => (
+                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center font-bold text-sm">
+                              {student.firstName?.[0]}{student.lastName?.[0]}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-white">{student.firstName} {student.lastName}</p>
+                              <p className="text-xs text-slate-500">{student.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{student.className || 'Unassigned'}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                            student.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
+                            student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
+                            'bg-blue-100 text-blue-700'
+                          }`}>
+                            {student.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => { setSelectedStudent(student); setShowAssignModal(true); }}
+                              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 rounded-lg transition-colors"
+                              title="Assign Class"
+                            >
+                              <Users size={16} />
+                            </button>
+                            <button
+                              onClick={() => openEditModal(student)}
+                              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 rounded-lg transition-colors"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            {student.status === 'Pending' && (
+                              <button
+                                onClick={() => setConfirmAction({ show: true, action: 'approve', student })}
+                                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
+                                title="Approve"
+                              >
+                                <Check size={16} />
+                              </button>
+                            )}
+                            {student.status === 'Approved' && (
+                              <button
+                                onClick={() => setConfirmAction({ show: true, action: 'revoke', student })}
+                                className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 rounded-lg transition-colors"
+                                title="Revoke"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setConfirmDelete({ show: true, student })}
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded-lg transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
       {/* Add Modal */}

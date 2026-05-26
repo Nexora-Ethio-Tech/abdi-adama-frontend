@@ -84,6 +84,11 @@ export interface TransportFeePolicy {
   branch_id: string;
 }
 
+export interface GlobalRegistrationFee {
+  amount: number;
+  source: string;
+}
+
 export interface RecordPaymentRequest {
   studentId: string;  // Will be sent as studentId in body
   amount: number;
@@ -195,6 +200,15 @@ const financeClerkService = {
       bus_fee: parseFloat(policy.bus_fee) || 0,
       penalty_rate: parseFloat(policy.penalty_rate) || 0,
     }));
+  },
+
+  // 2c3. Get global registration fee assigned by super admin
+  getGlobalRegistrationFee: async (): Promise<GlobalRegistrationFee> => {
+    const response = await api.get('/finance-clerk/registration-fee');
+    return {
+      amount: Number(response.data.data?.amount) || 0,
+      source: response.data.data?.source || 'unknown'
+    };
   },
 
   // 2d. Assign or change a student transport route

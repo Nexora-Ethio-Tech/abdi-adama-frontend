@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, Check, X, CreditCard, Eye, EyeOff, Download } from 'lucide-react';
+import financeClerkService from '../services/financeService';
 
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
 
@@ -31,6 +32,7 @@ interface ApprovalPayload {
 export const FinanceClerkRegistration = () => {
   const [pendingApplications, setPendingApplications] = useState<PendingApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPolicy, setLoadingPolicy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<PendingApplication | null>(null);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
@@ -69,8 +71,29 @@ export const FinanceClerkRegistration = () => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
 
+  useEffect(() => {
+    const loadFee = async () => {
+      try {
+        setLoadingPolicy(true);
+        const fee = await financeClerkService.getGlobalRegistrationFee();
+        setApprovalData((prev) => ({ ...prev, amount: Number(fee.amount) || 0 }));
+      } catch (err) {
+        console.error('Failed to load global registration fee:', err);
+        setApprovalData((prev) => ({ ...prev, amount: 0 }));
+      } finally {
+        setLoadingPolicy(false);
+      }
+    };
+
+    loadFee();
+  }, []);
+
   const handleApproveClick = (app: PendingApplication) => {
     setSelectedApp(app);
+    setApprovalData({
+      amount: approvalData.amount,
+      reference: ''
+    });
     setShowApprovalForm(true);
   };
 
@@ -318,15 +341,13 @@ export const FinanceClerkRegistration = () => {
                 <input
                   type="number"
                   value={approvalData.amount}
-                  onChange={(e) =>
-                    setApprovalData({
-                      ...approvalData,
-                      amount: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                  placeholder="Enter amount"
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  readOnly
+                  placeholder={loadingPolicy ? 'Loading global fee...' : 'Auto-filled from global fee settings'}
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold outline-none cursor-not-allowed"
                 />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  This amount is read from the backend database and set globally by super admin.
+                </p>
               </div>
 
               <div>
@@ -360,7 +381,7 @@ export const FinanceClerkRegistration = () => {
               </button>
               <button
                 onClick={handleApprove}
-                disabled={approving || approvalData.amount <= 0}
+                disabled={approving || approvalData.amount <= 0 || loadingPolicy}
                 className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
               >
                 {approving ? (

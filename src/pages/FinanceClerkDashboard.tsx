@@ -766,7 +766,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Route</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Transport Fee</th>
                   <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                 </tr>

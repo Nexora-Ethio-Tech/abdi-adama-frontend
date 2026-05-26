@@ -17,6 +17,7 @@ export const Settings = () => {
   const [maxLoanMonths, setMaxLoanMonths] = useState<number>(3);
   const [loanDeductionPct, setLoanDeductionPct] = useState<number>(30);
   const [studentLatePenaltyRate, setStudentLatePenaltyRate] = useState<number>(150);
+  const [studentRegistrationFee, setStudentRegistrationFee] = useState<number>(0);
   const [studentPaymentDeadline, setStudentPaymentDeadline] = useState<number>(10);
   const [staffSalaryDeadline, setStaffSalaryDeadline] = useState<number>(28);
   const [financeLoading, setFinanceLoading] = useState(false);
@@ -45,6 +46,9 @@ export const Settings = () => {
 
       const studentPenalty = settings.find(s => s.key === 'student_late_penalty_rate');
       if (studentPenalty) setStudentLatePenaltyRate(Number(studentPenalty.value));
+
+      const registrationFee = settings.find(s => s.key === 'student_registration_fee');
+      if (registrationFee) setStudentRegistrationFee(Number(registrationFee.value));
 
       const studentDeadlineSetting = settings.find(s => s.key === 'student_payment_deadline');
       if (studentDeadlineSetting) setStudentPaymentDeadline(Number(studentDeadlineSetting.value));
@@ -505,6 +509,31 @@ export const Settings = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Student Registration Fee */}
+                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
+                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
+                      <input
+                        type="number"
+                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        value={studentRegistrationFee}
+                        onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
+                        disabled={role !== 'super-admin'}
+                      />
+                    </div>
+                    {role === 'super-admin' && (
+                      <button
+                        onClick={() => handleUpdateFinanceSetting('student_registration_fee', studentRegistrationFee)}
+                        disabled={financeLoading}
+                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                      >
+                        <Save size={14} />
+                        Save Fee
+                      </button>
+                    )}
+                  </div>
+
                   {/* Student Payment Penalty */}
                   <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                     <div>
