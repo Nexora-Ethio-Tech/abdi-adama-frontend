@@ -69,6 +69,7 @@ export const ScheduleBuilder = () => {
   const [isParamsExpanded, setIsParamsExpanded] = useState(true);
   const [isTeachersExpanded, setIsTeachersExpanded] = useState(false);
   const [isRulesExpanded, setIsRulesExpanded] = useState(false);
+  const [isStructureExpanded, setIsStructureExpanded] = useState(false);
   const [isResultsExpanded, setIsResultsExpanded] = useState(false);
 
   // Generation state
@@ -88,6 +89,40 @@ export const ScheduleBuilder = () => {
 
   // Load teachers from API
   useEffect(() => {
+    const loadClassesAndStructure = async () => {
+      try {
+        setLoadingClasses(true);
+        const cls = await getBranchClasses();
+        const classesData = cls || [];
+        setClasses(classesData as ClassRecord[]);
+      } catch (err) {
+        console.error('Failed to load classes:', err);
+        setClasses([]);
+      } finally {
+        setLoadingClasses(false);
+      }
+
+      try {
+        const struct = await getScheduleStructure();
+        const structData = struct?.data || struct || [];
+        if (Array.isArray(structData) && structData.length > 0) {
+          setStructureRows(structData.map((s: any) => ({
+            id: s.id || Date.now().toString(),
+            classId: s.classId || s.class_id || s.class || '',
+            teacherId: s.teacherId || s.teacher_id || s.teacher || '',
+            subject: s.subject || s.course || '',
+            sessionsPerWeek: s.sessionsPerWeek || s.sessions_per_week || s.sessions || 3
+          })));
+        }
+      } catch (err) {
+        // no saved structure yet
+      }
+    };
+
+    loadClassesAndStructure();
+  }, []);
+
+    useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingTeachers(true);
@@ -115,7 +150,7 @@ export const ScheduleBuilder = () => {
     };
 
     loadData();
-  }, []);
+    }, []);
 
   // Load config on mount
   useEffect(() => {
@@ -316,6 +351,7 @@ export const ScheduleBuilder = () => {
       setIsParamsExpanded(false);
       setIsTeachersExpanded(false);
       setIsRulesExpanded(false);
+      setIsStructureExpanded(false);
     } catch (err: any) {
       const errorObj = err.response?.data?.error;
       let msg = errorObj?.message || err.message || 'Generation failed';
@@ -831,7 +867,7 @@ export const ScheduleBuilder = () => {
           </div>
         </div>
 
-        {/* SECTION 3: Pedagogical Rules & Timetable Structure (Collapsible) */}
+        {/* SECTION 3: Pedagogical Rules (Collapsible) */}
         <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
           <button
             onClick={() => setIsRulesExpanded(!isRulesExpanded)}
@@ -842,8 +878,8 @@ export const ScheduleBuilder = () => {
                 <BookOpen size={22} />
               </div>
               <div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-white">3. Pedagogical Rules & Timetable Structure</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Consecutive period limits, subject distribution, and session frequencies</p>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white">3. Pedagogical Rules</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Consecutive period limits and subject distribution</p>
               </div>
             </div>
             <ChevronDown
@@ -854,10 +890,10 @@ export const ScheduleBuilder = () => {
 
           <div
             className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              isRulesExpanded ? 'max-h-[800px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-amber-50/5 dark:bg-amber-955/5' : 'max-h-0 opacity-0'
+              isRulesExpanded ? 'max-h-[420px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-amber-50/5 dark:bg-amber-955/5' : 'max-h-0 opacity-0'
             }`}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 gap-8">
               {/* Pedagogical Logic */}
               <div className="p-6 bg-amber-50/20 dark:bg-amber-900/5 rounded-2xl border border-amber-100/50 dark:border-amber-900/20 space-y-6">
                 <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-widest">
@@ -898,110 +934,137 @@ export const ScheduleBuilder = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
 
-              {/* Timetable Structure & Frequencies */}
-              <div className="p-6 bg-purple-50/20 dark:bg-purple-900/5 rounded-2xl border border-purple-100/50 dark:border-purple-900/20 space-y-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black text-xs uppercase tracking-widest">
-                    <BookOpen size={16} />
-                    <span>Timetable Structure</span>
-                  </div>
-                  <button
-                    onClick={addStructureRow}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 transition-all text-sm font-bold"
-                  >
-                    Add Row
-                  </button>
+        {/* SECTION 4: Timetable Structure & Frequencies (Collapsible, independent) */}
+        <div className="bg-purple-50/20 dark:bg-purple-900/5 rounded-3xl border border-purple-100/50 dark:border-purple-900/20 overflow-hidden transition-all duration-300">
+          <button
+            onClick={() => setIsStructureExpanded(!isStructureExpanded)}
+            className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-2xl">
+                <BookOpen size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white">4. Timetable Structure</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mt-0.5">Define class & teacher assignments and session frequencies</p>
+              </div>
+            </div>
+            <ChevronDown
+              size={20}
+              className={`text-slate-400 transform transition-transform duration-300 ${isStructureExpanded ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          <div
+            className={`transition-all duration-500 ease-in-out overflow-hidden ${
+              isStructureExpanded ? 'max-h-[800px] opacity-100 border-t border-purple-100 dark:border-purple-900 p-6 md:p-8 bg-purple-50/20' : 'max-h-0 opacity-0'
+            }`}
+          >
+            <div className="p-6 rounded-2xl space-y-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 font-black text-xs uppercase tracking-widest">
+                  <BookOpen size={16} />
+                  <span>Timetable Structure</span>
                 </div>
-                <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
-                  {loadingClasses || loadingTeachers ? (
-                    <div className="flex items-center justify-center py-16 text-slate-500 dark:text-slate-400">
-                      Loading class and teacher lists...
-                    </div>
-                  ) : structureRows.length === 0 ? (
-                    <div className="p-8 border border-dashed border-purple-200 dark:border-purple-900/30 rounded-3xl text-center bg-white/80 dark:bg-slate-900/80">
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No timetable structure rows defined yet.</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Create class and teacher assignments so generation can use the saved structure.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {structureRows.map((row, index) => (
-                        <div key={row.id} className="grid grid-cols-1 gap-3 p-4 bg-white dark:bg-slate-800 border border-purple-100/30 dark:border-purple-900/10 rounded-2xl shadow-sm">
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Class</label>
-                            <select
-                              value={row.classId}
-                              onChange={(e) => updateStructureRow(row.id, { classId: e.target.value })}
+                <button
+                  onClick={addStructureRow}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 transition-all text-sm font-bold"
+                >
+                  Add Row
+                </button>
+              </div>
+              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
+                {loadingClasses || loadingTeachers ? (
+                  <div className="flex items-center justify-center py-16 text-slate-500 dark:text-slate-400">
+                    Loading class and teacher lists...
+                  </div>
+                ) : structureRows.length === 0 ? (
+                  <div className="p-8 border border-dashed border-purple-200 dark:border-purple-900/30 rounded-3xl text-center bg-white/80 dark:bg-slate-900/80">
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No timetable structure rows defined yet.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Create class and teacher assignments so generation can use the saved structure.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {structureRows.map((row, index) => (
+                      <div key={row.id} className="grid grid-cols-1 gap-3 p-4 bg-white dark:bg-slate-800 border border-purple-100/30 dark:border-purple-900/10 rounded-2xl shadow-sm">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Class</label>
+                          <select
+                            value={row.classId}
+                            onChange={(e) => updateStructureRow(row.id, { classId: e.target.value })}
+                            className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                          >
+                            <option value="">Select class</option>
+                            {classes.map((clazz) => (
+                              <option key={clazz.id} value={clazz.id}>
+                                {clazz.name}{clazz.section ? ` ${clazz.section}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher</label>
+                          <select
+                            value={row.teacherId}
+                            onChange={(e) => updateStructureRow(row.id, { teacherId: e.target.value })}
+                            className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                          >
+                            <option value="">Select teacher</option>
+                            {teachers.map((teacher) => (
+                              <option key={teacher.id} value={teacher.id}>
+                                {teacher.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Subject</label>
+                            <input
+                              type="text"
+                              value={row.subject}
+                              onChange={(e) => updateStructureRow(row.id, { subject: e.target.value })}
                               className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                            >
-                              <option value="">Select class</option>
-                              {classes.map((clazz) => (
-                                <option key={clazz.id} value={clazz.id}>
-                                  {clazz.name}{clazz.section ? ` ${clazz.section}` : ''}
-                                </option>
-                              ))}
-                            </select>
+                              placeholder="Subject name"
+                            />
                           </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher</label>
-                            <select
-                              value={row.teacherId}
-                              onChange={(e) => updateStructureRow(row.id, { teacherId: e.target.value })}
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Sessions / Week</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={10}
+                              value={row.sessionsPerWeek}
+                              onChange={(e) => updateStructureRow(row.id, { sessionsPerWeek: Number(e.target.value) })}
                               className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                            >
-                              <option value="">Select teacher</option>
-                              {teachers.map((teacher) => (
-                                <option key={teacher.id} value={teacher.id}>
-                                  {teacher.name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </div>
-                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                            <div>
-                              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Subject</label>
-                              <input
-                                type="text"
-                                value={row.subject}
-                                onChange={(e) => updateStructureRow(row.id, { subject: e.target.value })}
-                                className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                                placeholder="Subject name"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Sessions / Week</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={row.sessionsPerWeek}
-                                onChange={(e) => updateStructureRow(row.id, { sessionsPerWeek: Number(e.target.value) })}
-                                className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                              />
-                            </div>
-                            <div className="flex items-end justify-end">
-                              <button
-                                onClick={() => removeStructureRow(row.id)}
-                                className="px-4 py-2 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all text-sm font-bold"
-                              >
-                                Remove
-                              </button>
-                            </div>
+                          <div className="flex items-end justify-end">
+                            <button
+                              onClick={() => removeStructureRow(row.id)}
+                              className="px-4 py-2 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all text-sm font-bold"
+                            >
+                              Remove
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    onClick={handleSaveStructure}
-                    disabled={savingStructure || loadingClasses || loadingTeachers}
-                    className="w-full sm:w-auto px-5 py-3 bg-white text-purple-600 border border-purple-300 rounded-2xl font-bold hover:bg-purple-100 transition-all disabled:opacity-60"
-                  >
-                    {savingStructure ? 'Saving...' : 'Save Structure'}
-                  </button>
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  onClick={handleSaveStructure}
+                  disabled={savingStructure || loadingClasses || loadingTeachers}
+                  className="w-full sm:w-auto px-5 py-3 bg-white text-purple-600 border border-purple-300 rounded-2xl font-bold hover:bg-purple-100 transition-all disabled:opacity-60"
+                >
+                  {savingStructure ? 'Saving...' : 'Save Structure'}
+                </button>
               </div>
             </div>
           </div>

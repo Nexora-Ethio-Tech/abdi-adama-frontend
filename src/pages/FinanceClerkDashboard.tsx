@@ -116,12 +116,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    if (tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport'].includes(tab)) {
-      setActiveTab(tab as any);
-      setStudentPage(1);
-      setTransportPage(1);
-    }
-  }, [location.search]);
+    const nextTab = tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport'].includes(tab)
+      ? (tab as any)
+      : 'all';
+
+    setActiveTab(nextTab);
+    setStudentPage(1);
+    setTransportPage(1);
+  }, [location.pathname, location.search]);
 
   const fetchData = async () => {
     try {
@@ -171,6 +173,20 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     }
   };
 
+  const getCalculatedPaymentAmount = (types: string[], student: StudentFeeInfo | null) => {
+    if (!student) return 0;
+
+    let total = 0;
+    if (types.includes('Monthly Tuition')) total += Number(student.monthly_fee || 0);
+    if (types.includes('Bus Fee')) total += Number(student.bus_fee || 0);
+    if (types.includes('Penalty Fee')) total += Number(student.penalty_fee || 0);
+    if (types.includes('Registration Fee')) total += 2500;
+    if (types.includes('Exam Fee')) total += 350;
+    if (types.includes('Activity Fee')) total += 500;
+
+    return total;
+  };
+
   const openPaymentModal = (student?: StudentFeeInfo) => {
     if (student) {
       setSelectedStudent(student);
@@ -179,7 +195,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       if (student.penalty_fee > 0) defaultTypes.push('Penalty Fee');
       
       setSelectedPaymentTypes(defaultTypes);
-      const totalDue = (student.monthly_fee || 0) + (student.bus_fee || 0) + (student.penalty_fee || 0);
+      const totalDue = getCalculatedPaymentAmount(defaultTypes, student);
       setPaymentData({
         studentId: student.id,
         amount: totalDue,
@@ -356,26 +372,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setSelectedPaymentTypes(updated);
     
     // Auto-calculate sum based on selected types
-    if (selectedStudent) {
-      let sum = 0;
-      if (updated.includes('Monthly Tuition')) sum += selectedStudent.monthly_fee;
-      if (updated.includes('Bus Fee')) sum += selectedStudent.bus_fee;
-      if (updated.includes('Penalty Fee')) sum += selectedStudent.penalty_fee;
-      if (updated.includes('Registration Fee')) sum += 2500;
-      if (updated.includes('Exam Fee')) sum += 350;
-      if (updated.includes('Activity Fee')) sum += 500;
-      
-      setPaymentData({
-        ...paymentData,
-        type: updated,
-        amount: sum
-      });
-    } else {
-      setPaymentData({
-        ...paymentData,
-        type: updated
-      });
-    }
+    setPaymentData({
+      ...paymentData,
+      type: updated,
+      amount: getCalculatedPaymentAmount(updated, selectedStudent)
+    });
   };
 
   const confirmStaffPayment = (userId: string) => {
@@ -1564,10 +1565,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   min="0"
                   step="0.01"
                   value={paymentData.amount}
-                  onChange={(e) => setPaymentData({ ...paymentData, amount: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="0.00"
+                  readOnly
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold outline-none cursor-not-allowed"
+                  placeholder="Auto-calculated"
                 />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Amount is auto-calculated from the selected fee types and configured student fees.</p>
               </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Payment Date *</label>

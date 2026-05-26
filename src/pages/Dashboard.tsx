@@ -447,7 +447,7 @@ export const Dashboard = () => {
               <div className="mt-4 space-y-2">
                 {selectedBranchStaffRoles.map((role: any) => (
                   <div key={role.role} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">{role.role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
+                    <span className="font-medium">{role.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</span>
                     <span className="font-black">{role.count}</span>
                   </div>
                 ))}
