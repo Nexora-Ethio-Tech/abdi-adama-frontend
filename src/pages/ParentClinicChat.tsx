@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, HeartPulse, User, Clock, ShieldAlert } from 'lucide-react';
+import { Send, HeartPulse, User, ShieldAlert, Check, CheckCheck } from 'lucide-react';
 import { ShootingStars } from '../components/Effects';
 import api from '../services/api';
 import { getParentDashboard } from '../services/parentService';
@@ -16,6 +16,7 @@ interface ChatMessage {
   child_id?: string;
   text: string;
   timestamp?: string;
+  is_read?: boolean;
 }
 
 export const ParentClinicChat = () => {
@@ -61,9 +62,11 @@ export const ParentClinicChat = () => {
           role: m.role || m.sender_role || 'parent',
           child_id: m.child_id || m.student_id || m.childId,
           text: m.text || m.message,
-          timestamp: m.timestamp || m.created_at
+          timestamp: m.timestamp || m.created_at,
+          is_read: m.is_read ?? m.read ?? false
         }));
         setMessages(msgs);
+        await api.patch('/clinic/chat/read', { student_id: selectedChildId });
       } catch (err) {
         console.error('Failed to fetch messages:', err);
       } finally {
@@ -164,7 +167,13 @@ export const ParentClinicChat = () => {
               </div>
               <div className="flex items-center gap-2 justify-end px-1">
                 <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
-                {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
+                {m.role === 'parent' && (
+                  m.is_read ? (
+                    <CheckCheck size={12} className="text-emerald-300" />
+                  ) : (
+                    <Check size={12} className="text-slate-300" />
+                  )
+                )}
               </div>
             </div>
           </div>
@@ -185,7 +194,6 @@ export const ParentClinicChat = () => {
           <button
             type="submit"
             disabled={!newMessage.trim() || !selectedChildId || loading}
-            aria-disabled={!newMessage.trim() || !selectedChildId || loading}
             title={!newMessage.trim() ? 'Enter a message to enable sending' : !selectedChildId ? 'Select a child first' : 'Send message to clinic admin'}
             className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all group ${(!newMessage.trim() || !selectedChildId || loading) ? 'bg-rose-300 text-white cursor-not-allowed shadow-none' : 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-200'}`}
           >

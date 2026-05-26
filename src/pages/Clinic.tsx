@@ -8,7 +8,9 @@ import {
   HeartPulse,
   MessageSquare,
   Send,
-  Bell
+  Bell,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 
 interface Medicine {
@@ -200,17 +202,14 @@ export const Clinic = () => {
       if (res.ok) {
         const resJson = await res.json();
         setMessages(resJson.data || []);
-        // Mark unread messages read for this conversation if we can determine sender
-        const parentSender = (resJson.data || []).find((m: any) => m.role === 'parent')?.sender_id;
-        if (parentSender) {
-          await fetch(`${API_URL}/api/clinic/chat/read`, {
-            method: 'PATCH',
-            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sender_id: parentSender })
-          });
-          // refresh inbox unread counts
-          fetchInbox();
-        }
+        // Mark unread messages as read for this conversation (WhatsApp-like behavior)
+        await fetch(`${API_URL}/api/clinic/chat/read`, {
+          method: 'PATCH',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: childId })
+        });
+        // Refresh inbox to remove unread badge
+        fetchInbox();
       }
     } catch (err) {
       console.warn('Failed to fetch conversation', err);
@@ -421,7 +420,16 @@ export const Clinic = () => {
                       {messages.map((m: any) => (
                         <div key={m.id} className={`max-w-[70%] p-3 rounded-2xl ${m.role === 'clinic' ? 'ml-auto bg-rose-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}`}>
                           <div className="text-sm">{m.text || m.message || m.text}</div>
-                          <div className="text-[10px] text-slate-400 mt-1">{m.timestamp || m.created_at || ''}</div>
+                          <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 justify-end">
+                            <span>{m.timestamp || m.created_at || ''}</span>
+                            {m.role === 'clinic' && (
+                              m.is_read ? (
+                                <CheckCheck size={14} className="text-emerald-200" />
+                              ) : (
+                                <Check size={14} className="text-slate-200" />
+                              )
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

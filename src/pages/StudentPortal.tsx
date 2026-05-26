@@ -4,10 +4,13 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { mockExams } from '../data/examData';
 import { mockTeachers } from '../data/mockData';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getStudentDashboard, StudentDashboard } from '../services/studentPortalService';
+import { useStore } from '../context/useStore';
+import { Megaphone, Bell } from 'lucide-react';
 
 export const StudentPortal = () => {
+  const { notices, setNotices } = useStore();
   const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -25,12 +28,33 @@ export const StudentPortal = () => {
       setError('');
       const data = await getStudentDashboard();
       setDashboard(data);
+
+      // Map fetched announcements to SchoolNotice structure and sync to store
+      const mappedNotices = ((data as any).announcements || []).map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        priority: a.priority || 'Normal',
+        time: a.timestamp || a.time || new Date().toISOString(),
+        category: a.category || 'Academic',
+        driverName: a.driverName,
+        audience: a.audience || ['student']
+      }));
+      setNotices(mappedNotices);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const schoolAnnouncements = useMemo(() => {
+    return notices.filter(a => a.category === 'Academic' || a.category === 'School');
+  }, [notices]);
+
+  const driverNotifications = useMemo(() => {
+    return notices.filter(a => a.category === 'Logistics');
+  }, [notices]);
 
   const isWeekend = () => {
     // For demonstration, we assume today is a weekend
@@ -213,6 +237,89 @@ export const StudentPortal = () => {
                 Fri, Apr 18
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Announcements & Notifications Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* School Announcements */}
+        <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
+              <Megaphone size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">School Announcements</h3>
+              <p className="text-xs text-slate-500">Official updates from the administration</p>
+            </div>
+          </div>
+
+          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            {schoolAnnouncements.length > 0 ? (
+              schoolAnnouncements.map((notice) => (
+                <div key={notice.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                      notice.priority === 'High' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'
+                    }`}>
+                      {notice.priority}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      {new Date(notice.time).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 mb-1">{notice.title}</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed">{notice.content}</p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                No announcements at this time.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bus / Logistics Notifications */}
+        <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="bg-indigo-100 p-2.5 rounded-lg text-indigo-600">
+              <Bell size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-800">Logistics & Driver Logs</h3>
+              <p className="text-xs text-slate-500">Real-time school bus and transit logs</p>
+            </div>
+          </div>
+
+          <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
+            {driverNotifications.length > 0 ? (
+              driverNotifications.map((notice) => (
+                <div key={notice.id} className="p-4 rounded-xl bg-indigo-50/30 border border-indigo-100/40 hover:border-indigo-100 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                      Logistics
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      {new Date(notice.time).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 mb-1">{notice.title}</h4>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-3">{notice.content}</p>
+                  {notice.driverName && (
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-wider pt-2 border-t border-indigo-100/30">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                      Driver: {notice.driverName}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-xs font-medium">
+                No active bus route notifications.
+              </div>
+            )}
           </div>
         </div>
       </div>

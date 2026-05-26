@@ -6,6 +6,7 @@ import {
   HeartPulse,
   Star,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
   TrendingUp,
   Search,
@@ -28,6 +29,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { commFields, ratingLabels } from '../data/mockData';
 import api from '../services/api';
+import { useStore } from '../context/useStore';
 import {
   getParentDashboard,
   getChildCommunicationLogs,
@@ -45,6 +47,7 @@ import {
   CommunicationLog,
   Teacher,
   AttendanceRecord,
+  AttendanceStatistics,
   AcademicHistoryEntry,
   ClinicVisit,
   HealthProfile,
@@ -56,10 +59,10 @@ export const ParentPortal = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activePortalTab = searchParams.get('tab') || 'dashboard';
+  const { notices, setNotices } = useStore();
 
   // Core State
   const [children, setChildren] = useState<ParentChild[]>([]);
-  const [announcements, setAnnouncements] = useState<ParentAnnouncement[]>([]);
   const [selectedChild, setSelectedChild] = useState<ParentChild | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -104,6 +107,10 @@ export const ParentPortal = () => {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<any>(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceExpanded, setAttendanceExpanded] = useState(false);
+
+  // NEW: Clinic Support Sub-Tab
+  const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('chat');
 
   // NEW: Academic History State
   const [academicHistory, setAcademicHistory] = useState<AcademicHistoryEntry[]>([]);
@@ -206,7 +213,20 @@ export const ParentPortal = () => {
         const kids = d.children || [];
         setChildren(kids);
         setClinicChildren(kids);
-        setAnnouncements(d.announcements || []);
+        
+        // Map fetched announcements to SchoolNotice structure and sync to store
+        const mappedNotices = (d.announcements || []).map((a: any) => ({
+          id: a.id,
+          title: a.title,
+          content: a.content,
+          priority: a.priority || 'Normal',
+          time: a.timestamp || a.time || new Date().toISOString(),
+          category: a.category || 'School',
+          driverName: a.driverName,
+          audience: a.audience || ['parent']
+        }));
+        setNotices(mappedNotices);
+
         if (kids.length > 0) {
           setSelectedChild(kids[0]);
           setSelectedClinicChildId(kids[0].id);
@@ -214,7 +234,7 @@ export const ParentPortal = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [setNotices]);
 
   // Fetch all clinic messages for previews on Dashboard
   useEffect(() => {
@@ -324,6 +344,13 @@ export const ParentPortal = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
+
+  // Ensure clinic tab has an active child selected
+  useEffect(() => {
+    if (activePortalTab === 'clinic' && !selectedClinicChildId && selectedChild) {
+      setSelectedClinicChildId(selectedChild.id);
+    }
+  }, [activePortalTab, selectedClinicChildId, selectedChild]);
 
   // NEW: Fetch child's teachers when selected child changes
   useEffect(() => {
@@ -454,12 +481,16 @@ export const ParentPortal = () => {
 
   // Filter school announcements, driver notices, etc.
   const schoolAnnouncements = useMemo(() => {
-    return announcements.filter(a => a.category === 'School');
-  }, [announcements]);
+    return notices.filter(a => a.category === 'School');
+  }, [notices]);
 
   const driverNotifications = useMemo(() => {
-    return announcements.filter(a => a.category === 'Logistics');
-  }, [announcements]);
+    return notices.filter(a => a.category === 'Logistics');
+  }, [notices]);
+
+  const hasAnnouncements = schoolAnnouncements.length > 0;
+  const hasDriverNotifications = driverNotifications.length > 0;
+  const showNotices = hasAnnouncements || hasDriverNotifications;
 
   const clinicPreviews = useMemo(() => {
     const latest: { [key: string]: any } = {};
@@ -495,47 +526,9 @@ export const ParentPortal = () => {
               Your central hub for tracking educational milestones, health updates, and school announcements.
             </p>
           </div>
-          <div className="bg-[#162744]/60 backdrop-blur-lg border border-white/10 p-5 rounded-3xl flex items-center gap-4 min-w-[240px]">
-            <div className="w-14 h-14 bg-blue-600 rounded-2xl flex items-center justify-center text-white">
-              <User size={24} />
-            </div>
-            <div>
-              <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Family ID: {familyIdText}</p>
-              <div className="flex items-center gap-1.5 mt-1">
-                <div className="w-2 h-2 bg-[#10b981] rounded-full animate-pulse" />
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">VERIFIED ACCOUNT</p>
-              </div>
-            </div>
-          </div>
         </div>
         {/* Subtle decorative blurred circle */}
         <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-[120px] -mr-48 -mt-48" />
-      </div>
-
-      {/* Top Navigation Tabs Bar */}
-      <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'grades', label: 'Grades', icon: BookOpen },
-          { id: 'teachers', label: 'Teachers', icon: Users },
-          { id: 'attendance', label: 'Attendance', icon: Calendar },
-          { id: 'clinic-visits', label: 'Clinic', icon: HeartPulse },
-          { id: 'clinic', label: 'Clinic Chat', icon: MessageSquare },
-          { id: 'finance', label: 'Finance', icon: DollarSign }
-        ].map(tabItem => (
-          <button
-            key={tabItem.id}
-            onClick={() => handleTabChange(tabItem.id)}
-            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-shrink-0 justify-center whitespace-nowrap ${
-              activePortalTab === tabItem.id
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-white/5'
-            }`}
-          >
-            <tabItem.icon size={14} />
-            <span className="hidden sm:inline">{tabItem.label}</span>
-          </button>
-        ))}
       </div>
 
       {/* ==================== 1. DASHBOARD TAB ==================== */}
@@ -597,54 +590,105 @@ export const ParentPortal = () => {
             </div>
           </div>
 
-          {/* Announcements & Notices Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* School Announcements */}
-            <div className="lg:col-span-8 space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                <Megaphone className="text-blue-600 dark:text-blue-400" size={22} />
-                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Announcements from School Admin</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAttendanceExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between gap-4 px-6 py-5 bg-slate-50 dark:bg-slate-800/70 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+            >
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Attendance Summary</p>
+                <h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{selectedChild?.fullName || 'Your child'} Attendance</h3>
               </div>
-
-              <div className="space-y-6">
-                {schoolAnnouncements.length > 0 ? (
-                  schoolAnnouncements.map((notice) => (
-                    <div key={notice.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                      <div className="flex items-center justify-between mb-4">
-                        <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                          notice.priority === 'High' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'
-                        }`}>
-                          {notice.priority}
-                        </span>
-                        <span className="text-xs text-slate-400 font-bold">{new Date(notice.timestamp).toLocaleDateString()}</span>
-                      </div>
-                      <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{notice.content}</p>
+              <ChevronDown className={`transition-transform ${attendanceExpanded ? 'rotate-180' : ''}`} size={20} />
+            </button>
+            <div className="px-6 pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-5">
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Total Days</p>
+                  <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{attendanceStats?.total_days ?? 0}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Present</p>
+                  <p className="mt-3 text-3xl font-black text-emerald-600">{attendanceStats?.present_days ?? 0}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Absent</p>
+                  <p className="mt-3 text-3xl font-black text-rose-600">{attendanceStats?.absent_days ?? 0}</p>
+                </div>
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Rate</p>
+                  <p className="mt-3 text-3xl font-black text-blue-600">{(attendanceStats?.attendance_percentage ?? 0).toFixed(1)}%</p>
+                </div>
+              </div>
+              {attendanceExpanded && (
+                <div className="space-y-4 mt-3">
+                  {attendanceLoading ? (
+                    <div className="flex justify-center py-10">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
                     </div>
-                  ))
-                ) : (
-                  <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-100 dark:border-slate-800 text-center text-slate-500 text-sm">
-                    No admin announcements available.
+                  ) : attendanceRecords.length > 0 ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {attendanceRecords.slice(0, 6).map((record) => (
+                        <div key={record.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
+                          <p className="text-xs uppercase tracking-widest font-black text-slate-400 dark:text-slate-500">{new Date(record.date).toLocaleDateString()}</p>
+                          <p className="mt-3 text-lg font-black text-slate-900 dark:text-white">{record.status}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Recorded by {record.recorded_by_name || record.recorded_by}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-6 text-center text-slate-500 dark:text-slate-400">
+                      No attendance records available yet.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Announcements & Notices Section */}
+          {showNotices ? (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-8 space-y-6">
+                {hasAnnouncements && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 px-2">
+                      <Megaphone className="text-blue-600 dark:text-blue-400" size={22} />
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Announcements from School Admin</h3>
+                    </div>
+
+                    {schoolAnnouncements.map((notice) => (
+                      <div key={notice.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                            notice.priority === 'High' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'
+                          }`}>
+                            {notice.priority}
+                          </span>
+                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.time).toLocaleDateString()}</span>
+                        </div>
+                        <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{notice.content}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </div>
 
-              {/* Logistics/Driver notifications */}
-              <div className="pt-4 space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                  <Bell className="text-indigo-600 dark:text-indigo-400" size={22} />
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Notifications & Driver Logs</h3>
-                </div>
+                {hasDriverNotifications && (
+                  <div className="space-y-6 pt-4">
+                    <div className="flex items-center gap-3 px-2">
+                      <Bell className="text-indigo-600 dark:text-indigo-400" size={22} />
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Notifications & Driver Logs</h3>
+                    </div>
 
-                <div className="space-y-6">
-                  {driverNotifications.length > 0 ? (
-                    driverNotifications.map((notice) => (
+                    {driverNotifications.map((notice) => (
                       <div key={notice.id} className="bg-slate-50 dark:bg-slate-800/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <div className="flex items-center justify-between mb-4">
                           <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-wider">
                             Logistics
                           </span>
-                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.timestamp).toLocaleDateString()}</span>
+                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.time).toLocaleDateString()}</span>
                         </div>
                         <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">{notice.content}</p>
@@ -655,18 +699,73 @@ export const ParentPortal = () => {
                           </div>
                         )}
                       </div>
-                    ))
-                  ) : (
-                    <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl border border-slate-100 dark:border-slate-800 text-center text-slate-500 text-sm">
-                      No notifications or bus driver logs found.
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-4 space-y-6">
+                <div className="flex items-center gap-3 px-2">
+                  <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 space-y-6 shadow-sm">
+                  <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
+                      <HeartPulse size={20} />
                     </div>
-                  )}
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Clinic Administrator</h4>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Health & Medical Reviews</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {clinicPreviews.length > 0 ? (
+                      clinicPreviews.map((m, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => {
+                            setSelectedClinicChildId(m.child_id);
+                            setClinicSupportTab('chat');
+                            handleTabChange('clinic');
+                          }}
+                          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
+                              {m.student_name}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400">{m.timestamp}</span>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate group-hover:text-slate-800 dark:group-hover:text-white">
+                            {m.role === 'clinic' ? 'Admin: ' : 'You: '}{m.text}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase">
+                        No recent clinic messages.
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setClinicSupportTab('chat');
+                      handleTabChange('clinic');
+                    }}
+                    className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
+                  >
+                    <HeartPulse size={16} />
+                    Open Clinic Support
+                  </button>
                 </div>
               </div>
             </div>
-
-            {/* Clinic Support previews */}
-            <div className="lg:col-span-4 space-y-6">
+          ) : (
+            <div className="space-y-6">
               <div className="flex items-center gap-3 px-2">
                 <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
                 <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
@@ -690,6 +789,7 @@ export const ParentPortal = () => {
                         key={idx}
                         onClick={() => {
                           setSelectedClinicChildId(m.child_id);
+                          setClinicSupportTab('chat');
                           handleTabChange('clinic');
                         }}
                         className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
@@ -713,15 +813,18 @@ export const ParentPortal = () => {
                 </div>
 
                 <button
-                  onClick={() => handleTabChange('clinic')}
+                  onClick={() => {
+                    setClinicSupportTab('chat');
+                    handleTabChange('clinic');
+                  }}
                   className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
                 >
                   <HeartPulse size={16} />
-                  Open Clinic Chat Room
+                  Open Clinic Support
                 </button>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -1536,131 +1639,6 @@ export const ParentPortal = () => {
         </div>
       )}
 
-      {/* ==================== 7. CLINIC VISITS TAB ==================== */}
-      {activePortalTab === 'clinic-visits' && (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Clinic Visits & Health Profile</h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Medical records and health information for your child.</p>
-            </div>
-          </div>
-
-          {/* Child Picker */}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
-            {children.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedChild(c)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                  selectedChild?.id === c.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
-                }`}
-              >
-                {c.fullName}
-              </button>
-            ))}
-          </div>
-
-          {clinicUpdatesLoading ? (
-            <div className="flex justify-center items-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600"></div>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {/* Health Profile Card */}
-              {healthProfile && Object.keys(healthProfile).length > 0 && (
-                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-3">
-                    <HeartPulse className="text-rose-600" size={24} />
-                    Health Profile
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {healthProfile.blood_group && (
-                      <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-800">
-                        <p className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-2">Blood Group</p>
-                        <p className="text-lg font-black text-red-600 dark:text-red-400">{healthProfile.blood_group}</p>
-                      </div>
-                    )}
-                    {healthProfile.dob && (
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800">
-                        <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Date of Birth</p>
-                        <p className="text-lg font-black text-blue-600 dark:text-blue-400">{new Date(healthProfile.dob).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                    {healthProfile.gender && (
-                      <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-800">
-                        <p className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-2">Gender</p>
-                        <p className="text-lg font-black text-purple-600 dark:text-purple-400">{healthProfile.gender}</p>
-                      </div>
-                    )}
-                    {healthProfile.allergies && (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800">
-                        <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Allergies</p>
-                        <p className="text-sm text-amber-600 dark:text-amber-400 font-bold">{healthProfile.allergies}</p>
-                      </div>
-                    )}
-                    {healthProfile.medications && (
-                      <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800">
-                        <p className="text-xs font-black text-green-600 dark:text-green-400 uppercase tracking-widest mb-2">Current Medications</p>
-                        <p className="text-sm text-green-600 dark:text-green-400 font-bold">{healthProfile.medications}</p>
-                      </div>
-                    )}
-                    {healthProfile.chronic_conditions && (
-                      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-                        <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Chronic Conditions</p>
-                        <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold">{healthProfile.chronic_conditions}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Clinic Visits Table */}
-              {clinicVisits.length > 0 ? (
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                  <div className="p-8 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white">Recent Clinic Visits</h3>
-                  </div>
-                  <div className="space-y-4 p-6">
-                    {clinicVisits.map((visit) => (
-                      <div key={visit.id} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all">
-                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
-                          <div>
-                            <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">{visit.reason}</h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{visit.treatment}</p>
-                          </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
-                            visit.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                          }`}>
-                            {visit.status}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
-                          <span>📅 {new Date(visit.date).toLocaleDateString()}</span>
-                          <span>⏰ {visit.time}</span>
-                          <span>👤 {visit.logged_by_name || 'Clinic Admin'}</span>
-                          {visit.parent_notified && <span className="text-emerald-600">✓ Parent Notified</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
-                  <HeartPulse className="text-slate-300 mx-auto mb-4" size={40} />
-                  <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No clinic visits recorded yet.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ==================== 8. FINANCE SUMMARY TAB ==================== */}
       {activePortalTab === 'finance' && (
         <div className="space-y-8 animate-in fade-in duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -1742,114 +1720,227 @@ export const ParentPortal = () => {
         </div>
       )}
 
-      {/* ==================== 9. CLINIC CHAT TAB ==================== */}
+      {/* ==================== 9. CLINIC SUPPORT TAB ==================== */}
       {activePortalTab === 'clinic' && (
         <div className="space-y-8 animate-in fade-in duration-500">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[calc(100vh-16rem)]">
-            {/* Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-6 z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
-                  <HeartPulse size={24} />
+            {/* Header with Tab Toggles */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-rose-100 dark:bg-rose-900/30 rounded-2xl flex items-center justify-center text-rose-600 shadow-inner">
+                    <HeartPulse size={24} />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Support</h2>
+                    <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                      Direct Private Channel
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Room</h2>
-                  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    Direct Private Channel
-                  </p>
-                </div>
-              </div>
 
-              {/* Select Child Section */}
-              <div className="flex flex-col items-start md:items-end">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Select Child</span>
-                <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                  {clinicChildren.length === 0 ? (
-                    <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
-                  ) : (
-                    clinicChildren.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => setSelectedClinicChildId(c.id)}
-                        className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                          selectedClinicChildId === c.id
-                            ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        {c.fullName.split(' ')[0]}
-                      </button>
-                    ))
-                  )}
+                {/* Clinic Support Sub-Tabs */}
+                <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={() => setClinicSupportTab('visits')}
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                      clinicSupportTab === 'visits'
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Clinic Visits
+                  </button>
+                  <button
+                    onClick={() => setClinicSupportTab('chat')}
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                      clinicSupportTab === 'chat'
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Chat
+                  </button>
                 </div>
-              </div>
 
-              {/* Private & Encrypted Column */}
-              <div className="hidden xl:flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                <ShieldCheck size={14} className="text-emerald-500" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Private & Encrypted</span>
+                {/* Select Child Section */}
+                <div className="flex flex-col items-start md:items-end">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Select Child</span>
+                  <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                    {clinicChildren.length === 0 ? (
+                      <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
+                    ) : (
+                      clinicChildren.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedClinicChildId(c.id)}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            selectedClinicChildId === c.id
+                              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
+                              : 'text-slate-500 hover:text-slate-800'
+                          }`}
+                        >
+                          {c.fullName.split(' ')[0]}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Private & Encrypted Column */}
+                <div className="hidden xl:flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
+                  <ShieldCheck size={14} className="text-emerald-500" />
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">Private & Encrypted</span>
+                </div>
               </div>
             </div>
 
-            {/* Messages Body */}
+            {/* Main Clinic Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-[350px]">
-              {chatLoading ? (
-                <div className="flex justify-center items-center h-48">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
-                </div>
-              ) : chatMessages.length === 0 ? (
-                <div className="text-center py-20 text-slate-400 space-y-3">
-                  <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
-                  <p className="text-xs font-bold uppercase tracking-widest">No clinic reports or messages logged yet for this child.</p>
-                  <p className="text-[10px] opacity-75">Send a message below to start a chat with the clinic administration.</p>
-                </div>
-              ) : (
-                chatMessages.map((m) => (
-                  <div key={m.id} className={`flex items-start gap-3 ${m.role === 'parent' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${
-                      m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
-                    }`}>
-                      {m.role === 'parent' ? <User size={14} /> : <HeartPulse size={14} />}
-                    </div>
-                    <div className={`max-w-[75%] space-y-1 ${m.role === 'parent' ? 'text-right' : ''}`}>
-                      <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
-                        m.role === 'parent'
-                          ? 'bg-blue-600 text-white rounded-tr-none'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
-                      }`}>
-                        {m.text}
+              {clinicSupportTab === 'visits' ? (
+                clinicUpdatesLoading ? (
+                  <div className="flex justify-center items-center h-48">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
+                  </div>
+                ) : clinicVisits.length === 0 ? (
+                  <div className="text-center py-20 text-slate-400 space-y-3">
+                    <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
+                    <p className="text-xs font-bold uppercase tracking-widest">No clinic visits recorded yet for this child.</p>
+                    <p className="text-[10px] opacity-75">Clinic visit records and health profile updates will appear here when available.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {healthProfile && Object.keys(healthProfile).length > 0 && (
+                      <div className="bg-slate-50 dark:bg-slate-900/80 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white mb-5">Health Profile</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {healthProfile.blood_group && (
+                            <div className="p-4 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-400 mb-2">Blood Group</p>
+                              <p className="text-lg font-black text-rose-600 dark:text-rose-400">{healthProfile.blood_group}</p>
+                            </div>
+                          )}
+                          {healthProfile.dob && (
+                            <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">Date of Birth</p>
+                              <p className="text-lg font-black text-blue-600 dark:text-blue-400">{new Date(healthProfile.dob).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {healthProfile.gender && (
+                            <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-purple-600 dark:text-purple-400 mb-2">Gender</p>
+                              <p className="text-lg font-black text-purple-600 dark:text-purple-400">{healthProfile.gender}</p>
+                            </div>
+                          )}
+                          {healthProfile.allergies && (
+                            <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">Allergies</p>
+                              <p className="text-sm font-black text-amber-600 dark:text-amber-400">{healthProfile.allergies}</p>
+                            </div>
+                          )}
+                          {healthProfile.medications && (
+                            <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">Medications</p>
+                              <p className="text-sm font-black text-green-600 dark:text-green-400">{healthProfile.medications}</p>
+                            </div>
+                          )}
+                          {healthProfile.chronic_conditions && (
+                            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                              <p className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-2">Chronic Conditions</p>
+                              <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">{healthProfile.chronic_conditions}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 justify-end px-1">
-                        <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
-                        {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
-                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      {clinicVisits.map((visit) => (
+                        <div key={visit.id} className="p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+                          <div className="flex flex-col md:flex-row md:justify-between gap-4 mb-4">
+                            <div>
+                              <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1">{visit.reason}</h4>
+                              <p className="text-sm text-slate-600 dark:text-slate-400">{visit.treatment}</p>
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
+                              visit.status === 'completed'
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {visit.status}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span>📅 {new Date(visit.date).toLocaleDateString()}</span>
+                            <span>⏰ {visit.time}</span>
+                            <span>👤 {visit.logged_by_name || 'Clinic Admin'}</span>
+                            {visit.parent_notified && <span className="text-emerald-600">✓ Parent Notified</span>}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))
+                )
+              ) : (
+                chatLoading ? (
+                  <div className="flex justify-center items-center h-48">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-rose-500"></div>
+                  </div>
+                ) : chatMessages.length === 0 ? (
+                  <div className="text-center py-20 text-slate-400 space-y-3">
+                    <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
+                    <p className="text-xs font-bold uppercase tracking-widest">No clinic reports or messages logged yet for this child.</p>
+                    <p className="text-[10px] opacity-75">Send a message below to start a chat with the clinic administration.</p>
+                  </div>
+                ) : (
+                  chatMessages.map((m) => (
+                    <div key={m.id} className={`flex items-start gap-3 ${m.role === 'parent' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${
+                        m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
+                      }`}>
+                        {m.role === 'parent' ? <User size={14} /> : <HeartPulse size={14} />}
+                      </div>
+                      <div className={`max-w-[75%] space-y-1 ${m.role === 'parent' ? 'text-right' : ''}`}>
+                        <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
+                          m.role === 'parent'
+                            ? 'bg-blue-600 text-white rounded-tr-none'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
+                        }`}>
+                          {m.text}
+                        </div>
+                        <div className="flex items-center gap-2 justify-end px-1">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
+                          {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )
               )}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Form Input */}
-            <div className="p-6 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
-              <form onSubmit={handleSendChatMessage} className="flex gap-4">
-                <input
-                  type="text"
-                  value={newChatMessage}
-                  onChange={(e) => setNewChatMessage(e.target.value)}
-                  placeholder="Type a health request or update for the clinic admin..."
-                  className="flex-1 px-6 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-medium outline-none focus:border-rose-500 transition-all shadow-sm"
-                />
-                <button
-                  type="submit"
-                  className="bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-200 dark:shadow-none group shrink-0"
-                >
-                  <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                  <span className="hidden sm:inline">Send Message</span>
-                </button>
-              </form>
-            </div>
+            {clinicSupportTab === 'chat' && (
+              <div className="p-6 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
+                <form onSubmit={handleSendChatMessage} className="flex gap-4">
+                  <input
+                    type="text"
+                    value={newChatMessage}
+                    onChange={(e) => setNewChatMessage(e.target.value)}
+                    placeholder="Type a health request or update for the clinic admin..."
+                    className="flex-1 px-6 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-medium outline-none focus:border-rose-500 transition-all shadow-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-200 dark:shadow-none group shrink-0"
+                  >
+                    <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <span className="hidden sm:inline">Send Message</span>
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         </div>
       )}

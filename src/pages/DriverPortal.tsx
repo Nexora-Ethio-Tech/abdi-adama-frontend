@@ -1,11 +1,10 @@
 
-import { Megaphone, Plus, X, Bus, Users, RefreshCw, Trash2, Send, AlertCircle } from 'lucide-react';
+import { Megaphone, Plus, X, Bus, Users, RefreshCw, Trash2, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../context/useStore';
 import api from '../services/api';
-import { useSSE } from '../hooks/useSSE';
 
 interface ManifestItem {
   student_name: string;
@@ -14,30 +13,19 @@ interface ManifestItem {
   route_name: string;
 }
 
-interface DriverAlert {
-  id: string;
-  driver_name: string;
-  message: string;
-  created_at: string;
-  target_route?: string;
-}
-
 export const DriverPortal = () => {
   const { t } = useTranslation();
   const { user } = useUser();
-  const { notices, addNotice, deleteNotice } = useStore();
-  useSSE(); // Connect to SSE for real-time deletion updates
+  const { notices, setNotices, deleteNotice } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'manifest' | 'announcements' | 'alerts'>('manifest');
+  const [activeTab, setActiveTab] = useState<'manifest' | 'announcements'>('manifest');
   const [manifest, setManifest] = useState<ManifestItem[]>([]);
-  const [alerts, setAlerts] = useState<DriverAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [stations, setStations] = useState('');
-  const [alertMessage, setAlertMessage] = useState('');
-  const [posting, setPosting] = useState(false);
+  const [postingNotice, setPostingNotice] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -55,14 +43,19 @@ export const DriverPortal = () => {
     }
   };
 
-  const fetchAlerts = async () => {
+  const fetchNotices = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/driver/alerts');
-      setAlerts(res.data?.data?.alerts || []);
+      const res = await api.get('/driver/notices');
+      const fetched = res.data?.data || [];
+      setNotices(fetched.map((notice: any) => ({
+        ...notice,
+        content: notice.content || notice.message,
+        time: notice.time || notice.timestamp || new Date().toISOString(),
+      })));
     } catch (err) {
-      console.error('Failed to fetch alerts:', err);
-      setError('Failed to load alerts');
+      console.error('Failed to fetch notices:', err);
+      setError('Failed to load announcements');
     } finally {
       setLoading(false);
     }
@@ -71,38 +64,10 @@ export const DriverPortal = () => {
   useEffect(() => {
     if (activeTab === 'manifest') {
       fetchManifest();
-    } else if (activeTab === 'alerts') {
-      fetchAlerts();
+    } else if (activeTab === 'announcements') {
+      fetchNotices();
     }
   }, [activeTab]);
-
-  const handlePostAlert = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!alertMessage.trim()) {
-      setError('Alert message cannot be empty');
-      return;
-    }
-
-    setPosting(true);
-    try {
-      const res = await api.post('/driver/alert', {
-        message: alertMessage,
-        target_route: null,
-      });
-
-      if (res.status === 201) {
-        setAlerts([res.data?.data || { message: alertMessage }, ...alerts]);
-        setAlertMessage('');
-        setSuccess('Alert posted successfully! Students and parents have been notified.');
-        setTimeout(() => setSuccess(null), 3000);
-      }
-    } catch (err: any) {
-      console.error('Failed to post alert:', err);
-      setError(err.response?.data?.error?.message || 'Failed to post alert');
-    } finally {
-      setPosting(false);
-    }
-  };
 
   const handleDeleteNotice = async (noticeId: string) => {
     if (!window.confirm('Are you sure you want to delete this notice? It will be removed from all users.')) {
@@ -126,47 +91,40 @@ export const DriverPortal = () => {
     }
   };
 
-  const handleDeleteAlert = async (alertId: string) => {
-    if (!window.confirm('Delete this alert? It will be removed from all dashboards immediately.')) {
-      return;
-    }
-
-    setDeletingId(alertId);
-    try {
-      const res = await api.delete(`/driver/alert/${alertId}`);
-
-      if (res.status === 200) {
-        setAlerts(alerts.filter(a => a.id !== alertId));
-        setSuccess('Alert deleted successfully');
-        setTimeout(() => setSuccess(null), 3000);
-      }
-    } catch (err) {
-      console.error('Failed to delete alert:', err);
-      setError('Failed to delete alert');
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   const driverNotices = notices.filter(n => n.category === 'Logistics');
 
-  const handlePost = (e: React.FormEvent) => {
+  const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    addNotice({
-      title,
-      content,
-      stations,
-      driverName: user?.name || t('driverPortal.defaultName'),
-      category: 'Logistics',
-      priority: 'Normal',
-      audience: ['super-admin', 'school-admin', 'vice-principal', 'parent', 'student']
-    });
-    setTitle('');
-    setContent('');
-    setStations('');
-    setShowForm(false);
-    setSuccess('Notice posted successfully');
-    setTimeout(() => setSuccess(null), 3000);
+    setPostingNotice(true);
+    setError(null);
+
+    try {
+      const res = await api.post('/driver/notice', {
+        title,
+        content,
+        stations,
+      });
+
+      const notice = res.data?.data;
+      const normalizedNotice = {
+        ...notice,
+        content: notice.content || notice.message,
+        time: notice.time || notice.timestamp || new Date().toISOString(),
+      };
+
+      setNotices([normalizedNotice, ...notices]);
+      setTitle('');
+      setContent('');
+      setStations('');
+      setShowForm(false);
+      setSuccess('Announcement posted successfully');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to post announcement:', err);
+      setError(err.response?.data?.error?.message || err.message || 'Failed to post announcement');
+    } finally {
+      setPostingNotice(false);
+    }
   };
 
   return (
@@ -188,7 +146,7 @@ export const DriverPortal = () => {
             {t('driverPortal.greeting', { name: user?.name || t('driverPortal.defaultName') })}
           </h1>
           <p className="text-white/70 text-sm max-w-md">
-            Manage your route, students, and send live alerts to parents.
+            Manage your route, students, and post logistics announcements.
           </p>
         </div>
       </div>
@@ -233,13 +191,6 @@ export const DriverPortal = () => {
         >
           <Megaphone size={18} />
           Announcements
-        </button>
-        <button
-          onClick={() => setActiveTab('alerts')}
-          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'alerts' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}
-        >
-          <Send size={18} />
-          Live Alerts
         </button>
       </div>
 
@@ -336,87 +287,6 @@ export const DriverPortal = () => {
         </div>
       )}
 
-      {/* Live Alerts Tab */}
-      {activeTab === 'alerts' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Alert Posting Form */}
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-5 shadow-sm">
-            <div className="flex items-start gap-3 mb-3">
-              <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
-              <div>
-                <h3 className="font-black text-blue-900 dark:text-blue-100 text-sm">Send Live Alert to Students & Parents</h3>
-                <p className="text-[10px] text-blue-700 dark:text-blue-300 mt-0.5">
-                  Alerts are delivered instantly to all students on your route, their parents, and school administrators. They auto-expire after 3 days.
-                </p>
-              </div>
-            </div>
-
-            <form onSubmit={handlePostAlert} className="space-y-3">
-              <textarea
-                required
-                placeholder="Alert message (e.g., 'Route delayed due to traffic' or 'Bus maintenance today')"
-                value={alertMessage}
-                onChange={e => setAlertMessage(e.target.value)}
-                disabled={posting}
-                maxLength={500}
-                className="w-full px-4 py-3 bg-white dark:bg-slate-800 border-2 border-blue-200 dark:border-blue-700 rounded-xl text-sm font-semibold resize-none placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                rows={3}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-bold text-slate-500">{alertMessage.length} / 500 characters</span>
-                <button
-                  type="submit"
-                  disabled={posting || !alertMessage.trim()}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm uppercase rounded-xl shadow-lg shadow-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  <Send size={16} />
-                  Send Alert
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Active Alerts List */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Active Alerts (Last 3 Days)</h3>
-              <button onClick={fetchAlerts} className="text-blue-600 hover:rotate-180 transition-transform duration-500">
-                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {alerts.length > 0 ? alerts.map((alert) => (
-                <div key={alert.id} className="bg-white dark:bg-slate-900 rounded-2xl border-l-4 border-l-blue-500 border border-slate-100 dark:border-slate-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-black uppercase rounded-full">Live Alert</span>
-                      <span className="text-[9px] text-slate-400 font-bold">
-                        {new Date(alert.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{alert.message}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Sent by: {alert.driver_name}</p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteAlert(alert.id)}
-                    disabled={deletingId === alert.id}
-                    className="p-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
-                    title="Delete alert immediately"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              )) : (
-                <div className="text-center py-8 text-slate-400">
-                  <p className="font-bold italic">No active alerts. Post one to notify students & parents.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Announcement Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -446,7 +316,9 @@ export const DriverPortal = () => {
                 onChange={e => setStations(e.target.value)}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm"
               />
-              <button type="submit" className="w-full py-4 bg-orange-500 text-white font-black text-sm uppercase rounded-xl shadow-lg shadow-orange-200">Broadcast Announcement</button>
+              <button type="submit" disabled={postingNotice} className="w-full py-4 bg-orange-500 text-white font-black text-sm uppercase rounded-xl shadow-lg shadow-orange-200 disabled:opacity-50">
+                {postingNotice ? 'Posting...' : 'Broadcast Announcement'}
+              </button>
             </form>
           </div>
         </div>

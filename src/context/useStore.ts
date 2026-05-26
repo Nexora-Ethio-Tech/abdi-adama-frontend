@@ -31,7 +31,7 @@ export interface SchoolNotice {
   priority: 'Normal' | 'Medium' | 'High';
   time: string;
   expiresAt?: string;
-  category: 'Academic' | 'Logistics' | 'Finance';
+  category: 'Academic' | 'Logistics' | 'Finance' | 'School' | 'Clinic';
   audience: string[];
   driverName?: string;
   stations?: string;
@@ -81,6 +81,8 @@ interface AppState {
   // School Notices
   notices: SchoolNotice[];
   addNotice: (notice: Omit<SchoolNotice, 'id' | 'time'>) => void;
+  addNoticeRaw: (notice: SchoolNotice) => void;
+  setNotices: (notices: SchoolNotice[]) => void;
   deleteNotice: (id: string) => void;
 }
 
@@ -229,6 +231,13 @@ export const useStore = create<AppState>()(persist((set, get) => ({
       ...state.notices
     ]
   })),
+  addNoticeRaw: (notice) => set((state) => ({
+    // Only add if not already present (prevents duplicates on reconnect)
+    notices: state.notices.some(n => n.id === notice.id)
+      ? state.notices
+      : [notice, ...state.notices]
+  })),
+  setNotices: (notices) => set({ notices }),
   deleteNotice: (id) => set((state) => ({
     notices: state.notices.filter(n => n.id !== id)
   })),

@@ -30,6 +30,15 @@ export interface StudentDashboard {
     time: string;
     location: string;
   }>;
+  announcements?: Array<{
+    id: string;
+    priority: string;
+    title: string;
+    content: string;
+    timestamp: string;
+    category: string;
+    driverName?: string;
+  }>;
 }
 
 // Course Interface

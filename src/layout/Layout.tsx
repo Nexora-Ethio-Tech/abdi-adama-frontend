@@ -6,6 +6,7 @@ import { Chatbot } from '../components/Chatbot';
 import { ShootingStars } from '../components/Effects';
 import { useUser } from '../context/UserContext';
 import { useState } from 'react';
+import { useSSE } from '../hooks/useSSE';
 
 export const Layout = () => {
   const location = useLocation();
@@ -13,6 +14,10 @@ export const Layout = () => {
 
   const displaySchoolName = schoolName.english;
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Global SSE connection: receives real-time logistics notices, deletions,
+  // and driver alerts for ALL authenticated roles (students, parents, admins).
+  useSSE();
 
   const shouldShowStars = role === 'student' || role === 'parent' || !user;
 

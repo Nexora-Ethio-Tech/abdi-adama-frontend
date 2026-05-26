@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { useStore } from '../context/useStore';
+import { useStore, SchoolNotice } from '../context/useStore';
 
 /**
  * Custom hook to connect to SSE stream and listen for real-time updates
- * - NOTICE_DELETED: Removes a notice from the store
+ * - LOGISTICS_NOTICE:  New notice posted by driver → add to store
+ * - NOTICE_DELETED:    Notice deleted by driver   → remove from store
+ * - DRIVER_ALERT:      Live alert posted          → add as notice to store
  */
 export const useSSE = () => {
-  const { deleteNotice } = useStore();
+  const { addNoticeRaw, deleteNotice } = useStore();
   const sseRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -23,7 +25,32 @@ export const useSSE = () => {
       const sseUrl = `${API_URL}/api/driver/stream?token=${encodeURIComponent(token)}`;
       const eventSource = new EventSource(sseUrl);
 
-      // Listen for notice deletion events
+      // ── New logistics notice posted by driver ──────────────────────────
+      eventSource.addEventListener('LOGISTICS_NOTICE', (event: Event) => {
+        const customEvent = event as MessageEvent;
+        try {
+          const payload = JSON.parse(customEvent.data);
+          console.log('🚌 [SSE] New logistics notice received:', payload.id);
+          // Normalize into SchoolNotice shape and add to store
+          const notice: SchoolNotice = {
+            id: payload.id,
+            title: payload.title || 'Logistics Update',
+            content: payload.content || payload.message || '',
+            priority: 'Normal',
+            time: payload.time || payload.published_at || new Date().toISOString(),
+            category: 'Logistics',
+            audience: ['student', 'parent', 'school-admin', 'vice-principal'],
+            driverName: payload.driverName,
+            stations: payload.stations,
+          };
+          // Use addNoticeRaw to preserve real database ID
+          addNoticeRaw(notice);
+        } catch (err) {
+          console.error('Failed to parse SSE logistics notice event:', err);
+        }
+      });
+
+      // ── Notice deleted by driver or admin ──────────────────────────────
       eventSource.addEventListener('NOTICE_DELETED', (event: Event) => {
         const customEvent = event as MessageEvent;
         try {
@@ -35,7 +62,29 @@ export const useSSE = () => {
         }
       });
 
-      // Listen for connection success
+      // ── Live driver alert (driver_notifications table) ─────────────────
+      eventSource.addEventListener('DRIVER_ALERT', (event: Event) => {
+        const customEvent = event as MessageEvent;
+        try {
+          const payload = JSON.parse(customEvent.data);
+          console.log('🔔 [SSE] Driver alert received:', payload.id);
+          const notice: SchoolNotice = {
+            id: payload.id,
+            title: `Alert from ${payload.driver_name || 'Driver'}`,
+            content: payload.message || '',
+            priority: 'High',
+            time: payload.created_at || new Date().toISOString(),
+            category: 'Logistics',
+            audience: ['student', 'parent', 'school-admin'],
+            driverName: payload.driver_name,
+          };
+          addNoticeRaw(notice);
+        } catch (err) {
+          console.error('Failed to parse SSE driver alert event:', err);
+        }
+      });
+
+      // ── Connection heartbeat ───────────────────────────────────────────
       eventSource.addEventListener('connected', (event: Event) => {
         const customEvent = event as MessageEvent;
         try {
@@ -65,7 +114,7 @@ export const useSSE = () => {
         sseRef.current = null;
       }
     };
-  }, [deleteNotice]);
+  }, [addNoticeRaw, deleteNotice]);
 
   return { sseConnected: !!sseRef.current };
 };

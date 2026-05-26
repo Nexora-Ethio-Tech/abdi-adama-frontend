@@ -385,7 +385,6 @@ export const Library = () => {
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Student / Book</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Dates</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Fine</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase text-right">Actions</th>
                 </tr>
               </thead>
@@ -394,32 +393,25 @@ export const Library = () => {
                   <tr key={loan.id} className={!loan.returned_at && new Date(loan.due_date) < new Date() ? 'bg-rose-50/30' : ''}>
                     <td className="px-6 py-4">
                       <p className="text-sm font-bold dark:text-slate-100">{loan.borrower_name}</p>
-                      <p className="text-[10px] uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500 font-bold mb-1">{loan.borrower_type === 'teacher' ? 'Teacher' : 'Student'}</p>
-                      <p className="text-xs text-slate-500">{loan.book_title}</p>
+                      <p className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500 font-bold mb-1">{loan.borrower_type === 'teacher' ? 'Teacher' : 'Student'}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{loan.book_title}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-[10px] text-slate-500 uppercase font-bold">Due: {new Date(loan.due_date).toLocaleDateString()}</p>
-                      {loan.returned_at && <p className="text-[10px] text-emerald-600 uppercase font-bold mt-1">Returned: {new Date(loan.returned_at).toLocaleDateString()}</p>}
+                      <p className="text-sm text-slate-500 uppercase font-bold">Due: {new Date(loan.due_date).toLocaleDateString()}</p>
+                      {loan.returned_at && <p className="text-sm text-emerald-600 uppercase font-bold mt-1">Returned: {new Date(loan.returned_at).toLocaleDateString()}</p>}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${loan.returned_at ? 'bg-emerald-100 text-emerald-700' :
+                      <span className={`px-2.5 py-1.5 rounded-full text-xs font-bold uppercase ${loan.returned_at ? 'bg-emerald-100 text-emerald-700' :
                           new Date(loan.due_date) < new Date() ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
                         }`}>
                         {loan.returned_at ? 'Returned' : new Date(loan.due_date) < new Date() ? 'Overdue' : 'Borrowed'}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      {loan.fine_amount > 0 ? (
-                        <span className="text-xs font-bold text-rose-600">{loan.fine_amount} ETB</span>
-                      ) : (
-                        <span className="text-xs text-slate-400">-</span>
-                      )}
-                    </td>
                     <td className="px-6 py-4 text-right">
                       {!loan.returned_at && (
                         <button
                           onClick={() => handleReturnBook(loan.id)}
-                          className="bg-emerald-600 text-white px-3 py-1 rounded text-[10px] font-bold hover:bg-emerald-700"
+                          className="bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-emerald-700 transition-colors"
                         >
                           Mark Return
                         </button>
