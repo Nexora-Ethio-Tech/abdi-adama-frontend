@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher } from '../services/schoolAdminService';
+import { StaffProfileModal } from '../components/StaffProfileModal';
 import { getVPTeachers } from '../services/vicePrincipalService';
 
 export const Teachers = () => {
@@ -17,9 +18,18 @@ export const Teachers = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phoneNumber: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    educationLevel: '',
+    specialty: '',
+    dob: '',
+    previousSchool: '',
+    experienceYears: '',
     role: 'teacher' as 'teacher' | 'finance-clerk' | 'librarian' | 'clinic-admin' | 'driver'
   });
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
@@ -47,6 +57,8 @@ export const Teachers = () => {
         status: teacher.status,
         userId: teacher.user_id,
         branchId: teacher.branch_id,
+        createdAt: teacher.created_at,
+        staffProfile: teacher.staff_profile,
         // VP-specific fields
         classesAssigned: teacher.classes_assigned || '0',
         plansSubmitted: teacher.plans_submitted || '0',
@@ -155,7 +167,18 @@ export const Teachers = () => {
       const response = await registerUser({
         name: formData.name,
         email: formData.email,
-        role: formData.role
+        role: formData.role,
+        staffProfile: {
+          phoneNumber: formData.phoneNumber,
+          emergencyContactName: formData.emergencyContactName,
+          emergencyContactPhone: formData.emergencyContactPhone,
+          educationLevel: formData.educationLevel,
+          specialty: formData.specialty,
+          dob: formData.dob,
+          previousSchool: formData.previousSchool,
+          experienceYears: formData.experienceYears,
+          registeredAt: new Date().toISOString()
+        }
       });
       
       // Transform to match expected structure
@@ -170,7 +193,7 @@ export const Teachers = () => {
       };
       
       setShowAddModal(false);
-      setFormData({ name: '', email: '', role: 'teacher' });
+      setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '', role: 'teacher' });
       setSuccessModal({ show: true, data: transformedData });
       fetchTeachers();
     } catch (err: any) {
@@ -250,12 +273,12 @@ export const Teachers = () => {
               teachers.map((teacher) => (
                 <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => setSelectedStaff(teacher)} className="flex items-center gap-3 text-left">
                       <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-xl flex items-center justify-center font-bold">
                         {teacher.name?.split(' ').map((n: string) => n[0]).join('') || 'T'}
                       </div>
                       <span className="font-bold text-slate-800 dark:text-white">{teacher.name}</span>
-                    </div>
+                        </button>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
                   <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
@@ -377,6 +400,92 @@ export const Teachers = () => {
                 </select>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={formData.phoneNumber}
+                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 09..."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
+                  <input
+                    type="text"
+                    value={formData.emergencyContactName}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Contact person"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Phone</label>
+                  <input
+                    type="tel"
+                    value={formData.emergencyContactPhone}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Contact phone"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
+                  <select
+                    value={formData.educationLevel}
+                    onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select level</option>
+                    <option value="Diploma">Diploma</option>
+                    <option value="Degree">Degree</option>
+                    <option value="Master">Master</option>
+                    <option value="PhD">PhD</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Specialty / Course</label>
+                  <input
+                    type="text"
+                    value={formData.specialty}
+                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Math, English, Biology..."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={formData.dob}
+                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Previous School</label>
+                  <input
+                    type="text"
+                    value={formData.previousSchool}
+                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Experience (Years)</label>
+                  <input
+                    type="text"
+                    value={formData.experienceYears}
+                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g. 5"
+                  />
+                </div>
+              </div>
+
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                 <p className="text-xs text-blue-700 dark:text-blue-300">
                   <strong>Note:</strong> A 4-digit PIN will be auto-generated. Teacher will need School Admin approval to login.
@@ -409,6 +518,13 @@ export const Teachers = () => {
           </div>
         </div>
       )}
+
+      <StaffProfileModal
+        open={!!selectedStaff}
+        title="Teacher Staff Details"
+        staff={selectedStaff}
+        onClose={() => setSelectedStaff(null)}
+      />
 
       {/* Success Modal */}
       {successModal.show && (

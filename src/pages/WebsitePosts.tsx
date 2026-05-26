@@ -1,5 +1,5 @@
 import { useStore } from '../context/useStore';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Megaphone, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -7,6 +7,8 @@ export const WebsitePosts = () => {
   const { t } = useTranslation();
   const { publicPosts, addPublicPost, deletePublicPost } = useStore();
   const [showPostModal, setShowPostModal] = useState(false);
+  const [selectedType, setSelectedType] = useState<'image' | 'video'>('image');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
     <div className="space-y-8">
@@ -79,26 +81,69 @@ export const WebsitePosts = () => {
                 <X size={20} />
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.currentTarget);
-              addPublicPost({
-                type: formData.get('type') as 'image' | 'video',
-                mediaUrl: formData.get('mediaUrl') as string,
-                description: formData.get('description') as string,
-              });
-              setShowPostModal(false);
-            }}>
+            <form
+              className="p-6 space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const form = e.currentTarget as HTMLFormElement;
+                const formData = new FormData(form);
+                const type = formData.get('type') as 'image' | 'video';
+                let mediaUrl = formData.get('mediaUrl') as string;
+
+                // If image and a local file was selected, read it to a data URL
+                if (type === 'image') {
+                  const fileInput = fileInputRef.current;
+                  const file = fileInput?.files && fileInput.files[0];
+                  if (file) {
+                    mediaUrl = await new Promise<string>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onload = () => resolve(String(reader.result));
+                      reader.onerror = (err) => reject(err);
+                      reader.readAsDataURL(file);
+                    });
+                  }
+                }
+
+                addPublicPost({
+                  type,
+                  mediaUrl,
+                  description: formData.get('description') as string,
+                });
+                setShowPostModal(false);
+                // reset file input
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+            >
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">{t('websitePosts.mediaType')}</label>
-                <select name="type" required className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all">
+                <select
+                  name="type"
+                  required
+                  value={selectedType}
+                  onChange={(ev) => setSelectedType(ev.target.value as 'image' | 'video')}
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                >
                   <option value="image">{t('websitePosts.imageType')}</option>
                   <option value="video">{t('websitePosts.videoType')}</option>
                 </select>
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">{t('websitePosts.mediaUrl')}</label>
-                <input name="mediaUrl" required type="url" placeholder="https://example.com/image.jpg" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                {selectedType === 'image' ? (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      name="mediaFile"
+                      accept="image/*"
+                      type="file"
+                      className="w-full text-sm"
+                    />
+                    <div className="text-xs text-slate-400 mt-1">Or paste an image URL below</div>
+                    <input name="mediaUrl" type="url" placeholder="https://example.com/image.jpg (optional)" className="w-full mt-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                  </>
+                ) : (
+                  <input name="mediaUrl" required type="url" placeholder="https://example.com/video.mp4" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">{t('websitePosts.description')}</label>

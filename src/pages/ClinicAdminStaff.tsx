@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher } from '../services/schoolAdminService';
+import { StaffProfileModal } from '../components/StaffProfileModal';
 
 export const ClinicAdminStaff = () => {
   const navigate = useNavigate();
@@ -15,9 +16,18 @@ export const ClinicAdminStaff = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    email: ''
+    email: '',
+    phoneNumber: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    educationLevel: '',
+    specialty: '',
+    dob: '',
+    previousSchool: '',
+    experienceYears: ''
   });
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
@@ -42,7 +52,9 @@ export const ClinicAdminStaff = () => {
         digitalId: person.digital_id || person.digitalId,
         status: person.status,
         userId: person.user_id || person.id,
-        branchId: person.branch_id
+        branchId: person.branch_id,
+        createdAt: person.created_at,
+        staffProfile: person.staff_profile
       }));
       setClinicStaff(staff);
     } catch (err: any) {
@@ -150,7 +162,18 @@ export const ClinicAdminStaff = () => {
       const result = await registerUser({
         name: formData.name.trim(),
         email: formData.email.trim(),
-        role: 'clinic-admin'
+        role: 'clinic-admin',
+        staffProfile: {
+          phoneNumber: formData.phoneNumber,
+          emergencyContactName: formData.emergencyContactName,
+          emergencyContactPhone: formData.emergencyContactPhone,
+          educationLevel: formData.educationLevel,
+          specialty: formData.specialty,
+          dob: formData.dob,
+          previousSchool: formData.previousSchool,
+          experienceYears: formData.experienceYears,
+          registeredAt: new Date().toISOString()
+        }
       });
 
       const newStaff = {
@@ -170,7 +193,7 @@ export const ClinicAdminStaff = () => {
         }
       });
 
-      setFormData({ name: '', email: '' });
+      setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
       setShowAddModal(false);
       fetchClinicStaff();
     } catch (err: any) {
@@ -256,7 +279,11 @@ export const ClinicAdminStaff = () => {
               <tbody>
                 {clinicStaff.map((staff) => (
                   <tr key={staff.id} className="border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">{staff.name}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">
+                      <button type="button" onClick={() => setSelectedStaff(staff)} className="text-left hover:underline">
+                        {staff.name}
+                      </button>
+                    </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{staff.email}</td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{staff.digitalId}</td>
                     <td className="px-6 py-4">
@@ -338,6 +365,46 @@ export const ClinicAdminStaff = () => {
                   required
                 />
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Phone Number</label>
+                  <input type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Emergency Contact Name</label>
+                  <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Emergency Contact Phone</label>
+                  <input type="tel" value={formData.emergencyContactPhone} onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Education Status</label>
+                  <select value={formData.educationLevel} onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <option value="">Select level</option>
+                    <option value="Diploma">Diploma</option>
+                    <option value="Degree">Degree</option>
+                    <option value="Master">Master</option>
+                    <option value="PhD">PhD</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Specialty / Course</label>
+                  <input type="text" value={formData.specialty} onChange={(e) => setFormData({ ...formData, specialty: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date of Birth</label>
+                  <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Previous School</label>
+                  <input type="text" value={formData.previousSchool} onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Experience (Years)</label>
+                  <input type="text" value={formData.experienceYears} onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                </div>
+              </div>
               <div className="flex gap-2 pt-4">
                 <button
                   type="button"
@@ -358,6 +425,13 @@ export const ClinicAdminStaff = () => {
           </div>
         </div>
       )}
+
+      <StaffProfileModal
+        open={!!selectedStaff}
+        title="Clinic Admin Details"
+        staff={selectedStaff}
+        onClose={() => setSelectedStaff(null)}
+      />
 
       {/* Success Modal */}
       {successModal.show && (

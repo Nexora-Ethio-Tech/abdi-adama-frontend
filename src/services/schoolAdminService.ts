@@ -24,6 +24,7 @@ export interface RegisterUserData {
   role: 'teacher' | 'student' | 'parent' | 'finance-clerk' | 'librarian' | 'clinic-admin' | 'driver';
   grade?: string; // Required for students
   password?: string; // Optional, auto-generated if not provided
+  staffProfile?: Record<string, any>;
 }
 
 export interface RegisterUserResponse {
@@ -36,6 +37,7 @@ export interface RegisterUserResponse {
       role: string;
       branch_id: string;
       status: string;
+      staff_profile?: Record<string, any> | null;
     };
     temporaryPassword: string;
   };

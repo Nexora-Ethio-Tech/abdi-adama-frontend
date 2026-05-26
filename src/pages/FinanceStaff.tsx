@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher } from '../services/schoolAdminService';
+import { StaffProfileModal } from '../components/StaffProfileModal';
 
 export const FinanceStaff = () => {
   const navigate = useNavigate();
@@ -15,9 +16,18 @@ export const FinanceStaff = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
+  const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    email: ''
+    email: '',
+    phoneNumber: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    educationLevel: '',
+    specialty: '',
+    dob: '',
+    previousSchool: '',
+    experienceYears: ''
   });
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
@@ -42,7 +52,9 @@ export const FinanceStaff = () => {
         digitalId: person.digital_id || person.digitalId,
         status: person.status,
         userId: person.user_id || person.id,
-        branchId: person.branch_id
+        branchId: person.branch_id,
+        createdAt: person.created_at,
+        staffProfile: person.staff_profile
       }));
       setFinanceStaff(staff);
     } catch (err: any) {
@@ -152,7 +164,18 @@ export const FinanceStaff = () => {
       const response = await registerUser({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
-        role: 'finance-clerk'
+        role: 'finance-clerk',
+        staffProfile: {
+          phoneNumber: formData.phoneNumber,
+          emergencyContactName: formData.emergencyContactName,
+          emergencyContactPhone: formData.emergencyContactPhone,
+          educationLevel: formData.educationLevel,
+          specialty: formData.specialty,
+          dob: formData.dob,
+          previousSchool: formData.previousSchool,
+          experienceYears: formData.experienceYears,
+          registeredAt: new Date().toISOString()
+        }
       });
       
       const transformedData = {
@@ -166,7 +189,7 @@ export const FinanceStaff = () => {
       };
       
       setShowAddModal(false);
-      setFormData({ name: '', email: '' });
+      setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
       setSuccessModal({ show: true, data: transformedData });
       fetchFinanceStaff();
     } catch (err: any) {
@@ -240,12 +263,12 @@ export const FinanceStaff = () => {
               financeStaff.map((staff) => (
                 <tr key={staff.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setSelectedStaff(staff)} className="flex items-center gap-3 text-left">
                       <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl flex items-center justify-center font-bold">
                         {staff.name?.split(' ').map((n: string) => n[0]).join('') || 'F'}
                       </div>
                       <span className="font-bold text-slate-800 dark:text-white">{staff.name}</span>
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{staff.email}</td>
                   <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{staff.digitalId}</td>
@@ -337,6 +360,47 @@ export const FinanceStaff = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Phone Number</label>
+                  <input type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
+                  <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Phone</label>
+                  <input type="tel" value={formData.emergencyContactPhone} onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
+                  <select value={formData.educationLevel} onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="">Select level</option>
+                    <option value="Diploma">Diploma</option>
+                    <option value="Degree">Degree</option>
+                    <option value="Master">Master</option>
+                    <option value="PhD">PhD</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Specialty / Course</label>
+                  <input type="text" value={formData.specialty} onChange={(e) => setFormData({ ...formData, specialty: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
+                  <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Previous School</label>
+                  <input type="text" value={formData.previousSchool} onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Experience (Years)</label>
+                  <input type="text" value={formData.experienceYears} onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+
               <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
                 <p className="text-xs text-emerald-700 dark:text-emerald-300">
                   <strong>Note:</strong> A 4-digit PIN will be auto-generated. Finance Clerk will need School Admin approval to login.
@@ -369,6 +433,13 @@ export const FinanceStaff = () => {
           </div>
         </div>
       )}
+
+      <StaffProfileModal
+        open={!!selectedStaff}
+        title="Finance Clerk Details"
+        staff={selectedStaff}
+        onClose={() => setSelectedStaff(null)}
+      />
 
       {/* Success Modal */}
       {successModal.show && (
