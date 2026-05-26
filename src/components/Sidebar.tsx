@@ -23,7 +23,8 @@ import {
   Lock,
   DollarSign,
   Truck,
-  Landmark
+  Landmark,
+  AlertCircle
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -138,6 +139,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         return [
           { icon: LayoutDashboard, label: t('nav.overview'), path: '/dashboard/finance' },
           { icon: Wallet, label: 'Collections', path: '/finance-dashboard' },
+          { icon: AlertCircle, label: 'Overdue', path: '/finance-dashboard?tab=overdue' },
+          { icon: HeartPulse, label: 'Request Aid', path: '/finance-dashboard?tab=aid-requests' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
           ...(user?.isBranchAuditor ? [{ icon: Users, label: t('nav.specialStudents'), path: '/special-students' }] : []),
         ];
@@ -200,6 +203,16 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     
     if (itemPath === '/') {
       return location.pathname === '/' || location.pathname === getDashboardRoute(role);
+    }
+    // support items with query tab, e.g. /finance-dashboard?tab=overdue
+    const [basePath, query] = itemPath.split('?');
+    if (query) {
+      const itemTab = new URLSearchParams(query).get('tab');
+      const currentTab = new URLSearchParams(location.search).get('tab');
+      return location.pathname === basePath && itemTab === currentTab;
+    }
+    if (role === 'finance-clerk' && itemPath === '/finance-dashboard') {
+      return location.pathname === '/finance-dashboard' && !new URLSearchParams(location.search).get('tab');
     }
     return location.pathname === itemPath;
   };

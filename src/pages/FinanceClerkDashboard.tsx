@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, FileText } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard } from 'lucide-react';
 import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 
-export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' }) => {
+export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const isCollectionsView = location.pathname === '/finance-dashboard';
+  const isOverviewView = location.pathname === '/dashboard/finance';
 
   const [dashboard, setDashboard] = useState<FinanceClerkDashboardType | null>(null);
   const [students, setStudents] = useState<StudentFeeInfo[]>([]);
@@ -18,27 +20,30 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments'>(
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests'>(
     initialTab || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showReductionModal, setShowReductionModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
-  const [paymentHistory, setPaymentHistory] = useState<Transaction[]>([]);
+  const [reductionStudent, setReductionStudent] = useState<StudentFeeInfo | null>(null);
+  const [reductionNotes, setReductionNotes] = useState('');
+  const [isRequestingReduction, setIsRequestingReduction] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<string[]>(['Monthly Tuition']);
   
   // Student List Pagination
   const [studentPage, setStudentPage] = useState(1);
-  const studentsPerPage = 12;
+  const [studentsPerPage, setStudentsPerPage] = useState<number>(10);
 
   // Staff Payment Filters & Pagination
   const [staffSearchTerm, setStaffSearchTerm] = useState('');
   const [minSalaryFilter, setMinSalaryFilter] = useState('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'paid' | 'not_paid'>('not_paid');
   const [staffPage, setStaffPage] = useState(1);
-  const staffPerPage = 10;
+  const [staffPerPage, setStaffPerPage] = useState<number>(10);
   
   const [confirmedStaffPayments, setConfirmedStaffPayments] = useState<Record<string, { date: string }>>(() => {
     try {
@@ -56,9 +61,22 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     date: new Date().toISOString().split('T')[0],
   });
 
+  // Global items-per-page options
+  const perPageOptions = [10, 25, 50];
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  // respond to `?tab=` query param so sidebar links can open a specific tab
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests'].includes(tab)) {
+      setActiveTab(tab as any);
+      setStudentPage(1);
+    }
+  }, [location.search]);
 
   const fetchData = async () => {
     try {
@@ -126,6 +144,36 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setShowPaymentModal(true);
   };
 
+  const openReductionModal = (student: StudentFeeInfo) => {
+    setReductionStudent(student);
+    setReductionNotes(student.fee_notes || 'Requesting fee reduction due to financial hardship');
+    setShowReductionModal(true);
+  };
+
+  const handleRequestReduction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reductionStudent) return;
+
+    try {
+      setIsRequestingReduction(true);
+      await financeClerkService.updateFeeStatus(reductionStudent.id, {
+        feeStatus: 'reduced',
+        feeNotes: reductionNotes.trim() || 'Requesting fee reduction due to financial hardship'
+      });
+      setSuccess('Fee reduction request submitted to auditor for review');
+      setShowReductionModal(false);
+      setReductionStudent(null);
+      setReductionNotes('');
+      fetchData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to submit fee reduction request');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setIsRequestingReduction(false);
+    }
+  };
+
   const resetPaymentForm = () => {
     setPaymentData({
       studentId: '',
@@ -178,16 +226,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     localStorage.setItem('confirmed_staff_payments', JSON.stringify(updated));
   };
 
-  const openPaymentHistory = async (student: StudentFeeInfo) => {
-    try {
-      const history = await financeClerkService.getPaymentHistory(student.id);
-      setPaymentHistory(history);
-      setSelectedStudent(student);
-      setShowHistoryModal(true);
-    } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to fetch payment history');
-    }
-  };
+  // openPaymentHistory removed per updated UX (history not needed)
 
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -202,6 +241,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const displayedStudents = activeTab === 'all' ? filteredStudents : filteredOverdueStudents;
   const paginatedStudents = displayedStudents.slice((studentPage - 1) * studentsPerPage, studentPage * studentsPerPage);
   const totalStudentPages = Math.max(1, Math.ceil(displayedStudents.length / studentsPerPage));
+  const aidRequestedStudents = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status));
+  const aidPaginated = aidRequestedStudents.slice((studentPage - 1) * studentsPerPage, studentPage * studentsPerPage);
+  const aidTotalPages = Math.max(1, Math.ceil(aidRequestedStudents.length / studentsPerPage));
+  const requestedAidCount = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status)).length;
+  const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
 
   if (loading && !dashboard) {
     return (
@@ -219,6 +263,81 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const todayDay = today.getDate();
   const daysToStudentDeadline = studentDeadlineDay - todayDay;
   const daysToStaffDeadline = staffDeadlineDay - todayDay;
+
+  if (isOverviewView) {
+    const overviewCards = [
+      {
+        title: 'Collections',
+        value: dashboard?.todayCollection?.toLocaleString() || '0',
+        subtitle: 'Today\'s collection',
+        color: 'from-emerald-600 to-emerald-500',
+        action: () => navigate('/finance-dashboard')
+      },
+      {
+        title: 'Overdue',
+        value: overdueStudents.length.toString(),
+        subtitle: 'Students needing follow-up',
+        color: 'from-amber-600 to-amber-500',
+        action: () => navigate('/finance-dashboard?tab=overdue')
+      },
+      {
+        title: 'Request Aid',
+        value: requestedAidCount.toString(),
+        subtitle: 'Aid requests in progress',
+        color: 'from-purple-600 to-purple-500',
+        action: () => navigate('/finance-dashboard?tab=aid-requests')
+      },
+      {
+        title: 'Registrations',
+        value: dashboard?.pendingApprovals?.toString() || '0',
+        subtitle: 'Fee reduction approvals',
+        color: 'from-blue-600 to-blue-500',
+        action: () => navigate('/finance-dashboard?tab=registrations')
+      },
+      {
+        title: 'Staff Payments',
+        value: staffProfiles.length.toString(),
+        subtitle: 'Employees in payroll',
+        color: 'from-slate-700 to-slate-600',
+        action: () => navigate('/finance-dashboard?tab=staff-payments')
+      },
+    ];
+
+    return (
+      <div className="space-y-6">
+        <Breadcrumbs />
+        <div className="flex justify-between items-end gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Finance Overview</h1>
+            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mt-1">Use this screen to jump into a specific finance tab for details.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {overviewCards.map((card) => (
+            <button
+              key={card.title}
+              onClick={card.action}
+              className={`text-left p-6 rounded-[2rem] shadow-xl bg-gradient-to-br ${card.color} text-white hover:-translate-y-1 transition-all`}
+            >
+              <p className="text-white/80 text-xs font-bold uppercase tracking-widest mb-2">{card.title}</p>
+              <p className="text-4xl font-black">{card.value}</p>
+              <p className="text-white/80 text-sm font-medium mt-2">{card.subtitle}</p>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 p-6">
+            <h3 className="font-bold text-slate-900 dark:text-white text-lg mb-3">What this page shows</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm leading-6">
+              This is a summary-only view. For details like overdue students, aid requests, registrations, or staff payroll, open the specific tab from the quick links.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -248,6 +367,95 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {error && (
         <div className="fixed top-6 right-6 z-50 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-right-8 max-w-md">
           ⚠️ {error}
+        </div>
+      )}
+
+      {activeTab === 'aid-requests' && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Request Aid</h3>
+              <p className="text-slate-500 text-xs mt-1">Submit fee reduction / aid requests for students</p>
+            </div>
+            <span className="px-4 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-full text-xs font-black uppercase tracking-wider">
+              {pendingCount} Pending
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {aidPaginated.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                        <p className="text-xs text-slate-500">{student.digital_id} • {student.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
+                        Grade {student.grade}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800' : student.fee_approval_status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}`}>
+                        {student.fee_approval_status === 'approved' ? 'Approved' : student.fee_approval_status === 'pending' ? 'Pending' : 'Not Requested'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {student.fee_approval_status === 'approved' ? (
+                        <span className="px-4 py-2 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold">Reduction Approved</span>
+                      ) : student.fee_approval_status === 'pending' ? (
+                        <span className="px-4 py-2 bg-amber-100 text-amber-800 rounded-xl text-xs font-bold">Review Pending</span>
+                      ) : (
+                        <button
+                          onClick={() => openReductionModal(student)}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          Request Aid
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {aidRequestedStudents.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-slate-400 font-medium">No aid requests found.</p>
+            </div>
+          )}
+
+          {aidRequestedStudents.length > 0 && aidTotalPages > 1 && (
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+              <button
+                onClick={() => setStudentPage((prev) => Math.max(1, prev - 1))}
+                disabled={studentPage === 1}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-slate-500 font-medium">Page {studentPage} of {aidTotalPages}</span>
+              <button
+                onClick={() => setStudentPage((prev) => Math.min(aidTotalPages, prev + 1))}
+                disabled={studentPage === aidTotalPages}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -399,45 +607,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
-        <button
-          onClick={() => { setActiveTab('all'); setStudentPage(1); }}
-          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-        >
-          All Students ({students.length})
-        </button>
-        <button
-          onClick={() => { setActiveTab('overdue'); setStudentPage(1); }}
-          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'overdue'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-        >
-          Overdue ({overdueStudents.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('registrations')}
-          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'registrations'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-        >
-          Registrations
-        </button>
-        <button
-          onClick={() => setActiveTab('staff-payments')}
-          className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'staff-payments'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-        >
-          Staff Payments ({staffProfiles.length})
-        </button>
-      </div>
+      
 
       {activeTab === 'registrations' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
@@ -497,6 +667,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               <option value="paid">Paid</option>
               <option value="not_paid">Not Paid</option>
             </select>
+          </div>
+
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
+            <div className="w-40">
+              <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
+              <select value={staffPerPage} onChange={(e) => { setStaffPerPage(Number(e.target.value)); setStaffPage(1); }} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                {perPageOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt} per page</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -621,7 +802,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         <>
           {/* Filters */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
@@ -649,6 +830,18 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <option value="standard">Standard</option>
                 <option value="reduced">Reduced</option>
               </select>
+              <div className="relative">
+                <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
+                <select
+                  value={studentsPerPage}
+                  onChange={(e) => { setStudentsPerPage(Number(e.target.value)); setStudentPage(1); }}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {perPageOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt} per page</option>
+                  ))}
+                </select>
+              </div>
               <button
                 onClick={fetchData}
                 className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold text-sm transition-all"
@@ -704,7 +897,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
-                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}> 
+                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
                               {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
                             </span>
                             {student.fee_approval_status === 'pending' && (
@@ -712,21 +905,30 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                                 Pending Approval
                               </span>
                             )}
+                            {student.fee_approval_status === 'approved' && (
+                              <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Approved
+                              </span>
+                            )}
+                            {student.fee_approval_status === 'rejected' && (
+                              <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Rejected
+                              </span>
+                            )}
+                            {student.fee_notes && (
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 italic max-w-xs">
+                                {student.fee_notes}
+                              </p>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
                               onClick={() => openPaymentModal(student)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
                             >
                               Record Payment
-                            </button>
-                            <button
-                              onClick={() => openPaymentHistory(student)}
-                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
-                            >
-                              History
                             </button>
                           </div>
                         </td>
@@ -874,52 +1076,54 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </div>
       )}
 
-      {/* Payment History Modal */}
-      {showHistoryModal && selectedStudent && (
+      {/* Fee Reduction Request Modal */}
+      {showReductionModal && reductionStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-2xl border border-slate-100 dark:border-slate-800 overflow-hidden max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Payment History</h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{selectedStudent.name} ({selectedStudent.digital_id})</p>
-              </div>
-              <button onClick={() => setShowHistoryModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Request Fee Reduction</h2>
+              <button onClick={() => setShowReductionModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              {paymentHistory.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600 dark:text-slate-400 font-medium">No payment history found.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {paymentHistory.map((tx) => (
-                    <div key={tx.id} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:shadow-md transition-all">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-lg">
-                            <CreditCard className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900 dark:text-white">{tx.type}</p>
-                            <p className="text-xs text-slate-500">{new Date(tx.date).toLocaleDateString()} • {new Date(tx.created_at).toLocaleTimeString()}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-black text-emerald-600 text-lg">{tx.amount.toLocaleString()} ETB</p>
-                          <p className="text-xs text-slate-500">by {tx.verified_by}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <form onSubmit={handleRequestReduction} className="p-6 space-y-4">
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{reductionStudent.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{reductionStudent.digital_id}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Fee Status: <span className="font-semibold">{reductionStudent.fee_status === 'reduced' ? 'Reduced' : 'Standard'}</span></p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Reduction Notes</label>
+                <textarea
+                  value={reductionNotes}
+                  onChange={(e) => setReductionNotes(e.target.value)}
+                  rows={5}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder="Add a note for the auditor explaining the financial aid request"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowReductionModal(false)}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRequestingReduction}
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
+                >
+                  {isRequestingReduction ? 'Submitting…' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
+      
     </div>
   );
 };
