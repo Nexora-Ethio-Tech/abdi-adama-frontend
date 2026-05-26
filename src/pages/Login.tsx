@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { LogIn, Fingerprint, Lock, AlertCircle, Key, CheckCircle, Send, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react';
@@ -7,7 +7,7 @@ import { ShootingStars } from '../components/Effects';
 import logo from '../assets/logo.jpg';
 
 export const Login = () => {
-  const { login } = useUser();
+  const { login, user } = useUser();
   const navigate = useNavigate();
 
   const [loginMode, setLoginMode] = useState<'password' | 'otp'>('password');
@@ -24,6 +24,16 @@ export const Login = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+
+  // ─── Navigate once user state is actually set ────────────────
+  useEffect(() => {
+    if (user && pendingRedirect) {
+      console.log('[Login] User state is set, navigating to:', pendingRedirect);
+      navigate(pendingRedirect);
+      setPendingRedirect(null);
+    }
+  }, [user, pendingRedirect, navigate]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +52,10 @@ export const Login = () => {
     setError(''); setLoading(true);
     try {
       const result = await login({ digitalIdOrEmail: fan, password: '', otp });
-      if (result.success) navigate(result.redirect || '/');
+      if (result.success) {
+        console.log('[Login OTP] Setting pending redirect to:', result.redirect);
+        setPendingRedirect(result.redirect || '/');
+      }
       else setError(result.error || 'Invalid OTP. Please try again.');
     } catch { setError('An error occurred. Please try again.'); }
     finally { setLoading(false); }
@@ -53,7 +66,10 @@ export const Login = () => {
     setError(''); setLoading(true);
     try {
       const result = await login({ digitalIdOrEmail, password, otp: '' });
-      if (result.success) navigate(result.redirect || '/');
+      if (result.success) {
+        console.log('[Login Password] Setting pending redirect to:', result.redirect);
+        setPendingRedirect(result.redirect || '/');
+      }
       else setError(result.error || 'Invalid credentials.');
     } catch { setError('An error occurred during login.'); }
     finally { setLoading(false); }

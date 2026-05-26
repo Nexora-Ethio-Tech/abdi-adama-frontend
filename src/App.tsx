@@ -65,8 +65,13 @@ const PageLoader = () => (
   </div>
 );
 
+const normalizeRouteRole = (role: string | null) => {
+  return role?.toString().toLowerCase().replace(/[_\s]+/g, '-') || '';
+};
+
 const getDashboardRoute = (role: string | null) => {
-  switch (role) {
+  const normalizedRole = normalizeRouteRole(role);
+  switch (normalizedRole) {
     case 'super-admin': return '/dashboard/super-admin';
     case 'school-admin': return '/dashboard/school-admin';
     case 'teacher': return '/dashboard/teacher';
@@ -96,9 +101,10 @@ const ProtectedRoute = ({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role as UserRole)) {
+  const normalizedRole = normalizeRouteRole(role) as UserRole;
+  if (allowedRoles && !allowedRoles.includes(normalizedRole)) {
     // Kick them back to their own dashboard instead of the generic root
-    return <Navigate to={getDashboardRoute(role)} replace />;
+    return <Navigate to={getDashboardRoute(normalizedRole)} replace />;
   }
 
   return children;
@@ -126,8 +132,14 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route
+            path="/login"
+            element={user ? <Navigate to={getDashboardRoute(role)} replace /> : <Login />}
+          />
+          <Route
+            path="/register"
+            element={user ? <Navigate to={getDashboardRoute(role)} replace /> : <Register />}
+          />
 
           {!user ? (
             <>

@@ -76,17 +76,24 @@ export const ParentClinicChat = () => {
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedChildId) return;
+    setLoading(true);
     try {
       const res = await api.post('/clinic/chat', {
-        message: newMessage,
-        childId: selectedChildId
+        message: newMessage.trim(),
+        childId: selectedChildId,
+        // optional hint for server/consumers — backend will still use authenticated user role
+        recipientRole: 'clinic-admin'
       });
       const m = res.data?.data || res.data;
       setMessages(prev => [...prev, { id: m.id || Date.now().toString(), role: 'parent', child_id: selectedChildId, text: m.text || m.message, timestamp: m.timestamp }]);
       setNewMessage('');
+      // Refresh to get normalized timestamps/unread counts
+      try { const fresh = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`); setMessages((fresh.data?.data || []).map((mm: any) => ({ id: mm.id, role: mm.role || mm.sender_role || 'parent', child_id: mm.child_id || mm.student_id, text: mm.text || mm.message, timestamp: mm.timestamp || mm.created_at }))); } catch {};
     } catch (err: any) {
       console.error('Send failed:', err);
       alert(err.response?.data?.error?.message || 'Failed to send message');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,7 +182,13 @@ export const ParentClinicChat = () => {
             placeholder="Tell the clinic admin something important..."
             className="flex-1 px-6 py-4 bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-sm font-medium outline-none focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10 transition-all shadow-sm"
           />
-          <button className="bg-rose-600 hover:bg-rose-700 text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-rose-200 dark:shadow-none group">
+          <button
+            type="submit"
+            disabled={!newMessage.trim() || !selectedChildId || loading}
+            aria-disabled={!newMessage.trim() || !selectedChildId || loading}
+            title={!newMessage.trim() ? 'Enter a message to enable sending' : !selectedChildId ? 'Select a child first' : 'Send message to clinic admin'}
+            className={`px-8 py-4 rounded-2xl font-bold flex items-center gap-2 transition-all group ${(!newMessage.trim() || !selectedChildId || loading) ? 'bg-rose-300 text-white cursor-not-allowed shadow-none' : 'bg-rose-600 hover:bg-rose-700 text-white shadow-lg shadow-rose-200'}`}
+          >
             <Send size={20} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
             <span className="hidden sm:inline">Send Message</span>
           </button>

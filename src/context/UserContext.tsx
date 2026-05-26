@@ -24,6 +24,29 @@ export interface MultilingualText {
   english: string;
 }
 
+const normalizeUserRole = (role?: string): UserRole | null => {
+  if (!role) return null;
+  return role.toString().toLowerCase().replace(/[_\s]+/g, '-') as UserRole;
+};
+
+const getDashboardRoute = (role?: string | null) => {
+  const normalizedRole = normalizeUserRole(role);
+  switch (normalizedRole) {
+    case 'super-admin': return '/dashboard/super-admin';
+    case 'school-admin': return '/dashboard/school-admin';
+    case 'teacher': return '/dashboard/teacher';
+    case 'student': return '/dashboard/student';
+    case 'parent': return '/dashboard/parent';
+    case 'finance-clerk': return '/dashboard/finance';
+    case 'vice-principal': return '/dashboard/vice-principal';
+    case 'driver': return '/dashboard/driver';
+    case 'librarian': return '/dashboard/librarian';
+    case 'clinic-admin': return '/dashboard/clinic-admin';
+    case 'auditor': return '/auditor-dashboard';
+    default: return '/';
+  }
+};
+
 interface UserContextType {
   user: User | null;
   setUser: (user: User | null) => void;
@@ -146,6 +169,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const verifyToken = async () => {
       const token = localStorage.getItem('abdi_adama_token');
+      console.log('[VerifyToken] Token exists:', !!token);
+      
       if (!token) {
         // No token at all — clear any stale user data and stop loading
         localStorage.removeItem('abdi_adama_user');
@@ -157,36 +182,44 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       try {
         // Use axios api instance instead of fetch to leverage interceptors
         const { default: api } = await import('../services/api');
+        console.log('[VerifyToken] Calling /auth/me...');
         const res = await api.get('/auth/me');
 
         if (res.data.success) {
           const rawUser = res.data.data;
+          const normalizedRole = normalizeUserRole(rawUser.role) || (rawUser.role as UserRole);
+          console.log('[VerifyToken] Got user from /auth/me:', { role: rawUser.role, normalizedRole, email: rawUser.email });
+          
           const user = {
             id: rawUser.id,
             name: rawUser.name,
             email: rawUser.email,
-            role: rawUser.role,
+            role: normalizedRole,
             digitalId: rawUser.digital_id || rawUser.digitalId,
             branchId: rawUser.branch_id || rawUser.branchId,
             branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
             status: rawUser.status,
           };
+          console.log('[VerifyToken] Setting user with role:', user.role);
           setUser(user);
           localStorage.setItem('abdi_adama_user', JSON.stringify(user));
         } else {
+          console.warn('[VerifyToken] /auth/me returned success: false', res.data);
           localStorage.removeItem('abdi_adama_user');
           localStorage.removeItem('abdi_adama_token');
           localStorage.removeItem('abdi_adama_refresh_token');
           setUser(null);
         }
       } catch (err) {
-        console.error('Failed to verify token:', err);
+        console.error('[VerifyToken] Error:', err instanceof Error ? err.message : err, 
+          err instanceof Error && (err as any).response?.data ? (err as any).response.data : '');
         // Token expired or invalid — force logout
         localStorage.removeItem('abdi_adama_user');
         localStorage.removeItem('abdi_adama_token');
         localStorage.removeItem('abdi_adama_refresh_token');
         setUser(null);
       } finally {
+        console.log('[VerifyToken] Done, setting loading: false');
         setLoading(false);
       }
     };
@@ -199,7 +232,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('abdi_adama_user', JSON.stringify(user));
     } else {
       localStorage.removeItem('abdi_adama_user');
-      localStorage.removeItem('abdi_adama_token');
+      // DO NOT clear tokens here, as user starts as null on app initialization
+      // and clearing them here prevents verifyToken from working on page reload/refresh.
+      // Token clearing is handled explicitly during logout or verification failure.
     }
   }, [user]);
 
@@ -228,33 +263,31 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
       if (res.data.success) {
         const rawUser = res.data.data.user;
+        const normalizedRole = normalizeUserRole(rawUser.role) || (rawUser.role as UserRole);
+        console.log('[Login] Backend returned user:', { role: rawUser.role, normalizedRole, email: rawUser.email });
+        
         const user = {
           id: rawUser.id,
           name: rawUser.name,
           email: rawUser.email,
-          role: rawUser.role,
+          role: normalizedRole,
           digitalId: rawUser.digital_id || rawUser.digitalId,
           branchId: rawUser.branch_id || rawUser.branchId,
           branchName: rawUser.branch_name || rawUser.branchName || 'My Branch',
           status: rawUser.status,
         };
+        
+        // Store tokens BEFORE updating user state
         localStorage.setItem('abdi_adama_token', res.data.data.accessToken);
         localStorage.setItem('abdi_adama_refresh_token', res.data.data.refreshToken);
+        localStorage.setItem('abdi_adama_user', JSON.stringify(user));
+        
+        console.log('[Login] Tokens stored, setting user state...');
         setUser(user);
-        const roleRoutes: Record<string, string> = {
-          'super-admin': '/dashboard/super-admin',
-          'school-admin': '/dashboard/school-admin',
-          'vice-principal': '/dashboard/vice-principal',
-          'teacher': '/dashboard/teacher',
-          'student': '/dashboard/student',
-          'parent': '/dashboard/parent',
-          'finance-clerk': '/dashboard/finance',
-          'librarian': '/dashboard/librarian',
-          'clinic-admin': '/dashboard/clinic-admin',
-          'driver': '/dashboard/driver',
-          'auditor': '/auditor-dashboard'
-        };
-        return { success: true, redirect: roleRoutes[user.role] || '/dashboard' };
+        
+        const redirectUrl = getDashboardRoute(user.role);
+        console.log('[Login] Redirecting to:', redirectUrl, 'User role:', user.role);
+        return { success: true, redirect: redirectUrl };
       }
       return { success: false, error: res.data.error?.message || 'Invalid credentials' };
     } catch (err: any) {

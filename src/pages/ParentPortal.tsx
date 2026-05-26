@@ -18,7 +18,11 @@ import {
   Bell,
   MessageSquare,
   LayoutDashboard,
-  Calendar
+  Calendar,
+  Users,
+  FileText,
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -29,9 +33,23 @@ import {
   getChildCommunicationLogs,
   getParentChildGrades,
   getParentChildHistory,
+  getChildTeachers,
+  getChildAttendance,
+  getChildAcademicHistory,
+  getChildClinicUpdates,
+  getDriverUpdates,
+  getSchoolAnnouncements,
+  getFinancialSummary,
   ParentChild,
   ParentAnnouncement,
-  CommunicationLog
+  CommunicationLog,
+  Teacher,
+  AttendanceRecord,
+  AcademicHistoryEntry,
+  ClinicVisit,
+  HealthProfile,
+  DriverUpdate,
+  FinancialSummary
 } from '../services/parentService';
 
 export const ParentPortal = () => {
@@ -78,6 +96,36 @@ export const ParentPortal = () => {
   const [allClinicMessages, setAllClinicMessages] = useState<any[]>([]); // For Dashboard Previews
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // NEW: Teachers State
+  const [childTeachers, setChildTeachers] = useState<Teacher[]>([]);
+  const [teachersLoading, setTeachersLoading] = useState(false);
+
+  // NEW: Attendance State
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<any>(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+
+  // NEW: Academic History State
+  const [academicHistory, setAcademicHistory] = useState<AcademicHistoryEntry[]>([]);
+  const [historyLoading2, setHistoryLoading2] = useState(false);
+
+  // NEW: Clinic Updates State
+  const [clinicVisits, setClinicVisits] = useState<ClinicVisit[]>([]);
+  const [healthProfile, setHealthProfile] = useState<HealthProfile>({});
+  const [clinicUpdatesLoading, setClinicUpdatesLoading] = useState(false);
+
+  // NEW: Driver Updates State
+  const [driverUpdates, setDriverUpdates] = useState<DriverUpdate[]>([]);
+  const [driverUpdatesLoading, setDriverUpdatesLoading] = useState(false);
+
+  // NEW: School Announcements State
+  const [schoolAnnouncementsData, setSchoolAnnouncementsData] = useState<ParentAnnouncement[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+
+  // NEW: Financial Summary State
+  const [financialData, setFinancialData] = useState<FinancialSummary[]>([]);
+  const [financialLoading, setFinancialLoading] = useState(false);
+
   const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
 
   const familyIdText = useMemo(() => {
@@ -107,6 +155,18 @@ export const ParentPortal = () => {
   const getStatus = (course: any) => {
     if (course.final_50 === null || course.final_50 === undefined) return 'PENDING';
     return Number(course.total) >= 50 ? 'PASSED' : 'FAILED';
+  };
+
+  const getProgressBarClass = (course: any) => {
+    const status = getStatus(course);
+    if (status === 'PASSED') return 'text-emerald-400';
+    if (status === 'FAILED') return 'text-rose-400';
+    return 'text-amber-400';
+  };
+
+  const getClampedPercentage = (value: string | number | null | undefined) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(0, Math.min(100, parsed)) : 0;
   };
 
   const getFieldRating = (log: any, fieldId: string) => {
@@ -265,6 +325,105 @@ export const ParentPortal = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // NEW: Fetch child's teachers when selected child changes
+  useEffect(() => {
+    if (!selectedChild) return;
+    setTeachersLoading(true);
+    getChildTeachers(selectedChild.id)
+      .then(teachers => setChildTeachers(teachers || []))
+      .catch(err => {
+        console.error('Failed to fetch teachers:', err);
+        setChildTeachers([]);
+      })
+      .finally(() => setTeachersLoading(false));
+  }, [selectedChild]);
+
+  // NEW: Fetch attendance data when selected child changes
+  useEffect(() => {
+    if (!selectedChild) return;
+    setAttendanceLoading(true);
+    getChildAttendance(selectedChild.id)
+      .then(data => {
+        setAttendanceRecords(data.records || []);
+        setAttendanceStats(data.statistics || {});
+      })
+      .catch(err => {
+        console.error('Failed to fetch attendance:', err);
+        setAttendanceRecords([]);
+        setAttendanceStats({});
+      })
+      .finally(() => setAttendanceLoading(false));
+  }, [selectedChild]);
+
+  // NEW: Fetch academic history when selected child changes
+  useEffect(() => {
+    if (!selectedChild) return;
+    setHistoryLoading2(true);
+    getChildAcademicHistory(selectedChild.id)
+      .then(history => setAcademicHistory(history || []))
+      .catch(err => {
+        console.error('Failed to fetch academic history:', err);
+        setAcademicHistory([]);
+      })
+      .finally(() => setHistoryLoading2(false));
+  }, [selectedChild]);
+
+  // NEW: Fetch clinic updates when selected child changes
+  useEffect(() => {
+    if (!selectedChild) return;
+    setClinicUpdatesLoading(true);
+    getChildClinicUpdates(selectedChild.id)
+      .then(data => {
+        setClinicVisits(data.visits || []);
+        setHealthProfile(data.health_profile || {});
+      })
+      .catch(err => {
+        console.error('Failed to fetch clinic updates:', err);
+        setClinicVisits([]);
+        setHealthProfile({});
+      })
+      .finally(() => setClinicUpdatesLoading(false));
+  }, [selectedChild]);
+
+  // NEW: Fetch driver updates for dashboard
+  useEffect(() => {
+    if (activePortalTab !== 'dashboard') return;
+    setDriverUpdatesLoading(true);
+    getDriverUpdates()
+      .then(updates => setDriverUpdates(updates || []))
+      .catch(err => {
+        console.error('Failed to fetch driver updates:', err);
+        setDriverUpdates([]);
+      })
+      .finally(() => setDriverUpdatesLoading(false));
+  }, [activePortalTab]);
+
+  // NEW: Fetch school announcements for dashboard
+  useEffect(() => {
+    if (activePortalTab !== 'dashboard') return;
+    setAnnouncementsLoading(true);
+    getSchoolAnnouncements()
+      .then(announcements => setSchoolAnnouncementsData(announcements || []))
+      .catch(err => {
+        console.error('Failed to fetch announcements:', err);
+        setSchoolAnnouncementsData([]);
+      })
+      .finally(() => setAnnouncementsLoading(false));
+  }, [activePortalTab]);
+
+  // NEW: Fetch financial summary for all children
+  useEffect(() => {
+    if (activePortalTab !== 'dashboard') return;
+    setFinancialLoading(true);
+    getFinancialSummary()
+      .then(data => setFinancialData(data || []))
+      .catch(err => {
+        console.error('Failed to fetch financial data:', err);
+        setFinancialData([]);
+      })
+      .finally(() => setFinancialLoading(false));
+  }, [activePortalTab]);
+
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChatMessage.trim() || !selectedClinicChildId) return;
@@ -354,24 +513,27 @@ export const ParentPortal = () => {
       </div>
 
       {/* Top Navigation Tabs Bar */}
-      <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full md:w-fit">
+      <div className="flex flex-wrap bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800 w-full overflow-x-auto">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'grades', label: 'Grades & Courses', icon: BookOpen },
-          { id: 'history', label: 'Academic History', icon: GraduationCap },
-          { id: 'clinic', label: 'Clinic Support', icon: HeartPulse }
+          { id: 'grades', label: 'Grades', icon: BookOpen },
+          { id: 'teachers', label: 'Teachers', icon: Users },
+          { id: 'attendance', label: 'Attendance', icon: Calendar },
+          { id: 'clinic-visits', label: 'Clinic', icon: HeartPulse },
+          { id: 'clinic', label: 'Clinic Chat', icon: MessageSquare },
+          { id: 'finance', label: 'Finance', icon: DollarSign }
         ].map(tabItem => (
           <button
             key={tabItem.id}
             onClick={() => handleTabChange(tabItem.id)}
-            className={`flex items-center gap-2.5 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-1 md:flex-none justify-center ${
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex-shrink-0 justify-center whitespace-nowrap ${
               activePortalTab === tabItem.id
                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
                 : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-white/5'
             }`}
           >
-            <tabItem.icon size={16} />
-            {tabItem.label}
+            <tabItem.icon size={14} />
+            <span className="hidden sm:inline">{tabItem.label}</span>
           </button>
         ))}
       </div>
@@ -629,6 +791,7 @@ export const ParentPortal = () => {
                     <div>
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
                       <select
+                        title="Academic Year"
                         value={selectedYear}
                         onChange={(e) => {
                           setSelectedYear(e.target.value);
@@ -646,6 +809,7 @@ export const ParentPortal = () => {
                     <div>
                       <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
                       <select
+                        title="Semester"
                         value={selectedSemester}
                         onChange={(e) => {
                           setSelectedSemester(e.target.value);
@@ -764,6 +928,7 @@ export const ParentPortal = () => {
                           </div>
                           <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
                             <button
+                              title="Previous review"
                               disabled={currentLogIndex === 0}
                               onClick={() => setCurrentLogIndex(prev => prev - 1)}
                               className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
@@ -775,6 +940,7 @@ export const ParentPortal = () => {
                               <span className="text-xs font-black text-blue-600 dark:text-blue-400">{currentLog.week_ending_formatted || currentLog.week_ending}</span>
                             </div>
                             <button
+                              title="Next review"
                               disabled={currentLogIndex === commLogs.length - 1}
                               onClick={() => setCurrentLogIndex(prev => prev + 1)}
                               className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
@@ -868,16 +1034,18 @@ export const ParentPortal = () => {
                               </div>
 
                               <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-1000 ${
-                                    getStatus(selectedCourse) === 'PASSED'
-                                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                                      : getStatus(selectedCourse) === 'FAILED'
-                                        ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                        : 'bg-gradient-to-r from-amber-400 to-orange-500'
-                                  }`}
-                                  style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
-                                ></div>
+                                <svg viewBox="0 0 100 10" className="w-full h-full">
+                                  <rect
+                                    x="0"
+                                    y="0"
+                                    width={getClampedPercentage(selectedCourse.total)}
+                                    height="10"
+                                    rx="5"
+                                    ry="5"
+                                    fill="currentColor"
+                                    className={`transition-all duration-1000 ${getProgressBarClass(selectedCourse)}`}
+                                  />
+                                </svg>
                               </div>
                               <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
                             </div>
@@ -994,16 +1162,18 @@ export const ParentPortal = () => {
                                 <span>{selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) + '%' : '0%'}</span>
                               </div>
                               <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-1000 ${
-                                    getStatus(selectedCourse) === 'PASSED'
-                                      ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                                      : getStatus(selectedCourse) === 'FAILED'
-                                        ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                        : 'bg-gradient-to-r from-amber-400 to-orange-500'
-                                  }`}
-                                  style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
-                                ></div>
+                                <svg viewBox="0 0 100 10" className="w-full h-full">
+                                  <rect
+                                    x="0"
+                                    y="0"
+                                    width={getClampedPercentage(selectedCourse.total)}
+                                    height="10"
+                                    rx="5"
+                                    ry="5"
+                                    fill="currentColor"
+                                    className={`transition-all duration-1000 ${getProgressBarClass(selectedCourse)}`}
+                                  />
+                                </svg>
                               </div>
                             </div>
                           </div>
@@ -1036,6 +1206,7 @@ export const ParentPortal = () => {
                     <div>
                       <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
                       <select
+                        title="Select Academic Year"
                         value={historyYear || ''}
                         onChange={(e) => {
                           setHistoryYear(e.target.value || null);
@@ -1053,6 +1224,7 @@ export const ParentPortal = () => {
                     <div>
                       <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
                       <select
+                        title="Select Semester"
                         value={historySemester || ''}
                         onChange={(e) => {
                           setHistorySemester(e.target.value || null);
@@ -1146,7 +1318,431 @@ export const ParentPortal = () => {
           )}
         </div>
       )}
-      {/* ==================== 4. CLINIC SUPPORT TAB ==================== */}
+      {/* ==================== 4. TEACHERS TAB ==================== */}
+      {activePortalTab === 'teachers' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Your Child's Teachers</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Teaching staff assigned to your child's courses.</p>
+            </div>
+          </div>
+
+          {/* Child Picker */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+            {children.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedChild(c)}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  selectedChild?.id === c.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+                }`}
+              >
+                {c.fullName}
+              </button>
+            ))}
+          </div>
+
+          {/* Teachers Grid */}
+          {teachersLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : childTeachers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {childTeachers.map((teacher) => (
+                <div key={teacher.id} className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-500">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg">
+                      {teacher.name.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">{teacher.name}</h3>
+                      <p className="text-xs font-bold text-blue-600 dark:text-blue-400">{teacher.email}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    {teacher.subjects && teacher.subjects.length > 0 && (
+                      <div>
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Subjects</p>
+                        <div className="flex flex-wrap gap-2">
+                          {teacher.subjects.map((subject, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-xs font-bold">
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {teacher.courses && teacher.courses.length > 0 && (
+                      <div>
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Courses</p>
+                        <div className="flex flex-wrap gap-2">
+                          {teacher.courses.map((course, idx) => (
+                            <span key={idx} className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold">
+                              {course}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <button className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                    Send Message
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+              <Users className="text-slate-300 mx-auto mb-4" size={40} />
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No teachers assigned yet.</p>
+              <p className="text-slate-400 text-sm mt-2">Teachers will appear once courses are assigned.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== 5. ATTENDANCE TAB ==================== */}
+      {activePortalTab === 'attendance' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Attendance Records</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track your child's daily attendance and summary statistics.</p>
+            </div>
+          </div>
+
+          {/* Child Picker */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+            {children.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedChild(c)}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  selectedChild?.id === c.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+                }`}
+              >
+                {c.fullName}
+              </button>
+            ))}
+          </div>
+
+          {/* Attendance Stats */}
+          {attendanceLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : attendanceStats && Object.keys(attendanceStats).length > 0 ? (
+            <div className="space-y-6">
+              {/* Statistics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Days</p>
+                  <p className="text-3xl font-black text-slate-900 dark:text-white">{attendanceStats.total_days || 0}</p>
+                </div>
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-center">
+                  <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Present</p>
+                  <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{attendanceStats.present_days || 0}</p>
+                </div>
+                <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-2xl border border-rose-200 dark:border-rose-800 text-center">
+                  <p className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Absent</p>
+                  <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{attendanceStats.absent_days || 0}</p>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-200 dark:border-amber-800 text-center">
+                  <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Late</p>
+                  <p className="text-3xl font-black text-amber-600 dark:text-amber-400">{attendanceStats.late_days || 0}</p>
+                </div>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-200 dark:border-blue-800 text-center">
+                  <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Percentage</p>
+                  <p className="text-3xl font-black text-blue-600 dark:text-blue-400">{(attendanceStats.attendance_percentage || 0).toFixed(1)}%</p>
+                </div>
+              </div>
+
+              {/* Attendance Progress Bar */}
+              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Overall Attendance</h3>
+                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{(attendanceStats.attendance_percentage || 0).toFixed(1)}%</span>
+                </div>
+                <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <svg viewBox="0 0 100 10" className="w-full h-full">
+                    <rect
+                      x="0"
+                      y="0"
+                      width={getClampedPercentage(attendanceStats?.attendance_percentage || 0)}
+                      height="10"
+                      rx="5"
+                      ry="5"
+                      fill="currentColor"
+                      className="transition-all duration-1000 text-blue-500"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Recent Records Table */}
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Recent Records</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <tr>
+                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Date</th>
+                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {attendanceRecords.slice(0, 10).map((record) => (
+                        <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="px-8 py-5">
+                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
+                              record.status === 'present'
+                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                                : record.status === 'absent'
+                                ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                            }`}>
+                              {record.status}
+                            </span>
+                          </td>
+                          <td className="px-8 py-5 text-slate-600 dark:text-slate-400">{record.recorded_by_name || 'Admin'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+              <Calendar className="text-slate-300 mx-auto mb-4" size={40} />
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No attendance records found.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== 7. CLINIC VISITS TAB ==================== */}
+      {activePortalTab === 'clinic-visits' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Clinic Visits & Health Profile</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Medical records and health information for your child.</p>
+            </div>
+          </div>
+
+          {/* Child Picker */}
+          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+            {children.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedChild(c)}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  selectedChild?.id === c.id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+                }`}
+              >
+                {c.fullName}
+              </button>
+            ))}
+          </div>
+
+          {clinicUpdatesLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-rose-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Health Profile Card */}
+              {healthProfile && Object.keys(healthProfile).length > 0 && (
+                <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                    <HeartPulse className="text-rose-600" size={24} />
+                    Health Profile
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {healthProfile.blood_group && (
+                      <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-800">
+                        <p className="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-2">Blood Group</p>
+                        <p className="text-lg font-black text-red-600 dark:text-red-400">{healthProfile.blood_group}</p>
+                      </div>
+                    )}
+                    {healthProfile.dob && (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800">
+                        <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Date of Birth</p>
+                        <p className="text-lg font-black text-blue-600 dark:text-blue-400">{new Date(healthProfile.dob).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {healthProfile.gender && (
+                      <div className="p-4 bg-purple-50 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-800">
+                        <p className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-2">Gender</p>
+                        <p className="text-lg font-black text-purple-600 dark:text-purple-400">{healthProfile.gender}</p>
+                      </div>
+                    )}
+                    {healthProfile.allergies && (
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800">
+                        <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Allergies</p>
+                        <p className="text-sm text-amber-600 dark:text-amber-400 font-bold">{healthProfile.allergies}</p>
+                      </div>
+                    )}
+                    {healthProfile.medications && (
+                      <div className="p-4 bg-green-50 dark:bg-green-900/10 rounded-2xl border border-green-100 dark:border-green-800">
+                        <p className="text-xs font-black text-green-600 dark:text-green-400 uppercase tracking-widest mb-2">Current Medications</p>
+                        <p className="text-sm text-green-600 dark:text-green-400 font-bold">{healthProfile.medications}</p>
+                      </div>
+                    )}
+                    {healthProfile.chronic_conditions && (
+                      <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                        <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-2">Chronic Conditions</p>
+                        <p className="text-sm text-indigo-600 dark:text-indigo-400 font-bold">{healthProfile.chronic_conditions}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Clinic Visits Table */}
+              {clinicVisits.length > 0 ? (
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
+                  <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white">Recent Clinic Visits</h3>
+                  </div>
+                  <div className="space-y-4 p-6">
+                    {clinicVisits.map((visit) => (
+                      <div key={visit.id} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-4">
+                          <div>
+                            <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">{visit.reason}</h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-400">{visit.treatment}</p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
+                            visit.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                          }`}>
+                            {visit.status}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
+                          <span>📅 {new Date(visit.date).toLocaleDateString()}</span>
+                          <span>⏰ {visit.time}</span>
+                          <span>👤 {visit.logged_by_name || 'Clinic Admin'}</span>
+                          {visit.parent_notified && <span className="text-emerald-600">✓ Parent Notified</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+                  <HeartPulse className="text-slate-300 mx-auto mb-4" size={40} />
+                  <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No clinic visits recorded yet.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== 8. FINANCE SUMMARY TAB ==================== */}
+      {activePortalTab === 'finance' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Fees & Financial Summary</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track fees, payments, and financial status for all your children.</p>
+            </div>
+          </div>
+
+          {financialLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : financialData.length > 0 ? (
+            <div className="space-y-6">
+              {financialData.map((financial) => (
+                <div key={financial.student_id} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6 mb-8">
+                    <div>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">{financial.student_name}</h3>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Student ID: {financial.student_id}</p>
+                    </div>
+                    <span className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
+                      financial.fee_status === 'paid'
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                        : financial.fee_status === 'pending'
+                        ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                        : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {financial.fee_status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Monthly Fee</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white">₦{financial.monthly_fee}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Bus Fee</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white">₦{financial.bus_fee}</p>
+                    </div>
+                    <div className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Penalty</p>
+                      <p className="text-2xl font-black text-slate-900 dark:text-white">₦{financial.penalty_fee}</p>
+                    </div>
+                    <div className="p-6 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800">
+                      <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Total Fees</p>
+                      <p className="text-2xl font-black text-blue-600 dark:text-blue-400">₦{financial.total_fees}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 bg-emerald-50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800">
+                      <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Amount Paid</p>
+                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₦{financial.total_transactions}</p>
+                    </div>
+                    <div className="p-6 bg-rose-50 dark:bg-rose-900/10 rounded-2xl border border-rose-100 dark:border-rose-800">
+                      <p className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Balance Due</p>
+                      <p className="text-2xl font-black text-rose-600 dark:text-rose-400">₦{financial.balance_due}</p>
+                    </div>
+                  </div>
+
+                  {financial.fee_notes && (
+                    <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Notes</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{financial.fee_notes}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+              <DollarSign className="text-slate-300 mx-auto mb-4" size={40} />
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No financial data available.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== 9. CLINIC CHAT TAB ==================== */}
       {activePortalTab === 'clinic' && (
         <div className="space-y-8 animate-in fade-in duration-500">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col min-h-[calc(100vh-16rem)]">
@@ -1157,7 +1753,7 @@ export const ParentPortal = () => {
                   <HeartPulse size={24} />
                 </div>
                 <div>
-                  <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Support Tab</h2>
+                  <h2 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Room</h2>
                   <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
                     Direct Private Channel

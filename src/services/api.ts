@@ -49,6 +49,16 @@ api.interceptors.response.use(
       }
     }
 
+    const serverReason =
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message;
+
+    if (serverReason && typeof serverReason === 'string') {
+      error.message = serverReason;
+    }
+
     return Promise.reject(error);
   }
 );
