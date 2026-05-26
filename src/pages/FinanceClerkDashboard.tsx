@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard } from 'lucide-react';
-import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportRouteInfo, type TransportStudentInfo } from '../services/financeService';
+import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportStudentInfo, type TransportFeePolicy, type TransportDriverInfo } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
@@ -48,12 +48,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [selectedAidStudentId, setSelectedAidStudentId] = useState('');
   const [transportSearchTerm, setTransportSearchTerm] = useState('');
   const [transportStatusFilter, setTransportStatusFilter] = useState<'assigned' | 'unassigned' | 'all'>('assigned');
-  const [transportRoutes, setTransportRoutes] = useState<TransportRouteInfo[]>([]);
+  const [transportDrivers, setTransportDrivers] = useState<TransportDriverInfo[]>([]);
+  const [transportPolicies, setTransportPolicies] = useState<TransportFeePolicy[]>([]);
   const [transportStudents, setTransportStudents] = useState<TransportStudentInfo[]>([]);
   const [transportPage, setTransportPage] = useState(1);
   const [transportPerPage, setTransportPerPage] = useState<number>(10);
   const [transportData, setTransportData] = useState({
-    routeId: '',
+    driverId: '',
     transportFee: 0,
   });
   const [stopDaysUsed, setStopDaysUsed] = useState(0);
@@ -133,9 +134,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         payrollService.getAllProfiles().catch(() => []),
         payrollService.getFinanceSettings().catch(() => [])
       ]);
-      const [transportStudentsData, transportRoutesData] = await Promise.all([
+      const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
-        financeClerkService.getTransportRoutes(),
+        financeClerkService.getTransportDrivers(),
+        financeClerkService.getTransportPolicies(),
       ]);
       setDashboard(dashboardData);
       setStudents(studentsData);
@@ -143,7 +145,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setStaffProfiles(staffData);
       setFinanceSettings(settingsData);
       setTransportStudents(transportStudentsData);
-      setTransportRoutes(transportRoutesData);
+      setTransportDrivers(transportDriversData);
+      setTransportPolicies(transportPoliciesData);
       setStudentPage(1);
       setTransportPage(1);
     } catch (err: any) {
@@ -202,10 +205,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const openTransportModal = (student: TransportStudentInfo) => {
+    const policy = transportPolicies.find((item) => item.grade_level === student.grade) || transportPolicies.find((item) => !item.grade_level) || null;
+    const driverId = student.driver_id || transportDrivers[0]?.id || '';
     setTransportStudent(student);
     setTransportData({
-      routeId: student.route_id || transportRoutes[0]?.route_id || '',
-      transportFee: student.bus_fee || 0,
+      driverId,
+      transportFee: policy ? Number(policy.bus_fee || 0) : Number(student.bus_fee || 0),
     });
     setShowTransportModal(true);
   };
@@ -242,12 +247,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const handleAssignTransport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!transportStudent || !transportData.routeId) return;
+    if (!transportStudent || !transportData.driverId) return;
 
     try {
       await financeClerkService.assignTransport({
         studentId: transportStudent.id,
-        routeId: transportData.routeId,
+        driverId: transportData.driverId,
         transportFee: Number(transportData.transportFee),
       });
       setSuccess('Transport assignment saved successfully');
@@ -416,6 +421,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
   const eligibleAidStudents = students.filter(s => s.fee_approval_status === 'none');
   const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
+  const selectedTransportPolicy = transportStudent
+    ? transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null
+    : null;
   const headerTitleMap = {
     all: 'Collections',
     overdue: 'Overdue Payments',
@@ -569,7 +577,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         )}
       </div>
 
-      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments' || activeTab === 'transport') && (
+      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
         <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
@@ -597,15 +605,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               }`}
           >
             Staff Payments ({staffProfiles.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('transport')}
-            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'transport'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-          >
-            Transport ({assignedTransportCount})
           </button>
         </div>
       )}
@@ -766,7 +765,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Route</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Transport Fee</th>
                   <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                 </tr>
@@ -853,6 +852,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       )}
 
       {/* Deadline Alerts */}
+      {activeTab !== 'transport' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`p-4 rounded-2xl border flex items-center justify-between ${
           daysToStudentDeadline < 0 
@@ -906,6 +906,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Disburse Salary</span>
         </div>
       </div>
+      )}
 
       {/* Dashboard Stats - Skip if in collections only view */}
       {!isCollectionsView && (
@@ -1613,25 +1614,27 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.name}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.digital_id}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Current Driver: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.driver_name || 'None'}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Configured Bus Fee: <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(selectedTransportPolicy?.bus_fee ?? transportStudent.bus_fee ?? 0).toLocaleString()} ETB</span></p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Route / Driver *</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Driver *</label>
                 <select
                   required
-                  value={transportData.routeId}
+                  value={transportData.driverId}
                   onChange={(e) => {
-                    const selectedRoute = transportRoutes.find(route => route.route_id === e.target.value);
+                    const selectedDriverId = e.target.value;
+                    const selectedPolicy = transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null;
                     setTransportData({
-                      routeId: e.target.value,
-                      transportFee: selectedRoute ? transportData.transportFee || transportStudent.bus_fee || 0 : transportData.transportFee,
+                      driverId: selectedDriverId,
+                      transportFee: selectedPolicy ? Number(selectedPolicy.bus_fee || 0) : Number(transportStudent.bus_fee || 0),
                     });
                   }}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
                 >
-                  <option value="" disabled>Select route</option>
-                  {transportRoutes.map((route) => (
-                    <option key={route.route_id} value={route.route_id}>
-                      {route.route_name} - {route.driver_name}
+                  <option value="" disabled>Select driver</option>
+                  {transportDrivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name} ({driver.digital_id})
                     </option>
                   ))}
                 </select>
@@ -1644,8 +1647,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   min="0"
                   step="0.01"
                   value={transportData.transportFee}
-                  onChange={(e) => setTransportData({ ...transportData, transportFee: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  readOnly
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-4">

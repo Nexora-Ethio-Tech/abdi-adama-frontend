@@ -59,6 +59,31 @@ export interface TransportRouteInfo {
   student_count: number;
 }
 
+export interface TransportDriverInfo {
+  id: string;
+  digital_id: string;
+  username: string;
+  name: string;
+  email: string;
+  role: string;
+  branch_id: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  branch_name?: string;
+}
+
+export interface TransportFeePolicy {
+  grade_level: string | null;
+  monthly_tuition: number;
+  registration_fee: number;
+  bus_fee: number;
+  penalty_rate: number;
+  academic_year: string;
+  branch_id: string;
+}
+
 export interface RecordPaymentRequest {
   studentId: string;  // Will be sent as studentId in body
   amount: number;
@@ -76,7 +101,7 @@ export interface UpdateFeeStatusRequest {
 
 export interface AssignTransportRequest {
   studentId: string;
-  routeId: string;
+  driverId: string;
   transportFee: number;
 }
 
@@ -151,6 +176,24 @@ const financeClerkService = {
     return (response.data.data || []).map((r: any) => ({
       ...r,
       student_count: parseInt(r.student_count) || 0,
+    }));
+  },
+
+  // 2c1. Get branch drivers for transport assignment
+  getTransportDrivers: async (): Promise<TransportDriverInfo[]> => {
+    const response = await api.get('/finance-clerk/transport/drivers');
+    return response.data.data || [];
+  },
+
+  // 2c2. Get branch transport fee policies from the global fee structure
+  getTransportPolicies: async (): Promise<TransportFeePolicy[]> => {
+    const response = await api.get('/finance-clerk/transport/policies');
+    return (response.data.data || []).map((policy: any) => ({
+      ...policy,
+      monthly_tuition: parseFloat(policy.monthly_tuition) || 0,
+      registration_fee: parseFloat(policy.registration_fee) || 0,
+      bus_fee: parseFloat(policy.bus_fee) || 0,
+      penalty_rate: parseFloat(policy.penalty_rate) || 0,
     }));
   },
 
