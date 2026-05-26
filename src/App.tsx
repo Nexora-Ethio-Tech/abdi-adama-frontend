@@ -34,6 +34,7 @@ const Exams = lazy(() => import('./pages/Exams'));
 const Clinic = lazy(() => import('./pages/Clinic').then((m) => ({ default: m.Clinic })));
 const ParentClinicChat = lazy(() => import('./pages/ParentClinicChat').then((m) => ({ default: m.ParentClinicChat })));
 const DriverPortal = lazy(() => import('./pages/DriverPortal').then((m) => ({ default: m.DriverPortal })));
+const RegistrationPage = lazy(() => import('./pages/Registration').then((m) => ({ default: m.Registration })));
 const WebsitePosts = lazy(() => import('./pages/WebsitePosts').then((m) => ({ default: m.WebsitePosts })));
 const AuditorDashboard = lazy(() => import('./pages/AuditorDashboard').then((m) => ({ default: m.AuditorDashboard })));
 const VicePrincipalDashboard = lazy(() => import('./pages/VicePrincipalDashboard').then((m) => ({ default: m.VicePrincipalDashboard })));
@@ -196,6 +197,12 @@ function App() {
               <Route path="students" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'parent', 'vice-principal']}>
                   <Students />
+                </ProtectedRoute>
+              } />
+
+              <Route path="registration" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <RegistrationPage />
                 </ProtectedRoute>
               } />
 

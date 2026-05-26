@@ -214,7 +214,7 @@ export const Students = () => {
         <div className="flex gap-3">
           {isSchoolAdmin && (
             <button
-              onClick={() => navigate('/admission')}
+              onClick={() => navigate('/registration')}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none"
             >
               <UserPlus size={18} />

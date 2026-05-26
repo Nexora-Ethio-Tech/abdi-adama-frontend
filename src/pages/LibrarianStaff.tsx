@@ -274,50 +274,34 @@ export const LibrarianStaff = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center relative z-20">
-                        <button
-                          onClick={() => setActionMenu(actionMenu === staff.id ? null : staff.id)}
-                          className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                          aria-label="Open actions menu"
-                        >
-                          <MoreVertical size={18} className="text-slate-600 dark:text-slate-400" />
-                        </button>
-                        {actionMenu === staff.id && (
-                          <div className="absolute right-full top-1/2 -translate-y-1/2 -translate-x-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl py-1 z-50 min-w-[180px]">
-                            {staff.status !== 'Approved' && (
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({ show: true, action: 'approve', staff });
-                                  setActionMenu(null);
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-sm font-medium flex items-center gap-2"
-                              >
-                                <Check size={14} /> Approve
-                              </button>
-                            )}
-                            {staff.status === 'Approved' && (
-                              <button
-                                onClick={() => {
-                                  setConfirmAction({ show: true, action: 'revoke', staff });
-                                  setActionMenu(null);
-                                }}
-                                className="w-full text-left px-4 py-2 hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-sm font-medium flex items-center gap-2"
-                              >
-                                <XCircle size={14} /> Revoke
-                              </button>
-                            )}
+                      {isAdmin && (
+                        <div className="flex items-center gap-2 justify-center">
+                          {staff.status === 'Pending' ? (
                             <button
-                              onClick={() => {
-                                setConfirmAction({ show: true, action: 'delete', staff });
-                                setActionMenu(null);
-                              }}
-                              className="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-900/20 text-rose-600 dark:text-rose-400 text-sm font-medium flex items-center gap-2"
+                              onClick={() => setConfirmAction({ show: true, action: 'approve', staff })}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
                             >
-                              <Trash2 size={14} /> Delete
+                              <CheckCircle size={14} />
+                              Approve
                             </button>
-                          </div>
-                        )}
-                      </div>
+                          ) : staff.status === 'Approved' ? (
+                            <button
+                              onClick={() => setConfirmAction({ show: true, action: 'revoke', staff })}
+                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                            >
+                              <XCircle size={14} />
+                              Revoke
+                            </button>
+                          ) : null}
+                          <button
+                            onClick={() => setConfirmAction({ show: true, action: 'delete', staff })}
+                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
