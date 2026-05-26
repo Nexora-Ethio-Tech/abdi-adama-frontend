@@ -195,15 +195,6 @@ export const Analytics = () => {
               <span className="text-amber-400 font-black">15 students</span> are over 30 days late on payments totaling <span className="font-black">450K ETB</span>.
             </p>
           </div>
-          <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={14} className="text-blue-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Attendance</span>
-            </div>
-            <p className="text-sm font-medium text-slate-200">
-              <span className="text-blue-400 font-black">Grade 11C</span> has the lowest attendance at <span className="font-black">83.3%</span> — requires follow-up.
-            </p>
-          </div>
         </div>
       </div>
 

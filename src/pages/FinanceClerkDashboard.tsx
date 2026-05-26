@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard } from 'lucide-react';
-import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest } from '../services/financeService';
+import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportStudentInfo, type TransportFeePolicy, type TransportDriverInfo } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
@@ -16,7 +16,7 @@ type ManualTransaction = {
   createdAt: string;
 };
 
-export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' }) => {
+export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isCollectionsView = location.pathname === '/finance-dashboard';
@@ -30,18 +30,34 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests'>(
-    initialTab || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport'>(
+    (initialTab as any) || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showAidPickerModal, setShowAidPickerModal] = useState(false);
+  const [showTransportModal, setShowTransportModal] = useState(false);
+  const [showStopTransportModal, setShowStopTransportModal] = useState(false);
   const [showReductionModal, setShowReductionModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
   const [reductionStudent, setReductionStudent] = useState<StudentFeeInfo | null>(null);
+  const [transportStudent, setTransportStudent] = useState<TransportStudentInfo | null>(null);
+  const [stopTransportStudent, setStopTransportStudent] = useState<TransportStudentInfo | null>(null);
   const [reductionNotes, setReductionNotes] = useState('');
   const [isRequestingReduction, setIsRequestingReduction] = useState(false);
   const [selectedAidStudentId, setSelectedAidStudentId] = useState('');
+  const [transportSearchTerm, setTransportSearchTerm] = useState('');
+  const [transportStatusFilter, setTransportStatusFilter] = useState<'assigned' | 'unassigned' | 'all'>('assigned');
+  const [transportDrivers, setTransportDrivers] = useState<TransportDriverInfo[]>([]);
+  const [transportPolicies, setTransportPolicies] = useState<TransportFeePolicy[]>([]);
+  const [transportStudents, setTransportStudents] = useState<TransportStudentInfo[]>([]);
+  const [transportPage, setTransportPage] = useState(1);
+  const [transportPerPage, setTransportPerPage] = useState<number>(10);
+  const [transportData, setTransportData] = useState({
+    driverId: '',
+    transportFee: 0,
+  });
+  const [stopDaysUsed, setStopDaysUsed] = useState(0);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
@@ -100,9 +116,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    if (tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests'].includes(tab)) {
+    if (tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport'].includes(tab)) {
       setActiveTab(tab as any);
       setStudentPage(1);
+      setTransportPage(1);
     }
   }, [location.search]);
 
@@ -117,12 +134,21 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         payrollService.getAllProfiles().catch(() => []),
         payrollService.getFinanceSettings().catch(() => [])
       ]);
+      const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
+        financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
+        financeClerkService.getTransportDrivers(),
+        financeClerkService.getTransportPolicies(),
+      ]);
       setDashboard(dashboardData);
       setStudents(studentsData);
       setOverdueStudents(overdueData);
       setStaffProfiles(staffData);
       setFinanceSettings(settingsData);
+      setTransportStudents(transportStudentsData);
+      setTransportDrivers(transportDriversData);
+      setTransportPolicies(transportPoliciesData);
       setStudentPage(1);
+      setTransportPage(1);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to fetch data');
     } finally {
@@ -178,6 +204,23 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setShowReductionModal(true);
   };
 
+  const openTransportModal = (student: TransportStudentInfo) => {
+    const policy = transportPolicies.find((item) => item.grade_level === student.grade) || transportPolicies.find((item) => !item.grade_level) || null;
+    const driverId = student.driver_id || transportDrivers[0]?.id || '';
+    setTransportStudent(student);
+    setTransportData({
+      driverId,
+      transportFee: policy ? Number(policy.bus_fee || 0) : Number(student.bus_fee || 0),
+    });
+    setShowTransportModal(true);
+  };
+
+  const openStopTransportModal = (student: TransportStudentInfo) => {
+    setStopTransportStudent(student);
+    setStopDaysUsed(0);
+    setShowStopTransportModal(true);
+  };
+
   const handleRequestReduction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reductionStudent) return;
@@ -199,6 +242,47 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setTimeout(() => setError(null), 5000);
     } finally {
       setIsRequestingReduction(false);
+    }
+  };
+
+  const handleAssignTransport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transportStudent || !transportData.driverId) return;
+
+    try {
+      await financeClerkService.assignTransport({
+        studentId: transportStudent.id,
+        driverId: transportData.driverId,
+        transportFee: Number(transportData.transportFee),
+      });
+      setSuccess('Transport assignment saved successfully');
+      setShowTransportModal(false);
+      setTransportStudent(null);
+      fetchData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to save transport assignment');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleStopTransport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stopTransportStudent) return;
+
+    try {
+      const result = await financeClerkService.stopTransport({
+        studentId: stopTransportStudent.id,
+        daysUsed: Number(stopDaysUsed),
+      });
+      setSuccess(`Transport stopped. Settlement recorded: ${Number(result.amountDue || 0).toLocaleString()} ETB`);
+      setShowStopTransportModal(false);
+      setStopTransportStudent(null);
+      fetchData();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to stop transport');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -321,15 +405,32 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const aidRequestedStudents = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status));
   const aidPaginated = aidRequestedStudents.slice((studentPage - 1) * studentsPerPage, studentPage * studentsPerPage);
   const aidTotalPages = Math.max(1, Math.ceil(aidRequestedStudents.length / studentsPerPage));
+  const filteredTransportStudents = transportStudents.filter(student => {
+    const searchValue = transportSearchTerm.toLowerCase();
+    if (!searchValue) return true;
+    return (
+      student.name.toLowerCase().includes(searchValue) ||
+      student.digital_id.toLowerCase().includes(searchValue) ||
+      (student.route_name || '').toLowerCase().includes(searchValue) ||
+      (student.driver_name || '').toLowerCase().includes(searchValue)
+    );
+  });
+  const paginatedTransportStudents = filteredTransportStudents.slice((transportPage - 1) * transportPerPage, transportPage * transportPerPage);
+  const totalTransportPages = Math.max(1, Math.ceil(filteredTransportStudents.length / transportPerPage));
   const requestedAidCount = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status)).length;
   const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
   const eligibleAidStudents = students.filter(s => s.fee_approval_status === 'none');
+  const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
+  const selectedTransportPolicy = transportStudent
+    ? transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null
+    : null;
   const headerTitleMap = {
     all: 'Collections',
     overdue: 'Overdue Payments',
     registrations: 'Registrations',
     'staff-payments': 'Staff Payments',
     'aid-requests': 'Request Aid',
+    transport: 'Transport Management',
   } as const;
   const headerSubtitleMap = {
     all: 'Collect student fees and manage payment records',
@@ -337,6 +438,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     registrations: 'Finalize fee-related registration approvals',
     'staff-payments': 'Disburse salary and confirm payroll payouts',
     'aid-requests': 'Create and track aid requests sent to the auditor',
+    transport: 'Assign students to drivers and manage transport fees',
   } as const;
 
   if (loading && !dashboard) {
@@ -392,6 +494,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         subtitle: 'Employees in payroll',
         color: 'from-slate-700 to-slate-600',
         action: () => navigate('/finance-dashboard?tab=staff-payments')
+      },
+      {
+        title: 'Transport',
+        value: assignedTransportCount.toString(),
+        subtitle: 'Students assigned to drivers',
+        color: 'from-amber-700 to-orange-600',
+        action: () => navigate('/finance-dashboard?tab=transport')
       },
     ];
 
@@ -604,6 +713,138 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </div>
       )}
 
+      {activeTab === 'transport' && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Transport Management</h3>
+              <p className="text-slate-500 text-xs mt-1">Assign students to drivers, change routes, or stop transport.</p>
+            </div>
+            <span className="px-4 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 rounded-full text-xs font-black uppercase tracking-wider">
+              {assignedTransportCount} Assigned
+            </span>
+          </div>
+
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative md:col-span-2">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search student, digital ID, route, or driver..."
+                value={transportSearchTerm}
+                onChange={(e) => {
+                  setTransportSearchTerm(e.target.value);
+                  setTransportPage(1);
+                }}
+                className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+            <select
+              value={transportStatusFilter}
+              onChange={(e) => {
+                setTransportStatusFilter(e.target.value as 'assigned' | 'unassigned' | 'all');
+                setTransportPage(1);
+              }}
+              className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+            >
+              <option value="assigned">Assigned only</option>
+              <option value="unassigned">Unassigned only</option>
+              <option value="all">All</option>
+            </select>
+            <button
+              onClick={fetchData}
+              className="px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-bold text-sm transition-all"
+            >
+              Apply Filters
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Transport Fee</th>
+                  <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {paginatedTransportStudents.map((student) => (
+                  <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                        <p className="text-xs text-slate-500">{student.digital_id} • Grade {student.grade}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold">
+                        {student.driver_name || 'No driver'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
+                        {student.route_name || 'No route'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
+                      {Number(student.bus_fee || 0).toLocaleString()} ETB
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <button
+                          onClick={() => openTransportModal(student)}
+                          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all"
+                        >
+                          {student.route_id ? 'Change Driver' : 'Assign Transport'}
+                        </button>
+                        {student.route_id && (
+                          <button
+                            onClick={() => openStopTransportModal(student)}
+                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all"
+                          >
+                            Stop Transport
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredTransportStudents.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-slate-400 font-medium">No transport assignments found.</p>
+            </div>
+          )}
+
+          {filteredTransportStudents.length > 0 && totalTransportPages > 1 && (
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+              <button
+                onClick={() => setTransportPage((prev) => Math.max(1, prev - 1))}
+                disabled={transportPage === 1}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-slate-500 font-medium">Page {transportPage} of {totalTransportPages}</span>
+              <button
+                onClick={() => setTransportPage((prev) => Math.min(totalTransportPages, prev + 1))}
+                disabled={transportPage === totalTransportPages}
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {success && (
         <div className="fixed top-6 right-6 z-50 bg-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-right-8 max-w-md">
           ✅ {success}
@@ -611,6 +852,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       )}
 
       {/* Deadline Alerts */}
+      {activeTab !== 'transport' && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`p-4 rounded-2xl border flex items-center justify-between ${
           daysToStudentDeadline < 0 
@@ -664,6 +906,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Disburse Salary</span>
         </div>
       </div>
+      )}
 
       {/* Dashboard Stats - Skip if in collections only view */}
       {!isCollectionsView && (
@@ -1349,6 +1592,132 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20"
                 >
                   Record Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Transport Assignment Modal */}
+      {showTransportModal && transportStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{transportStudent.route_id ? 'Change Driver' : 'Assign Transport'}</h2>
+              <button onClick={() => setShowTransportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleAssignTransport} className="p-6 space-y-4">
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.digital_id}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Driver: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.driver_name || 'None'}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Configured Bus Fee: <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(selectedTransportPolicy?.bus_fee ?? transportStudent.bus_fee ?? 0).toLocaleString()} ETB</span></p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Driver *</label>
+                <select
+                  required
+                  value={transportData.driverId}
+                  onChange={(e) => {
+                    const selectedDriverId = e.target.value;
+                    const selectedPolicy = transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null;
+                    setTransportData({
+                      driverId: selectedDriverId,
+                      transportFee: selectedPolicy ? Number(selectedPolicy.bus_fee || 0) : Number(transportStudent.bus_fee || 0),
+                    });
+                  }}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  <option value="" disabled>Select driver</option>
+                  {transportDrivers.map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name} ({driver.digital_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transport Fee (ETB) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={transportData.transportFee}
+                  readOnly
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTransportModal(false)}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-bold transition-all shadow-lg shadow-amber-500/20"
+                >
+                  Save Assignment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stop Transport Modal */}
+      {showStopTransportModal && stopTransportStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stop Transport</h2>
+              <button onClick={() => setShowStopTransportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleStopTransport} className="p-6 space-y-4">
+              <div className="space-y-3">
+                <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{stopTransportStudent.name}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Driver: <span className="font-bold text-slate-900 dark:text-white">{stopTransportStudent.driver_name || 'None'}</span></p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Current Transport Fee: <span className="font-bold text-slate-900 dark:text-white">{Number(stopTransportStudent.bus_fee || 0).toLocaleString()} ETB</span></p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Days Used This Month *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  max="30"
+                  value={stopDaysUsed}
+                  onChange={(e) => setStopDaysUsed(Number(e.target.value))}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                />
+              </div>
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300">
+                <p className="text-xs font-black uppercase tracking-wider">Settlement Preview</p>
+                <p className="text-sm font-medium mt-1">
+                  Amount due: {Number((Math.max(0, (30 - stopDaysUsed)) * Number(stopTransportStudent.bus_fee || 0)) / 30).toLocaleString()} ETB
+                </p>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowStopTransportModal(false)}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl hover:bg-rose-700 font-bold transition-all shadow-lg shadow-rose-500/20"
+                >
+                  Stop & Record Settlement
                 </button>
               </div>
             </form>

@@ -160,6 +160,36 @@ export const Dashboard = () => {
   const selectedBranch = selectedBranchId ? branches.find((branch) => branch.id === selectedBranchId) || null : null;
   const [branchReports, setBranchReports] = useState<any[]>([]);
 
+  const selectedBranchReport = selectedBranchId
+    ? branchReports.find((report) => report?.branchId === selectedBranchId || report?.branch?.id === selectedBranchId) || null
+    : null;
+
+  const totalBranchStaff = dashboardStats?.usersByRole?.reduce(
+    (sum: number, role: any) => sum + Number(role.count || 0),
+    0
+  ) ?? 0;
+
+  const selectedBranchStaffCount = selectedBranchReport
+    ? (
+      selectedBranchReport.totalStaff ?? selectedBranchReport.usersByRole?.reduce(
+        (sum: number, role: any) => sum + Number(role.count || 0),
+        0
+      ) ?? 0
+    )
+    : 0;
+
+  const selectedBranchTeacherCount = selectedBranchReport
+    ? (
+      selectedBranchReport.totalTeachers ??
+      (selectedBranchReport.usersByRole?.find((role: any) => role.role === 'teacher')?.count ?? 0)
+    )
+    : 0;
+
+  const selectedBranchStaffRoles = selectedBranchReport?.usersByRole?.filter((role: any) => {
+    const normalized = (role.role || '').toString().toLowerCase();
+    return normalized !== 'teacher' && normalized !== 'student';
+  }) || [];
+
   // Fetch branch reports for Super Admin
   useEffect(() => {
     const fetchBranchReports = async () => {
@@ -195,17 +225,28 @@ export const Dashboard = () => {
     // Use ONLY real API data - no fallback
     const branchHealth = branches.map((branch) => {
       // Now report is the actual data object, not wrapped in response
-      const report = branchReports.find(r => r?.branchId === branch.id);
+      const report = branchReports.find(
+        (r) => r?.branchId === branch.id || r?.branch?.id === branch.id
+      );
       console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
       
       if (!report) {
         return null; // Skip branches without API data
       }
+
+      const teacherCount = (
+        report.totalTeachers ?? report.usersByRole?.find((role: any) => role.role === 'teacher')?.count
+      ) || 0;
+      const staffCount = report.totalStaff ?? report.usersByRole?.reduce(
+        (sum: number, role: any) => sum + Number(role.count || 0),
+        0
+      ) ?? 0;
       
       return {
         ...branch,
         students: report.totalStudents,
-        teachers: report.totalTeachers,
+        teachers: teacherCount,
+        staff: staffCount,
         attendance: report.attendanceRate?.toFixed(1),
         finance: report.netProfit > 0 ? 'Stable' : 'Attention',
         risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
@@ -244,14 +285,14 @@ export const Dashboard = () => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
             {loading ? (
-              <div className="col-span-4 text-center py-8">
+              <div className="col-span-5 text-center py-8">
                 <div className="inline-block w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                 <p className="text-sm text-slate-500 mt-2">Loading dashboard stats...</p>
               </div>
             ) : error ? (
-              <div className="col-span-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <div className="col-span-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <p className="text-sm text-amber-700 dark:text-amber-400">⚠️ Using mock data (API: {error})</p>
               </div>
             ) : null}
@@ -267,6 +308,12 @@ export const Dashboard = () => {
               label={t('dashboard.totalTeachers')} 
               value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"} 
               color="bg-purple-600" 
+            />
+            <StatCard 
+              icon={Users} 
+              label="Total Branch Staff" 
+              value={totalBranchStaff.toLocaleString?.() || totalBranchStaff.toString()} 
+              color="bg-slate-600" 
             />
             <StatCard 
               icon={Clock} 
@@ -299,14 +346,12 @@ export const Dashboard = () => {
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.students')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.teachers')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.attendance')}</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.finance')}</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">{t('dashboard.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {branchHealth.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center">
+                        <td colSpan={4} className="px-6 py-8 text-center">
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                             <p className="text-sm text-slate-500 mt-2">Loading branch reports...</p>
@@ -327,20 +372,6 @@ export const Dashboard = () => {
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.students ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.teachers ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-emerald-600">{branch?.attendance ?? 0}%</td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.finance ?? 0}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => {
-                              if (branch) {
-                                setSelectedBranchId(branch.id);
-                                setSelectedBranch(branch);
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${branch?.risk === 'Normal' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
-                          >
-                            {branch?.risk || ''}
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -385,14 +416,14 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Power of Three: Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        {/* Branch Summary Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Users size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.students')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">318</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.totalStudents ?? 0}</p>
             <p className="text-xs text-emerald-600 font-bold mt-1">+2.1% this term</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
@@ -400,86 +431,61 @@ export const Dashboard = () => {
               <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><GraduationCap size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.teachers')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">24</p>
-            <p className="text-xs text-slate-500 font-bold mt-1">6 on exam duty</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchTeacherCount}</p>
+            <p className="text-xs text-slate-500 font-bold mt-1">Teaching staff only</p>
+          </div>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl"><Users size={20} /></div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch Staff</p>
+                <p className="text-xs text-slate-500 mt-1">Role breakdown for this branch</p>
+              </div>
+            </div>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchStaffCount}</p>
+            {selectedBranchStaffRoles.length ? (
+              <div className="mt-4 space-y-2">
+                {selectedBranchStaffRoles.map((role: any) => (
+                  <div key={role.role} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
+                    <span className="font-medium">{role.role.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</span>
+                    <span className="font-black">{role.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 font-bold mt-1">All branch employees</p>
+            )}
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-orange-100 text-orange-600 rounded-xl"><Clock size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.attendance')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">93.8%</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.attendance ? `${selectedBranchReport.attendance}%` : 'N/A'}</p>
             <p className="text-xs text-emerald-600 font-bold mt-1">+0.7% vs last week</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Pending Actions */}
-          <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="xl:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.pendingActions')}</h3>
-                <p className="text-xs text-slate-500">{t('dashboard.attentionItems')}</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Switch Branch</h3>
+                <p className="text-xs text-slate-500">Select another branch to inspect</p>
               </div>
-              <span className="px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full text-[10px] font-black">5 {t('dashboard.items')}</span>
             </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {[
-                { label: 'VP attendance queue items', count: '4', color: 'bg-rose-500', action: 'Review' },
-                { label: 'Finance clerk fee exception', count: '1', color: 'bg-amber-500', action: 'Approve' },
-                { label: 'Compliance risks escalated', count: '2', color: 'bg-amber-500', action: 'Inspect' },
-                { label: 'Exam unveil requests', count: '3', color: 'bg-blue-500', action: 'Decide' },
-                { label: 'Bus route update pending', count: '1', color: 'bg-orange-500', action: 'Confirm' },
-              ].map((item) => (
-                <div key={item.label} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
-                    <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full">{item.count}</span>
-                  </div>
-                  <button className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    {item.action}
-                  </button>
-                </div>
+            <div className="p-6 space-y-2">
+              {branches.map((branch) => (
+                <button
+                  key={branch.id}
+                  onClick={() => {
+                    setSelectedBranchId(branch.id);
+                    setSelectedBranch(branch);
+                  }}
+                  className={`w-full p-3 rounded-xl text-left text-sm font-bold transition-all ${branch.id === selectedBranch.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 border border-transparent hover:border-slate-200'}`}>
+                  {branch.name}
+                </button>
               ))}
-            </div>
-          </div>
-
-          {/* Performance Snapshot with Traffic Lights */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.healthCheck')}</h3>
-            {[
-              { label: 'Finance', value: 'On Track', status: 'green' },
-              { label: 'Attendance', value: '93.8%', status: 'green' },
-              { label: 'Facilities', value: 'All Green', status: 'green' },
-              { label: 'Exams', value: '3 Locked', status: 'yellow' },
-              { label: 'Compliance', value: '2 Risks', status: 'yellow' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">{item.value}</span>
-                  <div className={`w-3 h-3 rounded-full ${item.status === 'green' ? 'bg-emerald-500' : item.status === 'yellow' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                </div>
-              </div>
-            ))}
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Switch Branch</h4>
-              <div className="space-y-2">
-                {branches.map((branch) => (
-                  <button
-                    key={branch.id}
-                    onClick={() => {
-                      setSelectedBranchId(branch.id);
-                      setSelectedBranch(branch);
-                    }}
-                    className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all ${branch.id === selectedBranch.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 border border-transparent hover:border-slate-200'}`}
-                  >
-                    {branch.name}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>

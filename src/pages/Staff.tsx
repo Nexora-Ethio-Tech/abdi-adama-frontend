@@ -180,6 +180,12 @@ export const Staff = () => {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Validate email before submitting
+    const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!isValidEmail(createForm.email)) {
+      setErrorModal({ show: true, message: 'Please enter a valid email address' });
+      return;
+    }
     setCreating(true);
     try {
       // Backend has conflicting validation - dedicated endpoints shouldn't require role field

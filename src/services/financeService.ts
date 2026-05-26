@@ -35,6 +35,55 @@ export interface StudentFeeInfo {
   fee_notes: string | null;
 }
 
+export interface TransportStudentInfo {
+  id: string;
+  name: string;
+  email: string;
+  digital_id: string;
+  grade: string;
+  bus_fee: number;
+  is_bus_user: boolean;
+  route_id: string | null;
+  route_name: string | null;
+  driver_id: string | null;
+  driver_name: string | null;
+  driver_digital_id: string | null;
+}
+
+export interface TransportRouteInfo {
+  route_id: string;
+  route_name: string;
+  driver_id: string;
+  driver_name: string;
+  driver_digital_id: string;
+  student_count: number;
+}
+
+export interface TransportDriverInfo {
+  id: string;
+  digital_id: string;
+  username: string;
+  name: string;
+  email: string;
+  role: string;
+  branch_id: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  branch_name?: string;
+}
+
+export interface TransportFeePolicy {
+  grade_level: string | null;
+  monthly_tuition: number;
+  registration_fee: number;
+  bus_fee: number;
+  penalty_rate: number;
+  academic_year: string;
+  branch_id: string;
+}
+
 export interface RecordPaymentRequest {
   studentId: string;  // Will be sent as studentId in body
   amount: number;
@@ -48,6 +97,17 @@ export interface UpdateFeeStatusRequest {
   busFee?: number;
   penaltyFee?: number;
   feeNotes?: string;
+}
+
+export interface AssignTransportRequest {
+  studentId: string;
+  driverId: string;
+  transportFee: number;
+}
+
+export interface StopTransportRequest {
+  studentId: string;
+  daysUsed: number;
 }
 
 export interface OverdueStudent {
@@ -99,6 +159,54 @@ const financeClerkService = {
       bus_fee: parseFloat(s.bus_fee) || 0,
       penalty_fee: parseFloat(s.penalty_fee) || 0,
     }));
+  },
+
+  // 2b. Get transport-managed students
+  getTransportStudents: async (params?: { search?: string; status?: 'assigned' | 'unassigned' | 'all' }): Promise<TransportStudentInfo[]> => {
+    const response = await api.get('/finance-clerk/transport/students', { params });
+    return (response.data.data || []).map((s: any) => ({
+      ...s,
+      bus_fee: parseFloat(s.bus_fee) || 0,
+    }));
+  },
+
+  // 2c. Get transport routes and drivers
+  getTransportRoutes: async (params?: { search?: string }): Promise<TransportRouteInfo[]> => {
+    const response = await api.get('/finance-clerk/transport/routes', { params });
+    return (response.data.data || []).map((r: any) => ({
+      ...r,
+      student_count: parseInt(r.student_count) || 0,
+    }));
+  },
+
+  // 2c1. Get branch drivers for transport assignment
+  getTransportDrivers: async (): Promise<TransportDriverInfo[]> => {
+    const response = await api.get('/finance-clerk/transport/drivers');
+    return response.data.data || [];
+  },
+
+  // 2c2. Get branch transport fee policies from the global fee structure
+  getTransportPolicies: async (): Promise<TransportFeePolicy[]> => {
+    const response = await api.get('/finance-clerk/transport/policies');
+    return (response.data.data || []).map((policy: any) => ({
+      ...policy,
+      monthly_tuition: parseFloat(policy.monthly_tuition) || 0,
+      registration_fee: parseFloat(policy.registration_fee) || 0,
+      bus_fee: parseFloat(policy.bus_fee) || 0,
+      penalty_rate: parseFloat(policy.penalty_rate) || 0,
+    }));
+  },
+
+  // 2d. Assign or change a student transport route
+  assignTransport: async (data: AssignTransportRequest) => {
+    const response = await api.post('/finance-clerk/transport/assign', data);
+    return response.data.data;
+  },
+
+  // 2e. Stop transport and create proration settlement
+  stopTransport: async (data: StopTransportRequest) => {
+    const response = await api.post('/finance-clerk/transport/stop', data);
+    return response.data.data;
   },
 
   // 3. Record Payment
