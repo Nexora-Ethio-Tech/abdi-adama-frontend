@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Search, Landmark, FileText, X, Plus, AlertCircle, RefreshCw, CheckCircle, Ban, History, HelpCircle } from 'lucide-react';
 import loanService, { Loan } from '../services/loanService';
 import payrollService, { EmployeePayrollProfile } from '../services/payrollService';
+import { useUser } from '../context/UserContext';
 
 export const LoanManagement = () => {
+  const { role } = useUser();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [employees, setEmployees] = useState<EmployeePayrollProfile[]>([]);
   const [globalDeductionPct, setGlobalDeductionPct] = useState(30);
@@ -63,7 +65,7 @@ export const LoanManagement = () => {
     setSuccessMsg('');
     try {
       await loanService.issueLoan(selectedEmployeeId, Number(loanAmount), notes);
-      setSuccessMsg('Loan successfully issued to employee and notification triggered!');
+      setSuccessMsg('Loan successfully disbursed! In-app notifications and email alert have been dispatched to the employee.');
       setIsModalOpen(false);
       
       // Reset form
@@ -257,13 +259,15 @@ export const LoanManagement = () => {
                     </td>
                     {activeTab === 'active' && (
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => handleCancelLoan(l.id)}
-                          className="bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/20 text-rose-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ml-auto"
-                        >
-                          <Ban size={12} />
-                          Void Loan
-                        </button>
+                        {(role === 'super-admin' || role === 'auditor') && (
+                          <button
+                            onClick={() => handleCancelLoan(l.id)}
+                            className="bg-rose-50 hover:bg-rose-600 hover:text-white dark:bg-rose-950/20 text-rose-600 p-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider ml-auto"
+                          >
+                            <Ban size={12} />
+                            Void Loan
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>

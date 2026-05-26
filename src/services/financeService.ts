@@ -38,7 +38,7 @@ export interface StudentFeeInfo {
 export interface RecordPaymentRequest {
   studentId: string;  // Will be sent as studentId in body
   amount: number;
-  type: string;
+  type: string | string[];
   date: string;
 }
 
