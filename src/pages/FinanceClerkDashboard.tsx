@@ -1,10 +1,20 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard } from 'lucide-react';
-import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type Transaction, type RecordPaymentRequest } from '../services/financeService';
+import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
+
+type ManualTransaction = {
+  id: string;
+  category: 'expense' | 'income';
+  type: string;
+  amount: number;
+  details: string;
+  date: string;
+  createdAt: string;
+};
 
 export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' }) => {
   const location = useLocation();
@@ -24,11 +34,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     initialTab || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [showAidPickerModal, setShowAidPickerModal] = useState(false);
   const [showReductionModal, setShowReductionModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
   const [reductionStudent, setReductionStudent] = useState<StudentFeeInfo | null>(null);
   const [reductionNotes, setReductionNotes] = useState('');
   const [isRequestingReduction, setIsRequestingReduction] = useState(false);
+  const [selectedAidStudentId, setSelectedAidStudentId] = useState('');
   
   const [searchTerm, setSearchTerm] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
@@ -59,6 +72,21 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     amount: 0,
     type: ['Monthly Tuition'],
     date: new Date().toISOString().split('T')[0],
+  });
+  const [transactionData, setTransactionData] = useState({
+    category: 'expense' as 'expense' | 'income',
+    type: 'Materials Bought',
+    amount: 0,
+    details: '',
+    date: new Date().toISOString().split('T')[0],
+  });
+  const [manualTransactions, setManualTransactions] = useState<ManualTransaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('manual_finance_transactions');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   // Global items-per-page options
@@ -185,6 +213,55 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setSelectedPaymentTypes(['Monthly Tuition']);
   };
 
+  const resetTransactionForm = () => {
+    setTransactionData({
+      category: 'expense',
+      type: 'Materials Bought',
+      amount: 0,
+      details: '',
+      date: new Date().toISOString().split('T')[0],
+    });
+  };
+
+  const handleRecordTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newTransaction: ManualTransaction = {
+      id: crypto.randomUUID(),
+      category: transactionData.category,
+      type: transactionData.type,
+      amount: transactionData.amount,
+      details: transactionData.details.trim(),
+      date: transactionData.date,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newTransaction, ...manualTransactions];
+    setManualTransactions(updated);
+    localStorage.setItem('manual_finance_transactions', JSON.stringify(updated));
+    setSuccess('Transaction recorded successfully!');
+    setShowTransactionModal(false);
+    resetTransactionForm();
+    setTimeout(() => setSuccess(null), 3000);
+  };
+
+  const openAidRequestPicker = () => {
+    const firstEligible = students.find(s => s.fee_approval_status === 'none');
+    setSelectedAidStudentId(firstEligible?.id || '');
+    setShowAidPickerModal(true);
+  };
+
+  const handleStartAidRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    const student = students.find(s => s.id === selectedAidStudentId);
+    if (!student) {
+      setError('Please select a student to create a request aid ticket.');
+      setTimeout(() => setError(null), 5000);
+      return;
+    }
+    setShowAidPickerModal(false);
+    openReductionModal(student);
+  };
+
   const handleCheckboxChange = (type: string) => {
     let updated: string[];
     if (selectedPaymentTypes.includes(type)) {
@@ -246,6 +323,21 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const aidTotalPages = Math.max(1, Math.ceil(aidRequestedStudents.length / studentsPerPage));
   const requestedAidCount = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status)).length;
   const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
+  const eligibleAidStudents = students.filter(s => s.fee_approval_status === 'none');
+  const headerTitleMap = {
+    all: 'Collections',
+    overdue: 'Overdue Payments',
+    registrations: 'Registrations',
+    'staff-payments': 'Staff Payments',
+    'aid-requests': 'Request Aid',
+  } as const;
+  const headerSubtitleMap = {
+    all: 'Collect student fees and manage payment records',
+    overdue: 'Review and collect overdue student balances',
+    registrations: 'Finalize fee-related registration approvals',
+    'staff-payments': 'Disburse salary and confirm payroll payouts',
+    'aid-requests': 'Create and track aid requests sent to the auditor',
+  } as const;
 
   if (loading && !dashboard) {
     return (
@@ -346,23 +438,67 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
-            {isCollectionsView ? 'Collections & Payments' : 'Finance Overview'}
+            {isCollectionsView ? headerTitleMap[activeTab] : 'Finance Overview'}
           </h1>
           <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mt-1">
-            {isCollectionsView ? 'Disburse staff salaries and collect student fees' : 'Manage student fees and payment collection'}
+            {isCollectionsView ? headerSubtitleMap[activeTab] : 'Manage student fees and payment collection'}
           </p>
         </div>
-        <button
-          onClick={() => {
-            resetPaymentForm();
-            setShowPaymentModal(true);
-          }}
-          className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all font-bold text-sm"
-        >
-          <Plus className="w-5 h-5" />
-          Record Payment
-        </button>
+        {activeTab === 'all' && (
+          <button
+            onClick={() => {
+              resetTransactionForm();
+              setShowTransactionModal(true);
+            }}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all font-bold text-sm"
+          >
+            <Plus className="w-5 h-5" />
+            Record Transaction
+          </button>
+        )}
+        {activeTab === 'aid-requests' && (
+          <button
+            onClick={openAidRequestPicker}
+            disabled={eligibleAidStudents.length === 0}
+            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 shadow-lg shadow-purple-500/20 transition-all font-bold text-sm disabled:opacity-50"
+          >
+            <Plus className="w-5 h-5" />
+            Add Request Aid
+          </button>
+        )}
       </div>
+
+      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
+        <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
+          <button
+            onClick={() => { setActiveTab('all'); setStudentPage(1); }}
+            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            All Students ({students.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('registrations')}
+            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'registrations'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Registrations
+          </button>
+          <button
+            onClick={() => setActiveTab('staff-payments')}
+            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'staff-payments'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Staff Payments ({staffProfiles.length})
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="fixed top-6 right-6 z-50 bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl text-sm font-bold animate-in slide-in-from-right-8 max-w-md">
@@ -377,9 +513,18 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               <h3 className="font-bold text-slate-900 dark:text-white text-lg">Request Aid</h3>
               <p className="text-slate-500 text-xs mt-1">Submit fee reduction / aid requests for students</p>
             </div>
-            <span className="px-4 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-full text-xs font-black uppercase tracking-wider">
-              {pendingCount} Pending
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="px-4 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-full text-xs font-black uppercase tracking-wider">
+                {pendingCount} Pending
+              </span>
+              <button
+                onClick={openAidRequestPicker}
+                disabled={eligibleAidStudents.length === 0}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+              >
+                Add Request Aid
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -967,6 +1112,141 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           )}
           </div>
         </>
+      )}
+
+      {/* Manual Transaction Modal */}
+      {showTransactionModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Transaction</h2>
+              <button onClick={() => setShowTransactionModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleRecordTransaction} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category *</label>
+                <select
+                  value={transactionData.category}
+                  onChange={(e) => setTransactionData({ ...transactionData, category: e.target.value as 'expense' | 'income' })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="expense">Expense</option>
+                  <option value="income">Income</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Type *</label>
+                <input
+                  type="text"
+                  required
+                  value={transactionData.type}
+                  onChange={(e) => setTransactionData({ ...transactionData, type: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Example: Materials Bought, Materials Sold"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="0.01"
+                  value={transactionData.amount}
+                  onChange={(e) => setTransactionData({ ...transactionData, amount: Number(e.target.value) })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Details</label>
+                <textarea
+                  value={transactionData.details}
+                  onChange={(e) => setTransactionData({ ...transactionData, details: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Notes, receipt reference, vendor, or context"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transaction Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={transactionData.date}
+                  onChange={(e) => setTransactionData({ ...transactionData, date: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowTransactionModal(false)}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20"
+                >
+                  Save Transaction
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Aid Request Picker Modal */}
+      {showAidPickerModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Add Request Aid</h2>
+              <button onClick={() => setShowAidPickerModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <form onSubmit={handleStartAidRequest} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student *</label>
+                <select
+                  required
+                  value={selectedAidStudentId}
+                  onChange={(e) => setSelectedAidStudentId(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                >
+                  <option value="" disabled>Select a student</option>
+                  {eligibleAidStudents.map((student) => (
+                    <option key={student.id} value={student.id}>{student.name} - {student.digital_id}</option>
+                  ))}
+                </select>
+              </div>
+              {eligibleAidStudents.length === 0 && (
+                <p className="text-sm text-slate-500">All students already have an aid request status.</p>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAidPickerModal(false)}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={eligibleAidStudents.length === 0 || !selectedAidStudentId}
+                  className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-bold transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50"
+                >
+                  Continue
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Payment Modal */}
