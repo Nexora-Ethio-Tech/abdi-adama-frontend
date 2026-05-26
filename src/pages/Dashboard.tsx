@@ -346,14 +346,12 @@ export const Dashboard = () => {
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.students')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.teachers')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.attendance')}</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.finance')}</th>
-                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">{t('dashboard.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {branchHealth.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center">
+                        <td colSpan={4} className="px-6 py-8 text-center">
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                             <p className="text-sm text-slate-500 mt-2">Loading branch reports...</p>
@@ -374,20 +372,6 @@ export const Dashboard = () => {
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.students ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.teachers ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-emerald-600">{branch?.attendance ?? 0}%</td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.finance ?? 0}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => {
-                              if (branch) {
-                                setSelectedBranchId(branch.id);
-                                setSelectedBranch(branch);
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${branch?.risk === 'Normal' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
-                          >
-                            {branch?.risk || ''}
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>

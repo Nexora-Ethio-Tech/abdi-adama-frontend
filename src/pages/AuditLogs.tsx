@@ -18,9 +18,6 @@ interface AuditLogFilters {
   limit?: number;
   direction?: string;
   category?: string;
-  section?: string;
-  actionType?: string;
-  role?: string;
   minAmount?: number;
   maxAmount?: number;
   startDate?: string;
@@ -164,39 +161,6 @@ const AuditLogs: React.FC = () => {
                 <option value="Inventory">Inventory</option>
                 <option value="Other">Other</option>
               </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-              <input
-                type="text"
-                value={filters.section || ''}
-                onChange={(e) => handleFilterChange('section', e.target.value || undefined)}
-                placeholder="e.g., Grade 10A"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Action Type</label>
-              <input
-                type="text"
-                value={filters.actionType || ''}
-                onChange={(e) => handleFilterChange('actionType', e.target.value || undefined)}
-                placeholder="e.g., Payment Received"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-              <input
-                type="text"
-                value={filters.role || ''}
-                onChange={(e) => handleFilterChange('role', e.target.value || undefined)}
-                placeholder="e.g., Finance Clerk"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              />
             </div>
 
             <div>
