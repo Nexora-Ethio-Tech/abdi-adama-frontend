@@ -28,6 +28,7 @@ const Inventory = lazy(() => import('./pages/Inventory').then((m) => ({ default:
 const Library = lazy(() => import('./pages/Library').then((m) => ({ default: m.Library })));
 const Attendance = lazy(() => import('./pages/Attendance').then((m) => ({ default: m.Attendance })));
 const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })));
+const ChangePassword = lazy(() => import('./pages/ChangePassword').then((m) => ({ default: m.ChangePassword })));
 const ExamSession = lazy(() => import('./pages/ExamSession').then((m) => ({ default: m.ExamSession })));
 const Transcripts = lazy(() => import('./pages/Transcripts').then((m) => ({ default: m.Transcripts })));
 const Exams = lazy(() => import('./pages/Exams'));
@@ -419,6 +420,7 @@ function App() {
                 </ProtectedRoute>
               } />
               <Route path="settings" element={<Settings />} />
+              <Route path="change-password" element={<ChangePassword />} />
               <Route path="exam/:examId" element={<ExamSession />} />
 
               {/* Catch-all within layout */}
