@@ -19,11 +19,19 @@ interface StructureRow {
   sessionsPerWeek: number;
 }
 
-interface Props {
-  classes: ClassRecord[];
-  teachers: Teacher[];
+export interface Props {
   initialRows?: StructureRow[];
   onSave: (rows: StructureRow[]) => Promise<void> | void;
+  classes: ClassRecord[];
+  teachers: Teacher[];
+}
+
+interface GradeState {
+  displayName?: string;
+  sections: { name: string; classId?: string }[];
+  courses: Array<{ id: string; name: string; sessionsPerWeek: number }>;
+  assignments?: Record<string, Record<string, string>>;
+  collapsed?: boolean;
 }
 
 // Helper to extract grade key and section from class name
@@ -35,28 +43,71 @@ const parseClassName = (name: string) => {
   return { grade: name, section: '' };
 };
 
-const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialRows = [], onSave }) => {
-  const [gradeMap, setGradeMap] = useState<Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[]; assignments?: Record<string, Record<string,string>>; collapsed?: boolean }>>({});
+const buildGradeMap = (classes: ClassRecord[], rows: StructureRow[]): Record<string, GradeState> => {
+  const classLookup = new Map(classes.map(clazz => [clazz.id, clazz]));
+  const map: Record<string, GradeState> = {};
+
+  if (rows.length > 0) {
+    for (const row of rows) {
+      const clazz = classLookup.get(row.classId);
+      if (!clazz) continue;
+
+      const parsed = parseClassName(clazz.name || '');
+      const gradeKey = parsed.grade || clazz.name || 'Untitled Grade';
+      const sectionName = parsed.section || clazz.section || 'A';
+
+      if (!map[gradeKey]) {
+        map[gradeKey] = { displayName: gradeKey, sections: [], courses: [], assignments: {}, collapsed: false };
+      }
+
+      const grade = map[gradeKey];
+      if (!grade.sections.some(section => section.name === sectionName)) {
+        grade.sections.push({ name: sectionName, classId: clazz.id });
+      }
+
+      if (!grade.assignments) grade.assignments = {};
+      if (!grade.assignments[sectionName]) grade.assignments[sectionName] = {};
+
+      let course = grade.courses.find(existing => existing.name === row.subject);
+      if (!course) {
+        course = {
+          id: `course_${gradeKey}_${row.subject}_${grade.courses.length + 1}`,
+          name: row.subject,
+          sessionsPerWeek: row.sessionsPerWeek || 3,
+        };
+        grade.courses.push(course);
+      }
+
+      grade.assignments[sectionName][course.id] = row.teacherId;
+    }
+
+    return map;
+  }
+
+  return map;
+};
+
+export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialRows = [], onSave }) => {
+  const [gradeMap, setGradeMap] = useState<Record<string, GradeState>>({});
   const [saving, setSaving] = useState(false);
   const [newGradeInput, setNewGradeInput] = useState('');
+  const [teacherSearch, setTeacherSearch] = useState<Record<string, string>>({});
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
+  const getTeacherSearchKey = (gradeKey: string, sectionName: string, courseId: string) =>
+    `${gradeKey}::${sectionName}::${courseId}`;
+
+  const pickTeacher = (gk: string, sectionName: string, courseId: string, teacherId: string) => {
+    assignTeacherForSectionCourse(gk, sectionName, courseId, teacherId);
+    const key = getTeacherSearchKey(gk, sectionName, courseId);
+    setTeacherSearch(prev => ({ ...(prev || {}), [key]: '' }));
+  };
+
   useEffect(() => {
-    const map: Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[]; assignments?: Record<string, Record<string,string>>; collapsed?: boolean }> = {};
-    classes.forEach(c => {
-      const { grade, section } = parseClassName(c.name || '');
-      if (!map[grade]) map[grade] = { sections: [], courses: [] };
-      if (section) map[grade].sections.push({ name: section, classId: c.id });
-      else map[grade].sections.push({ name: c.section || 'A', classId: c.id });
-      // set display name to friendly grade label
-      map[grade].displayName = grade;
-      // initialize assignments map for each section
-      if (!map[grade].assignments) map[grade].assignments = {};
-      const secName = section || c.section || 'A';
-      if (!map[grade].assignments[secName]) map[grade].assignments[secName] = {};
-    });
-    setGradeMap(map);
-  }, [classes]);
+    const nextMap = buildGradeMap(classes, initialRows);
+    setGradeMap(nextMap);
+  }, [classes, initialRows]);
+
 
   const addGrade = (gradeName?: string) => {
     let input = (gradeName || '').trim();
@@ -219,7 +270,9 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
         // toggle on with empty teacher
         assignments[sectionName][courseId] = '';
       }
-      return { ...prev, [gradeKey]: { ...g, assignments } };
+      const next = { ...prev, [gradeKey]: { ...g, assignments } };
+      console.debug('[TimetableEditor] toggleCourseForSection', { gradeKey, sectionName, courseId, assignments: next[gradeKey].assignments });
+      return next;
     });
   };
 
@@ -263,11 +316,12 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
   const handleSave = async () => {
     // Flatten to structure rows
     const rows: StructureRow[] = [];
+    const missingMappings: string[] = [];
+
     for (const gradeKey of Object.keys(gradeMap)) {
       const g = gradeMap[gradeKey];
       const matchGradeLabel = (g.displayName || gradeKey).toString();
       const assignments = g.assignments || {};
-      // for each section for this grade
       for (const sectionName of Object.keys(assignments)) {
         const courseMap = assignments[sectionName] || {};
         for (const courseId of Object.keys(courseMap)) {
@@ -278,15 +332,28 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
           }
           const course = (g.courses || []).find((c: any) => c.id === courseId);
           if (!course) continue;
-          // find classId matching this grade display name and section
-          const cls = classes.find(c => {
-            const { grade, section } = parseClassName(c.name || '');
-            return grade === matchGradeLabel && (section === sectionName || c.section === sectionName);
-          });
-          if (!cls) continue;
-          rows.push({ id: Date.now().toString() + Math.random().toString(36).slice(2,6), classId: cls.id, teacherId, subject: course.name || '', sessionsPerWeek: course.sessionsPerWeek || 3 });
+          const sectionInfo = g.sections.find(s => s.name === sectionName);
+          const classId = sectionInfo?.classId || classes.find(c => {
+            const { grade, section: clsSection } = parseClassName(c.name || '');
+            return grade === matchGradeLabel && (clsSection === sectionName || c.section === sectionName);
+          })?.id;
+          if (!classId) {
+            missingMappings.push(`${g.displayName || gradeKey} / ${sectionName}`);
+            continue;
+          }
+          rows.push({ id: Date.now().toString() + Math.random().toString(36).slice(2,6), classId, teacherId, subject: course.name || '', sessionsPerWeek: course.sessionsPerWeek || 3 });
         }
       }
+    }
+
+    if (missingMappings.length > 0) {
+      alert(`Unable to save because the following grade/sections could not be matched to a class: ${missingMappings.join(', ')}. Please verify your section names match an existing class record.`);
+      return;
+    }
+
+    if (rows.length === 0) {
+      alert('No timetable structure rows were generated. Please add a course, select at least one section, and assign a teacher before saving.');
+      return;
     }
 
     try {
@@ -306,6 +373,7 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
         <div>
           <h4 className="text-sm font-black">Timetable Structure Editor</h4>
           <p className="text-xs text-slate-500">Create grades, add courses, select sections and assign teachers.</p>
+          <p className="text-xs text-slate-400 mt-1">Teachers available: <span className="font-bold text-slate-700">{teachers.length}</span></p>
         </div>
         <div className="flex items-center gap-2">
           <input
@@ -354,10 +422,11 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
 
               <div className="space-y-2">
                 {g.courses.map((course: any) => (
-                  <div key={course.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border flex items-center gap-3">
-                    <div className="flex-1">
+                    <div key={course.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border flex items-center gap-3">
+                      <div className="flex-1">
                       <label className="text-xs font-black">Course Name</label>
                       <input value={course.name} onChange={(e) => updateCourse(gradeKey, course.id, { name: e.target.value })} className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none" />
+                      <div className="text-xs text-slate-400 mt-1">Debug: assigned = {String(Object.keys(g.assignments || {}).some(sec => g.assignments?.[sec]?.[course.id] !== undefined))}</div>
                     </div>
                     <div className="w-40">
                       <label className="text-xs font-black">Sessions / Week</label>
@@ -394,16 +463,85 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
                           const assigned = !!(g.assignments && g.assignments[s.name] && g.assignments[s.name][course.id] !== undefined);
                           return (
                             <div key={course.id} className="w-full sm:w-1/2 lg:w-1/3">
-                              <label className="inline-flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md w-full">
-                                <input type="checkbox" checked={assigned} onChange={() => toggleCourseForSection(gradeKey, s.name, course.id)} />
-                                <div className="flex-1 text-sm">{course.name || 'Untitled Course'}</div>
-                              </label>
+                              <button
+                                type="button"
+                                onClick={() => toggleCourseForSection(gradeKey, s.name, course.id)}
+                                className={`w-full inline-flex items-center gap-3 px-3 py-2 rounded-md border ${assigned ? 'bg-green-50 border-green-300' : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-700'} text-left`}
+                                aria-pressed={assigned}
+                                aria-label={`${assigned ? 'Disable' : 'Enable'} ${course.name || 'course'} for section ${s.name}`}
+                              >
+                                {assigned ? (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-green-600">
+                                    <circle cx="12" cy="12" r="10" fill="currentColor" />
+                                    <path d="M16 9l-4.5 6L8 12.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                ) : (
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-slate-400">
+                                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="transparent" />
+                                  </svg>
+                                )}
+                                <span className="flex-1 text-sm">{course.name || 'Untitled Course'}</span>
+                              </button>
                               {assigned && (
-                                <div className="mt-2">
-                                  <select value={(g.assignments?.[s.name]?.[course.id]) || ''} onChange={(e) => assignTeacherForSectionCourse(gradeKey, s.name, course.id, e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none mt-1">
-                                    <option value="">Select teacher</option>
-                                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                  </select>
+                                <div className="mt-2 space-y-2">
+                                  <div className="flex items-center justify-between gap-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                    <span>Assigned Teacher</span>
+                                    {g.assignments?.[s.name]?.[course.id] && (
+                                      <button
+                                        type="button"
+                                        onClick={() => assignTeacherForSectionCourse(gradeKey, s.name, course.id, '')}
+                                        className="text-rose-500 hover:text-rose-600"
+                                      >
+                                        Clear
+                                      </button>
+                                    )}
+                                  </div>
+                                  <div className="rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3">
+                                    {g.assignments?.[s.name]?.[course.id] ? (
+                                        <div className="flex items-center justify-between gap-3 text-sm text-slate-900 dark:text-slate-100">
+                                        <span>{teachers.find(t => t.id === g.assignments?.[s.name]?.[course.id])?.name || 'Unknown teacher'}</span>
+                                        <span className="text-xs text-slate-400">Assigned</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-slate-500">No teacher assigned yet.</div>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    <label className="text-[11px] font-black uppercase tracking-wide text-slate-500">Search teacher</label>
+                                    <input
+                                      value={teacherSearch[getTeacherSearchKey(gradeKey, s.name, course.id)] ?? ''}
+                                      onFocus={() => setTeacherSearch(prev => ({ ...prev, [getTeacherSearchKey(gradeKey, s.name, course.id)]: prev?.[getTeacherSearchKey(gradeKey, s.name, course.id)] ?? '' }))}
+                                      onChange={(e) => setTeacherSearch(prev => ({ ...prev, [getTeacherSearchKey(gradeKey, s.name, course.id)]: e.target.value }))}
+                                      placeholder="Type teacher name..."
+                                      className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm outline-none"
+                                    />
+
+                                    {(() => {
+                                      const key = getTeacherSearchKey(gradeKey, s.name, course.id);
+                                      const q = (teacherSearch[key] || '').trim().toLowerCase();
+                                      const filteredTeachers = q.length > 0 ? teachers.filter(t => t.name.toLowerCase().includes(q)) : teachers;
+                                      return (
+                                        teacherSearch.hasOwnProperty(key) && (
+                                          <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                                            {filteredTeachers.slice(0, 12).map(t => (
+                                              <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => pickTeacher(gradeKey, s.name, course.id, t.id)}
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
+                                              >
+                                                {t.name}
+                                              </button>
+                                            ))}
+                                            {filteredTeachers.length === 0 && (
+                                              <div className="px-3 py-2 text-sm text-slate-500">No teachers found.</div>
+                                            )}
+                                          </div>
+                                        )
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                               )}
                             </div>

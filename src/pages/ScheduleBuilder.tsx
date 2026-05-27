@@ -20,7 +20,7 @@ import {
   type ClassRecord,
   type StructureRowInput
 } from '../services/schoolAdminService';
-import TimetableStructureEditor from '../components/TimetableStructureEditor';
+import { TimetableStructureEditor } from '../components/TimetableStructureEditor';
 
 interface CourseFrequency {
   id: string;
@@ -88,6 +88,20 @@ export const ScheduleBuilder = () => {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const periods = Array.from({ length: periodsPerDay }, (_, i) => i + 1);
 
+  const refreshStructureFromDb = useCallback(async () => {
+    const struct = await getScheduleStructure();
+    const structData = struct?.data || struct || [];
+    if (Array.isArray(structData)) {
+      setStructureRows(structData.map((s: any) => ({
+        id: s.id || Date.now().toString(),
+        classId: s.classId || s.class_id || s.class || '',
+        teacherId: s.teacherId || s.teacher_id || s.teacher || '',
+        subject: s.subject || s.course || '',
+        sessionsPerWeek: s.sessionsPerWeek || s.sessions_per_week || s.sessions || 3
+      })));
+    }
+  }, []);
+
   // Load teachers from API
   useEffect(() => {
     const loadClassesAndStructure = async () => {
@@ -104,24 +118,14 @@ export const ScheduleBuilder = () => {
       }
 
       try {
-        const struct = await getScheduleStructure();
-        const structData = struct?.data || struct || [];
-        if (Array.isArray(structData) && structData.length > 0) {
-          setStructureRows(structData.map((s: any) => ({
-            id: s.id || Date.now().toString(),
-            classId: s.classId || s.class_id || s.class || '',
-            teacherId: s.teacherId || s.teacher_id || s.teacher || '',
-            subject: s.subject || s.course || '',
-            sessionsPerWeek: s.sessionsPerWeek || s.sessions_per_week || s.sessions || 3
-          })));
-        }
+        await refreshStructureFromDb();
       } catch (err) {
         // no saved structure yet
       }
     };
 
     loadClassesAndStructure();
-  }, []);
+  }, [refreshStructureFromDb]);
 
     useEffect(() => {
     const loadData = async () => {
@@ -983,11 +987,12 @@ export const ScheduleBuilder = () => {
                     teachers={teachers}
                     initialRows={structureRows}
                     onSave={async (rows) => {
-                      // update state and persist
-                      setStructureRows(rows);
+                      // update state, persist, and refresh from the latest DB state
                       try {
                         setSavingStructure(true);
                         await saveScheduleStructure(rows.map(r => ({ classId: r.classId, teacherId: r.teacherId, subject: r.subject, sessionsPerWeek: r.sessionsPerWeek })));
+                        setStructureRows(rows);
+                        await refreshStructureFromDb();
                         alert('Timetable structure saved successfully.');
                       } catch (err) {
                         console.error('Failed to save structure from editor:', err);
