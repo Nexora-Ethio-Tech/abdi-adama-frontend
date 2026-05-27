@@ -37,6 +37,8 @@ export const FinanceClerkRegistration = () => {
   const [selectedApp, setSelectedApp] = useState<PendingApplication | null>(null);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
   const [approvalData, setApprovalData] = useState({ amount: 0, reference: '' });
+  const [feeSource, setFeeSource] = useState<string>('unknown');
+  const [feeLoadError, setFeeLoadError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [showCredentials, setShowCredentials] = useState(false);
@@ -77,9 +79,13 @@ export const FinanceClerkRegistration = () => {
         setLoadingPolicy(true);
         const fee = await financeClerkService.getGlobalRegistrationFee();
         setApprovalData((prev) => ({ ...prev, amount: Number(fee.amount) || 0 }));
-      } catch (err) {
+        setFeeSource(fee.source || 'unknown');
+        setFeeLoadError(null);
+      } catch (err: any) {
         console.error('Failed to load global registration fee:', err);
         setApprovalData((prev) => ({ ...prev, amount: 0 }));
+        setFeeSource('unknown');
+        setFeeLoadError('Unable to load the current registration fee. Enter the amount manually.');
       } finally {
         setLoadingPolicy(false);
       }
@@ -109,23 +115,10 @@ export const FinanceClerkRegistration = () => {
         reference: approvalData.reference || undefined,
       };
 
-      const response = await fetch(
-        `${API}/api/finance-clerk/applications/${selectedApp.id}/approve`,
-        {
-          method: 'PATCH',
-          headers: authHeaders(),
-          body: JSON.stringify(payload),
-        }
-      );
+      const result = await financeClerkService.approveApplication(selectedApp.id, payload);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.error?.message || errorData?.message || 'Failed to approve application');
-      }
-
-      const result = await response.json();
-      setApprovedApp(result.data);
-      setSuccessMessage(`✅ Payment approved! Student ID: ${result.data.application?.student_id_generated || 'Generated'}`);
+      setApprovedApp(result);
+      setSuccessMessage(`✅ Payment approved! Student ID: ${result.application?.student_id_generated || 'Generated'}`);
 
       // Remove from pending list
       setPendingApplications(prev =>
@@ -341,13 +334,32 @@ export const FinanceClerkRegistration = () => {
                 <input
                   type="number"
                   value={approvalData.amount}
-                  readOnly
-                  placeholder={loadingPolicy ? 'Loading global fee...' : 'Auto-filled from global fee settings'}
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold outline-none cursor-not-allowed"
+                  onChange={(e) => setApprovalData({ ...approvalData, amount: Number(e.target.value) })}
+                  placeholder={
+                    loadingPolicy
+                      ? 'Loading global fee...'
+                      : approvalData.amount > 0
+                      ? 'Auto-filled from global fee settings'
+                      : 'Enter amount manually'
+                  }
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  disabled={loadingPolicy}
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  This amount is read from the backend database and set globally by super admin.
+                  {approvalData.amount > 0
+                    ? 'This amount is populated from the backend registration fee settings.'
+                    : 'No registration fee is currently configured; enter the payment amount manually.'}
                 </p>
+                {feeSource !== 'unknown' && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Source: {feeSource}
+                  </p>
+                )}
+                {feeLoadError && (
+                  <p className="mt-2 text-xs text-red-600 dark:text-red-400 font-semibold">
+                    {feeLoadError}
+                  </p>
+                )}
               </div>
 
               <div>
