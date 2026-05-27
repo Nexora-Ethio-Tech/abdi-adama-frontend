@@ -11,6 +11,7 @@ import {
   createPublicPendingApplication,
   registerUser
 } from '../services/schoolAdminService';
+import api from '../services/api';
 
 type RegistrationTab = 'new' | 'existing';
 type PipelineFilter = 'pending' | 'exam-queue' | 'awaiting-finance' | 'completed';
@@ -206,14 +207,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setTranscriptError(null);
       setTranscriptUrl(null);
       try {
-        const res = await fetch(`/api/school-admin/applications/${viewingTranscript.id}/transcript`);
-        if (!res.ok) throw new Error('Failed to fetch transcript');
-        const blob = await res.blob();
+        const response = await api.get(`/school-admin/applications/${viewingTranscript.id}/transcript`, {
+          responseType: 'blob'
+        });
+        const blob = response.data;
         objectUrl = URL.createObjectURL(blob);
         setTranscriptUrl(objectUrl);
       } catch (err: any) {
         console.error('Transcript fetch error', err);
-        setTranscriptError(err?.message || 'Failed to load transcript');
+        const status = err.response?.status;
+        const serverMessage = err.response?.data?.message || err.response?.data?.error || err.message;
+        setTranscriptError(status ? `Failed to load transcript (${status})` : serverMessage || 'Failed to load transcript');
       } finally {
         setTranscriptLoading(false);
       }
