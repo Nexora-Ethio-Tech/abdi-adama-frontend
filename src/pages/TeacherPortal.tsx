@@ -1,5 +1,5 @@
 import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { getTeacherDashboard, getMyWeeklyPlans, submitWeeklyPlan, updateWeeklyPlan } from '../services/teacherService';
@@ -22,6 +22,7 @@ export const TeacherPortal = () => {
     teachingAids: '', evaluation: '', remark: '', status: 'Pending' as 'Pending' | 'Draft'
   };
   const [planForm, setPlanForm] = useState(emptyPlan);
+  const location = useLocation();
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -45,6 +46,11 @@ export const TeacherPortal = () => {
   };
 
   useEffect(() => { fetchAll(); }, []);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    setActiveTab(tab === 'plans' ? 'plans' : 'overview');
+  }, [location.search]);
 
   const handleSubmitPlan = async (e: React.FormEvent) => {
     e.preventDefault();

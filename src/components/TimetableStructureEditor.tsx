@@ -261,14 +261,20 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
   const toggleCourseForSection = (gradeKey: string, sectionName: string, courseId: string) => {
     setGradeMap(prev => {
       const g = prev[gradeKey];
-      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string,string>>;
+      // Deep-copy all inner assignment records so React sees new references and re-renders
+      const assignments: Record<string, Record<string, string>> = {};
+      Object.keys(g.assignments || {}).forEach(sec => {
+        assignments[sec] = { ...((g.assignments || {})[sec] || {}) };
+      });
       if (!assignments[sectionName]) assignments[sectionName] = {};
       if (assignments[sectionName][courseId] !== undefined) {
         // toggle off
-        delete assignments[sectionName][courseId];
+        const updated = { ...assignments[sectionName] };
+        delete updated[courseId];
+        assignments[sectionName] = updated;
       } else {
-        // toggle on with empty teacher
-        assignments[sectionName][courseId] = '';
+        // toggle on with empty teacher slot
+        assignments[sectionName] = { ...assignments[sectionName], [courseId]: '' };
       }
       const next = { ...prev, [gradeKey]: { ...g, assignments } };
       console.debug('[TimetableEditor] toggleCourseForSection', { gradeKey, sectionName, courseId, assignments: next[gradeKey].assignments });
@@ -463,15 +469,14 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
                           const assigned = !!(g.assignments && g.assignments[s.name] && g.assignments[s.name][course.id] !== undefined);
                           return (
                             <div key={course.id} className="w-full sm:w-1/2 lg:w-1/3">
-                              <button
-                                type="button"
+                              <button type="button"
+                                className={`w-full inline-flex items-center gap-3 px-3 py-2 rounded-md border ${assigned ? 'bg-green-600 text-white border-green-600' : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-700'} text-left`}
                                 onClick={() => toggleCourseForSection(gradeKey, s.name, course.id)}
-                                className={`w-full inline-flex items-center gap-3 px-3 py-2 rounded-md border ${assigned ? 'bg-green-50 border-green-300' : 'bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-700'} text-left`}
                                 aria-pressed={assigned}
                                 aria-label={`${assigned ? 'Disable' : 'Enable'} ${course.name || 'course'} for section ${s.name}`}
                               >
                                 {assigned ? (
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-green-600">
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-white">
                                     <circle cx="12" cy="12" r="10" fill="currentColor" />
                                     <path d="M16 9l-4.5 6L8 12.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                   </svg>
