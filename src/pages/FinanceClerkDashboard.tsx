@@ -46,6 +46,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [reductionNotes, setReductionNotes] = useState('');
   const [isRequestingReduction, setIsRequestingReduction] = useState(false);
   const [selectedAidStudentId, setSelectedAidStudentId] = useState('');
+  const [aidPickerSearch, setAidPickerSearch] = useState('');
   const [transportSearchTerm, setTransportSearchTerm] = useState('');
   const [transportStatusFilter, setTransportStatusFilter] = useState<'assigned' | 'unassigned' | 'all'>('assigned');
   const [transportDrivers, setTransportDrivers] = useState<TransportDriverInfo[]>([]);
@@ -345,8 +346,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const openAidRequestPicker = () => {
-    const firstEligible = students.find(s => s.fee_approval_status === 'none');
-    setSelectedAidStudentId(firstEligible?.id || '');
+    // Open picker with empty selection and reset search so user can search by name or ID
+    setSelectedAidStudentId('');
+    setAidPickerSearch('');
     setShowAidPickerModal(true);
   };
 
@@ -421,6 +423,16 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const requestedAidCount = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status)).length;
   const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
   const eligibleAidStudents = students.filter(s => s.fee_approval_status === 'none');
+  const filteredEligibleStudents = eligibleAidStudents.filter(student => {
+    const q = aidPickerSearch.trim().toLowerCase();
+    // Only show results if user has typed something in the search box
+    if (!q) return false;
+    return (
+      student.name.toLowerCase().includes(q) ||
+      (student.digital_id || '').toLowerCase().includes(q) ||
+      (student.id || '').toLowerCase().includes(q)
+    );
+  });
   const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
   const selectedTransportPolicy = transportStudent
     ? transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null
@@ -1457,20 +1469,36 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             <form onSubmit={handleStartAidRequest} className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student *</label>
-                <select
-                  required
-                  value={selectedAidStudentId}
-                  onChange={(e) => setSelectedAidStudentId(e.target.value)}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
-                >
-                  <option value="" disabled>Select a student</option>
-                  {eligibleAidStudents.map((student) => (
-                    <option key={student.id} value={student.id}>{student.name} - {student.digital_id}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <div className="absolute left-3 top-3 text-slate-400"><Search className="w-4 h-4" /></div>
+                  <input
+                    type="text"
+                    placeholder="Search by name or student ID"
+                    value={aidPickerSearch}
+                    onChange={(e) => setAidPickerSearch(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none ${aidPickerSearch.trim().length > 0 ? 'rounded-t-xl' : 'rounded-xl'}`}
+                  />
+                  {aidPickerSearch.trim().length > 0 && (
+                    <select
+                      required
+                      value={selectedAidStudentId}
+                      onChange={(e) => setSelectedAidStudentId(e.target.value)}
+                      className="w-full px-4 py-3 border-t-0 border border-slate-200 dark:border-slate-700 rounded-b-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                      size={6}
+                    >
+                      <option value="" disabled>Select a student</option>
+                      {filteredEligibleStudents.map((student) => (
+                        <option key={student.id} value={student.id}>{student.name} - {student.digital_id}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </div>
               {eligibleAidStudents.length === 0 && (
                 <p className="text-sm text-slate-500">All students already have an aid request status.</p>
+              )}
+              {eligibleAidStudents.length > 0 && filteredEligibleStudents.length === 0 && (
+                <p className="text-sm text-slate-500">No matching students. Try a different name or ID.</p>
               )}
               <div className="flex gap-3 pt-4">
                 <button

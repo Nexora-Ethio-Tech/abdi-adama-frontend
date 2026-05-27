@@ -158,7 +158,7 @@ export const TeacherPortal = () => {
               <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"><ClipboardList size={28} /></div>
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Pending Plans</p>
               <h3 className="text-3xl font-black text-slate-800 dark:text-white">{dashboard?.pendingPlansCount ?? pendingPlans}</h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Awaiting VP review</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Awaiting head of department review</p>
             </div>
           </div>
 
@@ -189,7 +189,7 @@ export const TeacherPortal = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
               <div>
                 <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Weekly Plans</h2>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Submit lesson plans for VP review</p>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Submit lesson plans for head of department review</p>
               </div>
               <button onClick={() => { setEditingPlan(null); setPlanForm(emptyPlan); setIsPlanModalOpen(true); }}
                 className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
@@ -319,7 +319,7 @@ export const TeacherPortal = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
                 <select value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as any })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="Pending">Pending (Submit for VP review)</option>
+                  <option value="Pending">Pending (Submit for head of department review)</option>
                   <option value="Draft">Draft (Save for later)</option>
                 </select>
               </div>
