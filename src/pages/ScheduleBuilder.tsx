@@ -97,6 +97,12 @@ export const ScheduleBuilder = () => {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const periods = Array.from({ length: periodsPerDay }, (_, i) => i + 1);
 
+  const refreshClassesFromDb = useCallback(async () => {
+    const cls = await getBranchClasses();
+    const classesData = cls || [];
+    setClasses(classesData as ClassRecord[]);
+  }, []);
+
   const refreshStructureFromDb = useCallback(async () => {
     const struct = await getScheduleStructure();
     const structData = struct?.data || struct || [];
@@ -116,9 +122,7 @@ export const ScheduleBuilder = () => {
     const loadClassesAndStructure = async () => {
       try {
         setLoadingClasses(true);
-        const cls = await getBranchClasses();
-        const classesData = cls || [];
-        setClasses(classesData as ClassRecord[]);
+        await refreshClassesFromDb();
       } catch (err) {
         console.error('Failed to load classes:', err);
         setClasses([]);
@@ -134,7 +138,7 @@ export const ScheduleBuilder = () => {
     };
 
     loadClassesAndStructure();
-  }, [refreshStructureFromDb]);
+  }, [refreshClassesFromDb, refreshStructureFromDb]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -922,15 +926,14 @@ export const ScheduleBuilder = () => {
                       <p className="font-bold text-slate-800 dark:text-white text-sm">Max Consecutive Periods</p>
                       <p className="text-[9px] text-slate-450 font-bold uppercase">Prevents teacher fatigue</p>
                     </div>
-                    <select
+                    <input
+                      type="number"
+                      min={1}
+                      step={1}
                       value={maxConsecutive}
-                      onChange={(e) => setMaxConsecutive(parseInt(e.target.value))}
-                      className="bg-slate-100 dark:bg-slate-700 p-2 rounded-xl font-bold text-sm border-none dark:text-white outline-none"
-                    >
-                      <option value={2}>2 Periods</option>
-                      <option value={3}>3 Periods</option>
-                      <option value={4}>4 Periods</option>
-                    </select>
+                      onChange={(e) => setMaxConsecutive(Number(e.target.value))}
+                      className="w-24 bg-slate-100 dark:bg-slate-700 p-2 rounded-xl font-bold text-sm border-none dark:text-white outline-none text-right"
+                    />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-800 rounded-xl border border-amber-100/40 dark:border-amber-900/10 shadow-sm">
                     <div>
@@ -1001,6 +1004,7 @@ export const ScheduleBuilder = () => {
                         setSavingStructure(true);
                         await saveScheduleStructure(rows.map(r => ({ classId: r.classId, teacherId: r.teacherId, subject: r.subject, sessionsPerWeek: r.sessionsPerWeek })));
                         setStructureRows(rows);
+                        await refreshClassesFromDb();
                         await refreshStructureFromDb();
                         alert('Timetable structure saved successfully.');
                       } catch (err) {

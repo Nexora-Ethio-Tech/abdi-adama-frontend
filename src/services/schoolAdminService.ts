@@ -408,6 +408,12 @@ export interface ClassRecord {
   capacity?: number;
 }
 
+export interface CreateClassData {
+  name: string;
+  capacity?: number;
+  section?: string;
+}
+
 export interface StructureRowInput {
   classId: string;
   teacherId: string;
@@ -499,6 +505,11 @@ export const getCourseFrequencies = async (academicYear?: string) => {
 // Classes
 export const getBranchClasses = async (): Promise<ClassRecord[]> => {
   const response = await api.get('/school-admin/classes');
+  return response.data.data;
+};
+
+export const createBranchClass = async (data: CreateClassData): Promise<ClassRecord> => {
+  const response = await api.post('/school-admin/classes', data);
   return response.data.data;
 };
 

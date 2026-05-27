@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield, AlertTriangle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
@@ -130,6 +130,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const { t } = useTranslation();
   const { role } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [activeTab, setActiveTab] = useState<RegistrationTab>('new');
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>(isFinance ? 'awaiting-finance' : 'pending');
@@ -167,6 +168,11 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     fee_status: 'standard' as 'standard' | 'reduced',
     fee_notes: ''
   });
+  const [showClassModal, setShowClassModal] = useState(false);
+  const [selectedAppForClass, setSelectedAppForClass] = useState<string | null>(null);
+  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   useEffect(() => {
     if (isAdminView) {
@@ -452,6 +458,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       }
 
       if (!isAdminView) {
+        // Reset form for external applicants
+        if (formRef.current) {
+          formRef.current.reset();
+        }
+        setRegistrationStep(1);
+        setValidationErrors({});
         setTimeout(() => {
           setSuccessMessage(null);
           navigate('/');
@@ -517,11 +529,48 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
   const handlePass = async (appId: string) => {
     try {
-      await updateApplicationStatus(appId, { status: 'awaiting-payment' });
-      const app = pendingApps.find(a => a.id === appId);
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} accepted! Forwarded to finance.`);
-      if (app) showEmailToast(app.email, 'Congratulations! Proceed to Finance');
+      // First, load available classes
+      setLoadingClasses(true);
+      const { classService } = await import('../services/classService');
+      const classes = await classService.getAllClasses();
+      setAvailableClasses(Array.isArray(classes) ? classes : classes.data || []);
+      
+      // Show class selection modal
+      setSelectedAppForClass(appId);
+      setShowClassModal(true);
+      setLoadingClasses(false);
+    } catch (err: any) {
+      console.error(err);
+      setSubmitError(err.message || 'Failed to load classes');
+      setTimeout(() => setSubmitError(null), 5000);
+      setLoadingClasses(false);
+    }
+  };
+
+  const handleConfirmClassAssignment = async () => {
+    if (!selectedAppForClass || !selectedClass) {
+      setSubmitError('Please select a class');
+      setTimeout(() => setSubmitError(null), 5000);
+      return;
+    }
+
+    try {
+      // Update pending application with class assignment
+      await updateApplicationStatus(selectedAppForClass, { 
+        status: 'awaiting-payment',
+        class_id: selectedClass
+      });
+
+      const app = pendingApps.find(a => a.id === selectedAppForClass);
+      setPendingApps(prev => prev.map(a => a.id === selectedAppForClass ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
+      setSuccessMessage(`${app?.name} assigned to class and forwarded to finance.`);
+      if (app) showEmailToast(app.email, 'Class Assigned: Proceed to Finance');
+      
+      // Close modal
+      setShowClassModal(false);
+      setSelectedAppForClass(null);
+      setSelectedClass(null);
+      
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -885,7 +934,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 </div>
               </div>
             </div>
-            <form onSubmit={handleRegister} className="p-6 space-y-6">
+            <form ref={formRef} onSubmit={handleRegister} className="p-6 space-y-6">
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 1 ? 'hidden' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
@@ -1355,6 +1404,78 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         </div>
       )}
       {/* Fee Configuration Modal */}
+      {showClassModal && selectedAppForClass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Assign Class</h3>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select the class for this student</p>
+            </div>
+            <div className="p-8 space-y-6">
+              {loadingClasses ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : availableClasses.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-slate-500">No classes available</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Classes</label>
+                  <div className="max-h-96 overflow-y-auto space-y-2">
+                    {availableClasses.map((cls: any) => (
+                      <div
+                        key={cls.id}
+                        onClick={() => setSelectedClass(cls.id)}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                          selectedClass === cls.id
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-white">{cls.name || cls.class_name}</p>
+                            <p className="text-xs text-slate-500">{cls.section || 'No section'}</p>
+                          </div>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                            selectedClass === cls.id
+                              ? 'border-blue-500 bg-blue-500'
+                              : 'border-slate-300 dark:border-slate-600'
+                          }`}>
+                            {selectedClass === cls.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-8 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowClassModal(false);
+                  setSelectedAppForClass(null);
+                  setSelectedClass(null);
+                }}
+                className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmClassAssignment}
+                disabled={!selectedClass || loadingClasses}
+                className="bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95"
+              >
+                Assign & Forward
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showFeeModal && selectedAppForFee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">

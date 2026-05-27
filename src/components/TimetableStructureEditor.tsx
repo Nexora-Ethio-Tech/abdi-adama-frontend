@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createBranchClass } from '../services/schoolAdminService';
 
 interface ClassRecord {
   id: string;
@@ -92,6 +93,7 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
   const [saving, setSaving] = useState(false);
   const [newGradeInput, setNewGradeInput] = useState('');
   const [teacherSearch, setTeacherSearch] = useState<Record<string, string>>({});
+  const [activeTeacherSearchKey, setActiveTeacherSearchKey] = useState<string | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   const getTeacherSearchKey = (gradeKey: string, sectionName: string, courseId: string) =>
@@ -101,6 +103,7 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
     assignTeacherForSectionCourse(gk, sectionName, courseId, teacherId);
     const key = getTeacherSearchKey(gk, sectionName, courseId);
     setTeacherSearch(prev => ({ ...(prev || {}), [key]: '' }));
+    setActiveTeacherSearchKey(null);
   };
 
   useEffect(() => {
@@ -322,11 +325,45 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
   const handleSave = async () => {
     // Flatten to structure rows
     const rows: StructureRow[] = [];
-    const missingMappings: string[] = [];
+    const resolvedClasses = new Map<string, string>();
+
+    const normalizeGradeLabel = (gradeLabel: string) => {
+      const trimmed = gradeLabel.trim();
+      if (/^grade\s+/i.test(trimmed)) return trimmed.replace(/\s+/g, ' ').replace(/^grade/i, 'Grade');
+      if (/^\d+$/.test(trimmed)) return `Grade ${trimmed}`;
+      return trimmed;
+    };
+
+    const resolveClassId = async (gradeLabel: string, sectionName: string, existingClassId?: string) => {
+      if (existingClassId) return existingClassId;
+
+      const cacheKey = `${gradeLabel}::${sectionName}`;
+      const cached = resolvedClasses.get(cacheKey);
+      if (cached) return cached;
+
+      const match = classes.find(c => {
+        const { grade, section: clsSection } = parseClassName(c.name || '');
+        return grade === gradeLabel && (clsSection === sectionName || (c.section || '').toUpperCase() === sectionName);
+      });
+
+      if (match?.id) {
+        resolvedClasses.set(cacheKey, match.id);
+        return match.id;
+      }
+
+      const created = await createBranchClass({
+        name: gradeLabel,
+        section: sectionName,
+        capacity: 0,
+      });
+
+      resolvedClasses.set(cacheKey, created.id);
+      return created.id;
+    };
 
     for (const gradeKey of Object.keys(gradeMap)) {
       const g = gradeMap[gradeKey];
-      const matchGradeLabel = (g.displayName || gradeKey).toString();
+      const matchGradeLabel = normalizeGradeLabel((g.displayName || gradeKey).toString());
       const assignments = g.assignments || {};
       for (const sectionName of Object.keys(assignments)) {
         const courseMap = assignments[sectionName] || {};
@@ -339,22 +376,14 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
           const course = (g.courses || []).find((c: any) => c.id === courseId);
           if (!course) continue;
           const sectionInfo = g.sections.find(s => s.name === sectionName);
-          const classId = sectionInfo?.classId || classes.find(c => {
-            const { grade, section: clsSection } = parseClassName(c.name || '');
-            return grade === matchGradeLabel && (clsSection === sectionName || c.section === sectionName);
-          })?.id;
-          if (!classId) {
-            missingMappings.push(`${g.displayName || gradeKey} / ${sectionName}`);
+          const classId = await resolveClassId(matchGradeLabel, sectionName, sectionInfo?.classId);
+          const rowKey = `${classId}::${teacherId}::${course.name || ''}`;
+          if (rows.some(row => `${row.classId}::${row.teacherId}::${row.subject}` === rowKey)) {
             continue;
           }
           rows.push({ id: Date.now().toString() + Math.random().toString(36).slice(2,6), classId, teacherId, subject: course.name || '', sessionsPerWeek: course.sessionsPerWeek || 3 });
         }
       }
-    }
-
-    if (missingMappings.length > 0) {
-      alert(`Unable to save because the following grade/sections could not be matched to a class: ${missingMappings.join(', ')}. Please verify your section names match an existing class record.`);
-      return;
     }
 
     if (rows.length === 0) {
@@ -516,7 +545,17 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
                                     <label className="text-[11px] font-black uppercase tracking-wide text-slate-500">Search teacher</label>
                                     <input
                                       value={teacherSearch[getTeacherSearchKey(gradeKey, s.name, course.id)] ?? ''}
-                                      onFocus={() => setTeacherSearch(prev => ({ ...prev, [getTeacherSearchKey(gradeKey, s.name, course.id)]: prev?.[getTeacherSearchKey(gradeKey, s.name, course.id)] ?? '' }))}
+                                      onFocus={() => {
+                                        const key = getTeacherSearchKey(gradeKey, s.name, course.id);
+                                        setActiveTeacherSearchKey(key);
+                                        setTeacherSearch(prev => ({ ...prev, [key]: prev?.[key] ?? '' }));
+                                      }}
+                                      onBlur={() => {
+                                        const key = getTeacherSearchKey(gradeKey, s.name, course.id);
+                                        if (activeTeacherSearchKey === key) {
+                                          setActiveTeacherSearchKey(null);
+                                        }
+                                      }}
                                       onChange={(e) => setTeacherSearch(prev => ({ ...prev, [getTeacherSearchKey(gradeKey, s.name, course.id)]: e.target.value }))}
                                       placeholder="Type teacher name..."
                                       className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm outline-none"
@@ -527,12 +566,13 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
                                       const q = (teacherSearch[key] || '').trim().toLowerCase();
                                       const filteredTeachers = q.length > 0 ? teachers.filter(t => t.name.toLowerCase().includes(q)) : teachers;
                                       return (
-                                        teacherSearch.hasOwnProperty(key) && (
+                                        activeTeacherSearchKey === key && (
                                           <div className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                                             {filteredTeachers.slice(0, 12).map(t => (
                                               <button
                                                 key={t.id}
                                                 type="button"
+                                                onMouseDown={(e) => e.preventDefault()}
                                                 onClick={() => pickTeacher(gradeKey, s.name, course.id, t.id)}
                                                 className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-sm"
                                               >
