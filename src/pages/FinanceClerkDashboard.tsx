@@ -59,11 +59,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     transportFee: 0,
   });
   const [stopDaysUsed, setStopDaysUsed] = useState(0);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<string[]>(['Monthly Tuition']);
-  
+
   // Student List Pagination
   const [studentPage, setStudentPage] = useState(1);
   const [studentsPerPage, setStudentsPerPage] = useState<number>(10);
@@ -74,7 +74,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | 'paid' | 'not_paid'>('not_paid');
   const [staffPage, setStaffPage] = useState(1);
   const [staffPerPage, setStaffPerPage] = useState<number>(10);
-  
+
   const [confirmedStaffPayments, setConfirmedStaffPayments] = useState<Record<string, { date: string }>>(() => {
     try {
       const saved = localStorage.getItem('confirmed_staff_payments');
@@ -194,7 +194,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       const defaultTypes = ['Monthly Tuition'];
       if (student.bus_fee > 0) defaultTypes.push('Bus Fee');
       if (student.penalty_fee > 0) defaultTypes.push('Penalty Fee');
-      
+
       setSelectedPaymentTypes(defaultTypes);
       const totalDue = getCalculatedPaymentAmount(defaultTypes, student);
       setPaymentData({
@@ -372,7 +372,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       updated = [...selectedPaymentTypes, type];
     }
     setSelectedPaymentTypes(updated);
-    
+
     // Auto-calculate sum based on selected types
     setPaymentData({
       ...paymentData,
@@ -595,8 +595,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
             className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
           >
             All Students ({students.length})
@@ -604,8 +604,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <button
             onClick={() => setActiveTab('registrations')}
             className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'registrations'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
           >
             Registrations
@@ -613,8 +613,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <button
             onClick={() => setActiveTab('staff-payments')}
             className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'staff-payments'
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
           >
             Staff Payments ({staffProfiles.length})
@@ -866,59 +866,57 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
       {/* Deadline Alerts */}
       {activeTab !== 'transport' && (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-          daysToStudentDeadline < 0 
-            ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-            : daysToStudentDeadline <= 3
-              ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-              : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${daysToStudentDeadline < 0 ? 'bg-rose-500' : daysToStudentDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
-              <AlertCircle size={20} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={`p-4 rounded-2xl border flex items-center justify-between ${daysToStudentDeadline < 0
+              ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+              : daysToStudentDeadline <= 3
+                ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
+            }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${daysToStudentDeadline < 0 ? 'bg-rose-500' : daysToStudentDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider">Student Fee Deadline</p>
+                <p className="text-xs font-medium opacity-90 mt-0.5">
+                  {daysToStudentDeadline < 0
+                    ? `Overdue by ${Math.abs(daysToStudentDeadline)} days (Deadline: Day ${studentDeadlineDay})`
+                    : daysToStudentDeadline === 0
+                      ? `Deadline is TODAY (Day ${studentDeadlineDay})`
+                      : `${daysToStudentDeadline} days remaining (Deadline: Day ${studentDeadlineDay})`
+                  }
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wider">Student Fee Deadline</p>
-              <p className="text-xs font-medium opacity-90 mt-0.5">
-                {daysToStudentDeadline < 0 
-                  ? `Overdue by ${Math.abs(daysToStudentDeadline)} days (Deadline: Day ${studentDeadlineDay})` 
-                  : daysToStudentDeadline === 0
-                    ? `Deadline is TODAY (Day ${studentDeadlineDay})`
-                    : `${daysToStudentDeadline} days remaining (Deadline: Day ${studentDeadlineDay})`
-                }
-              </p>
-            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Penalty: {penaltyRate} ETB</span>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Penalty: {penaltyRate} ETB</span>
-        </div>
 
-        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-          daysToStaffDeadline < 0 
-            ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-            : daysToStaffDeadline <= 3
-              ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-              : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${daysToStaffDeadline < 0 ? 'bg-rose-500' : daysToStaffDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
-              <AlertCircle size={20} />
+          <div className={`p-4 rounded-2xl border flex items-center justify-between ${daysToStaffDeadline < 0
+              ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+              : daysToStaffDeadline <= 3
+                ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+                : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
+            }`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-xl ${daysToStaffDeadline < 0 ? 'bg-rose-500' : daysToStaffDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider">Staff Payment Deadline</p>
+                <p className="text-xs font-medium opacity-90 mt-0.5">
+                  {daysToStaffDeadline < 0
+                    ? `Overdue by ${Math.abs(daysToStaffDeadline)} days (Deadline: Day ${staffDeadlineDay})`
+                    : daysToStaffDeadline === 0
+                      ? `Deadline is TODAY (Day ${staffDeadlineDay})`
+                      : `${daysToStaffDeadline} days remaining (Deadline: Day ${staffDeadlineDay})`
+                  }
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-wider">Staff Payment Deadline</p>
-              <p className="text-xs font-medium opacity-90 mt-0.5">
-                {daysToStaffDeadline < 0 
-                  ? `Overdue by ${Math.abs(daysToStaffDeadline)} days (Deadline: Day ${staffDeadlineDay})` 
-                  : daysToStaffDeadline === 0
-                    ? `Deadline is TODAY (Day ${staffDeadlineDay})`
-                    : `${daysToStaffDeadline} days remaining (Deadline: Day ${staffDeadlineDay})`
-                }
-              </p>
-            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Disburse Salary</span>
           </div>
-          <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 bg-white/50 rounded-full">Disburse Salary</span>
         </div>
-      </div>
       )}
 
       {/* Dashboard Stats - Skip if in collections only view */}
@@ -1008,7 +1006,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </>
       )}
 
-      
+
 
       {activeTab === 'registrations' && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6">
@@ -1105,53 +1103,53 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     return true;
                   });
                   const paginated = filtered.slice((staffPage - 1) * staffPerPage, staffPage * staffPerPage);
-                  
+
                   return paginated.map((staff) => {
-                  const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
-                  const isPaid = confirmedStaffPayments[staff.user_id];
-                  return (
-                    <tr key={staff.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white">{staff.name}</p>
-                          <p className="text-xs text-slate-500">{staff.digital_id} • {staff.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold uppercase tracking-wide">
-                          {staff.role}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                        {(staff.basic_salary || 0).toLocaleString()} ETB
-                      </td>
-                      <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                        {((staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0)).toLocaleString()} ETB
-                      </td>
-                      <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                        {netPay.toLocaleString()} ETB
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {isPaid ? (
-                          <div className="inline-flex flex-col items-end">
-                            <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-black uppercase tracking-wider">
-                              Paid ✓
-                            </span>
-                            <span className="text-[9px] text-slate-400 mt-1 font-medium">{isPaid.date}</span>
+                    const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
+                    const isPaid = confirmedStaffPayments[staff.user_id];
+                    return (
+                      <tr key={staff.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white">{staff.name}</p>
+                            <p className="text-xs text-slate-500">{staff.digital_id} • {staff.email}</p>
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => confirmStaffPayment(staff.user_id)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10"
-                          >
-                            Confirm Paid
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                });
-              })()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-xs font-bold uppercase tracking-wide">
+                            {staff.role}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                          {(staff.basic_salary || 0).toLocaleString()} ETB
+                        </td>
+                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                          {((staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0)).toLocaleString()} ETB
+                        </td>
+                        <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
+                          {netPay.toLocaleString()} ETB
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          {isPaid ? (
+                            <div className="inline-flex flex-col items-end">
+                              <span className="px-3 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-black uppercase tracking-wider">
+                                Paid ✓
+                              </span>
+                              <span className="text-[9px] text-slate-400 mt-1 font-medium">{isPaid.date}</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => confirmStaffPayment(staff.user_id)}
+                              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10"
+                            >
+                              Confirm Paid
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
@@ -1176,7 +1174,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 )}
                 {totalPages > 1 && (
                   <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-                    <button 
+                    <button
                       onClick={() => setStaffPage(prev => Math.max(1, prev - 1))}
                       disabled={staffPage === 1}
                       className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
@@ -1184,7 +1182,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       Previous
                     </button>
                     <span className="text-sm text-slate-500 font-medium">Page {staffPage} of {totalPages}</span>
-                    <button 
+                    <button
                       onClick={() => setStaffPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={staffPage === totalPages}
                       className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
@@ -1341,31 +1339,31 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             </div>
 
             {displayedStudents.length === 0 && !loading && (
-            <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
-            </div>
-          )}
+              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
+                <p className="text-slate-600 dark:text-slate-400 font-medium">No students found.</p>
+              </div>
+            )}
 
-          {displayedStudents.length > 0 && totalStudentPages > 1 && (
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-              <button
-                onClick={() => setStudentPage((prev) => Math.max(1, prev - 1))}
-                disabled={studentPage === 1}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <span className="text-sm text-slate-500 font-medium">Page {studentPage} of {totalStudentPages}</span>
-              <button
-                onClick={() => setStudentPage((prev) => Math.min(totalStudentPages, prev + 1))}
-                disabled={studentPage === totalStudentPages}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
-          )}
+            {displayedStudents.length > 0 && totalStudentPages > 1 && (
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+                <button
+                  onClick={() => setStudentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={studentPage === 1}
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-slate-500 font-medium">Page {studentPage} of {totalStudentPages}</span>
+                <button
+                  onClick={() => setStudentPage((prev) => Math.min(totalStudentPages, prev + 1))}
+                  disabled={studentPage === totalStudentPages}
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -1567,11 +1565,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     return (
                       <label
                         key={item.key}
-                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer select-none ${
-                          checked
+                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer select-none ${checked
                             ? 'bg-blue-50/50 border-blue-500 text-blue-900 dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-200'
                             : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-                        }`}
+                          }`}
                       >
                         <input
                           type="checkbox"
@@ -1802,7 +1799,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </div>
       )}
 
-      
+
     </div>
   );
 };

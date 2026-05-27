@@ -218,12 +218,11 @@ export const TeacherPortal = () => {
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[100px] truncate">{plan.teaching_method || plan.teachingMethod}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">{plan.time_duration || plan.timeDuration}</td>
                         <td className="px-4 py-4">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                            plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                            plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
-                            plan.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
-                            'bg-amber-100 text-amber-600'
-                          }`}>{plan.status}</span>
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
+                              plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
+                                plan.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
+                                  'bg-amber-100 text-amber-600'
+                            }`}>{plan.status}</span>
                         </td>
                         <td className="px-4 py-4">
                           {plan.dean_feedback ? (
@@ -231,7 +230,7 @@ export const TeacherPortal = () => {
                               <p className="text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate">{plan.dean_feedback}</p>
                               {plan.dean_rating && (
                                 <div className="flex gap-0.5 mt-1">
-                                  {[1,2,3,4,5].map(n => (
+                                  {[1, 2, 3, 4, 5].map(n => (
                                     <Star key={n} size={10} className={n <= plan.dean_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />
                                   ))}
                                 </div>
@@ -343,9 +342,8 @@ export const TeacherPortal = () => {
       {/* Toast */}
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
-            toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'
-          }`}>
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'
+            }`}>
             {toast.type === 'success' ? <CheckCircle2 className="text-green-600" size={20} /> : <XCircle className="text-red-600" size={20} />}
             <p className={`text-sm font-bold ${toast.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>{toast.message}</p>
           </div>
