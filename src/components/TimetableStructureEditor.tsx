@@ -272,6 +272,10 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
         const courseMap = assignments[sectionName] || {};
         for (const courseId of Object.keys(courseMap)) {
           const teacherId = courseMap[courseId] || '';
+          if (!teacherId) {
+            alert(`Please assign a teacher for ${g.displayName || gradeKey} / ${sectionName} before saving.`);
+            return;
+          }
           const course = (g.courses || []).find((c: any) => c.id === courseId);
           if (!course) continue;
           // find classId matching this grade display name and section
