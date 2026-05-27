@@ -127,7 +127,7 @@ export const ScheduleBuilder = () => {
     loadClassesAndStructure();
   }, [refreshStructureFromDb]);
 
-    useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         setLoadingTeachers(true);
@@ -155,7 +155,7 @@ export const ScheduleBuilder = () => {
     };
 
     loadData();
-    }, []);
+  }, []);
 
   // Load config on mount
   useEffect(() => {
@@ -323,6 +323,13 @@ export const ScheduleBuilder = () => {
   // Generate timetable
   const handleGenerate = useCallback(async () => {
     try {
+      if (structureRows.length === 0 && classes.length === 0) {
+        const warning = 'No timetable structure or class information is available. Please define timetable structure and add classes before generating.';
+        setGenerationError(warning);
+        setIsResultsExpanded(true);
+        return;
+      }
+
       setIsGenerating(true);
       setGenerationError(null);
       setGenerationResult(null);
@@ -360,12 +367,16 @@ export const ScheduleBuilder = () => {
     } catch (err: any) {
       const errorObj = err.response?.data?.error;
       let msg = errorObj?.message || err.message || 'Generation failed';
-      
+
+      if (msg.includes('No timetable structure or courses found')) {
+        msg = 'No timetable structure or course assignments were found. Please define the timetable structure and save it before generating the timetable.';
+      }
+
       // Handle validation errors specifically (Joi details array)
       if (errorObj?.code === 'VALIDATION_ERROR' && Array.isArray(errorObj?.details)) {
         msg = `Validation failed: ${errorObj.details.join(', ')}`;
       }
-      
+
       setGenerationError(msg);
       setIsResultsExpanded(true);
     } finally {
@@ -436,11 +447,10 @@ export const ScheduleBuilder = () => {
                       return (
                         <div
                           key={`${day}-${period}`}
-                          className={`h-10 rounded-lg border text-center flex flex-col items-center justify-center transition-all ${
-                            entry
+                          className={`h-10 rounded-lg border text-center flex flex-col items-center justify-center transition-all ${entry
                               ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
                               : 'bg-slate-50/50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800'
-                          }`}
+                            }`}
                         >
                           {entry ? (
                             <>
@@ -483,7 +493,7 @@ export const ScheduleBuilder = () => {
 
       {/* Main Architect Container */}
       <div className="bg-white dark:bg-slate-900 p-4 md:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm space-y-8 transition-colors duration-300">
-        
+
         {/* Main Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b dark:border-slate-800 pb-6">
           <div>
@@ -544,9 +554,8 @@ export const ScheduleBuilder = () => {
             </button>
 
             <div
-              className={`transition-all duration-500 ease-in-out overflow-hidden ${
-                isResultsExpanded ? 'max-h-[3000px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8' : 'max-h-0 opacity-0'
-              }`}
+              className={`transition-all duration-500 ease-in-out overflow-hidden ${isResultsExpanded ? 'max-h-[3000px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8' : 'max-h-0 opacity-0'
+                }`}
             >
               {generationError ? (
                 <div className="flex items-center gap-3 p-6 bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800 rounded-2xl">
@@ -635,9 +644,8 @@ export const ScheduleBuilder = () => {
           </button>
 
           <div
-            className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              isParamsExpanded ? 'max-h-[800px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8' : 'max-h-0 opacity-0'
-            }`}
+            className={`transition-all duration-500 ease-in-out overflow-hidden ${isParamsExpanded ? 'max-h-[800px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8' : 'max-h-0 opacity-0'
+              }`}
           >
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* School Capacity */}
@@ -738,9 +746,8 @@ export const ScheduleBuilder = () => {
           </button>
 
           <div
-            className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              isTeachersExpanded ? 'max-h-[1200px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-rose-50/10 dark:bg-rose-950/5' : 'max-h-0 opacity-0'
-            }`}
+            className={`transition-all duration-500 ease-in-out overflow-hidden ${isTeachersExpanded ? 'max-h-[1200px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-rose-50/10 dark:bg-rose-950/5' : 'max-h-0 opacity-0'
+              }`}
           >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b dark:border-slate-800 mb-6">
               <h4 className="text-xl font-bold text-slate-850 dark:text-white">Select Teacher & Block Slots</h4>
@@ -770,25 +777,22 @@ export const ScheduleBuilder = () => {
                     <button
                       key={teacher.id}
                       onClick={() => setSelectedTeacher(teacher)}
-                      className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all ${
-                        selectedTeacher?.id === teacher.id
+                      className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all ${selectedTeacher?.id === teacher.id
                           ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 scale-[1.02]'
                           : 'hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
-                      }`}
+                        }`}
                     >
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${
-                          selectedTeacher?.id === teacher.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-900'
-                        }`}
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${selectedTeacher?.id === teacher.id ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-900'
+                          }`}
                       >
                         {teacher.name.charAt(0)}
                       </div>
                       <div className="text-left">
                         <p className="font-bold text-sm">{teacher.name}</p>
                         <p
-                          className={`text-[10px] uppercase tracking-tighter font-black ${
-                            selectedTeacher?.id === teacher.id ? 'text-blue-100' : 'text-slate-400'
-                          }`}
+                          className={`text-[10px] uppercase tracking-tighter font-black ${selectedTeacher?.id === teacher.id ? 'text-blue-100' : 'text-slate-400'
+                            }`}
                         >
                           {(teacher.subjects || []).join(' • ') || 'No subjects'}
                         </p>
@@ -845,11 +849,10 @@ export const ScheduleBuilder = () => {
                                 <button
                                   key={`${day}-${period}`}
                                   onClick={() => toggleUnavailability(day, period)}
-                                  className={`h-11 rounded-xl border transition-all flex items-center justify-center font-bold text-sm ${
-                                    isBlocked
+                                  className={`h-11 rounded-xl border transition-all flex items-center justify-center font-bold text-sm ${isBlocked
                                       ? 'bg-rose-500 border-rose-650 text-white shadow-md shadow-rose-550/20'
                                       : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 dark:text-slate-500 hover:border-blue-400'
-                                  }`}
+                                    }`}
                                 >
                                   {isBlocked ? <X size={14} /> : period}
                                 </button>
@@ -894,9 +897,8 @@ export const ScheduleBuilder = () => {
           </button>
 
           <div
-            className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              isRulesExpanded ? 'max-h-[420px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-amber-50/5 dark:bg-amber-955/5' : 'max-h-0 opacity-0'
-            }`}
+            className={`transition-all duration-500 ease-in-out overflow-hidden ${isRulesExpanded ? 'max-h-[420px] opacity-100 border-t border-slate-100 dark:border-slate-800 p-6 md:p-8 bg-amber-50/5 dark:bg-amber-955/5' : 'max-h-0 opacity-0'
+              }`}
           >
             <div className="grid grid-cols-1 gap-8">
               {/* Pedagogical Logic */}
@@ -930,11 +932,10 @@ export const ScheduleBuilder = () => {
                       onClick={() => setDistributeSubjects(!distributeSubjects)}
                       className="flex h-8 w-16 bg-slate-100 dark:bg-slate-700 rounded-full p-1 relative cursor-pointer transition-colors"
                     >
-                      <div className={`absolute w-6 h-6 rounded-full shadow-sm transition-all ${
-                        distributeSubjects
+                      <div className={`absolute w-6 h-6 rounded-full shadow-sm transition-all ${distributeSubjects
                           ? 'right-1 bg-amber-500'
                           : 'left-1 bg-slate-400'
-                      }`} />
+                        }`} />
                     </button>
                   </div>
                 </div>
@@ -965,9 +966,8 @@ export const ScheduleBuilder = () => {
           </button>
 
           <div
-            className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              isStructureExpanded ? 'max-h-[800px] opacity-100 border-t border-purple-100 dark:border-purple-900 p-6 md:p-8 bg-purple-50/20' : 'max-h-0 opacity-0'
-            }`}
+            className={`transition-all duration-500 ease-in-out overflow-hidden ${isStructureExpanded ? 'max-h-[800px] opacity-100 border-t border-purple-100 dark:border-purple-900 p-6 md:p-8 bg-purple-50/20' : 'max-h-0 opacity-0'
+              }`}
           >
             <div className="p-6 rounded-2xl space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
