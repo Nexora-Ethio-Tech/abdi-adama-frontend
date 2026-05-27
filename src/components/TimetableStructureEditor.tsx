@@ -36,13 +36,13 @@ const parseClassName = (name: string) => {
 };
 
 const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialRows = [], onSave }) => {
-  const [gradeMap, setGradeMap] = useState<Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[] }>>({});
+  const [gradeMap, setGradeMap] = useState<Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[]; assignments?: Record<string, Record<string,string>>; collapsed?: boolean }>>({});
   const [saving, setSaving] = useState(false);
   const [newGradeInput, setNewGradeInput] = useState('');
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const map: Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[] }> = {};
+    const map: Record<string, { displayName?: string; sections: { name: string; classId?: string }[]; courses: any[]; assignments?: Record<string, Record<string,string>>; collapsed?: boolean }> = {};
     classes.forEach(c => {
       const { grade, section } = parseClassName(c.name || '');
       if (!map[grade]) map[grade] = { sections: [], courses: [] };
@@ -50,6 +50,10 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
       else map[grade].sections.push({ name: c.section || 'A', classId: c.id });
       // set display name to friendly grade label
       map[grade].displayName = grade;
+      // initialize assignments map for each section
+      if (!map[grade].assignments) map[grade].assignments = {};
+      const secName = section || c.section || 'A';
+      if (!map[grade].assignments[secName]) map[grade].assignments[secName] = {};
     });
     setGradeMap(map);
   }, [classes]);
@@ -81,18 +85,107 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
     });
   };
 
+  const expandGradeOnly = (gradeKey: string) => {
+    setGradeMap(prev => {
+      const next: typeof prev = {} as typeof prev;
+      Object.keys(prev).forEach(key => {
+        next[key] = { ...prev[key], collapsed: key === gradeKey ? false : true };
+      });
+      return next;
+    });
+  };
+
   const addCourse = (gradeKey: string) => {
+    expandGradeOnly(gradeKey);
     setGradeMap(prev => {
       const g = prev[gradeKey];
       const id = Date.now().toString();
-      const course = { id, name: '', sessionsPerWeek: 3, sectionsSelected: [] as string[], teacherBySection: {} as Record<string,string> };
-      const updated = { ...prev, [gradeKey]: { ...g, courses: [...g.courses, course] } };
+        const course = { id, name: '', sessionsPerWeek: 3 };
+        const updated = { ...prev, [gradeKey]: { ...g, courses: [...g.courses, course] } };
       return updated;
     });
     // ensure scroll to bottom so new course is visible
     setTimeout(() => {
       if (containerRef.current) containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
     }, 80);
+  };
+
+  const addSection = (gradeKey: string) => {
+    expandGradeOnly(gradeKey);
+    const existing = gradeMap[gradeKey]?.sections || [];
+    const defaultName = `New Section ${existing.length + 1}`;
+    const trimmed = defaultName;
+
+    setGradeMap(prev => {
+      const g = prev[gradeKey];
+      if (!g) return prev;
+
+      if (g.sections.some(section => section.name.toUpperCase() === trimmed)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        [gradeKey]: {
+          ...g,
+          sections: [...g.sections, { name: trimmed }],
+          assignments: {
+            ...(g.assignments || {}),
+            [trimmed]: { ...(g.assignments?.[trimmed] || {}) },
+          },
+        },
+      };
+    });
+
+    setTimeout(() => {
+      if (containerRef.current) containerRef.current.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' });
+    }, 80);
+  };
+
+  const removeSection = (gradeKey: string, sectionName: string) => {
+    setGradeMap(prev => {
+      const g = prev[gradeKey];
+      if (!g) return prev;
+
+      const sections = g.sections.filter(section => section.name !== sectionName);
+      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string, string>>;
+      delete assignments[sectionName];
+
+      return {
+        ...prev,
+        [gradeKey]: {
+          ...g,
+          sections,
+          assignments,
+        },
+      };
+    });
+  };
+
+  const updateSectionName = (gradeKey: string, oldName: string, nextName: string) => {
+    const normalized = nextName.trim().toUpperCase();
+    if (!normalized) return;
+
+    setGradeMap(prev => {
+      const g = prev[gradeKey];
+      if (!g) return prev;
+
+      if (oldName === normalized) return prev;
+
+      const duplicate = g.sections.some(section => section.name.toUpperCase() === normalized && section.name !== oldName);
+      if (duplicate) return prev;
+
+      const sections = g.sections.map(section => (section.name === oldName ? { ...section, name: normalized } : section));
+      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string, string>>;
+      if (assignments[oldName]) {
+        assignments[normalized] = { ...(assignments[normalized] || {}), ...assignments[oldName] };
+        delete assignments[oldName];
+      } else if (!assignments[normalized]) {
+        assignments[normalized] = {};
+      }
+
+      return { ...prev, [gradeKey]: { ...g, sections, assignments } };
+    });
   };
 
   const updateCourse = (gradeKey: string, courseId: string, changes: Partial<any>) => {
@@ -107,33 +200,63 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
     setGradeMap(prev => {
       const g = prev[gradeKey];
       const courses = g.courses.filter((c: any) => c.id !== courseId);
-      return { ...prev, [gradeKey]: { ...g, courses } };
+      // also remove any assignment entries
+      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string,string>>;
+      Object.keys(assignments).forEach(sec => { if (assignments[sec] && assignments[sec][courseId]) delete assignments[sec][courseId]; });
+      return { ...prev, [gradeKey]: { ...g, courses, assignments } };
     });
   };
 
-  const toggleSectionForCourse = (gradeKey: string, courseId: string, sectionName: string) => {
+  const toggleCourseForSection = (gradeKey: string, sectionName: string, courseId: string) => {
     setGradeMap(prev => {
       const g = prev[gradeKey];
-      const courses = g.courses.map((c: any) => {
-        if (c.id !== courseId) return c;
-        const set = new Set(c.sectionsSelected || []);
-        if (set.has(sectionName)) set.delete(sectionName); else set.add(sectionName);
-        return { ...c, sectionsSelected: Array.from(set) };
-      });
-      return { ...prev, [gradeKey]: { ...g, courses } };
+      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string,string>>;
+      if (!assignments[sectionName]) assignments[sectionName] = {};
+      if (assignments[sectionName][courseId] !== undefined) {
+        // toggle off
+        delete assignments[sectionName][courseId];
+      } else {
+        // toggle on with empty teacher
+        assignments[sectionName][courseId] = '';
+      }
+      return { ...prev, [gradeKey]: { ...g, assignments } };
     });
   };
 
-  const assignTeacher = (gradeKey: string, courseId: string, sectionName: string, teacherId: string) => {
+  const assignTeacherForSectionCourse = (gradeKey: string, sectionName: string, courseId: string, teacherId: string) => {
     setGradeMap(prev => {
       const g = prev[gradeKey];
-      const courses = g.courses.map((c: any) => {
-        if (c.id !== courseId) return c;
-        const by = { ...(c.teacherBySection || {}) } as Record<string,string>;
-        by[sectionName] = teacherId;
-        return { ...c, teacherBySection: by };
-      });
-      return { ...prev, [gradeKey]: { ...g, courses } };
+      const assignments = { ...(g.assignments || {}) } as Record<string, Record<string,string>>;
+      if (!assignments[sectionName]) assignments[sectionName] = {};
+      assignments[sectionName][courseId] = teacherId;
+      return { ...prev, [gradeKey]: { ...g, assignments } };
+    });
+  };
+
+  const toggleGradeCollapsed = (gradeKey: string) => {
+    setGradeMap(prev => {
+      const g = prev[gradeKey];
+      if (!g) return prev;
+      const nextCollapsed = !g.collapsed;
+      if (!nextCollapsed) {
+        const next: typeof prev = {} as typeof prev;
+        Object.keys(prev).forEach(key => {
+          next[key] = { ...prev[key], collapsed: key === gradeKey ? false : true };
+        });
+        return next;
+      }
+      return { ...prev, [gradeKey]: { ...g, collapsed: true } };
+    });
+  };
+
+  const removeGrade = (gradeKey: string) => {
+    const shouldRemove = window.confirm('Delete this grade and all its courses/sections?');
+    if (!shouldRemove) return;
+
+    setGradeMap(prev => {
+      const next = { ...prev };
+      delete next[gradeKey];
+      return next;
     });
   };
 
@@ -141,17 +264,22 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
     // Flatten to structure rows
     const rows: StructureRow[] = [];
     for (const gradeKey of Object.keys(gradeMap)) {
-        const g = gradeMap[gradeKey];
-        const matchGradeLabel = (g.displayName || gradeKey).toString();
-        for (const course of g.courses) {
-          for (const sectionName of course.sectionsSelected || []) {
-            // find classId matching this grade display name and section
-            const cls = classes.find(c => {
-              const { grade, section } = parseClassName(c.name || '');
-              return grade === matchGradeLabel && (section === sectionName || c.section === sectionName);
-            });
-          if (!cls) continue; // cannot map
-          const teacherId = (course.teacherBySection || {})[sectionName] || '';
+      const g = gradeMap[gradeKey];
+      const matchGradeLabel = (g.displayName || gradeKey).toString();
+      const assignments = g.assignments || {};
+      // for each section for this grade
+      for (const sectionName of Object.keys(assignments)) {
+        const courseMap = assignments[sectionName] || {};
+        for (const courseId of Object.keys(courseMap)) {
+          const teacherId = courseMap[courseId] || '';
+          const course = (g.courses || []).find((c: any) => c.id === courseId);
+          if (!course) continue;
+          // find classId matching this grade display name and section
+          const cls = classes.find(c => {
+            const { grade, section } = parseClassName(c.name || '');
+            return grade === matchGradeLabel && (section === sectionName || c.section === sectionName);
+          });
+          if (!cls) continue;
           rows.push({ id: Date.now().toString() + Math.random().toString(36).slice(2,6), classId: cls.id, teacherId, subject: course.name || '', sessionsPerWeek: course.sessionsPerWeek || 3 });
         }
       }
@@ -180,7 +308,7 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
             placeholder="Grade number (e.g. 10) or name"
             value={newGradeInput}
             onChange={(e) => setNewGradeInput(e.target.value)}
-            className="px-3 py-1 rounded-md border bg-white dark:bg-slate-800 text-sm w-40"
+            className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm w-40"
           />
           <button onClick={() => addGrade(newGradeInput)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm">Add Grade</button>
         </div>
@@ -202,70 +330,88 @@ const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialR
                     const v = e.target.value.trim();
                     if (/^\d+$/.test(v)) updateGradeDisplayName(gradeKey, `Grade ${v}`);
                   }}
-                  className="font-bold text-lg w-full px-2 py-1 rounded-md border"
+                  className="font-bold text-lg w-full px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900"
                 />
                 <p className="text-xs text-slate-500">Sections: {g.sections.map(s=>s.name).join(', ') || 'none'}</p>
               </div>
-              <div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => addSection(gradeKey)} className="px-3 py-1 bg-slate-700 text-white rounded-md text-sm">Add Section</button>
                 <button onClick={() => addCourse(gradeKey)} className="px-3 py-1 bg-green-600 text-white rounded-md text-sm">Add Course</button>
+                <button onClick={() => toggleGradeCollapsed(gradeKey)} className="px-3 py-1 border rounded-md text-sm">{g.collapsed ? 'Expand' : 'Collapse'}</button>
+                <button onClick={() => removeGrade(gradeKey)} className="px-3 py-1 bg-red-500 text-white rounded-md text-sm">Delete</button>
               </div>
             </div>
 
-            <div className="space-y-3">
+            {!g.collapsed && (
+              <div className="space-y-3">
               {g.courses.length === 0 && (
                 <div className="text-sm text-slate-500">No courses yet for this grade.</div>
               )}
 
-              {g.courses.map((course: any) => (
-                <div key={course.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                    <div>
+              <div className="space-y-2">
+                {g.courses.map((course: any) => (
+                  <div key={course.id} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border flex items-center gap-3">
+                    <div className="flex-1">
                       <label className="text-xs font-black">Course Name</label>
-                      <input value={course.name} onChange={(e) => updateCourse(gradeKey, course.id, { name: e.target.value })} className="w-full px-3 py-2 rounded-md" />
+                      <input value={course.name} onChange={(e) => updateCourse(gradeKey, course.id, { name: e.target.value })} className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none" />
+                    </div>
+                    <div className="w-40">
+                      <label className="text-xs font-black">Sessions / Week</label>
+                      <input type="number" min={1} max={10} value={course.sessionsPerWeek} onChange={(e) => updateCourse(gradeKey, course.id, { sessionsPerWeek: Number(e.target.value) })} className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none" />
                     </div>
                     <div>
-                      <label className="text-xs font-black">Sessions / Week</label>
-                      <input type="number" min={1} max={10} value={course.sessionsPerWeek} onChange={(e) => updateCourse(gradeKey, course.id, { sessionsPerWeek: Number(e.target.value) })} className="w-full px-3 py-2 rounded-md" />
-                    </div>
-                    <div className="text-right">
-                      <button onClick={() => removeCourse(gradeKey, course.id)} className="px-3 py-1 bg-red-500 text-white rounded-md text-sm">Remove</button>
+                      <button onClick={() => removeCourse(gradeKey, course.id)} className="px-3 py-1 bg-red-500 text-white rounded-md text-sm">Delete</button>
                     </div>
                   </div>
+                ))}
+              </div>
 
-                  <div className="mt-3">
-                    <label className="text-xs font-black">Sections</label>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {(g.sections && g.sections.length>0) ? g.sections.map((s:any) => {
-                        const checked = (course.sectionsSelected||[]).includes(s.name);
-                        return (
-                          <label key={s.name} className="inline-flex items-center gap-2 px-3 py-1 bg-white dark:bg-slate-800 border rounded-md">
-                            <input type="checkbox" checked={checked} onChange={() => toggleSectionForCourse(gradeKey, course.id, s.name)} />
-                            <span>{s.name}</span>
-                          </label>
-                        );
-                      }) : <div className="text-sm text-slate-500">No sections available for this grade</div>}
+              <div className="mt-4">
+                <label className="text-xs font-black">Section Assignments</label>
+                <div className="space-y-3 mt-2">
+                  {(g.sections && g.sections.length>0) ? g.sections.map((s:any) => (
+                    <div key={s.name} className="p-3 bg-white dark:bg-slate-800 rounded-md border">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm font-bold whitespace-nowrap">Section</span>
+                        <input
+                          value={s.name}
+                          onChange={(e) => updateSectionName(gradeKey, s.name, e.target.value)}
+                          className="flex-1 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
+                        />
+                        <button
+                          onClick={() => removeSection(gradeKey, s.name)}
+                          className="px-3 py-1 bg-red-500 text-white rounded-md text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        {g.courses.map((course:any) => {
+                          const assigned = !!(g.assignments && g.assignments[s.name] && g.assignments[s.name][course.id] !== undefined);
+                          return (
+                            <div key={course.id} className="w-full sm:w-1/2 lg:w-1/3">
+                              <label className="inline-flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md w-full">
+                                <input type="checkbox" checked={assigned} onChange={() => toggleCourseForSection(gradeKey, s.name, course.id)} />
+                                <div className="flex-1 text-sm">{course.name || 'Untitled Course'}</div>
+                              </label>
+                              {assigned && (
+                                <div className="mt-2">
+                                  <select value={(g.assignments?.[s.name]?.[course.id]) || ''} onChange={(e) => assignTeacherForSectionCourse(gradeKey, s.name, course.id, e.target.value)} className="w-full px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none mt-1">
+                                    <option value="">Select teacher</option>
+                                    {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                  </select>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <label className="text-xs font-black">Assign Teachers (per section)</label>
-                    <div className="space-y-2 mt-2">
-                      {(course.sectionsSelected||[]).length === 0 && <div className="text-sm text-slate-500">No sections selected</div>}
-                      {(course.sectionsSelected||[]).map((sname: string) => (
-                        <div key={sname} className="flex items-center gap-3">
-                          <div className="w-24 text-sm">{sname}</div>
-                          <select value={course.teacherBySection?.[sname] || ''} onChange={(e) => assignTeacher(gradeKey, course.id, sname, e.target.value)} className="flex-1 px-3 py-2 rounded-md">
-                            <option value="">Select teacher</option>
-                            {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
+                  )) : <div className="text-sm text-slate-500">No sections available for this grade</div>}
                 </div>
-              ))}
+              </div>
             </div>
+            )}
           </div>
         ))}
       </div>
