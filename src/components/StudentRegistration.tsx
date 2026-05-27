@@ -145,6 +145,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [pendingApps, setPendingApps] = useState<PendingApp[]>(initialPendingApplications);
   const [viewingTranscript, setViewingTranscript] = useState<any>(null);
+  const [transcriptUrl, setTranscriptUrl] = useState<string | null>(null);
+  const [transcriptLoading, setTranscriptLoading] = useState<boolean>(false);
+  const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2024/2025');
   const [selectedSemester, setSelectedSemester] = useState('Semester 2');
   const [registrationOpen, setRegistrationOpen] = useState(true);
@@ -197,6 +200,35 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       fetchApps();
     }
   }, [isAdminView]);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    const fetchTranscript = async () => {
+      if (!viewingTranscript) return;
+      setTranscriptLoading(true);
+      setTranscriptError(null);
+      setTranscriptUrl(null);
+      try {
+        const res = await fetch(`/api/school-admin/applications/${viewingTranscript.id}/transcript`);
+        if (!res.ok) throw new Error('Failed to fetch transcript');
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        setTranscriptUrl(objectUrl);
+      } catch (err: any) {
+        console.error('Transcript fetch error', err);
+        setTranscriptError(err?.message || 'Failed to load transcript');
+      } finally {
+        setTranscriptLoading(false);
+      }
+    };
+    fetchTranscript();
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setTranscriptUrl(null);
+      setTranscriptLoading(false);
+      setTranscriptError(null);
+    };
+  }, [viewingTranscript]);
 
   const transcriptHistory = {
     '2024/2025': {
@@ -294,7 +326,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const gender = formData.get('gender') as string;
       const parentName = formData.get('parentName') as string;
       const phone = formData.get('phone') as string;
-      const email = formData.get('email') as string || `${digital_id?.toLowerCase?.()?.replace?.(/[^a-z0-9]/g, '') || 'applicant'}@example.com`;
+      const rawEmail = formData.get('email') as string | null;
+      const email = rawEmail && rawEmail.trim() ? rawEmail.trim() : '';
       const address = formData.get('address') as string;
       const previousSchool = formData.get('previousSchool') as string;
       const grade = formData.get('grade') as string;
@@ -343,9 +376,11 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       submitData.append('gender', gender || '');
       submitData.append('parentName', parentName?.trim() || '');
       submitData.append('parentPhone', formattedPhone);
-      submitData.append('email', email?.trim() || '');
+      // Only append email if provided; backend will treat missing/empty as null
+      if (email) submitData.append('email', email);
       submitData.append('address', address?.trim() || '');
-      submitData.append('previousSchool', previousSchool?.trim() || '');
+      // Append previousSchool only when provided
+      if (previousSchool?.trim()) submitData.append('previousSchool', previousSchool.trim());
       submitData.append('grade', grade || '');
       if (bloodGroup?.trim()) submitData.append('bloodGroup', bloodGroup.trim());
       if (allergies?.trim()) submitData.append('allergies', allergies.trim());
@@ -355,6 +390,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       // Add file if uploaded
       const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
       const fileList = fileInput?.files;
+      // Transcript is required
+      if (!fileList || !fileList[0]) {
+        setFileError('Transcript is required');
+        setRegistrationStep(3);
+        return;
+      }
       if (fileList?.[0]) {
         const file = fileList[0];
         // Validate file on client side again before sending
@@ -962,6 +1003,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       {(validationErrors.phone || validationErrors.parentPhone) && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {(validationErrors.phone || validationErrors.parentPhone)}</p>}
                     </div>
                     <div className="space-y-1 md:col-span-2">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Email (optional)</label>
+                      <input name="email" type="email" placeholder="Parent or applicant email (optional)" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 border-slate-200 dark:border-slate-700 focus:ring-blue-500" />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
                       <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
                           ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
@@ -1198,71 +1243,59 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
             <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
-                    <select
-                      value={selectedAcademicYear}
-                      onChange={(e) => setSelectedAcademicYear(e.target.value)}
-                      className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {Object.keys(transcriptHistory).map((year) => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
+                {transcriptLoading ? (
+                  <div className="w-full h-[420px] flex items-center justify-center">
+                    <p className="text-sm text-slate-500">Loading transcript...</p>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Semester</label>
-                    <select
-                      value={selectedSemester}
-                      onChange={(e) => setSelectedSemester(e.target.value)}
-                      className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {Object.keys(transcriptHistory[selectedAcademicYear as keyof typeof transcriptHistory]).map((semester) => (
-                        <option key={semester} value={semester}>{semester}</option>
-                      ))}
-                    </select>
+                ) : transcriptError ? (
+                  <div className="w-full h-[420px] flex items-center justify-center">
+                    <p className="text-sm text-rose-500">{transcriptError}</p>
                   </div>
-                </div>
-                <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 flex items-center justify-center relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
-                  <div className="text-center p-12">
-                    <FileText size={64} className="mx-auto text-slate-300 dark:text-slate-700 mb-4 group-hover:scale-110 transition-transform" />
-                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Mock Transcript Viewer</p>
-                    <p className="text-[10px] text-slate-500 mt-2">Document ID: {viewingTranscript.id}_TRANSCRIPT_2025.pdf</p>
+                ) : transcriptUrl ? (
+                  <div className="w-full h-[720px] bg-slate-50 dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <iframe title={`transcript-${viewingTranscript?.id}`} src={transcriptUrl} className="w-full h-full" />
                   </div>
-                  {/* Mock content rendering */}
-                  <div className="absolute inset-4 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col p-8 bg-white dark:bg-slate-950/50 backdrop-blur-sm shadow-inner">
-                    <div className="flex justify-between mb-8 border-b-2 border-slate-100 dark:border-slate-800 pb-4">
-                      <div className="font-black text-xs">OFFICIAL ACADEMIC RECORD</div>
-                      <div className="font-bold text-[10px] text-slate-400">PAGE 1 OF 1</div>
+                ) : (
+                  // Fallback mock viewer when no transcript available
+                  <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-900 rounded-3xl border-4 border-slate-200 dark:border-slate-800 flex items-center justify-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+                    <div className="text-center p-12">
+                      <FileText size={64} className="mx-auto text-slate-300 dark:text-slate-700 mb-4 group-hover:scale-110 transition-transform" />
+                      <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Mock Transcript Viewer</p>
+                      <p className="text-[10px] text-slate-500 mt-2">Document ID: {viewingTranscript.id}_TRANSCRIPT_2025.pdf</p>
                     </div>
-                    <div className="space-y-4 flex-1">
-                      <div className="grid grid-cols-2 gap-4">
-                        {transcriptHistory[selectedAcademicYear as keyof typeof transcriptHistory][selectedSemester as keyof (typeof transcriptHistory)[keyof typeof transcriptHistory]].map((item, i) => (
-                          <div key={i} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                            <span className="text-[10px] font-bold text-slate-600 uppercase">{item.s}</span>
-                            <span className="text-xs font-black text-blue-600">{item.g}</span>
-                          </div>
-                        ))}
+                    <div className="absolute inset-4 border-2 border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col p-8 bg-white dark:bg-slate-950/50 backdrop-blur-sm shadow-inner">
+                      <div className="flex justify-between mb-8 border-b-2 border-slate-100 dark:border-slate-800 pb-4">
+                        <div className="font-black text-xs">OFFICIAL ACADEMIC RECORD</div>
+                        <div className="font-bold text-[10px] text-slate-400">PAGE 1 OF 1</div>
                       </div>
-                      <div className="mt-8 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
-                        <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-1">Cumulative GPA</p>
-                        <p className="text-2xl font-black text-emerald-600">3.85 / 4.00</p>
+                      <div className="space-y-4 flex-1">
+                        <div className="grid grid-cols-2 gap-4">
+                          {transcriptHistory[selectedAcademicYear as keyof typeof transcriptHistory][selectedSemester as keyof (typeof transcriptHistory)[keyof typeof transcriptHistory]].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center p-2 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                              <span className="text-[10px] font-bold text-slate-600 uppercase">{item.s}</span>
+                              <span className="text-xs font-black text-blue-600">{item.g}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-8 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl">
+                          <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase mb-1">Cumulative GPA</p>
+                          <p className="text-2xl font-black text-emerald-600">3.85 / 4.00</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-8 flex justify-between items-end">
-                      <div className="space-y-1">
-                        <div className="w-24 h-0.5 bg-slate-300"></div>
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Principal's Signature</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Verified Academic History</p>
-                        <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">ABDI ADAMA SMART SCHOOL</p>
+                      <div className="mt-8 flex justify-between items-end">
+                        <div className="space-y-1">
+                          <div className="w-24 h-0.5 bg-slate-300"></div>
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Principal's Signature</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Verified Academic History</p>
+                          <p className="text-[10px] font-black text-slate-700 dark:text-slate-300">ABDI ADAMA SMART SCHOOL</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
 
               <div className="space-y-6">
