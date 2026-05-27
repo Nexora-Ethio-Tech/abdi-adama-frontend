@@ -20,6 +20,7 @@ import {
   type ClassRecord,
   type StructureRowInput
 } from '../services/schoolAdminService';
+import TimetableStructureEditor from '../components/TimetableStructureEditor';
 
 interface CourseFrequency {
   id: string;
@@ -970,100 +971,41 @@ export const ScheduleBuilder = () => {
                   <BookOpen size={16} />
                   <span>Timetable Structure</span>
                 </div>
-                <button
-                  onClick={addStructureRow}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 transition-all text-sm font-bold"
-                >
-                  Add Row
-                </button>
               </div>
-              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
+              <div className="space-y-3 max-h-[520px] overflow-y-auto pr-2">
                 {loadingClasses || loadingTeachers ? (
                   <div className="flex items-center justify-center py-16 text-slate-500 dark:text-slate-400">
                     Loading class and teacher lists...
                   </div>
-                ) : structureRows.length === 0 ? (
-                  <div className="p-8 border border-dashed border-purple-200 dark:border-purple-900/30 rounded-3xl text-center bg-white/80 dark:bg-slate-900/80">
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No timetable structure rows defined yet.</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Create class and teacher assignments so generation can use the saved structure.</p>
-                  </div>
                 ) : (
-                  <div className="space-y-4">
-                    {structureRows.map((row, index) => (
-                      <div key={row.id} className="grid grid-cols-1 gap-3 p-4 bg-white dark:bg-slate-800 border border-purple-100/30 dark:border-purple-900/10 rounded-2xl shadow-sm">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Class</label>
-                          <select
-                            value={row.classId}
-                            onChange={(e) => updateStructureRow(row.id, { classId: e.target.value })}
-                            className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                          >
-                            <option value="">Select class</option>
-                            {classes.map((clazz) => (
-                              <option key={clazz.id} value={clazz.id}>
-                                {clazz.name}{clazz.section ? ` ${clazz.section}` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Teacher</label>
-                          <select
-                            value={row.teacherId}
-                            onChange={(e) => updateStructureRow(row.id, { teacherId: e.target.value })}
-                            className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                          >
-                            <option value="">Select teacher</option>
-                            {teachers.map((teacher) => (
-                              <option key={teacher.id} value={teacher.id}>
-                                {teacher.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Subject</label>
-                            <input
-                              type="text"
-                              value={row.subject}
-                              onChange={(e) => updateStructureRow(row.id, { subject: e.target.value })}
-                              className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                              placeholder="Subject name"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Sessions / Week</label>
-                            <input
-                              type="number"
-                              min={1}
-                              max={10}
-                              value={row.sessionsPerWeek}
-                              onChange={(e) => updateStructureRow(row.id, { sessionsPerWeek: Number(e.target.value) })}
-                              className="w-full px-3 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
-                            />
-                          </div>
-                          <div className="flex items-end justify-end">
-                            <button
-                              onClick={() => removeStructureRow(row.id)}
-                              className="px-4 py-2 bg-rose-500 text-white rounded-2xl hover:bg-rose-600 transition-all text-sm font-bold"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <TimetableStructureEditor
+                    classes={classes}
+                    teachers={teachers}
+                    initialRows={structureRows}
+                    onSave={async (rows) => {
+                      // update state and persist
+                      setStructureRows(rows);
+                      try {
+                        setSavingStructure(true);
+                        await saveScheduleStructure(rows.map(r => ({ classId: r.classId, teacherId: r.teacherId, subject: r.subject, sessionsPerWeek: r.sessionsPerWeek })));
+                        alert('Timetable structure saved successfully.');
+                      } catch (err) {
+                        console.error('Failed to save structure from editor:', err);
+                        alert('Unable to save timetable structure. Please try again.');
+                      } finally {
+                        setSavingStructure(false);
+                      }
+                    }}
+                  />
                 )}
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                {/* Save is handled inside editor; keep a sync button if needed */}
                 <button
-                  onClick={handleSaveStructure}
-                  disabled={savingStructure || loadingClasses || loadingTeachers}
-                  className="w-full sm:w-auto px-5 py-3 bg-white text-purple-600 border border-purple-300 rounded-2xl font-bold hover:bg-purple-100 transition-all disabled:opacity-60"
+                  onClick={() => { setIsStructureExpanded(false); }}
+                  className="w-full sm:w-auto px-5 py-3 bg-white text-purple-600 border border-purple-300 rounded-2xl font-bold hover:bg-purple-100 transition-all"
                 >
-                  {savingStructure ? 'Saving...' : 'Save Structure'}
+                  Done
                 </button>
               </div>
             </div>
