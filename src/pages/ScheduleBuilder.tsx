@@ -73,6 +73,15 @@ export const ScheduleBuilder = () => {
   const [isStructureExpanded, setIsStructureExpanded] = useState(false);
   const [isResultsExpanded, setIsResultsExpanded] = useState(false);
 
+  // Helper to toggle one section and collapse others. Clicking the same section toggles it.
+  const toggleSection = (section: 'params' | 'teachers' | 'rules' | 'structure' | 'results') => {
+    setIsParamsExpanded(prev => (section === 'params' ? !prev : false));
+    setIsTeachersExpanded(prev => (section === 'teachers' ? !prev : false));
+    setIsRulesExpanded(prev => (section === 'rules' ? !prev : false));
+    setIsStructureExpanded(prev => (section === 'structure' ? !prev : false));
+    setIsResultsExpanded(prev => (section === 'results' ? !prev : false));
+  };
+
   // Generation state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<GenerateTimetableResult | null>(null);
@@ -531,7 +540,7 @@ export const ScheduleBuilder = () => {
         {(generationResult || generationError) && (
           <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
             <button
-              onClick={() => setIsResultsExpanded(!isResultsExpanded)}
+              onClick={() => toggleSection('results')}
               className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
             >
               <div className="flex items-center gap-4">
@@ -625,7 +634,7 @@ export const ScheduleBuilder = () => {
         {/* SECTION 1: Core Parameters (Collapsible) */}
         <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
           <button
-            onClick={() => setIsParamsExpanded(!isParamsExpanded)}
+            onClick={() => toggleSection('params')}
             className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
           >
             <div className="flex items-center gap-4">
@@ -722,7 +731,7 @@ export const ScheduleBuilder = () => {
         {/* SECTION 2: Teacher Constraints (Collapsible) */}
         <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
           <button
-            onClick={() => setIsTeachersExpanded(!isTeachersExpanded)}
+            onClick={() => toggleSection('teachers')}
             className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
           >
             <div className="flex items-center gap-4">
@@ -878,7 +887,7 @@ export const ScheduleBuilder = () => {
         {/* SECTION 3: Pedagogical Rules (Collapsible) */}
         <div className="bg-slate-50/30 dark:bg-slate-900/10 rounded-3xl border border-slate-100 dark:border-slate-800/80 overflow-hidden transition-all duration-300">
           <button
-            onClick={() => setIsRulesExpanded(!isRulesExpanded)}
+            onClick={() => toggleSection('rules')}
             className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
           >
             <div className="flex items-center gap-4">
@@ -947,7 +956,7 @@ export const ScheduleBuilder = () => {
         {/* SECTION 4: Timetable Structure & Frequencies (Collapsible, independent) */}
         <div className="bg-purple-50/20 dark:bg-purple-900/5 rounded-3xl border border-purple-100/50 dark:border-purple-900/20 overflow-hidden transition-all duration-300">
           <button
-            onClick={() => setIsStructureExpanded(!isStructureExpanded)}
+            onClick={() => toggleSection('structure')}
             className="w-full flex items-center justify-between p-6 hover:bg-slate-100/50 dark:hover:bg-slate-800/30 text-left transition-colors outline-none"
           >
             <div className="flex items-center gap-4">

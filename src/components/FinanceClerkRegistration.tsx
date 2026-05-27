@@ -44,6 +44,28 @@ export const FinanceClerkRegistration = () => {
   const [showCredentials, setShowCredentials] = useState(false);
   const [approvedApp, setApprovedApp] = useState<any>(null);
 
+  const copyText = async (text: string, label: string) => {
+    if (!text || text === 'N/A') return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setSuccessMessage(`${label} copied to clipboard`);
+      setTimeout(() => setSuccessMessage(null), 2500);
+    } catch (copyError) {
+      console.error('Copy failed', copyError);
+      setError(`Unable to copy ${label}.`);
+    }
+  };
+
+  const getStudentCredential = () => ({
+    id: approvedApp?.student?.user?.digital_id || approvedApp?.application?.student_id_generated || 'N/A',
+    password: approvedApp?.student?.temporaryPassword || approvedApp?.application?.student_password_temp || 'N/A',
+  });
+
+  const getParentCredential = () => ({
+    id: approvedApp?.parent?.user?.digital_id || approvedApp?.application?.parent_id_generated || 'N/A',
+    password: approvedApp?.parent?.temporaryPassword || approvedApp?.application?.parent_password_temp || 'N/A',
+  });
+
   // Fetch pending applications
   const fetchPendingApplications = useCallback(async () => {
     try {
@@ -118,7 +140,8 @@ export const FinanceClerkRegistration = () => {
       const result = await financeClerkService.approveApplication(selectedApp.id, payload);
 
       setApprovedApp(result);
-      setSuccessMessage(`✅ Payment approved! Student ID: ${result.application?.student_id_generated || 'Generated'}`);
+      setSuccessMessage(`✅ Payment approved! Student ID: ${result.student?.user?.digital_id || result.application?.student_id_generated || 'Generated'}`);
+      setShowCredentials(false);
 
       // Remove from pending list
       setPendingApplications(prev =>
@@ -427,18 +450,13 @@ export const FinanceClerkRegistration = () => {
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">Student ID</p>
                 <div className="flex items-center gap-2">
                   <code className="text-lg font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
-                    {approvedApp.application?.student_id_generated || 'STU-XXXXXXXXX'}
+                    {getStudentCredential().id}
                   </code>
                   <button
-                    onClick={() => {
-                      const studentId = approvedApp.application?.student_id_generated;
-                      if (studentId) {
-                        navigator.clipboard.writeText(studentId);
-                      }
-                    }}
+                    onClick={() => copyText(getStudentCredential().id, 'Student ID')}
                     className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
                   >
-                    {showCredentials ? <EyeOff size={16} /> : <Eye size={16} />}
+                    Copy
                   </button>
                 </div>
               </div>
@@ -450,7 +468,7 @@ export const FinanceClerkRegistration = () => {
                 <div className="flex items-center gap-2">
                   <code className="text-sm font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
                     {showCredentials
-                      ? approvedApp.application?.student_password_temp
+                      ? getStudentCredential().password
                       : '••••••••'}
                   </code>
                   <button
@@ -459,14 +477,26 @@ export const FinanceClerkRegistration = () => {
                   >
                     {showCredentials ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
+                  <button
+                    onClick={() => copyText(getStudentCredential().password, 'Student password')}
+                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                  >
+                    Copy
+                  </button>
                 </div>
               </div>
 
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase mb-1">Parent ID</p>
                 <code className="text-lg font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 block">
-                  {approvedApp.application?.parent_id_generated || 'PAR-XXXXXXXXX'}
+                  {getParentCredential().id}
                 </code>
+                <button
+                  onClick={() => copyText(getParentCredential().id, 'Parent ID')}
+                  className="mt-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 text-sm font-semibold"
+                >
+                  Copy
+                </button>
               </div>
 
               <div>
@@ -475,10 +505,45 @@ export const FinanceClerkRegistration = () => {
                 </p>
                 <code className="text-sm font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 block">
                   {showCredentials
-                    ? approvedApp.application?.parent_password_temp
+                    ? getParentCredential().password
                     : '••••••••'}
                 </code>
+                <button
+                  onClick={() => copyText(getParentCredential().password, 'Parent password')}
+                  className="mt-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 text-sm font-semibold"
+                >
+                  Copy
+                </button>
               </div>
+            </div>
+
+            <div className="flex flex-col gap-3 mb-4">
+              <button
+                onClick={() => {
+                  const student = getStudentCredential();
+                  const parent = getParentCredential();
+                  copyText(
+                    `Student ID: ${student.id}\nStudent Password: ${student.password}\nParent ID: ${parent.id}\nParent Password: ${parent.password}`,
+                    'All credentials'
+                  );
+                }}
+                className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-semibold transition-all"
+              >
+                Copy all credentials
+              </button>
+              <button
+                onClick={() => {
+                  if (!showCredentials) {
+                    setShowCredentials(true);
+                    setTimeout(() => window.print(), 120);
+                  } else {
+                    window.print();
+                  }
+                }}
+                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all"
+              >
+                Print credentials
+              </button>
             </div>
 
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-6">
@@ -491,6 +556,7 @@ export const FinanceClerkRegistration = () => {
               onClick={() => {
                 setApprovedApp(null);
                 setSuccessMessage(null);
+                setShowCredentials(false);
               }}
               className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all"
             >
