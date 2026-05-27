@@ -108,9 +108,6 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
       errors.address = 'Address is required';
     }
   } else if (step === 3) {
-    if (!formData.previousSchool || !formData.previousSchool.trim()) {
-      errors.previousSchool = 'Previous School is required';
-    }
     if (!formData.grade || !formData.grade.trim()) {
       errors.grade = 'Last Grade Completed is required';
     }
@@ -318,6 +315,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
     setValidationErrors({});
 
+    e.preventDefault();
     try {
       const formData = new FormData(e.currentTarget);
       const name = formData.get('name') as string;
@@ -1020,7 +1018,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 3 ? 'hidden' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-rose-500">*</span></label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-slate-400 text-[10px] font-medium">(optional)</span></label>
                       <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.previousSchool
                           ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
@@ -1029,11 +1027,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
-                      <input name="grade" type="text" placeholder="e.g. Grade 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
+                      <input name="grade" type="number" min="1" step="1" placeholder="e.g. 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
                           ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                           : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                         }`} />
-                      {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
                     </div>
                   </div>
 
