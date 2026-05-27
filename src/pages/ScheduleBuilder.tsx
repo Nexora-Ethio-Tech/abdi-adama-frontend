@@ -323,6 +323,13 @@ export const ScheduleBuilder = () => {
   // Generate timetable
   const handleGenerate = useCallback(async () => {
     try {
+      if (structureRows.length === 0 && classes.length === 0) {
+        const warning = 'No timetable structure or class information is available. Please define timetable structure and add classes before generating.';
+        setGenerationError(warning);
+        setIsResultsExpanded(true);
+        return;
+      }
+
       setIsGenerating(true);
       setGenerationError(null);
       setGenerationResult(null);
@@ -360,6 +367,10 @@ export const ScheduleBuilder = () => {
     } catch (err: any) {
       const errorObj = err.response?.data?.error;
       let msg = errorObj?.message || err.message || 'Generation failed';
+      
+      if (msg.includes('No timetable structure or courses found')) {
+        msg = 'No timetable structure or course assignments were found. Please define the timetable structure and save it before generating the timetable.';
+      }
       
       // Handle validation errors specifically (Joi details array)
       if (errorObj?.code === 'VALIDATION_ERROR' && Array.isArray(errorObj?.details)) {
