@@ -12,6 +12,8 @@ export interface AuditorDashboard {
     total: number;
   };
   pendingFeeReductions: number;
+  pendingLoans: number;
+  pendingApprovals: number;
   recentTransactions: Transaction[];
 }
 
