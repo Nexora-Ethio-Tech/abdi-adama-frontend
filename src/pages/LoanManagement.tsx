@@ -42,7 +42,7 @@ export const LoanManagement = () => {
 
       // 2. Load employees (only those with configure salary profiles can receive loans)
       const profiles = await payrollService.getAllProfiles();
-      setEmployees(profiles.filter(p => p.profile_id !== null && p.basic_salary > 0));
+      setEmployees(profiles);
 
       // 3. Load global settings to display as guidance
       try {
@@ -167,7 +167,10 @@ export const LoanManagement = () => {
     const emp = employees.find(e => e.user_id === selectedEmployeeId);
     return emp ? emp.basic_salary : 0;
   };
-  const computedMonthlyDeduction = (getSelectedEmployeeSalary() * globalDeductionPct) / 100;
+  const basicSalaryVal = getSelectedEmployeeSalary();
+  const computedMonthlyDeduction = basicSalaryVal > 0
+    ? (basicSalaryVal * globalDeductionPct) / 100
+    : (loanAmount ? Number(loanAmount) / globalMaxMonths : 0);
 
   // Filter lists
   const filteredLoans = loans.filter(l => {
@@ -196,7 +199,7 @@ export const LoanManagement = () => {
         {(role === 'finance-clerk' || role === 'super-admin') && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-slate-900 dark:bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
+            className="bg-slate-900 dark:bg-blue-600 text-white font-black text-sm uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
           >
             <Plus size={16} />
             Issue New Loan
@@ -215,7 +218,7 @@ export const LoanManagement = () => {
         <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
           <button
             onClick={() => setActiveTab('pending')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
               activeTab === 'pending'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -225,7 +228,7 @@ export const LoanManagement = () => {
           </button>
           <button
             onClick={() => setActiveTab('approved')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
               activeTab === 'approved'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -235,7 +238,7 @@ export const LoanManagement = () => {
           </button>
           <button
             onClick={() => setActiveTab('active')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
               activeTab === 'active'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -245,7 +248,7 @@ export const LoanManagement = () => {
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
               activeTab === 'history'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -448,7 +451,7 @@ export const LoanManagement = () => {
                       <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
                       <input 
                         type="text" 
-                        placeholder="Search by name..." 
+                        placeholder="Search by name or ID..." 
                         className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                         value={loanSearchFilter}
                         onChange={(e) => {
@@ -459,30 +462,37 @@ export const LoanManagement = () => {
                     </div>
                   </div>
 
-                  <div className="max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700 rounded-xl divide-y divide-slate-100 dark:divide-slate-800">
-                    {employees
-                      .filter(e => !loanRoleFilter || e.role === loanRoleFilter)
-                      .filter(e => !loanSearchFilter || e.name.toLowerCase().includes(loanSearchFilter.toLowerCase()))
-                      .map(e => (
-                        <div 
-                          key={e.user_id} 
-                          onClick={() => setSelectedEmployeeId(e.user_id)}
-                          className={`p-3 text-xs cursor-pointer transition-colors flex justify-between items-center ${
-                            selectedEmployeeId === e.user_id 
-                              ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500' 
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-slate-200">{e.name}</p>
-                            <p className="text-[9px] text-slate-500 uppercase">{e.role}</p>
-                          </div>
-                          <span className="font-black text-slate-700 dark:text-slate-300">Basic: {e.basic_salary.toLocaleString()} ETB</span>
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    {!loanSearchFilter.trim() ? (
+                      <div className="p-4 text-center text-xs text-slate-400 italic">Type a name or ID above to search for an employee...</div>
+                    ) : (() => {
+                      const results = employees
+                        .filter(e => !loanRoleFilter || e.role === loanRoleFilter)
+                        .filter(e => e.name.toLowerCase().includes(loanSearchFilter.toLowerCase()) || e.digital_id.toLowerCase().includes(loanSearchFilter.toLowerCase()));
+                      return results.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-500">No employees found matching <strong>{loanSearchFilter}</strong>.</div>
+                      ) : (
+                        <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                          {results.map(e => (
+                            <div
+                              key={e.user_id}
+                              onClick={() => setSelectedEmployeeId(e.user_id)}
+                              className={`p-3 text-xs cursor-pointer transition-colors flex justify-between items-center ${
+                                selectedEmployeeId === e.user_id
+                                  ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500'
+                                  : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              <div>
+                                <p className="font-bold text-slate-800 dark:text-slate-200">{e.name}</p>
+                                <p className="text-[9px] text-slate-500 uppercase">{e.role} &bull; <span className="text-blue-500 font-bold">{e.digital_id}</span></p>
+                              </div>
+                              <span className="font-black text-slate-700 dark:text-slate-300">Basic: {e.basic_salary.toLocaleString()} ETB</span>
+                            </div>
+                          ))}
                         </div>
-                    ))}
-                    {employees.filter(e => (!loanRoleFilter || e.role === loanRoleFilter) && (!loanSearchFilter || e.name.toLowerCase().includes(loanSearchFilter.toLowerCase()))).length === 0 && (
-                      <div className="p-4 text-center text-xs text-slate-500">No employees found.</div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -504,11 +514,18 @@ export const LoanManagement = () => {
                     <h5 className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Calculated Repayment Terms</h5>
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 font-semibold">Employee Basic Salary:</span>
-                      <strong className="text-slate-800 dark:text-white">{getSelectedEmployeeSalary().toLocaleString()} ETB</strong>
+                      <strong className="text-slate-800 dark:text-white">
+                        {basicSalaryVal > 0 ? `${basicSalaryVal.toLocaleString()} ETB` : 'No salary profile configured (0 ETB)'}
+                      </strong>
                     </div>
                     <div className="flex justify-between items-center text-xs border-t border-emerald-100/50 dark:border-emerald-900/50 pt-2">
                       <span className="text-slate-500 font-semibold">Calculated Monthly Deduction:</span>
-                      <strong className="text-rose-500">-{computedMonthlyDeduction.toLocaleString()} ETB ({globalDeductionPct}%)</strong>
+                      <strong className="text-rose-500">
+                        -{computedMonthlyDeduction.toLocaleString()} ETB{' '}
+                        <span className="text-[10px] font-normal text-slate-400">
+                          {basicSalaryVal > 0 ? `(${globalDeductionPct}%)` : `(Split over ${globalMaxMonths} Months)`}
+                        </span>
+                      </strong>
                     </div>
                   </div>
                 )}
@@ -528,14 +545,14 @@ export const LoanManagement = () => {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={actionLoading}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 dark:shadow-none disabled:opacity-50"
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 dark:shadow-none disabled:opacity-50"
                   >
                     {actionLoading ? 'Issuing...' : (
                       <>
