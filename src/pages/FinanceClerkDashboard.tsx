@@ -5,6 +5,7 @@ import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboar
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
+import AssetList from '../components/AssetList';
 
 type ManualTransaction = {
   id: string;
@@ -16,7 +17,7 @@ type ManualTransaction = {
   createdAt: string;
 };
 
-export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' }) => {
+export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'assets' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isCollectionsView = location.pathname === '/finance-dashboard';
@@ -30,9 +31,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport'>(
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'assets'>(
     (initialTab as any) || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
+  const isAssetsTab = activeTab === 'assets';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showAidPickerModal, setShowAidPickerModal] = useState(false);
@@ -526,6 +528,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     overdue: 'Overdue Payments',
     registrations: 'Registrations',
     'staff-payments': 'Staff Payments',
+    assets: 'Assets',
     'aid-requests': 'Request Aid',
     transport: 'Transport Management',
   } as const;
@@ -534,6 +537,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     overdue: 'Review and collect overdue student balances',
     registrations: 'Finalize fee-related registration approvals',
     'staff-payments': 'Disburse salary and confirm payroll payouts',
+    assets: 'Track school assets and keep inventory records current',
     'aid-requests': 'Create and track aid requests sent to the auditor',
     transport: 'Assign students to drivers and manage transport fees',
   } as const;
@@ -674,7 +678,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         )}
       </div>
 
-      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
+      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments' || isAssetsTab) && (
         <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
@@ -702,6 +706,15 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               }`}
           >
             Staff Payments ({staffProfiles.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab('assets'); setStudentPage(1); }}
+            className={`px-6 py-3 font-bold text-sm transition-all ${isAssetsTab
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Assets
           </button>
         </div>
       )}
@@ -1104,6 +1117,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-lg">Staff Salary Payments</h3>
+
               <p className="text-slate-500 text-xs mt-1">Physically disburse salary and record transaction assertions</p>
             </div>
             <span className="px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-full text-xs font-black uppercase tracking-wider">
@@ -1197,6 +1211,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         <td className="px-6 py-4">
                           <div>
                             <p className="font-bold text-slate-900 dark:text-white">{staff.name}</p>
+
                             <p className="text-xs text-slate-500">{staff.digital_id} • {staff.email}</p>
                           </div>
                         </td>
@@ -1279,6 +1294,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               </>
             );
           })()}
+        </div>
+      )}
+
+      {isAssetsTab && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden p-6 md:p-8">
+          <AssetList />
         </div>
       )}
 
