@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { 
-  Wallet, Users, AlertCircle, CheckCircle, XCircle, Search, 
+import {
+  Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ArrowUpRight, Eye, FileText,
   TrendingUp
 } from 'lucide-react';
@@ -210,7 +210,7 @@ export const AuditorDashboard = () => {
   return (
     <div className="space-y-8 pb-12">
       <Breadcrumbs />
-      
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
@@ -222,9 +222,9 @@ export const AuditorDashboard = () => {
             System-wide financial oversight and fee reduction management
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
-          <button 
+          <button
             onClick={() => setShowReportModal(true)}
             className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2"
           >
@@ -259,7 +259,7 @@ export const AuditorDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -272,7 +272,7 @@ export const AuditorDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -285,7 +285,7 @@ export const AuditorDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -306,17 +306,15 @@ export const AuditorDashboard = () => {
           <div className="flex p-1.5 bg-slate-200/50 dark:bg-slate-800/50 rounded-[1.5rem] w-full md:w-fit">
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${
-                activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
-              }`}
+              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
               Transactions ({payments.length})
             </button>
             <button
               onClick={() => setActiveTab('fee-reductions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${
-                activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
-              }`}
+              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
               Fee Reductions ({feeReductions.length})
             </button>
@@ -397,7 +395,7 @@ export const AuditorDashboard = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-                      <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Student</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Student</th>
                   <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Amount</th>
                   <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Type</th>
                   <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Verified By</th>
@@ -486,11 +484,10 @@ export const AuditorDashboard = () => {
 
                       <div className="flex flex-col items-center">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Approval Status</p>
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${
-                          reduction.fee_approval_status === 'pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                          reduction.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
-                          'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-                        }`}>
+                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${reduction.fee_approval_status === 'pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
+                            reduction.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
+                              'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
+                          }`}>
                           {reduction.fee_approval_status === 'pending' && <Clock size={12} />}
                           {reduction.fee_approval_status === 'approved' && <CheckCircle size={12} />}
                           {reduction.fee_approval_status === 'rejected' && <XCircle size={12} />}
@@ -500,13 +497,13 @@ export const AuditorDashboard = () => {
 
                       {reduction.fee_approval_status === 'pending' && (
                         <div className="flex items-center gap-3 ml-4">
-                          <button 
+                          <button
                             onClick={() => handleApprove(reduction.id, 'Rejected')}
                             className="p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/30 transition-all"
                           >
                             <XCircle size={24} />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleApprove(reduction.id, 'Approved')}
                             className="bg-emerald-600 text-white px-5 py-2 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
                           >

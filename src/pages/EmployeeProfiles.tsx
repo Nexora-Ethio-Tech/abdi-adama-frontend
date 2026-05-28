@@ -89,7 +89,7 @@ export const EmployeeProfiles = () => {
     }
   };
 
-  const filteredProfiles = profiles.filter(p => 
+  const filteredProfiles = profiles.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -314,7 +314,7 @@ export const EmployeeProfiles = () => {
                 {/* Core Compensation Card */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-4">
                   <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Core Salary Parameters</h4>
-                  
+
                   <div className="space-y-1">
                     <label className="text-sm font-bold text-slate-500 uppercase">Basic Monthly Salary (ETB) *</label>
                     <div className="relative">
