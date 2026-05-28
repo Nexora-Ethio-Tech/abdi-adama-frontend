@@ -63,6 +63,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [searchTerm, setSearchTerm] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState<'standard' | 'reduced' | ''>('');
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<string[]>(['Monthly Tuition']);
+  const [outstandingData, setOutstandingData] = useState<any | null>(null);
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
 
   // Student List Pagination
   const [studentPage, setStudentPage] = useState(1);
@@ -160,7 +162,27 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await financeClerkService.recordPayment(paymentData);
+      // Build items array from selectedPaymentTypes using outstandingData if present
+      const items: { feeType: string; amount: number }[] = [];
+      if (outstandingData) {
+        for (const label of selectedPaymentTypes) {
+          const key = label === 'Monthly Tuition' ? 'monthly' : label === 'Bus Fee' ? 'bus' : label === 'Penalty Fee' ? 'penalty' : label === 'Registration Fee' ? 'registration' : label;
+          const fee = (outstandingData.fees || []).find((f: any) => f.feeType === key);
+          const requested = Number(paymentAmounts[key] ?? 0);
+          const allowed = Math.max(0, Math.min(requested, Number(fee?.remaining || 0)));
+          if (fee && allowed > 0) items.push({ feeType: key, amount: allowed });
+        }
+      } else {
+        // Legacy: use paymentData.amount and type
+        const types = Array.isArray(paymentData.type) ? paymentData.type : [paymentData.type as any];
+        const amountPer = Number(paymentData.amount || 0) / Math.max(1, types.length);
+        for (const t of types) {
+          const key = typeof t === 'string' ? (t === 'Monthly Tuition' ? 'monthly' : t === 'Bus Fee' ? 'bus' : t === 'Penalty Fee' ? 'penalty' : t === 'Registration Fee' ? 'registration' : t) : String(t);
+          items.push({ feeType: key, amount: amountPer });
+        }
+      }
+
+      await financeClerkService.recordPayment({ studentId: paymentData.studentId, items, month: paymentData.month, date: paymentData.date, reference: (paymentData as any).reference });
       setSuccess('Payment recorded successfully!');
       setShowPaymentModal(false);
       resetPaymentForm();
@@ -187,28 +209,37 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const openPaymentModal = (student?: StudentFeeInfo) => {
+    setOutstandingData(null);
+    setPaymentAmounts({});
     if (student) {
       setSelectedStudent(student);
-      const defaultTypes = ['Monthly Tuition'];
-      if (student.bus_fee > 0) defaultTypes.push('Bus Fee');
-      if (student.penalty_fee > 0) defaultTypes.push('Penalty Fee');
-
-      setSelectedPaymentTypes(defaultTypes);
-      const totalDue = getCalculatedPaymentAmount(defaultTypes, student);
-      setPaymentData({
-        studentId: student.id,
-        amount: totalDue,
-        type: defaultTypes,
-        date: new Date().toISOString().split('T')[0],
+      // fetch outstanding for current month
+      financeClerkService.getStudentOutstanding(student.id).then((d) => {
+            setOutstandingData(d);
+            // select all fee items with remaining > 0 by default
+            const defaults = (d.fees || []).filter((f: any) => Number(f.remaining || 0) > 0).map((f: any) => f.feeType);
+            const amounts: Record<string, number> = {};
+            (d.fees || []).forEach((f: any) => {
+              amounts[f.feeType] = Number(f.remaining || 0);
+            });
+            setPaymentAmounts(amounts);
+            setSelectedPaymentTypes(defaults.map((k: string) => {
+          if (k === 'monthly') return 'Monthly Tuition';
+          if (k === 'bus') return 'Bus Fee';
+          if (k === 'penalty') return 'Penalty Fee';
+          if (k === 'registration') return 'Registration Fee';
+          return k;
+        }));
+            const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
+        setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: new Date().toISOString().split('T')[0], month: d.month });
+      }).catch(() => {
+        setSelectedStudent(student);
+        setSelectedPaymentTypes(['Monthly Tuition']);
+        setPaymentData({ studentId: student.id, amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0,7) });
       });
     } else {
       setSelectedPaymentTypes(['Monthly Tuition']);
-      setPaymentData({
-        studentId: '',
-        amount: 0,
-        type: ['Monthly Tuition'],
-        date: new Date().toISOString().split('T')[0],
-      });
+      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0,7) });
     }
     setShowPaymentModal(true);
   };
@@ -315,6 +346,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       type: ['Monthly Tuition'],
       date: new Date().toISOString().split('T')[0],
     });
+    setPaymentAmounts({});
     setSelectedStudent(null);
     setSelectedPaymentTypes(['Monthly Tuition']);
   };
@@ -371,18 +403,25 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const handleCheckboxChange = (type: string) => {
     let updated: string[];
-    if (selectedPaymentTypes.includes(type)) {
-      updated = selectedPaymentTypes.filter(t => t !== type);
-    } else {
-      updated = [...selectedPaymentTypes, type];
-    }
+    if (selectedPaymentTypes.includes(type)) updated = selectedPaymentTypes.filter(t => t !== type);
+    else updated = [...selectedPaymentTypes, type];
     setSelectedPaymentTypes(updated);
 
-    // Auto-calculate sum based on selected types
+    // Auto-calculate sum based on selected types and outstanding data when available
+    let total = 0;
+    if (outstandingData) {
+      for (const label of updated) {
+        const key = label === 'Monthly Tuition' ? 'monthly' : label === 'Bus Fee' ? 'bus' : label === 'Penalty Fee' ? 'penalty' : label === 'Registration Fee' ? 'registration' : label;
+        total += Number(paymentAmounts[key] || 0);
+      }
+    } else {
+      total = getCalculatedPaymentAmount(updated, selectedStudent);
+    }
+
     setPaymentData({
       ...paymentData,
       type: updated,
-      amount: getCalculatedPaymentAmount(updated, selectedStudent)
+      amount: total
     });
   };
 
@@ -1220,7 +1259,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   onChange={(e) => {
                     setSearchTerm(e.target.value);
                     setStudentPage(1);
-                    fetchData();
                   }}
                   className="w-full pl-12 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 />
@@ -1230,7 +1268,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 onChange={(e) => {
                   setFeeStatusFilter(e.target.value as any);
                   setStudentPage(1);
-                  fetchData();
                 }}
                 className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
@@ -1561,34 +1598,61 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               )}
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Payment Types *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { key: 'Monthly Tuition', label: 'Monthly Tuition' },
-                    { key: 'Registration Fee', label: 'Registration Fee' },
-                    { key: 'Bus Fee', label: 'Bus Fee' },
-                    { key: 'Penalty Fee', label: 'Penalty Fee' },
-                    { key: 'Exam Fee', label: 'Exam Fee' },
-                    { key: 'Activity Fee', label: 'Activity Fee' }
-                  ].map((item) => {
-                    const checked = selectedPaymentTypes.includes(item.key);
-                    return (
-                      <label
-                        key={item.key}
-                        className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer select-none ${checked
-                          ? 'bg-blue-50/50 border-blue-500 text-blue-900 dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-200'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
-                          }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => handleCheckboxChange(item.key)}
-                          className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-bold">{item.label}</span>
-                      </label>
-                    );
-                  })}
+                <div className="grid grid-cols-1 gap-2">
+                  {outstandingData ? (
+                    outstandingData.fees.map((f: any) => {
+                      const label = f.feeType === 'monthly' ? 'Monthly Tuition' : f.feeType === 'bus' ? 'Bus Fee' : f.feeType === 'penalty' ? 'Penalty Fee' : f.feeType === 'registration' ? 'Registration Fee' : f.feeType;
+                      const checked = selectedPaymentTypes.includes(label);
+                      const disabled = f.remaining <= 0;
+                      return (
+                        <label key={f.feeType} className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <input type="checkbox" checked={checked} disabled={disabled} onChange={() => handleCheckboxChange(label)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
+                            <div className="min-w-0">
+                              <div className="text-xs font-black text-slate-900 dark:text-slate-100">{label}{disabled ? ' (Paid)' : ''}</div>
+                              <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Due: {Number(f.due).toLocaleString()} ETB • Paid: {Number(f.paid).toLocaleString()} ETB</div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="text-xs font-black text-slate-900 dark:text-slate-100">Remaining {Number(f.remaining).toLocaleString()} ETB</div>
+                            <input
+                              type="number"
+                              min="0"
+                              max={Number(f.remaining || 0)}
+                              step="0.01"
+                              value={paymentAmounts[f.feeType] ?? Number(f.remaining || 0)}
+                              disabled={disabled || !checked}
+                              onChange={(e) => {
+                                const value = Number(e.target.value || 0);
+                                const clamped = Math.max(0, Math.min(value, Number(f.remaining || 0)));
+                                const next: Record<string, number> = { ...paymentAmounts, [f.feeType]: clamped };
+                                setPaymentAmounts(next);
+                                let total = 0;
+                                for (const selected of selectedPaymentTypes) {
+                                  const selectedKey = selected === 'Monthly Tuition' ? 'monthly' : selected === 'Bus Fee' ? 'bus' : selected === 'Penalty Fee' ? 'penalty' : selected === 'Registration Fee' ? 'registration' : selected;
+                                  total += Number(next[selectedKey] || 0);
+                                }
+                                setPaymentData((prev) => ({ ...prev, amount: total }));
+                              }}
+                              className="w-28 px-2 py-1 rounded-lg border-2 border-slate-500 bg-white text-slate-900 dark:bg-slate-700 dark:text-white dark:border-slate-400 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                            />
+                          </div>
+                        </label>
+                      );
+                    })
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' },{ key: 'Registration Fee', label: 'Registration Fee' },{ key: 'Bus Fee', label: 'Bus Fee' },{ key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
+                        const checked = selectedPaymentTypes.includes(item.key);
+                        return (
+                          <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
+                            <input type="checkbox" checked={checked} onChange={() => handleCheckboxChange(item.key)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
+                            <span className="text-xs font-black text-slate-900 dark:text-slate-100">{item.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
               <div>

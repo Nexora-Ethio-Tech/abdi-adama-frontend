@@ -89,11 +89,20 @@ export interface GlobalRegistrationFee {
   source: string;
 }
 
-export interface RecordPaymentRequest {
-  studentId: string;  // Will be sent as studentId in body
+export interface RecordPaymentItem {
+  feeType: string;
   amount: number;
-  type: string | string[];
-  date: string;
+}
+
+export interface RecordPaymentRequest {
+  studentId: string;
+  items?: RecordPaymentItem[];
+  // legacy fields
+  amount?: number;
+  type?: string | string[];
+  date?: string;
+  month?: string; // YYYY-MM
+  reference?: string;
 }
 
 export interface UpdateFeeStatusRequest {
@@ -225,10 +234,17 @@ const financeClerkService = {
 
   // 3. Record Payment
   recordPayment: async (data: RecordPaymentRequest): Promise<Transaction> => {
-    const payload = {
-      ...data,
-      type: Array.isArray(data.type) ? data.type.join(', ') : data.type
-    };
+    // Normalize to itemized payload for backend while supporting legacy callers
+    let payload: any = {};
+    if (data.items && data.items.length > 0) {
+      payload = { ...data, items: data.items };
+    } else {
+      // Convert legacy amount/type to items; if type is array map to known fee keys
+      const types = Array.isArray(data.type) ? data.type : [data.type || 'Monthly Tuition'];
+      const items = types.map((t, i) => ({ feeType: t.toString().toLowerCase().includes('monthly') ? 'monthly' : t.toString().toLowerCase().includes('bus') ? 'bus' : t.toString().toLowerCase().includes('penalty') ? 'penalty' : t, amount: Number(data.amount || 0) }));
+      payload = { studentId: data.studentId, items, month: data.month || new Date().toISOString().slice(0,7), date: data.date, reference: data.reference };
+    }
+
     const response = await api.post('/finance-clerk/payments', payload);
     return response.data.data;
   },
@@ -236,6 +252,14 @@ const financeClerkService = {
   // 4. Get Payment History for a Student
   getPaymentHistory: async (studentId: string): Promise<Transaction[]> => {
     const response = await api.get(`/finance-clerk/payments/${studentId}`);
+    return response.data.data;
+  },
+
+  // 4b. Get outstanding per-fee-type for a student and month
+  getStudentOutstanding: async (studentId: string, month?: string) => {
+    const params: any = {};
+    if (month) params.month = month;
+    const response = await api.get(`/finance-clerk/students/${studentId}/outstanding`, { params });
     return response.data.data;
   },
 
