@@ -220,15 +220,19 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const openTransportModal = (student: TransportStudentInfo) => {
+    // Fetch Super Admin policy fee for this student's grade
+    // Finance Clerk cannot edit; fee is read-only
     const policy = transportPolicies.find((item) => item.grade_level === student.grade)
       || transportPolicies.find((item) => !item.grade_level)
       || transportPolicies[0]
       || null;
+    const policyFee = policy ? Number(policy.bus_fee || 0) : 0;
     const driverId = student.driver_id || transportDrivers[0]?.id || '';
     setTransportStudent(student);
     setTransportData({
       driverId,
-      transportFee: policy ? Number(policy.bus_fee || 0) : Number(student.bus_fee || 0),
+      // Use policy fee if valid; fallback to student's current fee
+      transportFee: policyFee > 0 ? policyFee : Number(student.bus_fee || 0),
     });
     setShowTransportModal(true);
   };
@@ -1654,14 +1658,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   required
                   value={transportData.driverId}
                   onChange={(e) => {
-                    const selectedDriverId = e.target.value;
-                    const selectedPolicy = transportPolicies.find((item) => item.grade_level === transportStudent.grade)
-                      || transportPolicies.find((item) => !item.grade_level)
-                      || transportPolicies[0]
-                      || null;
                     setTransportData({
-                      driverId: selectedDriverId,
-                      transportFee: selectedPolicy ? Number(selectedPolicy.bus_fee || 0) : Number(transportStudent.bus_fee || 0),
+                      driverId: e.target.value,
+                      transportFee: transportData.transportFee,
                     });
                   }}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
@@ -1679,12 +1678,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <input
                   type="number"
                   required
-                  min="1"
+                  min="0"
                   step="0.01"
                   value={transportData.transportFee}
-                  onChange={(e) => setTransportData({ ...transportData, transportFee: Number(e.target.value) })}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  readOnly
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none cursor-not-allowed"
                 />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Set by Super Admin policy. Cannot be edited.</p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button
@@ -1734,11 +1734,26 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-rose-500 outline-none"
                 />
               </div>
-              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-300">
-                <p className="text-xs font-black uppercase tracking-wider">Settlement Preview</p>
-                <p className="text-sm font-medium mt-1">
-                  Amount due: {Number((Math.max(0, (30 - stopDaysUsed)) * Number(stopTransportStudent.bus_fee || 0)) / 30).toLocaleString()} ETB
-                </p>
+              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 space-y-3">
+                <p className="text-xs font-black uppercase tracking-wider">Prorated Settlement</p>
+                <div className="space-y-2 text-sm font-medium">
+                  <div className="flex justify-between">
+                    <span>Full Monthly Fee:</span>
+                    <span>{Number(stopTransportStudent.bus_fee || 0).toLocaleString()} ETB</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Days Used:</span>
+                    <span>{stopDaysUsed} / 30</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Days Not Used:</span>
+                    <span>{Math.max(0, 30 - stopDaysUsed)} / 30</span>
+                  </div>
+                  <div className="border-t border-current pt-2 flex justify-between font-bold text-base">
+                    <span>Refund/Credit Due:</span>
+                    <span>{Number((Math.max(0, (30 - stopDaysUsed)) * Number(stopTransportStudent.bus_fee || 0)) / 30).toLocaleString()} ETB</span>
+                  </div>
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button

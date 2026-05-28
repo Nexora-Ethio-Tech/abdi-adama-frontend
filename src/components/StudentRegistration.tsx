@@ -555,10 +555,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     }
 
     try {
-      // Update pending application with class assignment
+      // Update pending application status to awaiting-payment
       await updateApplicationStatus(selectedAppForClass, {
-        status: 'awaiting-payment',
-        classId: selectedClass
+        status: 'awaiting-payment'
       });
 
       const app = pendingApps.find(a => a.id === selectedAppForClass);
