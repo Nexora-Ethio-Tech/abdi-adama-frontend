@@ -32,6 +32,7 @@ export const TeacherPortal = () => {
       duration: '45 minutes',
       status: 'Pending',
       feedback: '',
+      rating: 0,
     },
     {
       id: 'mock-2',
@@ -44,6 +45,7 @@ export const TeacherPortal = () => {
       duration: '45 minutes',
       status: 'Approved',
       feedback: 'Excellent structure, activities are well-planned.',
+      rating: 5,
     },
     {
       id: 'mock-3',
@@ -56,6 +58,7 @@ export const TeacherPortal = () => {
       duration: '50 minutes',
       status: 'Revision Required',
       feedback: 'Please add details about laboratory safety procedures.',
+      rating: 3,
     }
   ]);
 
@@ -347,30 +350,35 @@ export const TeacherPortal = () => {
                 onChange={e => setDeptSearch(e.target.value)}
                 className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <select
-                value={deptFilter}
-                onChange={e => setDeptFilter(e.target.value)}
-                className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Approved">Approved</option>
-                <option value="Revision Required">Revision Required</option>
-              </select>
+              <div className="flex-1 md:flex-none">
+                <label htmlFor="deptFilter" className="sr-only">Filter lesson plans by status</label>
+                <select
+                  id="deptFilter"
+                  title="Filter lesson plans by status"
+                  value={deptFilter}
+                  onChange={e => setDeptFilter(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Revision Required">Revision Required</option>
+                </select>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[900px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                    {['Teacher', 'Subject', 'Date', 'Topic / Content', 'Objectives', 'Status', 'Feedback', 'Actions'].map(h => (
+                    {['Teacher', 'Subject', 'Date', 'Topic / Content', 'Objectives', 'Status', 'Rating', 'Feedback', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredDeptPlans.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500">No plans matching the search/filter criteria.</td></tr>
+                    <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500">No plans matching the search/filter criteria.</td></tr>
                   ) : (
                     filteredDeptPlans.map((plan: any) => (
                       <tr key={plan.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors">
@@ -384,6 +392,30 @@ export const TeacherPortal = () => {
                               plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
                                 'bg-amber-100 text-amber-600'
                             }`}>{plan.status}</span>
+                        </td>
+                        {/* Star Rating */}
+                        <td className="px-4 py-4">
+                          <div className="flex gap-0.5">
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button
+                                key={star}
+                                title={`Rate ${star} out of 5`}
+                                onClick={() =>
+                                  setDeptPlans(prev =>
+                                    prev.map(p => p.id === plan.id ? { ...p, rating: star } : p)
+                                  )
+                                }
+                                className="focus:outline-none transition-transform hover:scale-125"
+                              >
+                                <Star
+                                  size={16}
+                                  className={star <= (plan.rating || 0)
+                                    ? 'text-amber-400 fill-amber-400'
+                                    : 'text-slate-300 dark:text-slate-600'}
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-4 py-4 text-xs text-slate-500 max-w-[150px] truncate" title={plan.feedback || '—'}>
                           {plan.feedback || <span className="text-slate-400">—</span>}
@@ -469,8 +501,13 @@ export const TeacherPortal = () => {
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Submit for VP review</p>
                 </div>
               </div>
-              <button onClick={() => { setIsPlanModalOpen(false); setEditingPlan(null); }}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
+              <button
+                type="button"
+                title="Close plan modal"
+                aria-label="Close plan modal"
+                onClick={() => { setIsPlanModalOpen(false); setEditingPlan(null); }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
@@ -478,15 +515,15 @@ export const TeacherPortal = () => {
             <form onSubmit={handleSubmitPlan} className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Date</label>
-                  <input type="date" required value={planForm.date}
+                  <label htmlFor="planDate" className="text-xs font-bold text-slate-500 uppercase">Date</label>
+                  <input id="planDate" type="date" required value={planForm.date}
                     onChange={e => setPlanForm({ ...planForm, date: e.target.value })}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase">Time Duration</label>
-                  <input type="text" required placeholder="e.g. 45 minutes" value={planForm.timeDuration}
+                  <label htmlFor="planTimeDuration" className="text-xs font-bold text-slate-500 uppercase">Time Duration</label>
+                  <input id="planTimeDuration" type="text" required placeholder="e.g. 45 minutes" value={planForm.timeDuration}
                     onChange={e => setPlanForm({ ...planForm, timeDuration: e.target.value })}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -504,8 +541,8 @@ export const TeacherPortal = () => {
                 { key: 'remark', label: 'Remark (Optional)', placeholder: 'Any additional notes...' },
               ].map(({ key, label, placeholder }) => (
                 <div key={key}>
-                  <label className="text-xs font-bold text-slate-500 uppercase">{label}</label>
-                  <textarea rows={2} placeholder={placeholder} required={key !== 'remark'}
+                  <label htmlFor={`plan${key}`} className="text-xs font-bold text-slate-500 uppercase">{label}</label>
+                  <textarea id={`plan${key}`} rows={2} placeholder={placeholder} required={key !== 'remark'}
                     value={(planForm as any)[key]}
                     onChange={e => setPlanForm({ ...planForm, [key]: e.target.value })}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -514,8 +551,8 @@ export const TeacherPortal = () => {
               ))}
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
-                <select value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as any })}
+                <label htmlFor="planStatus" className="text-xs font-bold text-slate-500 uppercase">Status</label>
+                <select id="planStatus" title="Set plan status" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as any })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="Pending">Pending (Submit for head of department review)</option>
                   <option value="Draft">Draft (Save for later)</option>

@@ -97,6 +97,8 @@ export interface FeeReductionsQueryParams {
 export interface AuditTrailQueryParams {
   startDate?: string;
   endDate?: string;
+  category?: string;
+  direction?: string;
 }
 
 // ============ AUDITOR SERVICE ============

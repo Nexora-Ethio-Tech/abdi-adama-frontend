@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ArrowUpRight, Eye, FileText,
-  TrendingUp, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
+  TrendingUp, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
+  BarChart3, ArrowDownRight, Filter
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -11,7 +12,8 @@ import auditorService, {
   type AuditorDashboard as AuditorDashboardData,
   type Transaction,
   type FeeReduction,
-  type FinancialReport
+  type FinancialReport,
+  type AuditTrailEntry
 } from '../services/auditorService';
 import {
   ethiopianToGregorianIso,
@@ -24,8 +26,8 @@ export const AuditorDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<'transactions' | 'fee-reductions'>(
-    location.pathname === '/special-students' ? 'fee-reductions' : 'transactions'
+  const [activeTab, setActiveTab] = useState<'transactions' | 'fee-reductions' | 'finance'>(
+    location.pathname === '/special-students' ? 'fee-reductions' : location.pathname === '/auditor-finance' ? 'finance' : 'transactions'
   );
   const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
   const [payments, setPayments] = useState<Transaction[]>([]);
@@ -41,22 +43,33 @@ export const AuditorDashboard = () => {
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
   const [financialReport, setFinancialReport] = useState<FinancialReport | null>(null);
+  const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
+  const [financeStartEth, setFinanceStartEth] = useState('');
+  const [financeEndEth, setFinanceEndEth] = useState('');
+  const [auditCategoryFilter, setAuditCategoryFilter] = useState<'Fees' | 'Staff' | 'Other' | ''>('');
+  const [auditDirectionFilter, setAuditDirectionFilter] = useState<'In' | 'Out' | ''>('');
 
   // Pagination states
   const [transactionPage, setTransactionPage] = useState(1);
   const [reductionPage, setReductionPage] = useState(1);
+  const [financePage, setFinancePage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
   const itemsPerPage = 10;
 
   // Reset pagination when active tab or filters change
   useEffect(() => {
     setTransactionPage(1);
     setReductionPage(1);
-  }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth]);
+    setFinancePage(1);
+    setAuditPage(1);
+  }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth, auditCategoryFilter, auditDirectionFilter]);
 
   // Sync pathname changes with activeTab
   useEffect(() => {
     if (location.pathname === '/special-students') {
       setActiveTab('fee-reductions');
+    } else if (location.pathname === '/auditor-finance') {
+      setActiveTab('finance');
     } else if (location.pathname === '/auditor-dashboard') {
       setActiveTab('transactions');
     }
@@ -66,10 +79,18 @@ export const AuditorDashboard = () => {
     fetchData();
   }, []);
 
-  const handleTabChange = (tab: 'transactions' | 'fee-reductions') => {
+  useEffect(() => {
+    if (activeTab === 'finance') {
+      fetchAuditTrail();
+    }
+  }, [activeTab, auditCategoryFilter, auditDirectionFilter, financeStartEth, financeEndEth]);
+
+  const handleTabChange = (tab: 'transactions' | 'fee-reductions' | 'finance') => {
     setActiveTab(tab);
     if (tab === 'fee-reductions') {
       navigate('/special-students');
+    } else if (tab === 'finance') {
+      navigate('/auditor-finance');
     } else {
       navigate('/auditor-dashboard');
     }
@@ -95,6 +116,50 @@ export const AuditorDashboard = () => {
     }
 
     return params;
+  };
+
+  const buildAuditQueryParams = () => {
+    const params: { startDate?: string; endDate?: string; category?: string; direction?: string } = {};
+
+    if (financeStartEth) {
+      const start = ethiopianToGregorianIso(financeStartEth);
+      if (!start) {
+        throw new Error('Invalid Ethiopian start date. Use YYYY-MM-DD.');
+      }
+      params.startDate = start;
+    }
+
+    if (financeEndEth) {
+      const end = ethiopianToGregorianIso(financeEndEth);
+      if (!end) {
+        throw new Error('Invalid Ethiopian end date. Use YYYY-MM-DD.');
+      }
+      params.endDate = end;
+    }
+
+    if (auditCategoryFilter) {
+      params.category = auditCategoryFilter;
+    }
+
+    if (auditDirectionFilter) {
+      params.direction = auditDirectionFilter;
+    }
+
+    return params;
+  };
+
+  const fetchAuditTrail = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = buildAuditQueryParams();
+      const auditData = await auditorService.getAuditTrail(params);
+      setAuditTrail(auditData);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || err.message || 'Failed to fetch audit trail');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchData = async () => {
@@ -154,6 +219,16 @@ export const AuditorDashboard = () => {
     setTransactionStartEth('');
     setTransactionEndEth('');
     await fetchData();
+  };
+
+  const handleClearAuditFilter = async () => {
+    setFinanceStartEth('');
+    setFinanceEndEth('');
+    setAuditCategoryFilter('');
+    setAuditDirectionFilter('');
+    if (activeTab === 'finance') {
+      await fetchAuditTrail();
+    }
   };
 
   const handleGenerateReport = async () => {
@@ -234,6 +309,13 @@ export const AuditorDashboard = () => {
     reduction.digital_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredAuditTrail = auditTrail.filter(entry =>
+    entry.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.action_label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    entry.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Pagination calculation for Transactions
   const totalTransactionPages = Math.ceil(filteredPayments.length / itemsPerPage);
   const startTransactionIndex = (transactionPage - 1) * itemsPerPage;
@@ -243,6 +325,10 @@ export const AuditorDashboard = () => {
   const totalReductionPages = Math.ceil(filteredFeeReductions.length / itemsPerPage);
   const startReductionIndex = (reductionPage - 1) * itemsPerPage;
   const paginatedFeeReductions = filteredFeeReductions.slice(startReductionIndex, startReductionIndex + itemsPerPage);
+
+  const totalFinancePages = Math.ceil(filteredAuditTrail.length / itemsPerPage);
+  const startFinanceIndex = (financePage - 1) * itemsPerPage;
+  const paginatedAuditTrail = filteredAuditTrail.slice(startFinanceIndex, startFinanceIndex + itemsPerPage);
 
   if (loading && !dashboard) {
     return (
@@ -365,6 +451,12 @@ export const AuditorDashboard = () => {
             >
               Fee Reductions ({feeReductions.length})
             </button>
+            <button
+              onClick={() => handleTabChange('finance')}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'finance' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+            >
+              Finance Audit ({auditTrail.length})
+            </button>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -437,8 +529,72 @@ export const AuditorDashboard = () => {
           </div>
         )}
 
+        {activeTab === 'finance' && (
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/20">
+            <div className="grid gap-4 lg:grid-cols-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Start Date (Ethiopian)
+                </label>
+                <EthiopianDatePicker
+                  value={financeStartEth}
+                  onChange={setFinanceStartEth}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  End Date (Ethiopian)
+                </label>
+                <EthiopianDatePicker
+                  value={financeEndEth}
+                  onChange={setFinanceEndEth}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="auditCategoryFilter" className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Category
+                </label>
+                <select
+                  id="auditCategoryFilter"
+                  value={auditCategoryFilter}
+                  onChange={(e) => setAuditCategoryFilter(e.target.value as any)}
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Categories</option>
+                  <option value="Fees">Fees</option>
+                  <option value="Staff">Staff</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="auditDirectionFilter" className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Direction
+                </label>
+                <select
+                  id="auditDirectionFilter"
+                  value={auditDirectionFilter}
+                  onChange={(e) => setAuditDirectionFilter(e.target.value as any)}
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Any Direction</option>
+                  <option value="In">In</option>
+                  <option value="Out">Out</option>
+                </select>
+              </div>
+              <div className="flex items-end gap-2 col-span-full lg:col-span-4">
+                <button
+                  onClick={handleClearAuditFilter}
+                  className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="p-0 overflow-x-auto">
-          {activeTab === 'transactions' ? (
+          {activeTab === 'transactions' && (
             <div>
               <table className="w-full text-left">
                 <thead>
@@ -514,13 +670,14 @@ export const AuditorDashboard = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
+                      title="Previous page"
                       disabled={transactionPage === 1}
                       onClick={() => setTransactionPage(transactionPage - 1)}
                       className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
                     >
                       <ChevronLeftIcon size={14} />
                     </button>
-                    
+
                     {Array.from({ length: totalTransactionPages }, (_, i) => i + 1).map((pg) => {
                       if (totalTransactionPages > 5 && Math.abs(transactionPage - pg) > 1 && pg !== 1 && pg !== totalTransactionPages) {
                         if (pg === 2 || pg === totalTransactionPages - 1) {
@@ -533,11 +690,10 @@ export const AuditorDashboard = () => {
                           key={pg}
                           type="button"
                           onClick={() => setTransactionPage(pg)}
-                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
-                            transactionPage === pg
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${transactionPage === pg
                               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                               : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
-                          }`}
+                            }`}
                         >
                           {pg}
                         </button>
@@ -546,6 +702,7 @@ export const AuditorDashboard = () => {
 
                     <button
                       type="button"
+                      title="Next page"
                       disabled={transactionPage === totalTransactionPages || totalTransactionPages === 0}
                       onClick={() => setTransactionPage(transactionPage + 1)}
                       className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
@@ -556,7 +713,8 @@ export const AuditorDashboard = () => {
                 </div>
               )}
             </div>
-          ) : (
+          )}
+          {activeTab === 'fee-reductions' && (
             <div>
               <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 dark:divide-slate-850">
                 {paginatedFeeReductions.map((reduction) => {
@@ -649,13 +807,14 @@ export const AuditorDashboard = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
+                      title="Previous page"
                       disabled={reductionPage === 1}
                       onClick={() => setReductionPage(reductionPage - 1)}
                       className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
                     >
                       <ChevronLeftIcon size={14} />
                     </button>
-                    
+
                     {Array.from({ length: totalReductionPages }, (_, i) => i + 1).map((pg) => {
                       if (totalReductionPages > 5 && Math.abs(reductionPage - pg) > 1 && pg !== 1 && pg !== totalReductionPages) {
                         if (pg === 2 || pg === totalReductionPages - 1) {
@@ -668,11 +827,10 @@ export const AuditorDashboard = () => {
                           key={pg}
                           type="button"
                           onClick={() => setReductionPage(pg)}
-                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
-                            reductionPage === pg
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${reductionPage === pg
                               ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                               : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
-                          }`}
+                            }`}
                         >
                           {pg}
                         </button>
@@ -681,8 +839,117 @@ export const AuditorDashboard = () => {
 
                     <button
                       type="button"
+                      title="Next page"
                       disabled={reductionPage === totalReductionPages || totalReductionPages === 0}
                       onClick={() => setReductionPage(reductionPage + 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {activeTab === 'finance' && (
+            <div>
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Student</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Section</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Category</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Direction</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Action</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Modified By</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {paginatedAuditTrail.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(entry.timestamp)}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{entry.student_name || 'N/A'}</p>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{entry.student_id?.slice(0, 8) || 'Unknown'}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="text-sm font-medium text-slate-600 dark:text-slate-350">{entry.section || 'General'}</span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-100/50 dark:border-blue-900/30">
+                          {entry.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${entry.direction === 'In' ? 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30' : 'bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-900/30'}`}>
+                          {entry.direction || 'Unknown'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-350">{entry.action_label}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{entry.modified_by}</p>
+                        {entry.approver_name && <p className="text-[10px] text-slate-400">Approved by {entry.approver_name}</p>}
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredAuditTrail.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center">
+                        <ShieldCheck className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No audit trail entries match the current filters.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Finance Audit Pagination Footer */}
+              {filteredAuditTrail.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-950/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <p className="text-xs font-semibold text-slate-400">
+                    Showing {startFinanceIndex + 1} to {Math.min(filteredAuditTrail.length, startFinanceIndex + itemsPerPage)} of {filteredAuditTrail.length} entries
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      title="Previous page"
+                      disabled={financePage === 1}
+                      onClick={() => setFinancePage(financePage - 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronLeftIcon size={14} />
+                    </button>
+
+                    {Array.from({ length: totalFinancePages }, (_, i) => i + 1).map((pg) => {
+                      if (totalFinancePages > 5 && Math.abs(financePage - pg) > 1 && pg !== 1 && pg !== totalFinancePages) {
+                        if (pg === 2 || pg === totalFinancePages - 1) {
+                          return <span key={pg} className="px-1 text-slate-400 text-xs font-bold">...</span>;
+                        }
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={pg}
+                          type="button"
+                          onClick={() => setFinancePage(pg)}
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${financePage === pg ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'}`}
+                        >
+                          {pg}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      title="Next page"
+                      disabled={financePage === totalFinancePages || totalFinancePages === 0}
+                      onClick={() => setFinancePage(financePage + 1)}
                       className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
                     >
                       <ChevronRightIcon size={14} />

@@ -10,6 +10,8 @@ import { branchService, type Branch } from '../services/branchService';
 export const Inventory = () => {
   const navigate = useNavigate();
   const { role } = useUser();
+  // Finance Clerk, Super Admin, and School Admin can view inventory data
+  const allowedRoles = ['finance-clerk', 'super-admin', 'school-admin'];
   const [items, setItems] = useState<Asset[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,6 +20,11 @@ export const Inventory = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!role || !allowedRoles.includes(role)) {
+        setError('You do not have permission to view the inventory.');
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         setError(null);
@@ -30,7 +37,12 @@ export const Inventory = () => {
         setItems(Array.isArray(assetsData) ? assetsData : []);
         setBranches(Array.isArray(branchResponse?.data) ? branchResponse.data : []);
       } catch (e: any) {
-        setError(e?.message || 'Failed to load inventory');
+        // If the API returns 403 because of insufficient role, show friendly message
+        if (e.response?.status === 403) {
+          setError('Access denied: insufficient permissions for inventory data.');
+        } else {
+          setError(e?.message || 'Failed to load inventory');
+        }
       } finally {
         setLoading(false);
       }
@@ -113,7 +125,8 @@ export const Inventory = () => {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 text-sm font-semibold">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 px-4 py-3 text-sm font-semibold flex items-center gap-2">
+          <AlertCircle size={16} />
           {error}
         </div>
       )}
