@@ -1428,8 +1428,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         key={cls.id}
                         onClick={() => setSelectedClass(cls.id)}
                         className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedClass === cls.id
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300'
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300'
                           }`}
                       >
                         <div className="flex items-center justify-between">
@@ -1438,8 +1438,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                             <p className="text-xs text-slate-500">{cls.section || 'No section'}</p>
                           </div>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedClass === cls.id
-                              ? 'border-blue-500 bg-blue-500'
-                              : 'border-slate-300 dark:border-slate-600'
+                            ? 'border-blue-500 bg-blue-500'
+                            : 'border-slate-300 dark:border-slate-600'
                             }`}>
                             {selectedClass === cls.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
                           </div>
