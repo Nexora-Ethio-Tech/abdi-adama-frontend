@@ -75,12 +75,12 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         if (selectedBranchId) {
           baseItems.push(
             { icon: Package, label: t('nav.inventory'), path: '/inventory' },
-            { icon: Wallet, label: t('nav.finance'), path: '/finance' }
+            { icon: Wallet, label: t('nav.finance'), path: '/finance' },
+            { icon: Users, label: t('nav.staffManagement') || 'Staff Management', path: '/staff' }
           );
         }
 
         baseItems.push(
-          { icon: Users, label: t('nav.staffManagement') || 'Staff Management', path: '/staff' },
           { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },

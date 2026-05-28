@@ -5,10 +5,12 @@ import { useUser, type UserRole } from '../context/UserContext';
 import { ArrowLeft } from 'lucide-react';
 import { userService } from '../services/userService';
 import { branchService } from '../services/branchService';
+import { useStore } from '../context/useStore';
 
 export const Staff = () => {
   const navigate = useNavigate();
-  const { role: currentUserRole } = useUser();
+  const { role: currentUserRole, selectedBranch } = useUser();
+  const { selectedBranchId } = useStore();
   const [staffList, setStaffList] = useState<any[]>([]);
   const [managingStaff, setManagingStaff] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,18 @@ export const Staff = () => {
       await fetchUsers(branchList);
     };
     init();
-  }, [roleFilter, statusFilter, currentUserRole]);
+  }, [roleFilter, statusFilter, currentUserRole, selectedBranchId]);
+
+  useEffect(() => {
+    if (currentUserRole === 'super-admin' && selectedBranchId) {
+      setCreateForm((current) => {
+        if (current.branchId === selectedBranchId) {
+          return current;
+        }
+        return { ...current, branchId: selectedBranchId };
+      });
+    }
+  }, [currentUserRole, selectedBranchId]);
 
   if (currentUserRole !== 'super-admin' && currentUserRole !== 'school-admin') {
     return (
@@ -47,6 +60,40 @@ export const Staff = () => {
         <ShieldAlert className="mx-auto mb-4" size={48} />
         <h2 className="text-2xl font-bold">Access Denied</h2>
         <p>You do not have permission to view staff management.</p>
+      </div>
+    );
+  }
+
+  if (currentUserRole === 'super-admin' && !selectedBranchId) {
+    return (
+      <div className="space-y-6 pb-12">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8 md:p-10">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 px-3 py-1 text-[10px] font-black uppercase tracking-[0.25em] mb-4">
+              <Users size={14} />
+              Branch Required
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Staff Management</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-3 text-sm md:text-base leading-6">
+              Select a branch first to view and manage staff for that branch. The staff tab stays hidden until a branch is active, just like finance.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                onClick={() => navigate('/branches')}
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-xl flex items-center gap-2 hover:bg-blue-700 text-sm font-bold"
+              >
+                <Building2 size={18} />
+                Choose Branch
+              </button>
+              <button
+                onClick={() => navigate('/dashboard/super-admin')}
+                className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 text-sm font-bold"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -104,6 +151,9 @@ export const Staff = () => {
       const filters: any = {};
       if (roleFilter) filters.role = roleFilter;
       if (statusFilter) filters.status = statusFilter;
+      if (currentUserRole === 'super-admin' && selectedBranchId) {
+        filters.branchId = selectedBranchId;
+      }
       const response = await userService.getAllUsers(filters);
       const resolvedBranches = branchList || branches;
       
@@ -243,7 +293,10 @@ export const Staff = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Staff Management</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Assign system roles and global permissions.</p>
+          <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+            Assign system roles and global permissions.
+            {selectedBranch && currentUserRole === 'super-admin' ? ` Viewing ${selectedBranch.name}.` : ''}
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -406,17 +459,24 @@ export const Staff = () => {
 
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Branch</label>
-                <select
-                  value={createForm.branchId}
-                  onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select Branch</option>
-                  {branches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                  ))}
-                </select>
+                {currentUserRole === 'super-admin' && selectedBranchId ? (
+                  <div className="w-full mt-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200">
+                    {selectedBranch?.name || branches.find((branch) => branch.id === selectedBranchId)?.name || 'Selected Branch'}
+                    <input type="hidden" value={selectedBranchId} />
+                  </div>
+                ) : (
+                  <select
+                    value={createForm.branchId}
+                    onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
