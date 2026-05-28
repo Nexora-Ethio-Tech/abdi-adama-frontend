@@ -278,6 +278,11 @@ export const updateUser = async (userId: string, data: { name?: string; email?: 
   return response.data;
 };
 
+export const resetUserPIN = async (userId: string) => {
+  const response = await api.post(`/school-admin/users/${userId}/reset-pin`);
+  return response.data.data;
+};
+
 export const assignStudentToClass = async (studentId: string, classId: string) => {
   const response = await api.post('/school-admin/students/assign-class', { studentId, classId });
   return response.data;

@@ -1,4 +1,5 @@
 import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Wallet } from 'lucide-react';
+import PhoneInput from '../components/PhoneInput';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -29,6 +30,8 @@ export const FinanceStaff = () => {
     previousSchool: '',
     experienceYears: ''
   });
+  const [phoneError, setPhoneError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke' | 'delete'; staff: any }>({ show: false, action: 'approve', staff: null });
@@ -159,6 +162,26 @@ export const FinanceStaff = () => {
       alert('Please enter a valid email address (e.g. name@school.com)');
       return;
     }
+
+    setPhoneError('');
+    setEmergencyPhoneError('');
+    let hasError = false;
+
+    if (!formData.phoneNumber) {
+      setPhoneError('Phone number is required');
+      hasError = true;
+    } else if (!/^[79]\d{8}$/.test(formData.phoneNumber)) {
+      setPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (formData.emergencyContactPhone && !/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
+      setEmergencyPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     setCreating(true);
     try {
       const response = await registerUser({
@@ -166,9 +189,9 @@ export const FinanceStaff = () => {
         email: formData.email.trim().toLowerCase(),
         role: 'finance-clerk',
         staffProfile: {
-          phoneNumber: formData.phoneNumber,
+          phoneNumber: `+251${formData.phoneNumber}`,
           emergencyContactName: formData.emergencyContactName,
-          emergencyContactPhone: formData.emergencyContactPhone,
+          emergencyContactPhone: formData.emergencyContactPhone ? `+251${formData.emergencyContactPhone}` : '',
           educationLevel: formData.educationLevel,
           specialty: formData.specialty,
           dob: formData.dob,
@@ -190,6 +213,8 @@ export const FinanceStaff = () => {
       
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
+      setPhoneError('');
+      setEmergencyPhoneError('');
       setSuccessModal({ show: true, data: transformedData });
       fetchFinanceStaff();
     } catch (err: any) {
@@ -320,9 +345,9 @@ export const FinanceStaff = () => {
 
       {/* Add Finance Clerk Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
                   <Wallet size={20} />
@@ -361,18 +386,22 @@ export const FinanceStaff = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Phone Number</label>
-                  <input type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
+                <PhoneInput
+                  label="Phone Number"
+                  value={formData.phoneNumber}
+                  onChange={(val) => setFormData({ ...formData, phoneNumber: val })}
+                  error={phoneError}
+                />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
                   <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Phone</label>
-                  <input type="tel" value={formData.emergencyContactPhone} onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
-                </div>
+                <PhoneInput
+                  label="Emergency Contact Phone"
+                  value={formData.emergencyContactPhone}
+                  onChange={(val) => setFormData({ ...formData, emergencyContactPhone: val })}
+                  error={emergencyPhoneError}
+                />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
                   <select value={formData.educationLevel} onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">

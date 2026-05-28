@@ -1,4 +1,5 @@
 import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer } from 'lucide-react';
+import PhoneInput from '../components/PhoneInput';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -34,6 +35,8 @@ export const Teachers = () => {
     experienceYears: '',
     role: 'teacher' as 'teacher' | 'finance-clerk' | 'librarian' | 'clinic-admin' | 'driver'
   });
+  const [phoneError, setPhoneError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke' | 'delete'; teacher: any }>({ show: false, action: 'approve', teacher: null });
@@ -244,6 +247,25 @@ export const Teachers = () => {
 
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPhoneError('');
+    setEmergencyPhoneError('');
+    let hasError = false;
+
+    if (!formData.phoneNumber) {
+      setPhoneError('Phone number is required');
+      hasError = true;
+    } else if (!/^[79]\d{8}$/.test(formData.phoneNumber)) {
+      setPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (formData.emergencyContactPhone && !/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
+      setEmergencyPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     setCreating(true);
     try {
       const response = await registerUser({
@@ -251,9 +273,9 @@ export const Teachers = () => {
         email: formData.email,
         role: formData.role,
         staffProfile: {
-          phoneNumber: formData.phoneNumber,
+          phoneNumber: `+251${formData.phoneNumber}`,
           emergencyContactName: formData.emergencyContactName,
-          emergencyContactPhone: formData.emergencyContactPhone,
+          emergencyContactPhone: formData.emergencyContactPhone ? `+251${formData.emergencyContactPhone}` : undefined,
           educationLevel: formData.educationLevel,
           specialty: formData.specialty,
           dob: formData.dob,
@@ -276,6 +298,8 @@ export const Teachers = () => {
 
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '', role: 'teacher' });
+      setPhoneError('');
+      setEmergencyPhoneError('');
       setSuccessModal({ show: true, data: transformedData });
       fetchTeachers();
     } catch (err: any) {
@@ -443,9 +467,9 @@ export const Teachers = () => {
 
       {/* Add Teacher Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                   <UserPlus size={20} />
@@ -499,16 +523,12 @@ export const Teachers = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="e.g. 09..."
-                  />
-                </div>
+                <PhoneInput
+                  label="Phone Number"
+                  value={formData.phoneNumber}
+                  onChange={(val) => setFormData({ ...formData, phoneNumber: val })}
+                  error={phoneError}
+                />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
                   <input
@@ -519,16 +539,12 @@ export const Teachers = () => {
                     placeholder="Contact person"
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Phone</label>
-                  <input
-                    type="tel"
-                    value={formData.emergencyContactPhone}
-                    onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Contact phone"
-                  />
-                </div>
+                <PhoneInput
+                  label="Emergency Contact Phone"
+                  value={formData.emergencyContactPhone}
+                  onChange={(val) => setFormData({ ...formData, emergencyContactPhone: val })}
+                  error={emergencyPhoneError}
+                />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
                   <select

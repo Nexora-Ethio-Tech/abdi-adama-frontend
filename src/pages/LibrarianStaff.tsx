@@ -1,4 +1,5 @@
 import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock } from 'lucide-react';
+import PhoneInput from '../components/PhoneInput';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -29,6 +30,8 @@ export const LibrarianStaff = () => {
     previousSchool: '',
     experienceYears: ''
   });
+  const [phoneError, setPhoneError] = useState('');
+  const [emergencyPhoneError, setEmergencyPhoneError] = useState('');
   const [copied, setCopied] = useState<'digitalId' | 'password' | null>(null);
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke' | 'delete'; staff: any }>({ show: false, action: 'approve', staff: null });
@@ -156,6 +159,26 @@ export const LibrarianStaff = () => {
       alert('Please enter a valid email address (e.g. name@school.com)');
       return;
     }
+
+    setPhoneError('');
+    setEmergencyPhoneError('');
+    let hasError = false;
+
+    if (!formData.phoneNumber) {
+      setPhoneError('Phone number is required');
+      hasError = true;
+    } else if (!/^[79]\d{8}$/.test(formData.phoneNumber)) {
+      setPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (formData.emergencyContactPhone && !/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
+      setEmergencyPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     setCreating(true);
 
     try {
@@ -164,9 +187,9 @@ export const LibrarianStaff = () => {
         email: formData.email.trim(),
         role: 'librarian',
         staffProfile: {
-          phoneNumber: formData.phoneNumber,
+          phoneNumber: `+251${formData.phoneNumber}`,
           emergencyContactName: formData.emergencyContactName,
-          emergencyContactPhone: formData.emergencyContactPhone,
+          emergencyContactPhone: formData.emergencyContactPhone ? `+251${formData.emergencyContactPhone}` : '',
           educationLevel: formData.educationLevel,
           specialty: formData.specialty,
           dob: formData.dob,
@@ -194,6 +217,8 @@ export const LibrarianStaff = () => {
       });
 
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
+      setPhoneError('');
+      setEmergencyPhoneError('');
       setShowAddModal(false);
       fetchLibrarianStaff();
     } catch (err: any) {
@@ -340,45 +365,60 @@ export const LibrarianStaff = () => {
 
       {/* Add Librarian Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Add New Librarian</h2>
-            <form onSubmit={handleAddLibrarian} className="space-y-4">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                  <UserPlus size={20} />
+                </div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New Librarian</h3>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddLibrarian} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Full Name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. John Doe"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">School Email</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">School Email</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="e.g. john@school.com"
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                   required
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <PhoneInput
+                  label="Phone Number"
+                  value={formData.phoneNumber}
+                  onChange={(val) => setFormData({ ...formData, phoneNumber: val })}
+                  error={phoneError}
+                />
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Phone Number</label>
-                  <input type="tel" value={formData.phoneNumber} onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
+                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Emergency Contact Name</label>
+                  <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Emergency Contact Name</label>
-                  <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Emergency Contact Phone</label>
-                  <input type="tel" value={formData.emergencyContactPhone} onChange={(e) => setFormData({ ...formData, emergencyContactPhone: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
+                <PhoneInput
+                  label="Emergency Contact Phone"
+                  value={formData.emergencyContactPhone}
+                  onChange={(val) => setFormData({ ...formData, emergencyContactPhone: val })}
+                  error={emergencyPhoneError}
+                />
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Education Status</label>
                   <select value={formData.educationLevel} onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })} className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none">

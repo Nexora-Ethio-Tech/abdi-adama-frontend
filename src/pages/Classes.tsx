@@ -47,16 +47,29 @@ export const Classes = () => {
       setError(null);
       const response = await classService.getAllClasses();
       console.log('✅ Classes fetched:', response);
-      // Transform snake_case to camelCase
-      const transformedClasses = (response.data || []).map((cls: any) => ({
-        id: cls.id,
-        name: cls.name,
-        capacity: cls.capacity,
-        section: cls.section,
-        teachers: cls.teachers || [],
-        branchId: cls.branch_id,
-        studentCount: cls.student_count || cls.actual_student_count || 0
-      }));
+      const classRows = Array.isArray(response) ? response : response?.data || [];
+      const transformedClasses = classRows.map((cls: any) => {
+        // Handle teachers data - it might be a JSON string or already parsed
+        let teachers = cls.teachers || [];
+        if (typeof teachers === 'string') {
+          try {
+            teachers = JSON.parse(teachers);
+          } catch (e) {
+            teachers = [];
+          }
+        }
+        
+        return {
+          id: cls.id,
+          name: cls.name,
+          capacity: cls.capacity,
+          section: cls.section,
+          teachers: teachers || [],
+          teacherName: teachers?.length ? teachers[0]?.teacher_name : undefined,
+          branchId: cls.branch_id,
+          studentCount: cls.student_count || cls.actual_student_count || 0
+        };
+      });
       setClasses(transformedClasses);
     } catch (err: any) {
       console.error('❌ Error fetching classes:', err);

@@ -1,8 +1,7 @@
-import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle, UserPlus, Users, Building2 } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, UserCheck, UserPlus, ShieldAlert, Users, Building2, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
-import { ArrowLeft } from 'lucide-react';
 import { userService } from '../services/userService';
 import { branchService } from '../services/branchService';
 import { useStore } from '../context/useStore';
@@ -407,7 +406,7 @@ export const Staff = () => {
 
       {showCreateModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">

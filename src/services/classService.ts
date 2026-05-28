@@ -7,7 +7,9 @@ export interface Class {
   section: string;
   teacherId?: string;
   teacherName?: string;
+  teachers?: Array<{ teacher_id?: string; teacher_name?: string; teacher_user_id?: string }>;
   branchId?: string;
+  studentCount?: number;
 }
 
 export interface CreateClassData {

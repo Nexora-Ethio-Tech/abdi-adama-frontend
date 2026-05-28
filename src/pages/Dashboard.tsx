@@ -67,13 +67,19 @@ export const Dashboard = () => {
             getAtRiskStudents(),
             getUpcomingEvents(5)
           ]);
-          const approvedTeachers = (teachersRes.data || []).filter((t: any) => t.status === 'Approved');
+          
+          // Handle different response formats
+          const approvedCount = Array.isArray(studentsRes) ? studentsRes.length : (studentsRes?.data?.length || 0);
+          const teachersCount = Array.isArray(teachersRes) ? teachersRes.filter((t: any) => t.status === 'Approved').length : ((teachersRes?.data || []).filter((t: any) => t.status === 'Approved').length || 0);
+          const classesCount = Array.isArray(classesRes) ? classesRes.length : (classesRes?.data?.length || 0);
+          const pendingCount = Array.isArray(pendingStudentsRes) ? pendingStudentsRes.length : (pendingStudentsRes?.data?.length || 0);
+          
           setSchoolAdminStats({
             ...data,
-            totalStudents: studentsRes.data?.length || 0,
-            totalTeachers: approvedTeachers.length,
-            totalClasses: classesRes.data?.length || 0,
-            pendingApplications: pendingStudentsRes.data?.length || 0
+            totalStudents: approvedCount,
+            totalTeachers: teachersCount,
+            totalClasses: classesCount,
+            pendingApplications: pendingCount
           });
           setAtRiskStudents(atRiskData.students || []);
           setUpcomingEvents(eventsData || []);

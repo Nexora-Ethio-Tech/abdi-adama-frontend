@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
 import classService from '../services/classService';
-import { getBranchUsers, updateUser, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
+import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
 import { StudentRegistration } from '../components/StudentRegistration';
 
@@ -32,13 +32,34 @@ export const Students = () => {
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   const [editFormData, setEditFormData] = useState<any>({});
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   const handlePhoneInput = (value: string) => {
-    let phone = value.replace(/[^\d+]/g, '');
-    if (!phone.startsWith('+')) phone = '+251' + phone.replace(/^0|^251/, '');
-    else if (phone.startsWith('+251')) phone = '+251' + phone.substring(4).replace(/^0/, '');
-    if (phone.length > 13) phone = phone.substring(0, 13);
-    setEditFormData({ ...editFormData, parentPhone: phone });
+    // Remove any non-digit characters
+    let phoneDigits = value.replace(/[^\d]/g, '');
+    
+    // If empty, set to just +251
+    if (!phoneDigits) {
+      setEditFormData({ ...editFormData, parentPhone: '+251' });
+      return;
+    }
+    
+    // Validate: must start with 9 or 7
+    if (!/^[97]/.test(phoneDigits)) {
+      // If it doesn't start with 9 or 7, clear it
+      setEditFormData({ ...editFormData, parentPhone: '+251' });
+      return;
+    }
+    
+    // Limit to 9 digits total
+    if (phoneDigits.length > 9) {
+      phoneDigits = phoneDigits.substring(0, 9);
+    }
+    
+    // Combine with country code
+    const fullPhone = '+251' + phoneDigits;
+    setEditFormData({ ...editFormData, parentPhone: fullPhone });
   };
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -123,7 +144,6 @@ export const Students = () => {
     try {
       await updateUser(selectedStudent.userId, {
         name: editFormData.name,
-        email: editFormData.email,
         grade: editFormData.grade,
         parentPhone: editFormData.parentPhone
       });
@@ -135,6 +155,25 @@ export const Students = () => {
       showToast(err.response?.data?.error?.message || 'Failed to update student', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedStudent) return;
+    setResettingPassword(true);
+    try {
+      const result = await resetUserPIN(selectedStudent.userId);
+      const newPIN = result?.newPIN;
+      if (newPIN) {
+        setGeneratedPassword(newPIN);
+        showToast(`New password generated: ${newPIN}`, 'success');
+      } else {
+        showToast('Password reset succeeded', 'success');
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Failed to reset password', 'error');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -168,10 +207,10 @@ export const Students = () => {
     setSelectedStudent(student);
     setEditFormData({
       name: `${student.firstName} ${student.lastName}`.trim(),
-      email: student.email,
       grade: student.grade || '',
       parentPhone: student.parentPhone || '+251'
     });
+    setGeneratedPassword(null);
     setShowEditModal(true);
   };
 
@@ -445,14 +484,26 @@ export const Students = () => {
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
-                <input
-                  type="email"
-                  value={editFormData.email || ''}
-                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase">Password Reset</label>
+                    <p className="text-sm text-slate-500">Generate a new 4-digit password for this student.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resettingPassword}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-bold disabled:opacity-50"
+                  >
+                    {resettingPassword ? 'Generating...' : 'Reset Password'}
+                  </button>
+                </div>
+                {generatedPassword && (
+                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                    New password: <span className="font-mono text-base text-slate-900 dark:text-white">{generatedPassword}</span>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
@@ -469,14 +520,17 @@ export const Students = () => {
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Parent Phone Number</label>
-                <input
-                  type="text"
-                  value={editFormData.parentPhone || ''}
-                  onChange={(e) => handlePhoneInput(e.target.value)}
-                  defaultValue="+251 "
-                  placeholder="+251911234567"
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="flex gap-2 mt-1">
+                  <div className="flex items-center px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-slate-600 dark:text-slate-400 min-w-fit">+251</div>
+                  <input
+                    type="text"
+                    placeholder="912345678"
+                    maxLength={9}
+                    value={(editFormData.parentPhone || '+251').replace('+251', '')}
+                    onChange={(e) => handlePhoneInput(e.target.value)}
+                    className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowEditModal(false)}
