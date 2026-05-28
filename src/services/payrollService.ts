@@ -109,7 +109,7 @@ export interface SchoolLiability {
 const payrollService = {
   // Global Settings (Super Admin Only)
   getFinanceSettings: async (): Promise<FinanceSetting[]> => {
-    const response = await api.get('/super-admin/finance-settings');
+    const response = await api.get('/finance-clerk/finance-settings');
     return response.data.data;
   },
 
