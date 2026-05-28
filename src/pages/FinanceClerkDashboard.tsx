@@ -215,31 +215,31 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setSelectedStudent(student);
       // fetch outstanding for current month
       financeClerkService.getStudentOutstanding(student.id).then((d) => {
-            setOutstandingData(d);
-            // select all fee items with remaining > 0 by default
-            const defaults = (d.fees || []).filter((f: any) => Number(f.remaining || 0) > 0).map((f: any) => f.feeType);
-            const amounts: Record<string, number> = {};
-            (d.fees || []).forEach((f: any) => {
-              amounts[f.feeType] = Number(f.remaining || 0);
-            });
-            setPaymentAmounts(amounts);
-            setSelectedPaymentTypes(defaults.map((k: string) => {
+        setOutstandingData(d);
+        // select all fee items with remaining > 0 by default
+        const defaults = (d.fees || []).filter((f: any) => Number(f.remaining || 0) > 0).map((f: any) => f.feeType);
+        const amounts: Record<string, number> = {};
+        (d.fees || []).forEach((f: any) => {
+          amounts[f.feeType] = Number(f.remaining || 0);
+        });
+        setPaymentAmounts(amounts);
+        setSelectedPaymentTypes(defaults.map((k: string) => {
           if (k === 'monthly') return 'Monthly Tuition';
           if (k === 'bus') return 'Bus Fee';
           if (k === 'penalty') return 'Penalty Fee';
           if (k === 'registration') return 'Registration Fee';
           return k;
         }));
-            const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
+        const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
         setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: new Date().toISOString().split('T')[0], month: d.month });
       }).catch(() => {
         setSelectedStudent(student);
         setSelectedPaymentTypes(['Monthly Tuition']);
-        setPaymentData({ studentId: student.id, amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0,7) });
+        setPaymentData({ studentId: student.id, amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
       });
     } else {
       setSelectedPaymentTypes(['Monthly Tuition']);
-      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0,7) });
+      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
     }
     setShowPaymentModal(true);
   };
@@ -1675,7 +1675,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     })
                   ) : (
                     <div className="grid grid-cols-2 gap-3">
-                      {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' },{ key: 'Registration Fee', label: 'Registration Fee' },{ key: 'Bus Fee', label: 'Bus Fee' },{ key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
+                      {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' }, { key: 'Registration Fee', label: 'Registration Fee' }, { key: 'Bus Fee', label: 'Bus Fee' }, { key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
                         const checked = selectedPaymentTypes.includes(item.key);
                         return (
                           <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
