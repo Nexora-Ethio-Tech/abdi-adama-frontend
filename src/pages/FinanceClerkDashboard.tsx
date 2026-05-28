@@ -850,6 +850,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               />
             </div>
             <select
+              aria-label="Filter transport status"
               value={transportStatusFilter}
               onChange={(e) => {
                 setTransportStatusFilter(e.target.value as 'assigned' | 'unassigned' | 'all');
@@ -1154,6 +1155,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               />
             </div>
             <select
+              aria-label="Filter payment status"
               value={paymentStatusFilter}
               onChange={(e) => {
                 setPaymentStatusFilter(e.target.value as any);
@@ -1169,8 +1171,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center gap-4">
             <div className="w-40">
-              <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
-              <select value={staffPerPage} onChange={(e) => { setStaffPerPage(Number(e.target.value)); setStaffPage(1); }} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <label htmlFor="staff-per-page" className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
+              <select id="staff-per-page" value={staffPerPage} onChange={(e) => { setStaffPerPage(Number(e.target.value)); setStaffPage(1); }} className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none">
                 {perPageOptions.map(opt => (
                   <option key={opt} value={opt}>{opt} per page</option>
                 ))}
@@ -1322,6 +1324,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 />
               </div>
               <select
+                aria-label="Filter fee status"
                 value={feeStatusFilter}
                 onChange={(e) => {
                   setFeeStatusFilter(e.target.value as any);
@@ -1334,8 +1337,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <option value="reduced">Reduced</option>
               </select>
               <div className="relative">
-                <label className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
+                <label htmlFor="students-per-page" className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
                 <select
+                  id="students-per-page"
                   value={studentsPerPage}
                   onChange={(e) => { setStudentsPerPage(Number(e.target.value)); setStudentPage(1); }}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
@@ -1478,14 +1482,20 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Transaction</h2>
-              <button onClick={() => setShowTransactionModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowTransactionModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close record transaction modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <form onSubmit={handleRecordTransaction} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category *</label>
+                <label htmlFor="transaction-category" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category *</label>
                 <select
+                  id="transaction-category"
                   value={transactionData.category}
                   onChange={(e) => setTransactionData({ ...transactionData, category: e.target.value as 'expense' | 'income' })}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
@@ -1495,8 +1505,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Type *</label>
+                <label htmlFor="transaction-type" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Type *</label>
                 <input
+                  id="transaction-type"
                   type="text"
                   required
                   value={transactionData.type}
@@ -1506,8 +1517,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
+                <label htmlFor="transaction-amount" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
                 <input
+                  id="transaction-amount"
                   type="number"
                   required
                   min="0"
@@ -1519,8 +1531,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Details</label>
+                <label htmlFor="transaction-details" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Details</label>
                 <textarea
+                  id="transaction-details"
                   value={transactionData.details}
                   onChange={(e) => setTransactionData({ ...transactionData, details: e.target.value })}
                   rows={4}
@@ -1529,8 +1542,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transaction Date *</label>
+                <label htmlFor="transaction-date" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transaction Date *</label>
                 <input
+                  id="transaction-date"
                   type="date"
                   required
                   value={transactionData.date}
@@ -1564,16 +1578,22 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Add Request Aid</h2>
-              <button onClick={() => setShowAidPickerModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowAidPickerModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close add request aid modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <form onSubmit={handleStartAidRequest} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student *</label>
+                <label htmlFor="aid-picker-search" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student *</label>
                 <div className="relative">
                   <div className="absolute left-3 top-3 text-slate-400"><Search className="w-4 h-4" /></div>
                   <input
+                    id="aid-picker-search"
                     type="text"
                     placeholder="Search by name or student ID"
                     value={aidPickerSearch}
@@ -1583,6 +1603,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   {aidPickerSearch.trim().length > 0 && (
                     <select
                       required
+                      aria-label="Select a student"
                       value={selectedAidStudentId}
                       onChange={(e) => setSelectedAidStudentId(e.target.value)}
                       className="w-full px-4 py-3 border-t-0 border border-slate-200 dark:border-slate-700 rounded-b-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
@@ -1629,7 +1650,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Payment</h2>
-              <button onClick={() => setShowPaymentModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close record payment modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
@@ -1643,8 +1669,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             <form onSubmit={handleRecordPayment} className="p-6 space-y-4">
               {!selectedStudent && (
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student ID *</label>
+                  <label htmlFor="payment-student-id" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student ID *</label>
                   <input
+                    id="payment-student-id"
                     type="text"
                     required
                     value={paymentData.studentId}
@@ -1714,8 +1741,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
+                <label htmlFor="payment-amount" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
                 <input
+                  id="payment-amount"
                   type="number"
                   required
                   min="0"
@@ -1728,8 +1756,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Amount is auto-calculated from the selected fee types and configured student fees.</p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Payment Date *</label>
+                <label htmlFor="payment-date" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Payment Date *</label>
                 <input
+                  id="payment-date"
                   type="date"
                   required
                   value={paymentData.date}
@@ -1763,7 +1792,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{transportStudent.route_id ? 'Change Driver' : 'Assign Transport'}</h2>
-              <button onClick={() => setShowTransportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowTransportModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close transport modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
@@ -1775,8 +1809,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Configured Bus Fee: <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(selectedTransportPolicy?.bus_fee ?? transportStudent.bus_fee ?? 0).toLocaleString()} ETB</span></p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Driver *</label>
+                <label htmlFor="transport-driver-select" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Driver *</label>
                 <select
+                  id="transport-driver-select"
                   required
                   value={transportData.driverId}
                   onChange={(e) => {
@@ -1796,8 +1831,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transport Fee (ETB) *</label>
+                <label htmlFor="transport-fee-input" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transport Fee (ETB) *</label>
                 <input
+                  id="transport-fee-input"
                   type="number"
                   required
                   min="0"
@@ -1834,7 +1870,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stop Transport</h2>
-              <button onClick={() => setShowStopTransportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowStopTransportModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close stop transport modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
@@ -1845,8 +1886,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Current Transport Fee: <span className="font-bold text-slate-900 dark:text-white">{Number(stopTransportStudent.bus_fee || 0).toLocaleString()} ETB</span></p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Days Used This Month (auto-calculated from Ethiopian calendar)</label>
+                <label htmlFor="stop-days-used" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Days Used This Month (auto-calculated from Ethiopian calendar)</label>
                 <input
+                  id="stop-days-used"
                   type="number"
                   disabled
                   min="0"
@@ -1902,7 +1944,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Request Fee Reduction</h2>
-              <button onClick={() => setShowReductionModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button
+                type="button"
+                onClick={() => setShowReductionModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close fee reduction modal"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>

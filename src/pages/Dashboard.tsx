@@ -67,13 +67,13 @@ export const Dashboard = () => {
             getAtRiskStudents(),
             getUpcomingEvents(5)
           ]);
-          
+
           // Handle different response formats
           const approvedCount = Array.isArray(studentsRes) ? studentsRes.length : (studentsRes?.data?.length || 0);
           const teachersCount = Array.isArray(teachersRes) ? teachersRes.filter((t: any) => t.status === 'Approved').length : ((teachersRes?.data || []).filter((t: any) => t.status === 'Approved').length || 0);
           const classesCount = Array.isArray(classesRes) ? classesRes.length : (classesRes?.data?.length || 0);
           const pendingCount = Array.isArray(pendingStudentsRes) ? pendingStudentsRes.length : (pendingStudentsRes?.data?.length || 0);
-          
+
           setSchoolAdminStats({
             ...data,
             totalStudents: approvedCount,
@@ -833,7 +833,7 @@ export const Dashboard = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">Post New Notice</h3>
-              <button onClick={() => setShowNoticeModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button type="button" title="Close notice modal" onClick={() => setShowNoticeModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -851,21 +851,21 @@ export const Dashboard = () => {
               setShowNoticeModal(false);
             }}>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
-                <input name="title" required type="text" placeholder="e.g. Public Holiday Announcement" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label htmlFor="notice-title" className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
+                <input id="notice-title" name="title" required type="text" placeholder="e.g. Public Holiday Announcement" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Category</label>
-                  <select name="category" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label htmlFor="notice-category" className="text-[10px] font-bold text-slate-500 uppercase">Category</label>
+                  <select id="notice-category" name="category" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <option value="Academic">Academic</option>
                     <option value="Logistics">Logistics</option>
                     <option value="Finance">Finance</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Priority</label>
-                  <select name="priority" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label htmlFor="notice-priority" className="text-[10px] font-bold text-slate-500 uppercase">Priority</label>
+                  <select id="notice-priority" name="priority" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <option value="Normal">Normal</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
@@ -873,12 +873,12 @@ export const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Content</label>
-                <textarea name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label htmlFor="notice-content" className="text-[10px] font-bold text-slate-500 uppercase">Content</label>
+                <textarea id="notice-content" name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
-                <input name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label htmlFor="notice-expiry" className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
+                <input id="notice-expiry" name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
@@ -943,7 +943,7 @@ export const Dashboard = () => {
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h3>
-              <button onClick={() => {
+              <button type="button" title="Close event modal" onClick={() => {
                 setShowEventModal(false);
                 setEditingEvent(null);
               }} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -952,8 +952,9 @@ export const Dashboard = () => {
             </div>
             <form className="p-6 space-y-4" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
+                <label htmlFor="event-title" className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
                 <input
+                  id="event-title"
                   name="title"
                   required
                   type="text"
@@ -964,8 +965,9 @@ export const Dashboard = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
+                  <label htmlFor="event-date" className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
                   <input
+                    id="event-date"
                     name="date"
                     required
                     type="date"
@@ -974,8 +976,9 @@ export const Dashboard = () => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+                  <label htmlFor="event-type" className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
                   <select
+                    id="event-type"
                     name="type"
                     required
                     defaultValue={editingEvent?.type}
@@ -989,8 +992,9 @@ export const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
+                <label htmlFor="event-description" className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
                 <textarea
+                  id="event-description"
                   name="description"
                   rows={3}
                   defaultValue={editingEvent?.description || ''}

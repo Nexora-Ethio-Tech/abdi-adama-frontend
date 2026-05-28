@@ -113,8 +113,7 @@ export const Staff = () => {
               key={tab.path}
               to={`/staff/${tab.path}`}
               className={({ isActive }) =>
-                `rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm font-bold text-center transition ${
-                  isActive ? 'bg-white text-slate-900 shadow dark:bg-slate-950 dark:text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
+                `rounded-2xl border border-slate-200 dark:border-slate-800 px-4 py-3 text-sm font-bold text-center transition ${isActive ? 'bg-white text-slate-900 shadow dark:bg-slate-950 dark:text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'
                 }`
               }
             >
@@ -155,7 +154,7 @@ export const Staff = () => {
       }
       const response = await userService.getAllUsers(filters);
       const resolvedBranches = branchList || branches;
-      
+
       // 🔐 SECURITY: Super Admin can ONLY see users they create:
       // - Super Admins (system-level)
       // - Auditors (system-level)
@@ -163,7 +162,7 @@ export const Staff = () => {
       // - Vice Principals (created by Super Admin)
       // School Admin creates: Teachers, Students, Finance Clerks, Drivers, Parents
       const SUPER_ADMIN_MANAGEABLE_ROLES = ['super-admin', 'auditor', 'school-admin', 'vice-principal'];
-      
+
       const transformed = (response.data || [])
         .filter((u: any) => SUPER_ADMIN_MANAGEABLE_ROLES.includes(u.role))
         .map((u: any) => {
@@ -325,83 +324,82 @@ export const Staff = () => {
       {!loading && !error && (
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
           <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[800px]">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-              <tr>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Role</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Special Flags</th>
-                <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-              {staffList.length === 0 ? (
+            <table className="w-full text-left min-w-[800px]">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
-                    No users found
-                  </td>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Employee</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Role</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Special Flags</th>
+                  <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
-              ) : (
-                staffList.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
-                        <p className="text-xs text-slate-500">{staff.email}</p>
-                        <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-[10px] font-black uppercase tracking-wider">
-                        {staff.role}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {staff.branchName || (staff.branchId ? staff.branchId : 'All Branches')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                        staff.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                        staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {staff.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {staff.status === 'Pending' && (
-                          <button
-                            onClick={() => handleUpdateStatus(staff.id, 'Approved')}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700"
-                          >
-                            Approve
-                          </button>
-                        )}
-                        {staff.status === 'Approved' && (
-                          <button
-                            onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
-                            className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setDeleteModal({ show: true, userId: staff.id, userName: staff.name })}
-                          className="px-3 py-1 bg-slate-900 dark:bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-800"
-                        >
-                          Delete
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                {staffList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                      No users found
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  staffList.map((staff) => (
+                    <tr key={staff.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all">
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
+                          <p className="text-xs text-slate-500">{staff.email}</p>
+                          <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-[10px] font-black uppercase tracking-wider">
+                          {staff.role}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-slate-600 dark:text-slate-400">
+                        {staff.branchName || (staff.branchId ? staff.branchId : 'All Branches')}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${staff.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                          staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                          {staff.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {staff.status === 'Pending' && (
+                            <button
+                              onClick={() => handleUpdateStatus(staff.id, 'Approved')}
+                              className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {staff.status === 'Approved' && (
+                            <button
+                              onClick={() => handleUpdateStatus(staff.id, 'Revoked')}
+                              className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700"
+                            >
+                              Revoke
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setDeleteModal({ show: true, userId: staff.id, userName: staff.name })}
+                            className="px-3 py-1 bg-slate-900 dark:bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-800"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
       )}
 
       {showCreateModal && (
@@ -414,15 +412,21 @@ export const Staff = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Create New User</h3>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Close create user modal"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <form className="p-6 space-y-4" onSubmit={handleCreateUser}>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Role</label>
+                <label htmlFor="role-select" className="text-xs font-bold text-slate-500 uppercase">Role</label>
                 <select
+                  id="role-select"
                   value={createForm.role}
                   onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -435,8 +439,9 @@ export const Staff = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Name</label>
+                <label htmlFor="name-input" className="text-xs font-bold text-slate-500 uppercase">Name</label>
                 <input
+                  id="name-input"
                   type="text"
                   value={createForm.name}
                   onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
@@ -446,8 +451,9 @@ export const Staff = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Email</label>
+                <label htmlFor="email-input" className="text-xs font-bold text-slate-500 uppercase">Email</label>
                 <input
+                  id="email-input"
                   type="email"
                   value={createForm.email}
                   onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
@@ -457,7 +463,7 @@ export const Staff = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Branch</label>
+                <label htmlFor="branch-select" className="text-xs font-bold text-slate-500 uppercase">Branch</label>
                 {currentUserRole === 'super-admin' && selectedBranchId ? (
                   <div className="w-full mt-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200">
                     {selectedBranch?.name || branches.find((branch) => branch.id === selectedBranchId)?.name || 'Selected Branch'}
@@ -465,6 +471,7 @@ export const Staff = () => {
                   </div>
                 ) : (
                   <select
+                    id="branch-select"
                     value={createForm.branchId}
                     onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -479,8 +486,9 @@ export const Staff = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Password (Optional)</label>
+                <label htmlFor="password-input" className="text-xs font-bold text-slate-500 uppercase">Password (Optional)</label>
                 <input
+                  id="password-input"
                   type="password"
                   value={createForm.password}
                   onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
@@ -652,11 +660,10 @@ export const Staff = () => {
       {/* Toast Notification */}
       {toast.show && (
         <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
-          <div className={`px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 ${
-            toast.type === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-          }`}>
+          <div className={`px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 ${toast.type === 'success'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+            }`}>
             <UserCheck size={20} />
             <p className="font-bold text-sm">{toast.message}</p>
           </div>
