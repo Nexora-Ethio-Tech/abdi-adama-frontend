@@ -182,13 +182,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         }
       }
 
-      await financeClerkService.recordPayment({ studentId: paymentData.studentId, items, month: paymentData.month, date: paymentData.date, reference: (paymentData as any).reference });
+      const payloadData = { studentId: paymentData.studentId, items, month: paymentData.month, date: paymentData.date, reference: (paymentData as any).reference };
+      console.log('💳 [FinanceClerk] Recording payment:', payloadData);
+      await financeClerkService.recordPayment(payloadData);
+      console.log('✅ [FinanceClerk] Payment recorded successfully!');
       setSuccess('Payment recorded successfully!');
       setShowPaymentModal(false);
       resetPaymentForm();
       fetchData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
+      console.error('❌ [FinanceClerk] Error recording payment:', err);
       setError(err.response?.data?.error?.message || 'Failed to record payment');
       setTimeout(() => setError(null), 5000);
     }

@@ -430,7 +430,7 @@ export const LoanManagement = () => {
 
               <form onSubmit={handleIssueLoan} className="space-y-5">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Select Employee *</label>
+                  <label className="text-sm font-bold text-slate-500 uppercase">Select Employee *</label>
                   
                   <div className="flex gap-2">
                     <select 
@@ -497,7 +497,7 @@ export const LoanManagement = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Loan Amount (ETB) *</label>
+                  <label className="text-sm font-bold text-slate-500 uppercase">Loan Amount (ETB) *</label>
                   <input
                     type="number"
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
@@ -531,7 +531,7 @@ export const LoanManagement = () => {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Loan Reason / Notes</label>
+                  <label className="text-sm font-bold text-slate-500 uppercase">Loan Reason / Notes</label>
                   <textarea
                     rows={3}
                     placeholder="Add brief details regarding the loan approval..."
@@ -545,7 +545,7 @@ export const LoanManagement = () => {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     Cancel
                   </button>

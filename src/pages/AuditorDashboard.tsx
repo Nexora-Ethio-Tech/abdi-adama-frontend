@@ -13,6 +13,10 @@ import auditorService, {
   type FeeReduction,
   type FinancialReport
 } from '../services/auditorService';
+import {
+  ethiopianToGregorianIso,
+  formatEthiopianLabel
+} from '../utils/ethiopianCalendar';
 
 export const AuditorDashboard = () => {
   const _user = useUser();
@@ -25,6 +29,8 @@ export const AuditorDashboard = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [feeReductionFilter, setFeeReductionFilter] = useState<'pending' | 'approved' | 'rejected' | ''>('');
+  const [transactionStartEth, setTransactionStartEth] = useState('');
+  const [transactionEndEth, setTransactionEndEth] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
@@ -34,20 +40,48 @@ export const AuditorDashboard = () => {
     fetchData();
   }, []);
 
+  const buildPaymentQueryParams = () => {
+    const params: { startDate?: string; endDate?: string } = {};
+
+    if (transactionStartEth) {
+      const start = ethiopianToGregorianIso(transactionStartEth);
+      if (!start) {
+        throw new Error('Invalid Ethiopian start date. Use YYYY-MM-DD.');
+      }
+      params.startDate = start;
+    }
+
+    if (transactionEndEth) {
+      const end = ethiopianToGregorianIso(transactionEndEth);
+      if (!end) {
+        throw new Error('Invalid Ethiopian end date. Use YYYY-MM-DD.');
+      }
+      params.endDate = end;
+    }
+
+    return params;
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      const params = buildPaymentQueryParams();
+      console.log('📊 [AuditorDashboard] Fetching with params:', params);
       const [dashboardData, paymentsData, feeReductionsData] = await Promise.all([
         auditorService.getDashboard(),
-        auditorService.getPayments(),
+        auditorService.getPayments(params),
         auditorService.getFeeReductions({ status: feeReductionFilter || undefined })
       ]);
+      console.log('✅ [AuditorDashboard] Dashboard:', dashboardData);
+      console.log('✅ [AuditorDashboard] Payments fetched:', paymentsData?.length || 0, paymentsData);
+      console.log('✅ [AuditorDashboard] Fee Reductions:', feeReductionsData?.length || 0);
       setDashboard(dashboardData);
       setPayments(paymentsData);
       setFeeReductions(feeReductionsData);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to fetch data');
+      console.error('❌ [AuditorDashboard] Error:', err);
+      setError(err.response?.data?.error?.message || err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -65,19 +99,51 @@ export const AuditorDashboard = () => {
     }
   };
 
+  const handleApplyTransactionFilter = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const paymentsData = await auditorService.getPayments(buildPaymentQueryParams());
+      setPayments(paymentsData);
+      setSuccess('Transaction filters applied.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || err.message || 'Failed to apply filter');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearTransactionFilter = async () => {
+    setTransactionStartEth('');
+    setTransactionEndEth('');
+    await fetchData();
+  };
+
   const handleGenerateReport = async () => {
     if (!reportStartDate || !reportEndDate) {
-      setError('Please select both start and end dates');
+      setError('Please enter both Ethiopian start and end dates');
       setTimeout(() => setError(null), 3000);
       return;
     }
+
+    const startDate = ethiopianToGregorianIso(reportStartDate);
+    const endDate = ethiopianToGregorianIso(reportEndDate);
+
+    if (!startDate || !endDate) {
+      setError('Invalid Ethiopian dates. Use format YYYY-MM-DD');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
     try {
-      const report = await auditorService.getFinancialReport(reportStartDate, reportEndDate);
+      const report = await auditorService.getFinancialReport(startDate, endDate);
       setFinancialReport(report);
       setSuccess('Financial report generated successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to generate report');
+      setError(err.response?.data?.error?.message || err.message || 'Failed to generate report');
       setTimeout(() => setError(null), 5000);
     }
   };
@@ -160,7 +226,7 @@ export const AuditorDashboard = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowReportModal(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2"
+            className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2"
           >
             <FileText size={18} />
             Generate Report
@@ -240,7 +306,7 @@ export const AuditorDashboard = () => {
           <div className="flex p-1.5 bg-slate-200/50 dark:bg-slate-800/50 rounded-[1.5rem] w-full md:w-fit">
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-xs font-black uppercase tracking-widest transition-all ${
+              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${
                 activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -248,7 +314,7 @@ export const AuditorDashboard = () => {
             </button>
             <button
               onClick={() => setActiveTab('fee-reductions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-xs font-black uppercase tracking-widest transition-all ${
+              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${
                 activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -283,6 +349,47 @@ export const AuditorDashboard = () => {
               />
             </div>
           </div>
+
+          {activeTab === 'transactions' && (
+            <div className="mt-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-3">
+                  <label className="block text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide">Start Date (Ethiopian)</label>
+                  <input
+                    type="text"
+                    placeholder="2018-01-01"
+                    value={transactionStartEth}
+                    onChange={(e) => setTransactionStartEth(e.target.value)}
+                    className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-3">
+                  <label className="block text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide">End Date (Ethiopian)</label>
+                  <input
+                    type="text"
+                    placeholder="2018-01-30"
+                    value={transactionEndEth}
+                    onChange={(e) => setTransactionEndEth(e.target.value)}
+                    className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex flex-col items-stretch gap-3 justify-end">
+                  <button
+                    onClick={handleApplyTransactionFilter}
+                    className="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+                  >
+                    Apply Filter
+                  </button>
+                  <button
+                    onClick={handleClearTransactionFilter}
+                    className="px-6 py-3 rounded-xl font-black text-sm uppercase tracking-wide border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-0 overflow-x-auto">
@@ -290,12 +397,12 @@ export const AuditorDashboard = () => {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Student</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Amount</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Type</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Verified By</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                      <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Student</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Amount</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Type</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Verified By</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Date</th>
+                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -313,22 +420,23 @@ export const AuditorDashboard = () => {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-sm">
-                        <ArrowUpRight size={14} />
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-base">
+                        <ArrowUpRight size={16} />
                         {payment.amount.toLocaleString()} ETB
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-800/50">
+                      <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-black uppercase tracking-wide border border-blue-100 dark:border-blue-800/50">
                         {payment.type}
                       </span>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{payment.verified_by}</p>
+                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{payment.verified_by}</p>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{new Date(payment.date).toLocaleDateString()}</p>
-                      <p className="text-[10px] text-slate-400">{new Date(payment.created_at).toLocaleTimeString()}</p>
+                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{formatEthiopianLabel(payment.date)}</p>
+                      <p className="text-sm text-slate-400">{new Date(payment.date).toLocaleDateString()}</p>
+                      <p className="text-sm text-slate-400">{new Date(payment.created_at).toLocaleTimeString()}</p>
                     </td>
                     <td className="px-8 py-6 text-right">
                       <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
@@ -400,7 +508,7 @@ export const AuditorDashboard = () => {
                           </button>
                           <button 
                             onClick={() => handleApprove(reduction.id, 'Approved')}
-                            className="bg-emerald-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+                            className="bg-emerald-600 text-white px-5 py-2 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
                           >
                             Approve
                           </button>
@@ -449,24 +557,28 @@ export const AuditorDashboard = () => {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Start Date *</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ethiopian Start Date *</label>
                   <input
-                    type="date"
+                    type="text"
+                    placeholder="2018-01-01"
                     value={reportStartDate}
                     onChange={(e) => setReportStartDate(e.target.value)}
                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
+                  <p className="text-xs text-slate-500 mt-2">Use Ethiopian date format: YYYY-MM-DD</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">End Date *</label>
+                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ethiopian End Date *</label>
                   <input
-                    type="date"
+                    type="text"
+                    placeholder="2018-01-30"
                     value={reportEndDate}
                     onChange={(e) => setReportEndDate(e.target.value)}
                     className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                   />
+                  <p className="text-xs text-slate-500 mt-2">Use Ethiopian date format: YYYY-MM-DD</p>
                 </div>
               </div>
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
@@ -479,7 +591,7 @@ export const AuditorDashboard = () => {
                 {financialReport && (
                   <button
                     onClick={handleExportReport}
-                    className="w-full md:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-lg shadow-emerald-500/20"
+                    className="w-full md:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20"
                   >
                     <FileText size={16} />
                     <span>Download CSV</span>
@@ -524,7 +636,7 @@ export const AuditorDashboard = () => {
                       {financialReport.dailyBreakdown.map((item, i) => (
                         <div key={i} className="flex items-center justify-between p-3 bg-white dark:bg-slate-900 rounded-xl">
                           <div>
-                            <p className="font-bold text-slate-900 dark:text-white">{new Date(item.date).toLocaleDateString()}</p>
+                            <p className="font-bold text-slate-900 dark:text-white">{formatEthiopianLabel(item.date)}</p>
                             <p className="text-xs text-slate-500">{item.transactions} transactions</p>
                           </div>
                           <p className="font-black text-emerald-600">{Number(item.total).toLocaleString()} ETB</p>

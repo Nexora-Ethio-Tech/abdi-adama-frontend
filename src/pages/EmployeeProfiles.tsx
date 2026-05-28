@@ -5,6 +5,7 @@ import { useUser } from '../context/UserContext';
 
 export const EmployeeProfiles = () => {
   const { role, branches } = useUser();
+  const isAuditor = role === 'auditor';
   const [profiles, setProfiles] = useState<EmployeePayrollProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -121,11 +122,11 @@ export const EmployeeProfiles = () => {
       {/* Filters Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/30 dark:shadow-none flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 top-3 text-slate-400" size={18} />
+          <Search className="absolute left-4 top-3.5 text-slate-400" size={18} />
           <input
             type="text"
             placeholder="Search employee name, ID or email..."
-            className="w-full pl-12 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -133,7 +134,7 @@ export const EmployeeProfiles = () => {
 
         <div className="flex gap-3 w-full md:w-auto">
           <select
-            className="w-full md:w-48 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full md:w-48 px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-blue-500"
             value={selectedBranch}
             onChange={(e) => setSelectedBranch(e.target.value)}
           >
@@ -160,16 +161,18 @@ export const EmployeeProfiles = () => {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-base">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Employee Details</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Salary</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Allowances (Sum)</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Rate (Hr)</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TIN Number</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bank Account</th>
-                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Employee Details</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic Salary</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Allowances (Sum)</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Rate (Hr)</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TIN Number</th>
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bank Account</th>
+                    {!isAuditor && (
+                      <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
@@ -184,10 +187,10 @@ export const EmployeeProfiles = () => {
                               {p.name.charAt(0)}
                             </div>
                             <div>
-                              <p className="font-bold text-slate-800 dark:text-white">{p.name}</p>
+                              <p className="font-bold text-slate-800 dark:text-white text-base">{p.name}</p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">{p.role}</span>
-                                <span className="text-[9px] font-bold text-slate-400">{p.digital_id}</span>
+                                <span className="text-xs font-black uppercase tracking-widest text-blue-600 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">{p.role}</span>
+                                <span className="text-xs font-bold text-slate-400">{p.digital_id}</span>
                               </div>
                             </div>
                           </div>
@@ -196,7 +199,7 @@ export const EmployeeProfiles = () => {
                           {hasProfile ? (
                             <span className="font-black text-slate-800 dark:text-white">{p.basic_salary.toLocaleString()} ETB</span>
                           ) : (
-                            <span className="text-rose-500 font-bold uppercase text-[9px] tracking-wider bg-rose-50 dark:bg-rose-950/20 px-2.5 py-1 rounded-xl flex items-center gap-1.5 w-fit">
+                            <span className="text-rose-500 font-bold uppercase text-xs tracking-wider bg-rose-50 dark:bg-rose-950/20 px-2.5 py-1 rounded-xl flex items-center gap-1.5 w-fit">
                               <AlertCircle size={10} /> Not Configured
                             </span>
                           )}
@@ -205,7 +208,7 @@ export const EmployeeProfiles = () => {
                           {hasProfile ? (
                             <div>
                               <span className="font-bold text-slate-700 dark:text-slate-300">+{allowancesSum.toLocaleString()} ETB</span>
-                              <div className="flex gap-1.5 text-[8px] text-slate-400 font-semibold mt-1">
+                              <div className="flex gap-1.5 text-xs text-slate-400 font-semibold mt-1">
                                 <span>T: {p.transport_allowance}</span>
                                 <span>H: {p.housing_allowance}</span>
                                 <span>P: {p.position_allowance}</span>
@@ -235,14 +238,16 @@ export const EmployeeProfiles = () => {
                             <span className="text-slate-400">N/A</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => handleEditClick(p)}
-                            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2 rounded-xl transition-all shadow-md"
-                          >
-                            <Edit3 size={14} />
-                          </button>
-                        </td>
+                        {!isAuditor && (
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleEditClick(p)}
+                              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2.5 rounded-xl transition-all shadow-md"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -253,24 +258,24 @@ export const EmployeeProfiles = () => {
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">
-                <span className="text-xs text-slate-500 font-medium">
+                <span className="text-sm text-slate-500 font-medium">
                   Showing {(currentPage - 1) * itemsPerPage + 1}–{Math.min(currentPage * itemsPerPage, filteredProfiles.length)} of {filteredProfiles.length} entries
                 </span>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                   >
                     Prev
                   </button>
-                  <span className="px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white">
+                  <span className="px-3 py-1.5 text-sm font-bold text-slate-800 dark:text-white">
                     {currentPage} / {totalPages}
                   </span>
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 transition-colors"
                   >
                     Next
                   </button>
@@ -284,8 +289,8 @@ export const EmployeeProfiles = () => {
 
       {/* Editing Sliding/Modal Panel */}
       {editingProfile && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex justify-end">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 h-full p-8 overflow-y-auto shadow-2xl flex flex-col justify-between transition-all duration-300 animate-slide-in">
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] max-h-[90vh] p-8 overflow-y-auto shadow-2xl flex flex-col justify-between transition-all duration-300 animate-in fade-in zoom-in-95">
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div className="flex items-center gap-3">
@@ -308,15 +313,15 @@ export const EmployeeProfiles = () => {
               <form onSubmit={handleSaveProfile} className="space-y-5">
                 {/* Core Compensation Card */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Core Salary Parameters</h4>
+                  <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Core Salary Parameters</h4>
                   
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Basic Monthly Salary (ETB) *</label>
+                    <label className="text-sm font-bold text-slate-500 uppercase">Basic Monthly Salary (ETB) *</label>
                     <div className="relative">
                       <DollarSign className="absolute left-3 top-3 text-slate-400" size={16} />
                       <input
                         type="number"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-blue-500"
                         value={basicSalary}
                         onChange={(e) => setBasicSalary(e.target.value)}
                         required
@@ -326,10 +331,10 @@ export const EmployeeProfiles = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Overtime Rate Per Hour (ETB)</label>
+                    <label className="text-sm font-bold text-slate-500 uppercase">Overtime Rate Per Hour (ETB)</label>
                     <input
                       type="number"
-                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-blue-500"
                       value={overtimeRatePerHour}
                       onChange={(e) => setOvertimeRatePerHour(e.target.value)}
                       min="0"
@@ -339,32 +344,32 @@ export const EmployeeProfiles = () => {
 
                 {/* Fixed Allowances Card */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Fixed Allowances</h4>
+                  <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Fixed Allowances</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">Transport</label>
+                      <label className="text-sm font-bold text-slate-400 uppercase">Transport</label>
                       <input
                         type="number"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none"
                         value={transportAllowance}
                         onChange={(e) => setTransportAllowance(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">Housing</label>
+                      <label className="text-sm font-bold text-slate-400 uppercase">Housing</label>
                       <input
                         type="number"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none"
                         value={housingAllowance}
                         onChange={(e) => setHousingAllowance(e.target.value)}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase">Position</label>
+                      <label className="text-sm font-bold text-slate-400 uppercase">Position</label>
                       <input
                         type="number"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none"
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none"
                         value={positionAllowance}
                         onChange={(e) => setPositionAllowance(e.target.value)}
                       />
@@ -374,16 +379,16 @@ export const EmployeeProfiles = () => {
 
                 {/* Direct Bank Deposit Details */}
                 <div className="p-5 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-100 dark:border-slate-800/80 space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Payment & Tax Details</h4>
+                  <h4 className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Payment & Tax Details</h4>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Bank Account Number</label>
+                    <label className="text-sm font-bold text-slate-500 uppercase">Bank Account Number</label>
                     <div className="relative">
                       <Landmark className="absolute left-3 top-3 text-slate-400" size={16} />
                       <input
                         type="text"
                         placeholder="e.g. CBE 1000..."
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none"
                         value={bankAccount}
                         onChange={(e) => setBankAccount(e.target.value)}
                       />
@@ -391,13 +396,13 @@ export const EmployeeProfiles = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">TIN Number (Tax ID)</label>
+                    <label className="text-sm font-bold text-slate-500 uppercase">TIN Number (Tax ID)</label>
                     <div className="relative">
                       <FileText className="absolute left-3 top-3 text-slate-400" size={16} />
                       <input
                         type="text"
                         placeholder="Tax Identification Number"
-                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-semibold outline-none"
                         value={tinNumber}
                         onChange={(e) => setTinNumber(e.target.value)}
                       />
@@ -409,14 +414,14 @@ export const EmployeeProfiles = () => {
                   <button
                     type="button"
                     onClick={() => setEditingProfile(null)}
-                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-black uppercase tracking-wider text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="flex-1 py-3 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={modalLoading}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 dark:shadow-none disabled:opacity-50"
+                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-200 dark:shadow-none disabled:opacity-50"
                   >
                     {modalLoading ? 'Saving...' : (
                       <>
