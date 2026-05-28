@@ -135,6 +135,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: LayoutDashboard, label: t('nav.overview'), path: '/dashboard/finance' },
           { icon: Wallet, label: 'Collections', path: '/finance-dashboard' },
           { icon: AlertCircle, label: 'Overdue', path: '/finance-dashboard?tab=overdue' },
+          { icon: Package, label: 'Inventory', path: '/finance-dashboard?tab=inventory' },
           { icon: HeartPulse, label: 'Request Aid', path: '/finance-dashboard?tab=aid-requests' },
           { icon: Truck, label: 'Transport', path: '/finance-dashboard?tab=transport' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },

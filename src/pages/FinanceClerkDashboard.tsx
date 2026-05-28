@@ -17,7 +17,7 @@ type ManualTransaction = {
   createdAt: string;
 };
 
-export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'assets' }) => {
+export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isCollectionsView = location.pathname === '/finance-dashboard';
@@ -31,10 +31,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'assets'>(
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory'>(
     (initialTab as any) || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
-  const isAssetsTab = activeTab === 'assets';
+  const isInventoryTab = activeTab === 'inventory';
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [showAidPickerModal, setShowAidPickerModal] = useState(false);
@@ -121,7 +121,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    const nextTab = tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport'].includes(tab)
+    const nextTab = tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport', 'inventory'].includes(tab)
       ? (tab as any)
       : 'all';
 
@@ -528,7 +528,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     overdue: 'Overdue Payments',
     registrations: 'Registrations',
     'staff-payments': 'Staff Payments',
-    assets: 'Assets',
+    inventory: 'Inventory',
     'aid-requests': 'Request Aid',
     transport: 'Transport Management',
   } as const;
@@ -537,7 +537,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     overdue: 'Review and collect overdue student balances',
     registrations: 'Finalize fee-related registration approvals',
     'staff-payments': 'Disburse salary and confirm payroll payouts',
-    assets: 'Track school assets and keep inventory records current',
+    inventory: 'Track school inventory and keep records current',
     'aid-requests': 'Create and track aid requests sent to the auditor',
     transport: 'Assign students to drivers and manage transport fees',
   } as const;
@@ -678,7 +678,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         )}
       </div>
 
-      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments' || isAssetsTab) && (
+      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
         <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
@@ -706,15 +706,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               }`}
           >
             Staff Payments ({staffProfiles.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('assets'); setStudentPage(1); }}
-            className={`px-6 py-3 font-bold text-sm transition-all ${isAssetsTab
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-          >
-            Assets
           </button>
         </div>
       )}
@@ -1299,7 +1290,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </div>
       )}
 
-      {isAssetsTab && (
+      {isInventoryTab && (
         <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden p-6 md:p-8">
           <AssetList />
         </div>
