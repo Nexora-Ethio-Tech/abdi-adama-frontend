@@ -295,9 +295,9 @@ export const TeacherPortal = () => {
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400">{plan.time_duration || plan.timeDuration}</td>
                         <td className="px-4 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                              plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
-                                plan.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
-                                  'bg-amber-100 text-amber-600'
+                            plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
+                              plan.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
+                                'bg-amber-100 text-amber-600'
                             }`}>{plan.status}</span>
                         </td>
                         <td className="px-4 py-4">
@@ -389,8 +389,8 @@ export const TeacherPortal = () => {
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[150px] truncate" title={plan.objectives}>{plan.objectives}</td>
                         <td className="px-4 py-4">
                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                              plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
-                                'bg-amber-100 text-amber-600'
+                            plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
+                              'bg-amber-100 text-amber-600'
                             }`}>{plan.status}</span>
                         </td>
                         {/* Star Rating */}

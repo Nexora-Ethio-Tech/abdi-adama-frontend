@@ -691,8 +691,8 @@ export const AuditorDashboard = () => {
                           type="button"
                           onClick={() => setTransactionPage(pg)}
                           className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${transactionPage === pg
-                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
                             }`}
                         >
                           {pg}
@@ -828,8 +828,8 @@ export const AuditorDashboard = () => {
                           type="button"
                           onClick={() => setReductionPage(pg)}
                           className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${reductionPage === pg
-                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
                             }`}
                         >
                           {pg}
