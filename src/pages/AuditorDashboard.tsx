@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import {
   Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ArrowUpRight, Eye, FileText,
-  TrendingUp
+  TrendingUp, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -17,6 +17,7 @@ import {
   ethiopianToGregorianIso,
   formatEthiopianLabel
 } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
 export const AuditorDashboard = () => {
   const _user = useUser();
@@ -35,6 +36,17 @@ export const AuditorDashboard = () => {
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
   const [financialReport, setFinancialReport] = useState<FinancialReport | null>(null);
+
+  // Pagination states
+  const [transactionPage, setTransactionPage] = useState(1);
+  const [reductionPage, setReductionPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Reset pagination when active tab or filters change
+  useEffect(() => {
+    setTransactionPage(1);
+    setReductionPage(1);
+  }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth]);
 
   useEffect(() => {
     fetchData();
@@ -199,6 +211,16 @@ export const AuditorDashboard = () => {
     reduction.digital_id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Pagination calculation for Transactions
+  const totalTransactionPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const startTransactionIndex = (transactionPage - 1) * itemsPerPage;
+  const paginatedPayments = filteredPayments.slice(startTransactionIndex, startTransactionIndex + itemsPerPage);
+
+  // Pagination calculation for Fee Reductions
+  const totalReductionPages = Math.ceil(filteredFeeReductions.length / itemsPerPage);
+  const startReductionIndex = (reductionPage - 1) * itemsPerPage;
+  const paginatedFeeReductions = filteredFeeReductions.slice(startReductionIndex, startReductionIndex + itemsPerPage);
+
   if (loading && !dashboard) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -277,14 +299,17 @@ export const AuditorDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Pending Approvals</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.pendingFeeReductions || 0}</p>
-              <p className="text-slate-500 text-xs font-bold mt-1">Fee Reductions</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.pendingApprovals ?? 0}</p>
+              <p className="text-slate-500 text-xs font-bold mt-1">
+                {dashboard?.pendingLoans ?? 0} Loan{(dashboard?.pendingLoans ?? 0) !== 1 ? 's' : ''} &bull; {dashboard?.pendingFeeReductions ?? 0} Fee Reduction{(dashboard?.pendingFeeReductions ?? 0) !== 1 ? 's' : ''}
+              </p>
             </div>
             <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-2xl">
               <Clock className="w-8 h-8" />
             </div>
           </div>
         </div>
+
 
         <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
@@ -353,28 +378,22 @@ export const AuditorDashboard = () => {
         {activeTab === 'transactions' && (
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/20">
             <div className="flex flex-wrap items-end gap-4">
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 w-48">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Start Date (Ethiopian)
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2018-01-01"
+                <EthiopianDatePicker
                   value={transactionStartEth}
-                  onChange={(e) => setTransactionStartEth(e.target.value)}
-                  className="w-48 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                  onChange={setTransactionStartEth}
                 />
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 w-48">
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   End Date (Ethiopian)
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 2018-01-30"
+                <EthiopianDatePicker
                   value={transactionEndEth}
-                  onChange={(e) => setTransactionEndEth(e.target.value)}
-                  className="w-48 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                  onChange={setTransactionEndEth}
                 />
               </div>
               <div className="flex items-center gap-2 pb-0.5">
@@ -397,134 +416,255 @@ export const AuditorDashboard = () => {
 
         <div className="p-0 overflow-x-auto">
           {activeTab === 'transactions' ? (
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Student</th>
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Amount</th>
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Type</th>
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Verified By</th>
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Date</th>
-                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em] text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                    <td className="px-8 py-8">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold text-lg">
-                          {payment.student_name[0]}
+            <div>
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Student</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Amount</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Verified By</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {paginatedPayments.map((payment) => (
+                    <tr key={payment.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/15 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm">
+                            {payment.student_name[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{payment.student_name}</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">ID: {payment.student_id.slice(0, 8)}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-extrabold text-sm">
+                          <ArrowUpRight size={14} className="stroke-[2.5]" />
+                          {payment.amount.toLocaleString()} ETB
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-100/50 dark:border-blue-900/30">
+                          {payment.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-350">{payment.verified_by}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(payment.date)}</p>
+                        <div className="flex gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-slate-400">{new Date(payment.date).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-slate-400/80">&bull;</span>
+                          <span className="text-[10px] text-slate-400">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5 text-right">
+                        <button title="View payment details" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-all">
+                          <Eye size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredPayments.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <Wallet className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No payments found.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Payments Pagination Footer */}
+              {filteredPayments.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-950/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <p className="text-xs font-semibold text-slate-400">
+                    Showing {startTransactionIndex + 1} to {Math.min(filteredPayments.length, startTransactionIndex + itemsPerPage)} of {filteredPayments.length} transactions
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={transactionPage === 1}
+                      onClick={() => setTransactionPage(transactionPage - 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronLeftIcon size={14} />
+                    </button>
+                    
+                    {Array.from({ length: totalTransactionPages }, (_, i) => i + 1).map((pg) => {
+                      if (totalTransactionPages > 5 && Math.abs(transactionPage - pg) > 1 && pg !== 1 && pg !== totalTransactionPages) {
+                        if (pg === 2 || pg === totalTransactionPages - 1) {
+                          return <span key={pg} className="px-1 text-slate-400 text-xs font-bold">...</span>;
+                        }
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={pg}
+                          type="button"
+                          onClick={() => setTransactionPage(pg)}
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                            transactionPage === pg
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      disabled={transactionPage === totalTransactionPages || totalTransactionPages === 0}
+                      onClick={() => setTransactionPage(transactionPage + 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 dark:divide-slate-850">
+                {paginatedFeeReductions.map((reduction) => {
+                  const totalDue = reduction.monthly_fee + reduction.bus_fee + reduction.penalty_fee;
+                  return (
+                    <div key={reduction.id} className="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/15 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform">
+                          <Users size={24} />
                         </div>
                         <div>
-                          <p className="text-base font-bold text-slate-800 dark:text-slate-100">{payment.student_name}</p>
-                          <p className="text-sm text-slate-500 font-bold">ID: {payment.student_id.slice(0, 8)}</p>
+                          <div className="flex items-center gap-2.5">
+                            <h4 className="text-sm font-bold text-slate-800 dark:text-white">{reduction.name}</h4>
+                            <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                              Grade {reduction.grade}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-450 dark:text-slate-400 mt-1 font-medium">{reduction.digital_id} • {reduction.email}</p>
+                          {reduction.fee_notes && (
+                            <p className="text-xs text-slate-600 dark:text-slate-350 mt-1.5 italic bg-slate-55/60 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
+                              "{reduction.fee_notes}"
+                            </p>
+                          )}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-8 py-8">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-lg">
-                        <ArrowUpRight size={20} />
-                        {payment.amount.toLocaleString()} ETB
-                      </div>
-                    </td>
-                    <td className="px-8 py-8">
-                      <span className="px-3 py-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-base font-black uppercase tracking-wide border border-blue-100 dark:border-blue-800/50">
-                        {payment.type}
-                      </span>
-                    </td>
-                    <td className="px-8 py-8">
-                      <p className="text-base font-bold text-slate-600 dark:text-slate-300">{payment.verified_by}</p>
-                    </td>
-                    <td className="px-8 py-8">
-                      <p className="text-base font-bold text-slate-600 dark:text-slate-300">{formatEthiopianLabel(payment.date)}</p>
-                      <p className="text-sm text-slate-500">{new Date(payment.date).toLocaleDateString()}</p>
-                      <p className="text-sm text-slate-500">{new Date(payment.created_at).toLocaleTimeString()}</p>
-                    </td>
-                    <td className="px-8 py-8 text-right">
-                      <button title="View payment details" className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
-                        <Eye size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="grid grid-cols-1 gap-0 divide-y divide-slate-100 dark:divide-slate-800">
-              {filteredFeeReductions.map((reduction) => {
-                const totalDue = reduction.monthly_fee + reduction.bus_fee + reduction.penalty_fee;
-                return (
-                  <div key={reduction.id} className="p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                    <div className="flex items-center gap-6">
-                      <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center text-purple-700 dark:text-purple-400 group-hover:scale-110 transition-transform">
-                        <Users size={32} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-lg font-black text-slate-800 dark:text-white">{reduction.name}</h4>
-                          <span className="px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Grade {reduction.grade}
+
+                      <div className="flex flex-wrap items-center gap-6">
+                        <div className="text-left lg:text-right">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fee Breakdown</p>
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Monthly: {reduction.monthly_fee.toLocaleString()} ETB</p>
+                            <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Bus: {reduction.bus_fee.toLocaleString()} ETB</p>
+                            {reduction.penalty_fee > 0 && (
+                              <p className="text-[11px] font-bold text-red-500">Penalty: {reduction.penalty_fee.toLocaleString()} ETB</p>
+                            )}
+                            <p className="text-sm font-black text-blue-600 dark:text-blue-400 mt-1">Total: {totalDue.toLocaleString()} ETB</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-center">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Approval Status</p>
+                          <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 border ${reduction.fee_approval_status === 'pending' ? 'bg-amber-50/50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 border-amber-100/50 dark:border-amber-900/30' :
+                            reduction.fee_approval_status === 'approved' ? 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border-emerald-100/50 dark:border-emerald-900/30' :
+                              'bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border-rose-100/50 dark:border-rose-900/30'
+                            }`}>
+                            {reduction.fee_approval_status === 'pending' && <Clock size={10} />}
+                            {reduction.fee_approval_status === 'approved' && <CheckCircle size={10} />}
+                            {reduction.fee_approval_status === 'rejected' && <XCircle size={10} />}
+                            {reduction.fee_approval_status}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">{reduction.digital_id} • {reduction.email}</p>
-                        {reduction.fee_notes && (
-                          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 italic">"{reduction.fee_notes}"</p>
+
+                        {reduction.fee_approval_status === 'pending' && (
+                          <div className="flex items-center gap-2.5 ml-2">
+                            <button
+                              type="button"
+                              title="Reject fee reduction request"
+                              onClick={() => handleApprove(reduction.id, 'Rejected')}
+                              className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl border border-rose-100 dark:border-rose-900/30 transition-all"
+                            >
+                              <XCircle size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApprove(reduction.id, 'Approved')}
+                              className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/10"
+                            >
+                              Approve
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap items-center gap-8">
-                      <div className="text-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Fee Breakdown</p>
-                        <div className="space-y-1">
-                          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Monthly: {reduction.monthly_fee.toLocaleString()} ETB</p>
-                          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Bus: {reduction.bus_fee.toLocaleString()} ETB</p>
-                          {reduction.penalty_fee > 0 && (
-                            <p className="text-sm font-bold text-red-600">Penalty: {reduction.penalty_fee.toLocaleString()} ETB</p>
-                          )}
-                          <p className="text-lg font-black text-blue-600 dark:text-blue-400 mt-2">Total: {totalDue.toLocaleString()} ETB</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-center">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Approval Status</p>
-                        <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${reduction.fee_approval_status === 'pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                          reduction.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
-                            'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-                          }`}>
-                          {reduction.fee_approval_status === 'pending' && <Clock size={12} />}
-                          {reduction.fee_approval_status === 'approved' && <CheckCircle size={12} />}
-                          {reduction.fee_approval_status === 'rejected' && <XCircle size={12} />}
-                          {reduction.fee_approval_status}
-                        </span>
-                      </div>
-
-                      {reduction.fee_approval_status === 'pending' && (
-                        <div className="flex items-center gap-3 ml-4">
-                          <button
-                            title="Reject fee reduction request"
-                            onClick={() => handleApprove(reduction.id, 'Rejected')}
-                            className="p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/30 transition-all"
-                          >
-                            <XCircle size={24} />
-                          </button>
-                          <button
-                            onClick={() => handleApprove(reduction.id, 'Approved')}
-                            className="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-base uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                  );
+                })}
+                {filteredFeeReductions.length === 0 && (
+                  <div className="p-12 text-center">
+                    <Users className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                    <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No fee reductions found.</p>
                   </div>
-                );
-              })}
-              {filteredFeeReductions.length === 0 && (
-                <div className="p-12 text-center">
-                  <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600 dark:text-slate-400 font-medium">No fee reductions found.</p>
+                )}
+              </div>
+
+              {/* Fee Reductions Pagination Footer */}
+              {filteredFeeReductions.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-950/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <p className="text-xs font-semibold text-slate-400">
+                    Showing {startReductionIndex + 1} to {Math.min(filteredFeeReductions.length, startReductionIndex + itemsPerPage)} of {filteredFeeReductions.length} reductions
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={reductionPage === 1}
+                      onClick={() => setReductionPage(reductionPage - 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronLeftIcon size={14} />
+                    </button>
+                    
+                    {Array.from({ length: totalReductionPages }, (_, i) => i + 1).map((pg) => {
+                      if (totalReductionPages > 5 && Math.abs(reductionPage - pg) > 1 && pg !== 1 && pg !== totalReductionPages) {
+                        if (pg === 2 || pg === totalReductionPages - 1) {
+                          return <span key={pg} className="px-1 text-slate-400 text-xs font-bold">...</span>;
+                        }
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={pg}
+                          type="button"
+                          onClick={() => setReductionPage(pg)}
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${
+                            reductionPage === pg
+                              ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {pg}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      disabled={reductionPage === totalReductionPages || totalReductionPages === 0}
+                      onClick={() => setReductionPage(reductionPage + 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -563,23 +703,17 @@ export const AuditorDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ethiopian Start Date *</label>
-                  <input
-                    type="text"
-                    placeholder="2018-01-01"
+                  <EthiopianDatePicker
                     value={reportStartDate}
-                    onChange={(e) => setReportStartDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    onChange={setReportStartDate}
                   />
                   <p className="text-xs text-slate-500 mt-2">Use Ethiopian date format: YYYY-MM-DD</p>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Ethiopian End Date *</label>
-                  <input
-                    type="text"
-                    placeholder="2018-01-30"
+                  <EthiopianDatePicker
                     value={reportEndDate}
-                    onChange={(e) => setReportEndDate(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    onChange={setReportEndDate}
                   />
                   <p className="text-xs text-slate-500 mt-2">Use Ethiopian date format: YYYY-MM-DD</p>
                 </div>
