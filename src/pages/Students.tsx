@@ -38,25 +38,25 @@ export const Students = () => {
   const handlePhoneInput = (value: string) => {
     // Remove any non-digit characters
     let phoneDigits = value.replace(/[^\d]/g, '');
-    
+
     // If empty, set to just +251
     if (!phoneDigits) {
       setEditFormData({ ...editFormData, parentPhone: '+251' });
       return;
     }
-    
+
     // Validate: must start with 9 or 7
     if (!/^[97]/.test(phoneDigits)) {
       // If it doesn't start with 9 or 7, clear it
       setEditFormData({ ...editFormData, parentPhone: '+251' });
       return;
     }
-    
+
     // Limit to 9 digits total
     if (phoneDigits.length > 9) {
       phoneDigits = phoneDigits.substring(0, 9);
     }
-    
+
     // Combine with country code
     const fullPhone = '+251' + phoneDigits;
     setEditFormData({ ...editFormData, parentPhone: fullPhone });
@@ -74,12 +74,12 @@ export const Students = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Use the new /school-admin/students endpoint that includes class info
-      const response = await studentService.getAllStudents({ 
-        status: filterStatus || undefined 
+      const response = await studentService.getAllStudents({
+        status: filterStatus || undefined
       });
-      
+
       const data = response || [];
       const transformed = data.map((s: any) => ({
         id: s.student_id || s.id,
@@ -94,7 +94,7 @@ export const Students = () => {
         section: s.class_section || s.section,
         status: s.status,
       }));
-      
+
       setStudents(transformed);
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Failed to fetch students');
@@ -260,7 +260,7 @@ export const Students = () => {
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'students'
                   ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Students
               </button>
@@ -269,7 +269,7 @@ export const Students = () => {
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'registration'
                   ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                }`}
+                  }`}
               >
                 Pending Applications
               </button>
@@ -305,30 +305,33 @@ export const Students = () => {
           />
         </div>
         <select
-              value={filterGrade}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFilterGrade(val);
-                if (!val) setFilterSection('');
-              }}
+          aria-label="Filter by grade"
+          value={filterGrade}
+          onChange={(e) => {
+            const val = e.target.value;
+            setFilterGrade(val);
+            if (!val) setFilterSection('');
+          }}
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
-          {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
             <option key={g} value={String(g)}>Grade {g}</option>
           ))}
         </select>
         <select
+          aria-label="Filter by section"
           value={filterSection}
           onChange={(e) => setFilterSection(e.target.value)}
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Sections</option>
-          {['A','B','C','D','E','F'].map(s => (
+          {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
             <option key={s} value={s}>Section {s}</option>
           ))}
         </select>
         <select
+          aria-label="Filter by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -402,12 +405,11 @@ export const Students = () => {
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{student.className || 'Unassigned'}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                            student.status === 'Active' ? 'bg-green-100 text-green-700' :
-                            student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
-                            student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
-                            'bg-blue-100 text-blue-700'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${student.status === 'Active' ? 'bg-green-100 text-green-700' :
+                              student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
+                                student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
+                                  'bg-blue-100 text-blue-700'
+                            }`}>
                             {student.status}
                           </span>
                         </td>
@@ -421,8 +423,11 @@ export const Students = () => {
                               <Users size={16} />
                             </button>
                             <button
+                              type="button"
                               onClick={() => openEditModal(student)}
                               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 rounded-lg transition-colors"
+                              title="Edit student"
+                              aria-label="Edit student"
                             >
                               <Edit2 size={16} />
                             </button>
@@ -445,8 +450,11 @@ export const Students = () => {
                               </button>
                             )}
                             <button
+                              type="button"
                               onClick={() => setConfirmDelete({ show: true, student })}
                               className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 rounded-lg transition-colors"
+                              title="Delete student"
+                              aria-label="Delete student"
                             >
                               <Trash2 size={16} />
                             </button>
@@ -472,12 +480,19 @@ export const Students = () => {
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Edit2 size={20} /></div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Student</h3>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close edit student modal"
+                aria-label="Close edit student modal"
+              ><X size={20} /></button>
             </div>
             <form onSubmit={handleEdit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Full Name</label>
+                <label htmlFor="edit-full-name" className="text-xs font-bold text-slate-500 uppercase">Full Name</label>
                 <input
+                  id="edit-full-name"
                   type="text"
                   value={editFormData.name || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
@@ -506,23 +521,25 @@ export const Students = () => {
                 )}
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
+                <label htmlFor="edit-grade" className="text-xs font-bold text-slate-500 uppercase">Grade</label>
                 <select
+                  id="edit-grade"
                   value={editFormData.grade || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, grade: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Grade</option>
-                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(g => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
                     <option key={g} value={String(g)}>Grade {g}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Parent Phone Number</label>
+                <label htmlFor="edit-parent-phone" className="text-xs font-bold text-slate-500 uppercase">Parent Phone Number</label>
                 <div className="flex gap-2 mt-1">
                   <div className="flex items-center px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-slate-600 dark:text-slate-400 min-w-fit">+251</div>
                   <input
+                    id="edit-parent-phone"
                     type="text"
                     placeholder="912345678"
                     maxLength={9}
@@ -562,7 +579,13 @@ export const Students = () => {
                   <p className="text-xs text-slate-500">{selectedStudent.firstName} {selectedStudent.lastName}</p>
                 </div>
               </div>
-              <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close assign class modal"
+                aria-label="Close assign class modal"
+              ><X size={20} /></button>
             </div>
             <div className="p-6 space-y-2 max-h-72 overflow-y-auto">
               {classes.length === 0 ? (
@@ -608,9 +631,8 @@ export const Students = () => {
               </button>
               <button
                 onClick={handleStatusAction}
-                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${
-                  confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
-                } disabled:opacity-50`}
+                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
+                  } disabled:opacity-50`}
                 disabled={processing}
               >
                 {processing ? 'Processing...' : confirmAction.action === 'approve' ? 'Approve' : 'Revoke'}
@@ -653,18 +675,16 @@ export const Students = () => {
       {/* Toast */}
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
-            toast.type === 'success'
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success'
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
               : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-          }`}>
+            }`}>
             {toast.type === 'success'
               ? <CheckCircle2 className="text-green-600" size={20} />
               : <XCircle className="text-red-600" size={20} />
             }
-            <p className={`text-sm font-bold ${
-              toast.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-            }`}>
+            <p className={`text-sm font-bold ${toast.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+              }`}>
               {toast.message}
             </p>
           </div>

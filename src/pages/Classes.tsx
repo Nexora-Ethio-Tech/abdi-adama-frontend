@@ -58,7 +58,7 @@ export const Classes = () => {
             teachers = [];
           }
         }
-        
+
         return {
           id: cls.id,
           name: cls.name,
@@ -281,12 +281,16 @@ export const Classes = () => {
                     Assign
                   </button>
                   <button
+                    type="button"
+                    title="Edit class"
                     onClick={() => openEditModal(classItem)}
                     className="px-3 py-2 bg-slate-600 text-white rounded-lg text-xs font-bold hover:bg-slate-700"
                   >
                     <Edit2 size={14} />
                   </button>
                   <button
+                    type="button"
+                    title="Delete class"
                     onClick={() => setConfirmDelete({ show: true, classId: classItem.id })}
                     className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700"
                   >
@@ -310,7 +314,7 @@ export const Classes = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Create New Class</h3>
               </div>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" title="Close create class modal" onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -386,7 +390,7 @@ export const Classes = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Class</h3>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" title="Close edit class modal" onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -396,6 +400,7 @@ export const Classes = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Class Name</label>
                 <input
                   type="text"
+                  title="Class name"
                   value={editForm.name || ''}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -406,6 +411,7 @@ export const Classes = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Section</label>
                 <input
                   type="text"
+                  title="Class section"
                   value={editForm.section || ''}
                   onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -416,6 +422,7 @@ export const Classes = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Capacity</label>
                 <input
                   type="number"
+                  title="Class capacity"
                   value={editForm.capacity || ''}
                   onChange={(e) => setEditForm({ ...editForm, capacity: parseInt(e.target.value) })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -456,7 +463,7 @@ export const Classes = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Assign Teacher</h3>
               </div>
-              <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" title="Close assign teacher modal" onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -465,6 +472,7 @@ export const Classes = () => {
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Select Teacher</label>
                 <select
+                  title="Select a teacher to assign"
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -504,8 +512,8 @@ export const Classes = () => {
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
             }`}>
             {toast.type === 'success' ? (
               <CheckCircle2 className="text-green-600" size={20} />

@@ -302,19 +302,18 @@ export const AuditorDashboard = () => {
 
       {/* Main Content Tabs */}
       <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
-        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6 bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="flex p-1.5 bg-slate-200/50 dark:bg-slate-800/50 rounded-[1.5rem] w-full md:w-fit">
+        {/* Row 1: Tab switcher + search/filter */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-fit">
             <button
               onClick={() => setActiveTab('transactions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
-                }`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Transactions ({payments.length})
             </button>
             <button
               onClick={() => setActiveTab('fee-reductions')}
-              className={`flex-1 md:flex-none px-8 py-3 rounded-[1.2rem] text-sm font-black uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'
-                }`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Fee Reductions ({feeReductions.length})
             </button>
@@ -323,12 +322,13 @@ export const AuditorDashboard = () => {
           <div className="flex items-center gap-3 w-full md:w-auto">
             {activeTab === 'fee-reductions' && (
               <select
+                title="Filter fee reductions by approval status"
                 value={feeReductionFilter}
                 onChange={(e) => {
                   setFeeReductionFilter(e.target.value as any);
                   fetchData();
                 }}
-                className="px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               >
                 <option value="">All Status</option>
                 <option value="pending">Pending</option>
@@ -336,109 +336,114 @@ export const AuditorDashboard = () => {
                 <option value="rejected">Rejected</option>
               </select>
             )}
-            <div className="relative flex-1 md:flex-none md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <div className="relative flex-1 md:w-80">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
                 placeholder="Search by student or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
           </div>
+        </div>
 
-          {activeTab === 'transactions' && (
-            <div className="mt-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-3">
-                  <label className="block text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide">Start Date (Ethiopian)</label>
-                  <input
-                    type="text"
-                    placeholder="2018-01-01"
-                    value={transactionStartEth}
-                    onChange={(e) => setTransactionStartEth(e.target.value)}
-                    className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <label className="block text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide">End Date (Ethiopian)</label>
-                  <input
-                    type="text"
-                    placeholder="2018-01-30"
-                    value={transactionEndEth}
-                    onChange={(e) => setTransactionEndEth(e.target.value)}
-                    className="w-full px-5 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  />
-                </div>
-                <div className="flex flex-col items-stretch gap-3 justify-end">
-                  <button
-                    onClick={handleApplyTransactionFilter}
-                    className="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-                  >
-                    Apply Filter
-                  </button>
-                  <button
-                    onClick={handleClearTransactionFilter}
-                    className="px-6 py-3 rounded-xl font-black text-sm uppercase tracking-wide border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-                  >
-                    Clear
-                  </button>
-                </div>
+        {/* Row 2: Date filter — separate row, only shown for Transactions */}
+        {activeTab === 'transactions' && (
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/20">
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Start Date (Ethiopian)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2018-01-01"
+                  value={transactionStartEth}
+                  onChange={(e) => setTransactionStartEth(e.target.value)}
+                  className="w-48 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  End Date (Ethiopian)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2018-01-30"
+                  value={transactionEndEth}
+                  onChange={(e) => setTransactionEndEth(e.target.value)}
+                  className="w-48 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-sm font-medium focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all placeholder:text-slate-400"
+                />
+              </div>
+              <div className="flex items-center gap-2 pb-0.5">
+                <button
+                  onClick={handleApplyTransactionFilter}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/25 uppercase tracking-wide"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={handleClearTransactionFilter}
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all uppercase tracking-wide"
+                >
+                  Clear
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="p-0 overflow-x-auto">
           {activeTab === 'transactions' ? (
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Student</th>
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Amount</th>
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Type</th>
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Verified By</th>
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em]">Date</th>
-                  <th className="px-8 py-6 text-sm font-black text-slate-400 uppercase tracking-[0.18em] text-right">Actions</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Student</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Amount</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Type</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Verified By</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em]">Date</th>
+                  <th className="px-8 py-8 text-base font-black text-slate-600 dark:text-slate-300 uppercase tracking-[0.18em] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                    <td className="px-8 py-6">
+                    <td className="px-8 py-8">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold">
+                        <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold text-lg">
                           {payment.student_name[0]}
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{payment.student_name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold">ID: {payment.student_id.slice(0, 8)}</p>
+                          <p className="text-base font-bold text-slate-800 dark:text-slate-100">{payment.student_name}</p>
+                          <p className="text-sm text-slate-500 font-bold">ID: {payment.student_id.slice(0, 8)}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-base">
-                        <ArrowUpRight size={16} />
+                    <td className="px-8 py-8">
+                      <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-black text-lg">
+                        <ArrowUpRight size={20} />
                         {payment.amount.toLocaleString()} ETB
                       </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-black uppercase tracking-wide border border-blue-100 dark:border-blue-800/50">
+                    <td className="px-8 py-8">
+                      <span className="px-3 py-2 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-base font-black uppercase tracking-wide border border-blue-100 dark:border-blue-800/50">
                         {payment.type}
                       </span>
                     </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{payment.verified_by}</p>
+                    <td className="px-8 py-8">
+                      <p className="text-base font-bold text-slate-600 dark:text-slate-300">{payment.verified_by}</p>
                     </td>
-                    <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-slate-600 dark:text-slate-300">{formatEthiopianLabel(payment.date)}</p>
-                      <p className="text-sm text-slate-400">{new Date(payment.date).toLocaleDateString()}</p>
-                      <p className="text-sm text-slate-400">{new Date(payment.created_at).toLocaleTimeString()}</p>
+                    <td className="px-8 py-8">
+                      <p className="text-base font-bold text-slate-600 dark:text-slate-300">{formatEthiopianLabel(payment.date)}</p>
+                      <p className="text-sm text-slate-500">{new Date(payment.date).toLocaleDateString()}</p>
+                      <p className="text-sm text-slate-500">{new Date(payment.created_at).toLocaleTimeString()}</p>
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
-                        <Eye size={18} />
+                    <td className="px-8 py-8 text-right">
+                      <button title="View payment details" className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all">
+                        <Eye size={20} />
                       </button>
                     </td>
                   </tr>
@@ -485,8 +490,8 @@ export const AuditorDashboard = () => {
                       <div className="flex flex-col items-center">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Approval Status</p>
                         <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border ${reduction.fee_approval_status === 'pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                            reduction.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
-                              'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
+                          reduction.fee_approval_status === 'approved' ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50' :
+                            'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
                           }`}>
                           {reduction.fee_approval_status === 'pending' && <Clock size={12} />}
                           {reduction.fee_approval_status === 'approved' && <CheckCircle size={12} />}
@@ -498,6 +503,7 @@ export const AuditorDashboard = () => {
                       {reduction.fee_approval_status === 'pending' && (
                         <div className="flex items-center gap-3 ml-4">
                           <button
+                            title="Reject fee reduction request"
                             onClick={() => handleApprove(reduction.id, 'Rejected')}
                             className="p-3 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-900/30 transition-all"
                           >
@@ -505,7 +511,7 @@ export const AuditorDashboard = () => {
                           </button>
                           <button
                             onClick={() => handleApprove(reduction.id, 'Approved')}
-                            className="bg-emerald-600 text-white px-5 py-2 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+                            className="bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-base uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
                           >
                             Approve
                           </button>
@@ -549,7 +555,7 @@ export const AuditorDashboard = () => {
                 <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Financial Report</h2>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Generate detailed financial report for date range</p>
               </div>
-              <button onClick={() => setShowReportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
+              <button title="Close report modal" onClick={() => setShowReportModal(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all">
                 <XCircle className="w-5 h-5 text-slate-500" />
               </button>
             </div>
