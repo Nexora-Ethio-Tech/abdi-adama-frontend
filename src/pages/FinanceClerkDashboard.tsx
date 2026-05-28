@@ -268,9 +268,43 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setShowTransportModal(true);
   };
 
+  // Convert Gregorian date to Julian Day Number (integer)
+  const gregorianToJDN = (d: Date) => {
+    const day = d.getDate();
+    const month = d.getMonth() + 1;
+    const year = d.getFullYear();
+    const a = Math.floor((14 - month) / 12);
+    const y = year + 4800 - a;
+    const m = month + 12 * a - 3;
+    const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+    return jdn;
+  };
+
+  // Convert Julian Day Number to Ethiopian date (year, month, day)
+  const jdnToEthiopian = (jdn: number) => {
+    const r = jdn - 1723856; // Ethiopian epoch offset used here
+    const ethYear = Math.floor((4 * r + 3) / 1461);
+    const rem = r - 365 * ethYear - Math.floor(ethYear / 4);
+    const ethMonth = Math.floor(rem / 30) + 1;
+    const ethDay = (rem % 30) + 1;
+    return { year: ethYear, month: ethMonth, day: ethDay };
+  };
+
+  const getEthiopianDate = (d: Date) => {
+    const jdn = gregorianToJDN(d);
+    return jdnToEthiopian(jdn);
+  };
+
+  // Open stop modal and auto-fill days used using Ethiopian calendar day-of-month
   const openStopTransportModal = (student: TransportStudentInfo) => {
     setStopTransportStudent(student);
-    setStopDaysUsed(0);
+    try {
+      const eth = getEthiopianDate(new Date());
+      setStopDaysUsed(Number(eth.day));
+    } catch (e) {
+      // Fallback to 0 if conversion fails
+      setStopDaysUsed(0);
+    }
     setShowStopTransportModal(true);
   };
 
@@ -861,10 +895,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         </button>
                         {student.route_id && (
                           <button
-                            onClick={() => { if (!overdueStudents.find(s => s.id === student.id)) openStopTransportModal(student); }}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${overdueStudents.find(s => s.id === student.id) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700 text-white'}`}
-                            disabled={!!overdueStudents.find(s => s.id === student.id)}
-                            title={overdueStudents.find(s => s.id === student.id) ? 'Student has overdue payments — settle before stopping transport' : 'Stop transport and record settlement'}
+                            onClick={() => openStopTransportModal(student)}
+                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all"
+                            title="Stop transport and record settlement"
                           >
                             Stop Transport
                           </button>
@@ -1787,15 +1820,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Current Transport Fee: <span className="font-bold text-slate-900 dark:text-white">{Number(stopTransportStudent.bus_fee || 0).toLocaleString()} ETB</span></p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Days Used This Month *</label>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Days Used This Month (auto-calculated from Ethiopian calendar)</label>
                 <input
                   type="number"
-                  required
+                  disabled
                   min="0"
                   max="30"
                   value={stopDaysUsed}
-                  onChange={(e) => setStopDaysUsed(Number(e.target.value))}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium outline-none cursor-not-allowed"
                 />
               </div>
               <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 space-y-3">
@@ -1814,8 +1846,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     <span>{Math.max(0, 30 - stopDaysUsed)} / 30</span>
                   </div>
                   <div className="border-t border-current pt-2 flex justify-between font-bold text-base">
-                    <span>Refund/Credit Due:</span>
-                    <span>{Number((Math.max(0, (30 - stopDaysUsed)) * Number(stopTransportStudent.bus_fee || 0)) / 30).toLocaleString()} ETB</span>
+                    <span>Amount Due (for days used):</span>
+                    <span>{Number((Math.max(0, stopDaysUsed) * Number(stopTransportStudent.bus_fee || 0)) / 30).toLocaleString()} ETB</span>
                   </div>
                 </div>
               </div>
@@ -1830,7 +1862,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <button
                   type="submit"
                   className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl hover:bg-rose-700 font-bold transition-all shadow-lg shadow-rose-500/20"
-                  disabled={!!(stopTransportStudent && overdueStudents.find(s => s.id === stopTransportStudent.id))}
                 >
                   Stop & Record Settlement
                 </button>
