@@ -130,12 +130,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     try {
       setLoading(true);
       setError(null);
-      const [dashboardData, studentsData, overdueData, staffData, settingsData] = await Promise.all([
+      const [dashboardData, studentsData, overdueData, staffData] = await Promise.all([
         financeClerkService.getDashboard(),
         financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined }),
         financeClerkService.getOverduePayments(),
-        payrollService.getAllProfiles().catch(() => []),
-        payrollService.getFinanceSettings().catch(() => [])
+        payrollService.getAllProfiles().catch(() => [])
       ]);
       const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
@@ -146,7 +145,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setStudents(studentsData);
       setOverdueStudents(overdueData);
       setStaffProfiles(staffData);
-      setFinanceSettings(settingsData);
       setTransportStudents(transportStudentsData);
       setTransportDrivers(transportDriversData);
       setTransportPolicies(transportPoliciesData);
@@ -222,7 +220,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const openTransportModal = (student: TransportStudentInfo) => {
-    const policy = transportPolicies.find((item) => item.grade_level === student.grade) || transportPolicies.find((item) => !item.grade_level) || null;
+    const policy = transportPolicies.find((item) => item.grade_level === student.grade)
+      || transportPolicies.find((item) => !item.grade_level)
+      || transportPolicies[0]
+      || null;
     const driverId = student.driver_id || transportDrivers[0]?.id || '';
     setTransportStudent(student);
     setTransportData({
@@ -394,12 +395,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
+    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredOverdueStudents = overdueStudents.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase())
+    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const displayedStudents = activeTab === 'all' ? filteredStudents : filteredOverdueStudents;
@@ -815,8 +818,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         </button>
                         {student.route_id && (
                           <button
-                            onClick={() => openStopTransportModal(student)}
-                            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all"
+                            onClick={() => { if (!overdueStudents.find(s => s.id === student.id)) openStopTransportModal(student); }}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${overdueStudents.find(s => s.id === student.id) ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700 text-white'}`}
+                            disabled={!!overdueStudents.find(s => s.id === student.id)}
+                            title={overdueStudents.find(s => s.id === student.id) ? 'Student has overdue payments — settle before stopping transport' : 'Stop transport and record settlement'}
                           >
                             Stop Transport
                           </button>
@@ -868,10 +873,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {activeTab !== 'transport' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className={`p-4 rounded-2xl border flex items-center justify-between ${daysToStudentDeadline < 0
-              ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-              : daysToStudentDeadline <= 3
-                ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-                : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
+            ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+            : daysToStudentDeadline <= 3
+              ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+              : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
             }`}>
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl ${daysToStudentDeadline < 0 ? 'bg-rose-500' : daysToStudentDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
@@ -893,10 +898,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           </div>
 
           <div className={`p-4 rounded-2xl border flex items-center justify-between ${daysToStaffDeadline < 0
-              ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
-              : daysToStaffDeadline <= 3
-                ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
-                : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
+            ? 'bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:border-rose-800 text-rose-800 dark:text-rose-300'
+            : daysToStaffDeadline <= 3
+              ? 'bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800 text-amber-800 dark:text-amber-300'
+              : 'bg-slate-50 border-slate-200 dark:bg-slate-800/30 dark:border-slate-800 text-slate-800 dark:text-slate-300'
             }`}>
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-xl ${daysToStaffDeadline < 0 ? 'bg-rose-500' : daysToStaffDeadline <= 3 ? 'bg-amber-500' : 'bg-slate-500'} text-white`}>
@@ -1566,8 +1571,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       <label
                         key={item.key}
                         className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all cursor-pointer select-none ${checked
-                            ? 'bg-blue-50/50 border-blue-500 text-blue-900 dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-200'
-                            : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
+                          ? 'bg-blue-50/50 border-blue-500 text-blue-900 dark:bg-blue-950/20 dark:border-blue-500 dark:text-blue-200'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'
                           }`}
                       >
                         <input
@@ -1650,7 +1655,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   value={transportData.driverId}
                   onChange={(e) => {
                     const selectedDriverId = e.target.value;
-                    const selectedPolicy = transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null;
+                    const selectedPolicy = transportPolicies.find((item) => item.grade_level === transportStudent.grade)
+                      || transportPolicies.find((item) => !item.grade_level)
+                      || transportPolicies[0]
+                      || null;
                     setTransportData({
                       driverId: selectedDriverId,
                       transportFee: selectedPolicy ? Number(selectedPolicy.bus_fee || 0) : Number(transportStudent.bus_fee || 0),
@@ -1671,11 +1679,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <input
                   type="number"
                   required
-                  min="0"
+                  min="1"
                   step="0.01"
                   value={transportData.transportFee}
-                  readOnly
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                  onChange={(e) => setTransportData({ ...transportData, transportFee: Number(e.target.value) })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -1743,6 +1751,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <button
                   type="submit"
                   className="flex-1 px-6 py-3 bg-rose-600 text-white rounded-xl hover:bg-rose-700 font-bold transition-all shadow-lg shadow-rose-500/20"
+                  disabled={!!(stopTransportStudent && overdueStudents.find(s => s.id === stopTransportStudent.id))}
                 >
                   Stop & Record Settlement
                 </button>

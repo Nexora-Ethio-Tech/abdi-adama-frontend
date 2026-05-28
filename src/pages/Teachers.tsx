@@ -13,7 +13,7 @@ export const Teachers = () => {
   const { role } = useUser();
   const isAdmin = role === 'school-admin' || role === 'super-admin';
   const isVP = role === 'vice-principal';
-  
+
   const [teachers, setTeachers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +52,18 @@ export const Teachers = () => {
       useConfiguredRate: boolean;
       extraPayAmount?: string;
     };
-  }>({ promotionType: 'home-teacher', subjects: [], grades: [], sectionsByGrade: {} });
+  }>({
+    promotionType: 'home-teacher',
+    subjects: [],
+    grades: [],
+    sectionsByGrade: {},
+    beforeSchool: {
+      days: [],
+      startTime: '07:00',
+      endTime: '08:00',
+      useConfiguredRate: false,
+    },
+  });
   const [promoting, setPromoting] = useState(false);
   const [allGrades, setAllGrades] = useState<string[]>([]);
   const [sectionsMap, setSectionsMap] = useState<Record<string, string[]>>({});
@@ -116,10 +127,10 @@ export const Teachers = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Use different endpoint based on role
       const response = isVP ? await getVPTeachers() : await getBranchTeachers();
-      
+
       const teachers = (response.data || []).map((teacher: any) => ({
         id: teacher.id,
         name: teacher.name,
@@ -146,11 +157,11 @@ export const Teachers = () => {
 
   const handleAction = async () => {
     if (!confirmAction.teacher) return;
-    
+
     setProcessing(true);
     try {
       const userId = confirmAction.teacher.userId;
-      
+
       if (confirmAction.action === 'approve') {
         await approveTeacher(userId);
       } else if (confirmAction.action === 'revoke') {
@@ -158,13 +169,13 @@ export const Teachers = () => {
       } else if (confirmAction.action === 'delete') {
         await deleteTeacher(userId);
       }
-      
+
       setConfirmAction({ show: false, action: 'approve', teacher: null });
       setActionMenu(null);
       fetchTeachers();
     } catch (err: any) {
       console.error('Action failed:', err);
-      const errorMsg = err.response?.status === 404 
+      const errorMsg = err.response?.status === 404
         ? 'Backend route not implemented yet. Contact backend team to implement: PATCH /school-admin/users/{userId}/status'
         : err.response?.data?.error?.message || 'Action failed';
       alert(errorMsg);
@@ -251,7 +262,7 @@ export const Teachers = () => {
           registeredAt: new Date().toISOString()
         }
       });
-      
+
       // Transform to match expected structure
       const transformedData = {
         user: {
@@ -262,7 +273,7 @@ export const Teachers = () => {
         },
         temporaryPassword: response.data.temporaryPassword
       };
-      
+
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '', role: 'teacher' });
       setSuccessModal({ show: true, data: transformedData });
@@ -300,7 +311,7 @@ export const Teachers = () => {
         </div>
 
         {isAdmin && (
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none"
           >
@@ -344,21 +355,20 @@ export const Teachers = () => {
               teachers.map((teacher) => (
                 <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                   <td className="px-6 py-4">
-                        <button type="button" onClick={() => setSelectedStaff(teacher)} className="flex items-center gap-3 text-left">
+                    <button type="button" onClick={() => setSelectedStaff(teacher)} className="flex items-center gap-3 text-left">
                       <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-xl flex items-center justify-center font-bold">
                         {teacher.name?.split(' ').map((n: string) => n[0]).join('') || 'T'}
                       </div>
                       <span className="font-bold text-slate-800 dark:text-white">{teacher.name}</span>
-                        </button>
+                    </button>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
                   <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                      teacher.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                      teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                        teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
                       {teacher.status}
                     </span>
                   </td>
@@ -785,7 +795,7 @@ export const Teachers = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Days</label>
                     <div className="flex flex-wrap gap-2">
-                      {['Mon','Tue','Wed','Thu','Fri'].map((d) => (
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d) => (
                         <label key={d} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
                           <input
                             type="checkbox"
@@ -1019,11 +1029,10 @@ export const Teachers = () => {
               </button>
               <button
                 onClick={handleAction}
-                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${
-                  confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' :
-                  confirmAction.action === 'revoke' ? 'bg-orange-600 hover:bg-orange-700' :
-                  'bg-red-600 hover:bg-red-700'
-                } disabled:opacity-50`}
+                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' :
+                    confirmAction.action === 'revoke' ? 'bg-orange-600 hover:bg-orange-700' :
+                      'bg-red-600 hover:bg-red-700'
+                  } disabled:opacity-50`}
                 disabled={processing}
               >
                 {processing ? 'Processing...' : confirmAction.action === 'approve' ? 'Approve' : confirmAction.action === 'revoke' ? 'Revoke' : 'Delete'}
