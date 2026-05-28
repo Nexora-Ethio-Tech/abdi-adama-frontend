@@ -9,6 +9,66 @@ import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService from '../services/subjectService';
 import { getVPTeachers } from '../services/vicePrincipalService';
 
+const MultiSelectDropdown = ({
+  options,
+  selectedValues,
+  onChange,
+  placeholder = "Select options",
+  shortDisplay = false
+}: {
+  options: string[];
+  selectedValues: string[];
+  onChange: (value: string, checked: boolean) => void;
+  placeholder?: string;
+  shortDisplay?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-left flex justify-between items-center outline-none focus:ring-2 focus:ring-indigo-500"
+      >
+        <span className="truncate text-slate-700 dark:text-slate-200">
+          {selectedValues.length === 0
+            ? placeholder
+            : shortDisplay
+              ? `${selectedValues.length} selected`
+              : `${selectedValues.join(', ')} (${selectedValues.length} selected)`}
+        </span>
+        <span className="text-slate-400 font-bold ml-2">▼</span>
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20 p-2 space-y-1">
+            {options.map((option) => {
+              const isChecked = selectedValues.includes(option);
+              return (
+                <label
+                  key={option}
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md cursor-pointer text-sm text-slate-800 dark:text-slate-200 select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => onChange(option, e.target.checked)}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                  />
+                  <span>{option}</span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const Teachers = () => {
   const navigate = useNavigate();
   const { role } = useUser();
@@ -93,6 +153,12 @@ export const Teachers = () => {
       const classes = resp.data || resp || [];
       // Expect class.name like 'Grade 10A' or '10A' - try to split
       const map: Record<string, Set<string>> = {};
+      
+      // Prepopulate with all Grade 1 through Grade 12
+      for (let i = 1; i <= 12; i++) {
+        map[`Grade ${i}`] = new Set<string>();
+      }
+
       classes.forEach((c: any) => {
         const name = c.name || c.className || '';
         // Extract grade (letters and numbers) and section (last char(s))
@@ -111,11 +177,30 @@ export const Teachers = () => {
             section = (m2[2] || '').toUpperCase();
           }
         }
+
+        // Normalize gradeKey (e.g. "9" or "Grade9" to "Grade 9")
+        gradeKey = gradeKey.trim();
+        const digitMatch = gradeKey.match(/^(\d+)$/);
+        if (digitMatch) {
+          gradeKey = `Grade ${digitMatch[1]}`;
+        } else {
+          const parts = gradeKey.match(/grade\s*(\d+)/i);
+          if (parts) {
+            gradeKey = `Grade ${parts[1]}`;
+          }
+        }
+
         if (!map[gradeKey]) map[gradeKey] = new Set<string>();
         if (section) map[gradeKey].add(section);
       });
 
-      const grades = Object.keys(map);
+      // Sort grades numerically: Grade 1, Grade 2, ..., Grade 12
+      const grades = Object.keys(map).sort((a, b) => {
+        const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
+        return numA - numB;
+      });
+
       const smap: Record<string, string[]> = {};
       grades.forEach(g => { smap[g] = Array.from(map[g]); });
       setAllGrades(grades);
@@ -668,72 +753,78 @@ export const Teachers = () => {
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Subjects / Courses</label>
+                {(() => {
+                  const subjectNames = Array.from(new Set(allSubjects.map((s: any) => s.name)));
+                  if (!subjectNames || subjectNames.length === 0) return <div className="text-sm text-slate-500">No subjects available</div>;
+                  return (
+                    <>
+                      <MultiSelectDropdown
+                        options={subjectNames}
+                        selectedValues={promotionForm.subjects}
+                        placeholder="Select Subjects / Courses"
+                        shortDisplay={true}
+                        onChange={(subName, checked) => {
+                          setPromotionForm(prev => {
+                            const next = new Set(prev.subjects || []);
+                            if (checked) next.add(subName); else next.delete(subName);
+                            return { ...prev, subjects: Array.from(next) };
+                          });
+                        }}
+                      />
+                      {promotionForm.subjects.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {promotionForm.subjects.map(s => (
+                            <span key={s} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
               {promotionForm.promotionType === 'head-of-department' && (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-600">Select grades this head will oversee, then choose subjects (multi-select dropdown-style).</p>
+                  <p className="text-sm text-slate-600">Select grades this head will oversee (multi-select dropdown-style).</p>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase">Grades</label>
-                    <div className="flex flex-wrap gap-2">
-                      {allGrades.length === 0 ? (
-                        <div className="text-sm text-slate-500">No grades found</div>
-                      ) : allGrades.map((g) => (
-                        <label key={g} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
-                          <input
-                            type="checkbox"
-                            checked={promotionForm.grades.includes(g)}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setPromotionForm(prev => {
-                                const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
-                                // clear subjects if they no longer match selected grades
-                                let nextSubjects = [...prev.subjects];
-                                if (!checked) {
-                                  const allowed = new Set(nextGrades);
-                                  nextSubjects = nextSubjects.filter(sname => {
-                                    const s = allSubjects.find(sub => sub.name === sname);
-                                    return s ? allowed.has(s.gradeLevel) : true;
-                                  });
-                                }
-                                return { ...prev, grades: nextGrades, subjects: nextSubjects };
-                              });
-                            }}
-                          />
-                          <span>{g}</span>
-                        </label>
-                      ))}
-                    </div>
+                    <MultiSelectDropdown
+                      options={allGrades}
+                      selectedValues={promotionForm.grades}
+                      placeholder="Select Grades"
+                      shortDisplay={true}
+                      onChange={(g, checked) => {
+                        setPromotionForm(prev => {
+                          const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
+                          // clear subjects if they no longer match selected grades
+                          let nextSubjects = [...prev.subjects];
+                          if (!checked) {
+                            const allowed = new Set(nextGrades);
+                            nextSubjects = nextSubjects.filter(sname => {
+                              const s = allSubjects.find(sub => sub.name === sname);
+                              return s ? allowed.has(s.gradeLevel) : true;
+                            });
+                          }
+                          return { ...prev, grades: nextGrades, subjects: nextSubjects };
+                        });
+                      }}
+                    />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Subjects</label>
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const filtered = promotionForm.grades.length ? allSubjects.filter(s => promotionForm.grades.includes(s.gradeLevel)) : allSubjects;
-                        if (!filtered || filtered.length === 0) return <div className="text-sm text-slate-500">No subjects available for selected grades</div>;
-                        return filtered.map((s: any) => {
-                          const checked = promotionForm.subjects.includes(s.name);
-                          return (
-                            <label key={s.id} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setPromotionForm(prev => {
-                                    const next = new Set(prev.subjects || []);
-                                    if (checked) next.add(s.name); else next.delete(s.name);
-                                    return { ...prev, subjects: Array.from(next) };
-                                  });
-                                }}
-                              />
-                              <span>{s.name} <small className="text-xs text-slate-400">({s.gradeLevel})</small></span>
-                            </label>
-                          );
-                        });
-                      })()}
+                  {promotionForm.grades.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {promotionForm.grades.map(g => (
+                        <span key={g} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
+                          {g}
+                        </span>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -742,34 +833,35 @@ export const Teachers = () => {
                   <p className="text-sm text-slate-600">Select grades and sections this teacher will be head of (optional, multi-select).</p>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase">Grades</label>
-                    <div className="flex flex-wrap gap-2">
-                      {allGrades.length === 0 ? (
-                        <div className="text-sm text-slate-500">No grades found</div>
-                      ) : allGrades.map((g) => (
-                        <label key={g} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
-                          <input
-                            type="checkbox"
-                            checked={promotionForm.grades.includes(g)}
-                            onChange={(e) => {
-                              const checked = e.target.checked;
-                              setPromotionForm(prev => {
-                                const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
-                                const nextSectionsByGrade = { ...(prev.sectionsByGrade || {}) };
-                                if (!checked) delete nextSectionsByGrade[g];
-                                return { ...prev, grades: nextGrades, sectionsByGrade: nextSectionsByGrade };
-                              });
-                            }}
-                          />
-                          <span>{g}</span>
-                        </label>
+                    <MultiSelectDropdown
+                      options={allGrades}
+                      selectedValues={promotionForm.grades}
+                      placeholder="Select Grades"
+                      shortDisplay={true}
+                      onChange={(g, checked) => {
+                        setPromotionForm(prev => {
+                          const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
+                          const nextSectionsByGrade = { ...(prev.sectionsByGrade || {}) };
+                          if (!checked) delete nextSectionsByGrade[g];
+                          return { ...prev, grades: nextGrades, sectionsByGrade: nextSectionsByGrade };
+                        });
+                      }}
+                    />
+                  </div>
+                  {promotionForm.grades.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {promotionForm.grades.map(g => (
+                        <span key={g} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
+                          {g}
+                        </span>
                       ))}
                     </div>
-                  </div>
+                  )}
 
                   {promotionForm.grades.map((g) => (
                     <div key={g} className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Sections for {g}</label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{g}</div>
+                      <div className="flex flex-wrap gap-2 pt-1">
                         {(sectionsMap[g] && sectionsMap[g].length > 0) ? (
                           sectionsMap[g].map((s) => {
                             const selected = (promotionForm.sectionsByGrade && promotionForm.sectionsByGrade[g] || []).includes(s);
@@ -795,9 +887,7 @@ export const Teachers = () => {
                               </label>
                             );
                           })
-                        ) : (
-                          <div className="text-sm text-slate-500">No sections found for this grade</div>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   ))}
