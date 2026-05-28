@@ -361,8 +361,8 @@ export const Staff = () => {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${staff.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                            staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
+                          staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
                           }`}>
                           {staff.status}
                         </span>
@@ -412,15 +412,15 @@ export const Staff = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Create New User</h3>
               </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="text-slate-400 hover:text-slate-600"
-                  aria-label="Close create user modal"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Close create user modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
 
             <form className="p-6 space-y-4" onSubmit={handleCreateUser}>
               <div>
@@ -661,8 +661,8 @@ export const Staff = () => {
       {toast.show && (
         <div className="fixed bottom-6 right-6 z-50 animate-slide-up">
           <div className={`px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 ${toast.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
             }`}>
             <UserCheck size={20} />
             <p className="font-bold text-sm">{toast.message}</p>

@@ -406,9 +406,9 @@ export const Students = () => {
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{student.className || 'Unassigned'}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${student.status === 'Active' ? 'bg-green-100 text-green-700' :
-                              student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
-                                student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
-                                  'bg-blue-100 text-blue-700'
+                            student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
+                              student.status === 'Suspended' ? 'bg-red-100 text-red-700' :
+                                'bg-blue-100 text-blue-700'
                             }`}>
                             {student.status}
                           </span>
@@ -676,8 +676,8 @@ export const Students = () => {
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success'
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
             }`}>
             {toast.type === 'success'
               ? <CheckCircle2 className="text-green-600" size={20} />
