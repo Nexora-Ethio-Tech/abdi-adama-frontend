@@ -1,10 +1,9 @@
 
 import {
   Bell, Search, User, LogOut, Moon, Sun, Menu,
-  Calendar as CalendarIcon, X, ChevronDown,
-  Shield, Building, BookOpen, CreditCard,
-  BarChart3, GraduationCap, Users, Truck,
-  Stethoscope, LayoutDashboard, Lock
+  Calendar as CalendarIcon, X, ChevronDown, Lock,
+  CreditCard, BarChart3, BookOpen, GraduationCap, Users, Truck,
+  Stethoscope, LayoutDashboard, Shield, Building
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
@@ -41,7 +40,7 @@ const PORTAL_ROLES = [
 ];
 
 export const Header = ({ title, onMenuClick }: HeaderProps) => {
-  const { user, logout, selectedBranch, role, switchRole } = useUser();
+  const { user, logout, selectedBranch, role } = useUser();
   const { isExamLockedDown } = useStore();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -64,26 +63,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
     navigate('/change-password');
   };
 
-  const handleRoleSwitch = async (newRole: string) => {
-    setIsMenuOpen(false);
-    const redirect = await switchRole(newRole as any);
-    if (redirect) {
-      navigate(redirect);
-    }
-  };
 
-  // Only show the switcher for Super Admin.
-  // Other roles like School Admin should have a "clean" header.
-  const canSwitchRoles = user?.role === 'super-admin';
-
-  const visibleRoles = canSwitchRoles
-    ? PORTAL_ROLES.filter(item => {
-      if (item.r === 'super-admin' || item.r === 'school-admin') {
-        return user?.role === item.r;
-      }
-      return true;
-    })
-    : [];
 
   return (
     <>
@@ -203,37 +183,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
                     </span>
                   </div>
 
-                  {/* Role Switcher List - Only for Super Admin */}
-                  {canSwitchRoles && visibleRoles.length > 0 && (
-                    <div className="py-2 px-2 max-h-[300px] overflow-y-auto border-b border-slate-100 dark:border-slate-800">
-                      <p className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        Switch Dashboard
-                      </p>
-                      {visibleRoles.map((item) => (
-                        <button
-                          key={item.r}
-                          onClick={() => handleRoleSwitch(item.r)}
-                          className={cn(
-                            "w-full px-3 py-2.5 flex items-center gap-3 rounded-xl text-sm font-semibold transition-all",
-                            role === item.r
-                              ? "bg-school-primary text-white"
-                              : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          )}
-                        >
-                          <span className={cn(
-                            "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
-                            role === item.r ? "bg-white/20" : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                          )}>
-                            {item.icon}
-                          </span>
-                          {item.label}
-                          {role === item.r && (
-                            <span className="ml-auto w-2 h-2 rounded-full bg-white" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+
 
                   <div className="p-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
                     {role !== 'super-admin' && (

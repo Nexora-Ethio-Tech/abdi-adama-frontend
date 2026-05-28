@@ -47,6 +47,8 @@ type AnalyticsResponse = {
     currentStudents: number;
     lastMonthStudents: number;
     enrollmentGrowth: number;
+    overdueCount?: number;
+    overdueAmount?: number;
   };
   branchPerformance: BranchAnalyticsRow[];
 };
@@ -256,7 +258,7 @@ export const Analytics = () => {
               <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">Finance Alert</span>
             </div>
             <p className="text-sm font-medium text-slate-200">
-              <span className="text-amber-400 font-black">15 students</span> are over 30 days late on payments totaling <span className="font-black">450K ETB</span>.
+              <span className="text-amber-400 font-black">{analytics?.overview?.overdueCount || 0} students</span> are over 30 days late on payments totaling <span className="font-black">{(analytics?.overview?.overdueAmount || 0).toLocaleString()} ETB</span>.
             </p>
           </div>
         </div>

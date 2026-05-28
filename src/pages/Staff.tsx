@@ -1,4 +1,4 @@
-import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle, UserPlus } from 'lucide-react';
+import { Shield, ShieldAlert, Award, UserCheck, Settings, X, Search, Filter, Loader2, AlertCircle, UserPlus, Users, Building2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
