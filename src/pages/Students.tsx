@@ -240,6 +240,7 @@ export const Students = () => {
   return (
     <div className="space-y-6 pb-12">
       <button
+        type="button"
         onClick={() => navigate(-1)}
         className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-bold uppercase tracking-widest"
       >
@@ -256,6 +257,7 @@ export const Students = () => {
           {isSchoolAdmin && (
             <>
               <button
+                type="button"
                 onClick={() => setActiveView('students')}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'students'
                   ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
@@ -265,6 +267,7 @@ export const Students = () => {
                 Students
               </button>
               <button
+                type="button"
                 onClick={() => setActiveView('registration')}
                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-all border ${activeView === 'registration'
                   ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white'
@@ -274,6 +277,7 @@ export const Students = () => {
                 Pending Applications
               </button>
               <button
+                type="button"
                 onClick={() => setActiveView('add')}
                 className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none ${activeView === 'add' ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''}`}
               >
@@ -283,6 +287,7 @@ export const Students = () => {
             </>
           )}
           <button
+            type="button"
             onClick={handleExport}
             className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-2 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
           >
@@ -416,9 +421,11 @@ export const Students = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <button
+                              type="button"
                               onClick={() => { setSelectedStudent(student); setShowAssignModal(true); }}
                               className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 rounded-lg transition-colors"
                               title="Assign Class"
+                              aria-label="Assign class"
                             >
                               <Users size={16} />
                             </button>
@@ -433,18 +440,22 @@ export const Students = () => {
                             </button>
                             {student.status === 'Pending' && (
                               <button
+                                type="button"
                                 onClick={() => setConfirmAction({ show: true, action: 'approve', student })}
                                 className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
                                 title="Approve"
+                                aria-label="Approve student"
                               >
                                 <Check size={16} />
                               </button>
                             )}
                             {student.status === 'Approved' && (
                               <button
+                                type="button"
                                 onClick={() => setConfirmAction({ show: true, action: 'revoke', student })}
                                 className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 rounded-lg transition-colors"
                                 title="Revoke"
+                                aria-label="Revoke student"
                               >
                                 <XCircle size={16} />
                               </button>
@@ -594,6 +605,7 @@ export const Students = () => {
                 classes.map((cls) => (
                   <button
                     key={cls.id}
+                    type="button"
                     onClick={() => handleAssignClass(cls.id)}
                     className="w-full p-4 text-left border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 transition-all"
                   >
@@ -623,6 +635,7 @@ export const Students = () => {
             </div>
             <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmAction({ show: false, action: 'approve', student: null })}
                 className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm hover:bg-slate-50"
                 disabled={processing}
@@ -630,6 +643,7 @@ export const Students = () => {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleStatusAction}
                 className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
                   } disabled:opacity-50`}
@@ -656,12 +670,14 @@ export const Students = () => {
             </div>
             <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
               <button
+                type="button"
                 onClick={() => setConfirmDelete({ show: false, student: null })}
                 className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDelete}
                 className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700"
               >
