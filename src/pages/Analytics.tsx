@@ -8,12 +8,16 @@ import {
   Download,
   AlertCircle,
   Zap,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { exportToCSV } from '../utils/exportUtils';
+import { dashboardService } from '../services/dashboardService';
+import { useUser } from '../context/UserContext';
 
 const trafficColor = (value: number) => {
   if (value >= 90) return { bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Healthy' };
@@ -21,52 +25,105 @@ const trafficColor = (value: number) => {
   return { bg: 'bg-rose-50 dark:bg-rose-900/10', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-400', dot: 'bg-rose-500', label: 'Critical' };
 };
 
+type BranchAnalyticsRow = {
+  id: string;
+  name: string;
+  location: string;
+  collected: number;
+  expected: number;
+  percent: number;
+  students: number;
+};
+
+type AnalyticsResponse = {
+  scope: 'global' | 'branch';
+  selectedBranch: BranchAnalyticsRow | null;
+  overview: {
+    feeCollected: number;
+    feeExpected: number;
+    feePercent: number;
+    studentAttendance: number;
+    staffAttendance: number;
+    currentStudents: number;
+    lastMonthStudents: number;
+    enrollmentGrowth: number;
+  };
+  branchPerformance: BranchAnalyticsRow[];
+};
+
 export const Analytics = () => {
   const navigate = useNavigate();
-  useStore();
+  const { selectedBranchId } = useStore();
+  const { selectedBranch } = useUser();
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Executive "Big Three" data
-  const feeCollected = 4350000;
-  const feeExpected = 4800000;
-  const feePercent = Math.round((feeCollected / feeExpected) * 100);
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await dashboardService.getSuperAdminAnalytics(selectedBranchId || null);
+        setAnalytics(response.data);
+      } catch (err: any) {
+        setError(err.response?.data?.error?.message || 'Failed to load analytics');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const studentAttendance = 94.2;
-  const staffAttendance = 97.8;
+    fetchAnalytics();
+  }, [selectedBranchId]);
 
-  const currentStudents = 1284;
-  const lastMonthStudents = 1256;
-  const enrollmentGrowth = (((currentStudents - lastMonthStudents) / lastMonthStudents) * 100).toFixed(1);
+  const overview = analytics?.overview;
+  const feeColor = trafficColor(overview?.feePercent || 0);
+  const studentAttColor = trafficColor(overview?.studentAttendance || 0);
+  const branchPerformance = selectedBranchId && analytics?.selectedBranch
+    ? [analytics.selectedBranch]
+    : analytics?.branchPerformance || [];
 
-  const feeColor = trafficColor(feePercent);
-  const studentAttColor = trafficColor(studentAttendance);
-
-  const branchPerformance = [
-    { name: 'Main Branch', collected: '1.8M', expected: '2.0M', percent: 90, students: 450 },
-    { name: 'Bole Branch', collected: '1.2M', expected: '1.3M', percent: 92, students: 320 },
-    { name: 'Megenagna Branch', collected: '800K', expected: '950K', percent: 84, students: 280 },
-    { name: 'Adama Branch', collected: '550K', expected: '850K', percent: 65, students: 234 },
-  ];
+  const selectedBranchLabel = selectedBranch?.name || analytics?.selectedBranch?.name || 'All Branches';
 
   const handleExport = () => {
     const dataToExport: any[] = branchPerformance.map(b => ({
       Branch: b.name,
-      Collected: b.collected,
-      Expected: b.expected,
+      Collected: typeof b.collected === 'number' ? b.collected.toLocaleString() : b.collected,
+      Expected: typeof b.expected === 'number' ? b.expected.toLocaleString() : b.expected,
       Performance: `${b.percent}%`,
       Students: b.students
     }));
 
-    // Add summary row
-    dataToExport.push({
-      Branch: 'Total Health Summary',
-      Collected: `Fee Collected: ${feePercent}%`,
-      Expected: `Student Att: ${studentAttendance}%`,
-      Performance: `Staff Att: ${staffAttendance}%`,
-      Students: `Total Students: ${currentStudents}`
-    });
+    if (overview) {
+      dataToExport.push({
+        Branch: 'Total Health Summary',
+        Collected: `Fee Collected: ${overview.feePercent}%`,
+        Expected: `Student Att: ${overview.studentAttendance}%`,
+        Performance: `Staff Att: ${overview.staffAttendance}%`,
+        Students: `Total Students: ${overview.currentStudents}`
+      });
+    }
 
     exportToCSV(dataToExport, 'School_Analytics_Health');
   };
+
+  const metricCardText = useMemo(() => {
+    if (selectedBranchId) {
+      return `Viewing ${selectedBranchLabel}`;
+    }
+    return 'Viewing all branches';
+  }, [selectedBranchId, selectedBranchLabel]);
+
+  if (loading) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-500 font-bold">
+          <Loader2 className="animate-spin" size={18} />
+          Loading analytics...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -85,7 +142,7 @@ export const Analytics = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">School Health at a Glance</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Assess in 10 seconds. Green = Good. Yellow = Attention. Red = Act Now.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Assess in 10 seconds. Green = Good. Yellow = Attention. Red = Act Now. {metricCardText}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-black text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all uppercase tracking-widest">
@@ -102,6 +159,13 @@ export const Analytics = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center gap-3 text-amber-800 dark:text-amber-200">
+          <AlertCircle size={18} />
+          <p className="text-sm font-semibold">{error}</p>
+        </div>
+      )}
+
       {/* The "Big Three" Traffic Light Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Financial Health */}
@@ -114,19 +178,19 @@ export const Analytics = () => {
             <DollarSign size={24} className={`${feeColor.text} group-hover:scale-110 transition-transform`} />
           </div>
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Money In</p>
-          <h3 className="text-4xl font-black text-slate-800 dark:text-white">{(feeCollected / 1000000).toFixed(1)}M <span className="text-base font-bold text-slate-400">ETB</span></h3>
+              <h3 className="text-4xl font-black text-slate-800 dark:text-white">{((overview?.feeCollected || 0) / 1000000).toFixed(1)}M <span className="text-base font-bold text-slate-400">ETB</span></h3>
           <div className="mt-6 space-y-3">
             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
               <span className="text-slate-400">Collection Rate</span>
-              <span className={feeColor.text}>{feePercent}%</span>
+                  <span className={feeColor.text}>{overview?.feePercent || 0}%</span>
             </div>
             <div className="h-3 bg-white/50 dark:bg-slate-800/50 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800">
               <div
-                className={`h-full rounded-full transition-all duration-1000 ${feePercent >= 90 ? 'bg-emerald-500' : feePercent >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                style={{ width: `${feePercent}%` }}
+                    className={`h-full rounded-full transition-all duration-1000 ${(overview?.feePercent || 0) >= 90 ? 'bg-emerald-500' : (overview?.feePercent || 0) >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                    style={{ width: `${overview?.feePercent || 0}%` }}
               />
             </div>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic tracking-wide">Missing Payments: {((feeExpected - feeCollected) / 1000).toFixed(0)}K ETB</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic tracking-wide">Missing Payments: {(((overview?.feeExpected || 0) - (overview?.feeCollected || 0)) / 1000).toFixed(0)}K ETB</p>
           </div>
         </div>
 
@@ -143,16 +207,16 @@ export const Analytics = () => {
           <div className="flex items-end gap-6 mt-2">
             <div>
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Students</p>
-              <h3 className="text-4xl font-black text-slate-800 dark:text-white">{studentAttendance}<span className="text-lg text-slate-400">%</span></h3>
+              <h3 className="text-4xl font-black text-slate-800 dark:text-white">{overview?.studentAttendance || 0}<span className="text-lg text-slate-400">%</span></h3>
             </div>
             <div className="pb-1 border-l border-slate-200 dark:border-slate-800 pl-6">
               <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Staff</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-300">{staffAttendance}<span className="text-sm text-slate-400">%</span></h3>
+              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-300">{overview?.staffAttendance || 0}<span className="text-sm text-slate-400">%</span></h3>
             </div>
           </div>
           <div className="mt-6 flex gap-3">
-            <div className={`flex-1 h-2.5 rounded-full ${studentAttendance >= 90 ? 'bg-emerald-400' : studentAttendance >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
-            <div className={`flex-1 h-2.5 rounded-full ${staffAttendance >= 90 ? 'bg-emerald-400' : staffAttendance >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
+            <div className={`flex-1 h-2.5 rounded-full ${(overview?.studentAttendance || 0) >= 90 ? 'bg-emerald-400' : (overview?.studentAttendance || 0) >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
+            <div className={`flex-1 h-2.5 rounded-full ${(overview?.staffAttendance || 0) >= 90 ? 'bg-emerald-400' : (overview?.staffAttendance || 0) >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
           </div>
         </div>
 
@@ -166,13 +230,13 @@ export const Analytics = () => {
             <Building2 size={24} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Enrollment</p>
-          <h3 className="text-4xl font-black text-slate-800 dark:text-white">{currentStudents.toLocaleString()}</h3>
+          <h3 className="text-4xl font-black text-slate-800 dark:text-white">{(overview?.currentStudents || 0).toLocaleString()}</h3>
           <div className="mt-6 flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider ${Number(enrollmentGrowth) >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
+            <div className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider ${(overview?.enrollmentGrowth || 0) >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
               <TrendingUp size={12} />
-              {Number(enrollmentGrowth) >= 0 ? '+' : ''}{enrollmentGrowth}%
+              {(overview?.enrollmentGrowth || 0) >= 0 ? '+' : ''}{overview?.enrollmentGrowth || 0}%
             </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-tight">vs last month ({lastMonthStudents})</span>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-tight">vs last month ({overview?.lastMonthStudents || 0})</span>
           </div>
         </div>
       </div>
@@ -213,7 +277,7 @@ export const Analytics = () => {
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded-md ml-2">{branch.students} Students</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{branch.collected} / {branch.expected}</span>
+                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">{Number(branch.collected).toLocaleString()} / {Number(branch.expected).toLocaleString()}</span>
                     <span className={`text-xs font-black ${bColor.text}`}>{branch.percent}%</span>
                   </div>
                 </div>
