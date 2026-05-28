@@ -362,7 +362,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         ...validateRegistrationStep(2, allFormData),
         ...validateRegistrationStep(3, allFormData)
       };
-      
+
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
         return;
@@ -478,7 +478,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const errorCode = error.response?.data?.error?.code;
 
       setValidationErrors(errorObj);
-      
+
       // Auto-jump to the step containing the error so the user can actually see it
       if (errorObj) {
         if (errorObj.name || errorObj.digital_id || errorObj.dob || errorObj.gender) {
@@ -489,7 +489,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           setRegistrationStep(3);
         }
       }
-      
+
       if (errorCode === 'FILE_SIZE_EXCEEDED' || errorCode === 'LIMIT_FILE_COUNT' || errorCode === 'UPLOAD_ERROR') {
         setFileError(errorMessage);
         setTimeout(() => setFileError(null), 5000);
@@ -534,7 +534,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const { classService } = await import('../services/classService');
       const classes = await classService.getAllClasses();
       setAvailableClasses(Array.isArray(classes) ? classes : classes.data || []);
-      
+
       // Show class selection modal
       setSelectedAppForClass(appId);
       setShowClassModal(true);
@@ -556,21 +556,21 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
     try {
       // Update pending application with class assignment
-      await updateApplicationStatus(selectedAppForClass, { 
+      await updateApplicationStatus(selectedAppForClass, {
         status: 'awaiting-payment',
-        class_id: selectedClass
+        classId: selectedClass
       });
 
       const app = pendingApps.find(a => a.id === selectedAppForClass);
       setPendingApps(prev => prev.map(a => a.id === selectedAppForClass ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
       setSuccessMessage(`${app?.name} assigned to class and forwarded to finance.`);
       if (app) showEmailToast(app.email, 'Class Assigned: Proceed to Finance');
-      
+
       // Close modal
       setShowClassModal(false);
       setSelectedAppForClass(null);
       setSelectedClass(null);
-      
+
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -690,8 +690,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           <button
             onClick={() => setActiveTab('new')}
             className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'new'
-                ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
+              : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
           >
             {t('registration.newAdmissions')}
@@ -700,8 +700,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <button
               onClick={() => setActiveTab('existing')}
               className={`px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'existing'
-                  ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
-                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xl shadow-slate-200/50 dark:shadow-none'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
             >
               {t('registration.reEnrollment')}
@@ -801,8 +801,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   key={tab.key}
                   onClick={() => setPipelineFilter(tab.key)}
                   className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${pipelineFilter === tab.key
-                      ? `bg-${tab.color}-600 text-white shadow-lg shadow-${tab.color}-500/20`
-                      : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    ? `bg-${tab.color}-600 text-white shadow-lg shadow-${tab.color}-500/20`
+                    : 'bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-slate-300'
                     }`}
                 >
                   {tab.label}
@@ -829,10 +829,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
-                        app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
-                          app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
-                            app.status === 'declined' || app.status === 'exam-failed' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
-                              'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
+                      app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
+                        app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
+                          app.status === 'declined' || app.status === 'exam-failed' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
+                            'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                       }`}>
                       {app.status.replace('-', ' ')}
                     </span>
@@ -924,7 +924,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   {[1, 2, 3].map((step) => (
                     <div key={step} className="flex items-center">
                       <div className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold transition-all ${registrationStep === step ? 'bg-blue-600 text-white' :
-                          registrationStep > step ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                        registrationStep > step ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'
                         }`}>
                         {registrationStep > step ? <Check size={14} className="w-3 h-3 md:w-4 md:h-4" /> : step}
                       </div>
@@ -936,181 +936,181 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             </div>
             <form ref={formRef} onSubmit={handleRegister} className="p-6 space-y-6">
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 1 ? 'hidden' : ''}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
-                      <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.name
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-rose-500">*</span></label>
-                      <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.digital_id
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      <p className="text-[10px] text-slate-400 pl-1">Alias number from the Ethiopia Digital ID (Fayda) card</p>
-                      {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
-                      <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      {validationErrors.dob && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.dob}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
-                      <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`}>
-                        <option value="">Select Gender</option>
-                        <option>Male</option>
-                        <option>Female</option>
-                        <option>Other</option>
-                      </select>
-                      {validationErrors.gender && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.gender}</p>}
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
+                    <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.name
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-rose-500">*</span></label>
+                    <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.digital_id
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    <p className="text-[10px] text-slate-400 pl-1">Alias number from the Ethiopia Digital ID (Fayda) card</p>
+                    {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
+                    <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    {validationErrors.dob && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.dob}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
+                    <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`}>
+                      <option value="">Select Gender</option>
+                      <option>Male</option>
+                      <option>Female</option>
+                      <option>Other</option>
+                    </select>
+                    {validationErrors.gender && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.gender}</p>}
+                  </div>
+                </div>
 
-                  {/* Clinic Required Fields */}
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
-                      <HeartPulse size={16} />
-                      Medical Information (Optional)
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
-                        <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                          <option value="">Select Blood Group</option>
-                          <option>O+</option>
-                          <option>O-</option>
-                          <option>A+</option>
-                          <option>A-</option>
-                          <option>B+</option>
-                          <option>B-</option>
-                          <option>AB+</option>
-                          <option>AB-</option>
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Known Allergies</label>
-                        <input type="text" name="allergies" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Chronic Conditions</label>
-                        <input type="text" name="chronicConditions" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
-                      <div className="space-y-1 md:col-span-3">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Current Home Medications</label>
-                        <input type="text" name="medications" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
-                      </div>
+                {/* Clinic Required Fields */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <HeartPulse size={16} />
+                    Medical Information (Optional)
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
+                      <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">Select Blood Group</option>
+                        <option>O+</option>
+                        <option>O-</option>
+                        <option>A+</option>
+                        <option>A-</option>
+                        <option>B+</option>
+                        <option>B-</option>
+                        <option>AB+</option>
+                        <option>AB-</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Known Allergies</label>
+                      <input type="text" name="allergies" placeholder="e.g. Peanuts, Dust, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Chronic Conditions</label>
+                      <input type="text" name="chronicConditions" placeholder="e.g. Asthma, Diabetes, None" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div className="space-y-1 md:col-span-3">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase">Current Home Medications</label>
+                      <input type="text" name="medications" placeholder="List any medications taken at home..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                   </div>
                 </div>
+              </div>
 
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 2 ? 'hidden' : ''}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
-                      <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.parentName
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      {validationErrors.parentName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.parentName}</p>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
+                    <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.parentName
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    {validationErrors.parentName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.parentName}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
+                    <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${(validationErrors.phone || validationErrors.parentPhone)
+                      ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
+                      }`}>
+                      <span className="text-slate-400 dark:text-slate-500 font-bold mr-1">+251</span>
+                      <input
+                        required
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={9}
+                        placeholder="9xxxxxxxx"
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
+                          e.target.value = value;
+                        }}
+                        onKeyPress={(e) => {
+                          if (!/\d/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        name="phone"
+                        className="w-full bg-transparent outline-none font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400"
+                      />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
-                      <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${(validationErrors.phone || validationErrors.parentPhone)
-                          ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
-                        }`}>
-                        <span className="text-slate-400 dark:text-slate-500 font-bold mr-1">+251</span>
-                        <input
-                          required
-                          type="tel"
-                          inputMode="numeric"
-                          maxLength={9}
-                          placeholder="9xxxxxxxx"
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
-                            e.target.value = value;
-                          }}
-                          onKeyPress={(e) => {
-                            if (!/\d/.test(e.key)) {
-                              e.preventDefault();
-                            }
-                          }}
-                          name="phone"
-                          className="w-full bg-transparent outline-none font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400"
-                        />
-                      </div>
-                      <p className="text-[10px] text-slate-400 pl-1">Format: 9xxxxxxxx (9 digits only)</p>
-                      {(validationErrors.phone || validationErrors.parentPhone) && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {(validationErrors.phone || validationErrors.parentPhone)}</p>}
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">Email (optional)</label>
-                      <input name="email" type="email" placeholder="Parent or applicant email (optional)" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 border-slate-200 dark:border-slate-700 focus:ring-blue-500" />
-                    </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
-                      <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      {validationErrors.address && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.address}</p>}
-                    </div>
+                    <p className="text-[10px] text-slate-400 pl-1">Format: 9xxxxxxxx (9 digits only)</p>
+                    {(validationErrors.phone || validationErrors.parentPhone) && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {(validationErrors.phone || validationErrors.parentPhone)}</p>}
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Email (optional)</label>
+                    <input name="email" type="email" placeholder="Parent or applicant email (optional)" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 border-slate-200 dark:border-slate-700 focus:ring-blue-500" />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
+                    <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    {validationErrors.address && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.address}</p>}
                   </div>
                 </div>
+              </div>
 
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 3 ? 'hidden' : ''}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-slate-400 text-[10px] font-medium">(optional)</span></label>
-                      <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.previousSchool
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                      {validationErrors.previousSchool && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.previousSchool}</p>}
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
-                      <input name="grade" type="number" min="1" step="1" placeholder="e.g. 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
-                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Previous School <span className="text-slate-400 text-[10px] font-medium">(optional)</span></label>
+                    <input name="previousSchool" type="text" placeholder="Name of previous school" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.previousSchool
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
+                    {validationErrors.previousSchool && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.previousSchool}</p>}
                   </div>
-
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block">Last Transcript (Max 2MB)</label>
-                    <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${fileError ? 'border-rose-300 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600'
-                      }`}>
-                      <input
-                        type="file"
-                        name="transcript"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleFileUpload}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                      <div className={`p-4 rounded-full ${fileError ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
-                        {fileName ? <FileText size={32} /> : <Upload size={32} />}
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                          {fileName || 'Click to upload transcript'}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-1">PDF, PNG, JPG (Max 2MB)</p>
-                      </div>
-                    </div>
-                    {fileError && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {fileError}</p>}
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
+                    <input name="grade" type="number" min="1" step="1" placeholder="e.g. 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
+                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                      }`} />
                   </div>
                 </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block">Last Transcript (Max 2MB)</label>
+                  <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-2 group cursor-pointer ${fileError ? 'border-rose-300 bg-rose-50 dark:bg-rose-900/10' : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600'
+                    }`}>
+                    <input
+                      type="file"
+                      name="transcript"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <div className={`p-4 rounded-full ${fileError ? 'bg-rose-100 text-rose-600' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
+                      {fileName ? <FileText size={32} /> : <Upload size={32} />}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                        {fileName || 'Click to upload transcript'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">PDF, PNG, JPG (Max 2MB)</p>
+                    </div>
+                  </div>
+                  {fileError && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {fileError}</p>}
+                </div>
+              </div>
 
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col-reverse sm:flex-row justify-between gap-4">
                 <button
@@ -1257,8 +1257,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     onClick={handlePromote}
                     disabled={selectedStudent.id !== '1'}
                     className={`px-8 py-2.5 rounded-xl font-bold text-sm transition-all shadow-lg ${selectedStudent.id === '1'
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 dark:shadow-none'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
                       }`}
                   >
                     Confirm Promotion
@@ -1428,22 +1428,20 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       <div
                         key={cls.id}
                         onClick={() => setSelectedClass(cls.id)}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          selectedClass === cls.id
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedClass === cls.id
                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                             : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold text-slate-800 dark:text-white">{cls.name || cls.class_name}</p>
                             <p className="text-xs text-slate-500">{cls.section || 'No section'}</p>
                           </div>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                            selectedClass === cls.id
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedClass === cls.id
                               ? 'border-blue-500 bg-blue-500'
                               : 'border-slate-300 dark:border-slate-600'
-                          }`}>
+                            }`}>
                             {selectedClass === cls.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
                           </div>
                         </div>

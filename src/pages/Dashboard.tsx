@@ -528,8 +528,8 @@ export const Dashboard = () => {
 
       {(isVP || isSuperAdmin) && (
         <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${gradesLocked
-            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-            : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+          : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
           }`}>
           <div className="flex items-center gap-4">
             <div className={`p-3 rounded-full ${gradesLocked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
@@ -560,13 +560,13 @@ export const Dashboard = () => {
                 Calculate Ranks
               </button>
             )}
-            {(role === 'school-admin' || isSuperAdmin) && (
+            {((role as string) === 'school-admin' || isSuperAdmin) && (
               <button
                 disabled={isSuperAdmin}
                 onClick={() => setGradesLocked(!gradesLocked)}
                 className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${gradesLocked
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white'
                   }`}
               >
                 {gradesLocked ? 'Open Insertion' : 'Close Insertion'}
@@ -666,8 +666,8 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${notice.category === 'Logistics' ? 'bg-amber-100 text-amber-700' :
-                      notice.category === 'Finance' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-blue-100 text-blue-700'
+                    notice.category === 'Finance' ? 'bg-emerald-100 text-emerald-700' :
+                      'bg-blue-100 text-blue-700'
                     }`}>
                     {notice.category}
                   </span>
