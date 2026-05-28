@@ -1,5 +1,5 @@
-
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ArrowUpRight, Eye, FileText,
@@ -21,7 +21,12 @@ import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
 export const AuditorDashboard = () => {
   const _user = useUser();
-  const [activeTab, setActiveTab] = useState<'transactions' | 'fee-reductions'>('transactions');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState<'transactions' | 'fee-reductions'>(
+    location.pathname === '/special-students' ? 'fee-reductions' : 'transactions'
+  );
   const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
   const [payments, setPayments] = useState<Transaction[]>([]);
   const [feeReductions, setFeeReductions] = useState<FeeReduction[]>([]);
@@ -48,9 +53,27 @@ export const AuditorDashboard = () => {
     setReductionPage(1);
   }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth]);
 
+  // Sync pathname changes with activeTab
+  useEffect(() => {
+    if (location.pathname === '/special-students') {
+      setActiveTab('fee-reductions');
+    } else if (location.pathname === '/auditor-dashboard') {
+      setActiveTab('transactions');
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleTabChange = (tab: 'transactions' | 'fee-reductions') => {
+    setActiveTab(tab);
+    if (tab === 'fee-reductions') {
+      navigate('/special-students');
+    } else {
+      navigate('/auditor-dashboard');
+    }
+  };
 
   const buildPaymentQueryParams = () => {
     const params: { startDate?: string; endDate?: string } = {};
@@ -331,13 +354,13 @@ export const AuditorDashboard = () => {
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-fit">
             <button
-              onClick={() => setActiveTab('transactions')}
+              onClick={() => handleTabChange('transactions')}
               className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Transactions ({payments.length})
             </button>
             <button
-              onClick={() => setActiveTab('fee-reductions')}
+              onClick={() => handleTabChange('fee-reductions')}
               className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               Fee Reductions ({feeReductions.length})
