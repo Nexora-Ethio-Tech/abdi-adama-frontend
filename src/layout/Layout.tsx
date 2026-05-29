@@ -62,6 +62,15 @@ export const Layout = () => {
       }
     }
 
+    if (role === 'auditor') {
+      switch (path) {
+        case '/auditor-dashboard': return 'Dashboard';
+        case '/finance': return 'Finance';
+        case '/special-students': return 'Special Students';
+        default: return 'Auditor Console';
+      }
+    }
+
     switch (path) {
       case '/': return 'Dashboard Overview';
       case '/students': return 'Student Information System';

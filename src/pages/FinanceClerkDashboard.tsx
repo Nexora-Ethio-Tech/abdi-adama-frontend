@@ -46,6 +46,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [transportStudent, setTransportStudent] = useState<TransportStudentInfo | null>(null);
   const [stopTransportStudent, setStopTransportStudent] = useState<TransportStudentInfo | null>(null);
   const [reductionNotes, setReductionNotes] = useState('');
+  const [requestedAidAmount, setRequestedAidAmount] = useState('');
   const [isRequestingReduction, setIsRequestingReduction] = useState(false);
   const [selectedAidStudentId, setSelectedAidStudentId] = useState('');
   const [aidPickerSearch, setAidPickerSearch] = useState('');
@@ -252,7 +253,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const openReductionModal = (student: StudentFeeInfo) => {
     setReductionStudent(student);
-    setReductionNotes(student.fee_notes || 'Requesting fee reduction due to financial hardship');
+    setReductionNotes(student.fee_notes || '');
+    setRequestedAidAmount(
+      student.requested_aid_amount != null && student.requested_aid_amount > 0
+        ? String(student.requested_aid_amount)
+        : ''
+    );
     setShowReductionModal(true);
   };
 
@@ -318,16 +324,25 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     e.preventDefault();
     if (!reductionStudent) return;
 
+    const amount = Number(requestedAidAmount);
+    if (!requestedAidAmount.trim() || Number.isNaN(amount) || amount <= 0) {
+      setError('Please enter a valid aid amount greater than 0 ETB.');
+      setTimeout(() => setError(null), 5000);
+      return;
+    }
+
     try {
       setIsRequestingReduction(true);
       await financeClerkService.updateFeeStatus(reductionStudent.id, {
         feeStatus: 'reduced',
-        feeNotes: reductionNotes.trim() || 'Requesting fee reduction due to financial hardship'
+        requestedAidAmount: amount,
+        feeNotes: reductionNotes.trim() || `Aid request for ${amount.toLocaleString()} ETB`
       });
-      setSuccess('Fee reduction request submitted to auditor for review');
+      setSuccess('Aid request submitted to auditor for review');
       setShowReductionModal(false);
       setReductionStudent(null);
       setReductionNotes('');
+      setRequestedAidAmount('');
       fetchData();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
@@ -743,6 +758,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
+                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Amount (ETB)</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
                   <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Action</th>
                 </tr>
@@ -760,6 +776,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
                         Grade {student.grade}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-800 dark:text-white">
+                      {student.requested_aid_amount != null && student.requested_aid_amount > 0
+                        ? `${Number(student.requested_aid_amount).toLocaleString()} ETB`
+                        : '—'}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_approval_status === 'approved' ? 'bg-emerald-100 text-emerald-800' : student.fee_approval_status === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'}`}>
@@ -1934,7 +1955,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Request Fee Reduction</h2>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Request Aid</h2>
               <button
                 type="button"
                 onClick={() => setShowReductionModal(false)}
@@ -1951,13 +1972,29 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Current Fee Status: <span className="font-semibold">{reductionStudent.fee_status === 'reduced' ? 'Reduced' : 'Standard'}</span></p>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Reduction Notes</label>
+                <label htmlFor="requested-aid-amount" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Requested aid amount (ETB) <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  id="requested-aid-amount"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  required
+                  value={requestedAidAmount}
+                  onChange={(e) => setRequestedAidAmount(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+                  placeholder="e.g. 5000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Notes (optional)</label>
                 <textarea
                   value={reductionNotes}
                   onChange={(e) => setReductionNotes(e.target.value)}
-                  rows={5}
+                  rows={4}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-purple-500 outline-none"
-                  placeholder="Add a note for the auditor explaining the financial aid request"
+                  placeholder="Reason or context for the auditor"
                 />
               </div>
               <div className="flex gap-3 pt-4">

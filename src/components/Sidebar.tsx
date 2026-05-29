@@ -24,7 +24,8 @@ import {
   DollarSign,
   Truck,
   Landmark,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -85,6 +86,8 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
           { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
+          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
+          { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
         return baseItems;
@@ -160,7 +163,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         ];
       case 'auditor':
         return [
-          { icon: LayoutDashboard, label: t('nav.auditorDashboard'), path: '/auditor-dashboard' },
+          { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/auditor-dashboard' },
           { icon: Wallet, label: t('nav.finance'), path: '/finance' },
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },

@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { CreditCard, ArrowUpRight, ArrowDownRight, Search, FileText, Users, Plus, X, Check, AlertCircle, Bell, History, ShieldCheck, Clock, Filter, ChevronDown, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState } from 'react';
@@ -99,19 +98,11 @@ export const Finance = () => {
   const [txCategory, setTxCategory] = useState('Student Fee');
   const [customCategory, setCustomCategory] = useState('');
   const [auditFilter, setAuditFilter] = useState<'In' | 'Out'>('In');
-  const [auditCategory, setAuditCategory] = useState<'Fees' | 'Staff' | 'Other'>('Fees');
-
-  // Constrain direction based on category: Fees=In only, Staff=Out only, Other=both
-  const handleCategoryChange = (category: 'Fees' | 'Staff' | 'Other') => {
-    setAuditCategory(category);
-    setAuditPage(0);
-    if (category === 'Fees' && auditFilter !== 'In') setAuditFilter('In');
-    if (category === 'Staff' && auditFilter !== 'Out') setAuditFilter('Out');
-  };
-
-  const isMoneyInDisabled = auditCategory === 'Staff';
-  const isMoneyOutDisabled = auditCategory === 'Fees';
+  const [auditCategory, setAuditCategory] = useState<'Fees' | 'Staff'>('Fees');
+  const [auditSection, setAuditSection] = useState('all');
   const [auditPage, setAuditPage] = useState(0);
+  const [auditActionType, setAuditActionType] = useState('all');
+  const [auditUserRole, setAuditUserRole] = useState('all');
   const [auditMinAmount, setAuditMinAmount] = useState('');
   const [auditMaxAmount, setAuditMaxAmount] = useState('');
   const AUDIT_PAGE_SIZE = 10;
@@ -152,14 +143,18 @@ export const Finance = () => {
     new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 
+  const sectionOptions = Array.from(new Set(allAuditLogs.map(log => log.section))).sort();
+
   const filteredAuditLogs = allAuditLogs.filter((log) => {
     const matchesSearch =
       log.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.modifiedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.approverName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSectionFilter = auditSection === 'all' || log.section === auditSection;
     return (
       log.direction === auditFilter &&
       log.category === auditCategory &&
+      matchesSectionFilter &&
       matchesRange(log.timestamp) &&
       matchesSearch
     );
@@ -191,8 +186,6 @@ export const Finance = () => {
   };
 
   const handleExport = () => {
-    console.log('💾 Export button clicked!', { activeView, summariesCount: filteredSummaries.length, auditCount: filteredAuditLogs.length });
-    
     const dataToExport = activeView === 'audit'
       ? filteredAuditLogs.map(log => ({
         Target: log.studentName,
@@ -211,7 +204,6 @@ export const Finance = () => {
         Amount: s.amount
       }));
 
-    console.log('📊 Data to export:', dataToExport.length, 'records');
     exportToCSV(dataToExport, activeView === 'audit' ? 'Finance_Audit_Log' : 'Finance_Ledger');
   };
 
@@ -327,11 +319,7 @@ export const Finance = () => {
               />
             </div>
             <button
-              type="button"
-              onClick={(e) => {
-                console.log('🔘 Button clicked, event:', e);
-                handleExport();
-              }}
+              onClick={handleExport}
               className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-2 whitespace-nowrap bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-2xl border border-blue-100 dark:border-blue-800"
             >
               <FileText size={16} />
@@ -408,15 +396,13 @@ export const Finance = () => {
                       <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
                         <button
                           onClick={() => { setAuditFilter('In'); setAuditPage(0); }}
-                          disabled={isMoneyInDisabled}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${isMoneyInDisabled ? 'opacity-40 cursor-not-allowed text-slate-400' : (auditFilter === 'In' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700')}`}
+                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditFilter === 'In' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           💰 Money In
                         </button>
                         <button
                           onClick={() => { setAuditFilter('Out'); setAuditPage(0); }}
-                          disabled={isMoneyOutDisabled}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${isMoneyOutDisabled ? 'opacity-40 cursor-not-allowed text-slate-400' : (auditFilter === 'Out' ? 'bg-rose-500 text-white shadow-md shadow-rose-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700')}`}
+                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditFilter === 'Out' ? 'bg-rose-500 text-white shadow-md shadow-rose-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           📤 Money Out
                         </button>
@@ -427,29 +413,75 @@ export const Finance = () => {
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.category')}</label>
                       <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
                         <button
-                          onClick={() => handleCategoryChange('Fees')}
+                          onClick={() => { setAuditCategory('Fees'); setAuditPage(0); }}
                           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditCategory === 'Fees' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           🎓 Fees
                         </button>
                         <button
-                          onClick={() => handleCategoryChange('Staff')}
+                          onClick={() => { setAuditCategory('Staff'); setAuditPage(0); }}
                           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditCategory === 'Staff' ? 'bg-purple-600 text-white shadow-md shadow-purple-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           👤 Staff
-                        </button>
-                        <button
-                          onClick={() => handleCategoryChange('Other')}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditCategory === 'Other' ? 'bg-slate-600 text-white shadow-md shadow-slate-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          ⚙️ Other
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Row 2: Amount Range */}
+                  {/* Row 2: Dropdowns + Amount Range */}
                   <div className="flex flex-wrap items-end gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Section</label>
+                      <div className="relative">
+                        <select
+                          value={auditSection}
+                          onChange={(e) => { setAuditSection(e.target.value); setAuditPage(0); }}
+                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
+                        >
+                          <option value="all">{t('finance.all')} Sections</option>
+                          {sectionOptions.map((section) => (
+                            <option key={section} value={section}>{section}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</label>
+                      <div className="relative">
+                        <select
+                          value={auditActionType}
+                          onChange={(e) => { setAuditActionType(e.target.value); setAuditPage(0); }}
+                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
+                        >
+                          <option value="all">All Actions</option>
+                          <option value="Created">Created</option>
+                          <option value="Updated">Updated</option>
+                          <option value="Deleted">Deleted</option>
+                          <option value="Refunded">Refunded</option>
+                        </select>
+                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</label>
+                      <div className="relative">
+                        <select
+                          value={auditUserRole}
+                          onChange={(e) => { setAuditUserRole(e.target.value); setAuditPage(0); }}
+                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
+                        >
+                          <option value="all">All Roles</option>
+                          <option value="Admin">Admin</option>
+                          <option value="Accountant">Accountant</option>
+                          <option value="Vice Principal">Vice Principal</option>
+                        </select>
+                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Range</label>
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">

@@ -10,7 +10,7 @@ export const FinanceStaff = () => {
   const navigate = useNavigate();
   const { role } = useUser();
   const isAdmin = role === 'school-admin' || role === 'super-admin';
-  
+
   const [financeStaff, setFinanceStaff] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +45,9 @@ export const FinanceStaff = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await getBranchUsers('finance-clerk', '');
-      
+
       const staff = (response.data || []).map((person: any) => ({
         id: person.id,
         name: person.name,
@@ -70,11 +70,11 @@ export const FinanceStaff = () => {
 
   const handleAction = async () => {
     if (!confirmAction.staff) return;
-    
+
     setProcessing(true);
     try {
       const userId = confirmAction.staff.userId;
-      
+
       if (confirmAction.action === 'approve') {
         await approveTeacher(userId);
       } else if (confirmAction.action === 'revoke') {
@@ -82,13 +82,13 @@ export const FinanceStaff = () => {
       } else if (confirmAction.action === 'delete') {
         await deleteTeacher(userId);
       }
-      
+
       setConfirmAction({ show: false, action: 'approve', staff: null });
       setActionMenu(null);
       fetchFinanceStaff();
     } catch (err: any) {
       console.error('Action failed:', err);
-      const errorMsg = err.response?.status === 404 
+      const errorMsg = err.response?.status === 404
         ? 'Backend route not implemented yet. Contact backend team to implement: PATCH /school-admin/users/{userId}/status'
         : err.response?.data?.error?.message || 'Action failed';
       alert(errorMsg);
@@ -200,7 +200,7 @@ export const FinanceStaff = () => {
           registeredAt: new Date().toISOString()
         }
       });
-      
+
       const transformedData = {
         user: {
           digitalId: response.data.user.digital_id,
@@ -210,7 +210,7 @@ export const FinanceStaff = () => {
         },
         temporaryPassword: response.data.temporaryPassword
       };
-      
+
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
       setPhoneError('');
@@ -250,7 +250,7 @@ export const FinanceStaff = () => {
         </div>
 
         {isAdmin && (
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
             className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all text-sm font-bold shadow-lg shadow-emerald-200 dark:shadow-none"
           >
@@ -298,11 +298,10 @@ export const FinanceStaff = () => {
                   <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{staff.email}</td>
                   <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{staff.digitalId}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                      staff.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                      staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-700'
-                    }`}>
+                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${staff.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                        staff.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                      }`}>
                       {staff.status}
                     </span>
                   </td>
@@ -588,11 +587,10 @@ export const FinanceStaff = () => {
               </button>
               <button
                 onClick={handleAction}
-                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${
-                  confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' :
-                  confirmAction.action === 'revoke' ? 'bg-orange-600 hover:bg-orange-700' :
-                  'bg-red-600 hover:bg-red-700'
-                } disabled:opacity-50`}
+                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' :
+                    confirmAction.action === 'revoke' ? 'bg-orange-600 hover:bg-orange-700' :
+                      'bg-red-600 hover:bg-red-700'
+                  } disabled:opacity-50`}
                 disabled={processing}
               >
                 {processing ? 'Processing...' : confirmAction.action === 'approve' ? 'Approve' : confirmAction.action === 'revoke' ? 'Revoke' : 'Delete'}

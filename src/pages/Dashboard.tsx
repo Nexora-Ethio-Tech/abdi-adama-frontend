@@ -67,19 +67,13 @@ export const Dashboard = () => {
             getAtRiskStudents(),
             getUpcomingEvents(5)
           ]);
-
-          // Handle different response formats
-          const approvedCount = Array.isArray(studentsRes) ? studentsRes.length : (studentsRes?.data?.length || 0);
-          const teachersCount = Array.isArray(teachersRes) ? teachersRes.filter((t: any) => t.status === 'Approved').length : ((teachersRes?.data || []).filter((t: any) => t.status === 'Approved').length || 0);
-          const classesCount = Array.isArray(classesRes) ? classesRes.length : (classesRes?.data?.length || 0);
-          const pendingCount = Array.isArray(pendingStudentsRes) ? pendingStudentsRes.length : (pendingStudentsRes?.data?.length || 0);
-
+          const approvedTeachers = (teachersRes.data || []).filter((t: any) => t.status === 'Approved');
           setSchoolAdminStats({
             ...data,
-            totalStudents: approvedCount,
-            totalTeachers: teachersCount,
-            totalClasses: classesCount,
-            pendingApplications: pendingCount
+            totalStudents: studentsRes.data?.length || 0,
+            totalTeachers: approvedTeachers.length,
+            totalClasses: classesRes.data?.length || 0,
+            pendingApplications: pendingStudentsRes.data?.length || 0
           });
           setAtRiskStudents(atRiskData.students || []);
           setUpcomingEvents(eventsData || []);
@@ -166,36 +160,6 @@ export const Dashboard = () => {
   const selectedBranch = selectedBranchId ? branches.find((branch) => branch.id === selectedBranchId) || null : null;
   const [branchReports, setBranchReports] = useState<any[]>([]);
 
-  const selectedBranchReport = selectedBranchId
-    ? branchReports.find((report) => report?.branchId === selectedBranchId || report?.branch?.id === selectedBranchId) || null
-    : null;
-
-  const totalBranchStaff = dashboardStats?.usersByRole?.reduce(
-    (sum: number, role: any) => sum + Number(role.count || 0),
-    0
-  ) ?? 0;
-
-  const selectedBranchStaffCount = selectedBranchReport
-    ? (
-      selectedBranchReport.totalStaff ?? selectedBranchReport.usersByRole?.reduce(
-        (sum: number, role: any) => sum + Number(role.count || 0),
-        0
-      ) ?? 0
-    )
-    : 0;
-
-  const selectedBranchTeacherCount = selectedBranchReport
-    ? (
-      selectedBranchReport.totalTeachers ??
-      (selectedBranchReport.usersByRole?.find((role: any) => role.role === 'teacher')?.count ?? 0)
-    )
-    : 0;
-
-  const selectedBranchStaffRoles = selectedBranchReport?.usersByRole?.filter((role: any) => {
-    const normalized = (role.role || '').toString().toLowerCase();
-    return normalized !== 'teacher' && normalized !== 'student';
-  }) || [];
-
   // Fetch branch reports for Super Admin
   useEffect(() => {
     const fetchBranchReports = async () => {
@@ -231,28 +195,17 @@ export const Dashboard = () => {
     // Use ONLY real API data - no fallback
     const branchHealth = branches.map((branch) => {
       // Now report is the actual data object, not wrapped in response
-      const report = branchReports.find(
-        (r) => r?.branchId === branch.id || r?.branch?.id === branch.id
-      );
+      const report = branchReports.find(r => r?.branchId === branch.id);
       console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
-
+      
       if (!report) {
         return null; // Skip branches without API data
       }
-
-      const teacherCount = (
-        report.totalTeachers ?? report.usersByRole?.find((role: any) => role.role === 'teacher')?.count
-      ) || 0;
-      const staffCount = report.totalStaff ?? report.usersByRole?.reduce(
-        (sum: number, role: any) => sum + Number(role.count || 0),
-        0
-      ) ?? 0;
-
+      
       return {
         ...branch,
         students: report.totalStudents,
-        teachers: teacherCount,
-        staff: staffCount,
+        teachers: report.totalTeachers,
         attendance: report.attendanceRate?.toFixed(1),
         finance: report.netProfit > 0 ? 'Stable' : 'Attention',
         risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
@@ -275,8 +228,8 @@ export const Dashboard = () => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="px-4 py-3 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
-                  <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">{t('dashboard.selectedBranch')}</p>
-                  <p className="font-black text-white text-sm">{t('dashboard.none')}</p>
+                   <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">{t('dashboard.selectedBranch')}</p>
+                   <p className="font-black text-white text-sm">{t('dashboard.none')}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -291,47 +244,41 @@ export const Dashboard = () => {
             </div>
           </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
             {loading ? (
-              <div className="col-span-5 text-center py-8">
+              <div className="col-span-4 text-center py-8">
                 <div className="inline-block w-8 h-8 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                 <p className="text-sm text-slate-500 mt-2">Loading dashboard stats...</p>
               </div>
             ) : error ? (
-              <div className="col-span-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <div className="col-span-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <p className="text-sm text-amber-700 dark:text-amber-400">⚠️ Using mock data (API: {error})</p>
               </div>
             ) : null}
-            <StatCard
-              icon={Users}
-              label={t('dashboard.totalStudents')}
-              value={dashboardStats?.totalStudents?.toLocaleString() || "0"}
+            <StatCard 
+              icon={Users} 
+              label={t('dashboard.totalStudents')} 
+              value={dashboardStats?.totalStudents?.toLocaleString() || "0"} 
               trend={dashboardStats?.totalStudents > 0 ? "+4.3%" : undefined}
-              color="bg-blue-600"
+              color="bg-blue-600" 
             />
-            <StatCard
-              icon={GraduationCap}
-              label={t('dashboard.totalTeachers')}
-              value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"}
-              color="bg-purple-600"
+            <StatCard 
+              icon={GraduationCap} 
+              label={t('dashboard.totalTeachers')} 
+              value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"} 
+              color="bg-purple-600" 
             />
-            <StatCard
-              icon={Users}
-              label="Total Branch Staff"
-              value={totalBranchStaff.toLocaleString?.() || totalBranchStaff.toString()}
-              color="bg-slate-600"
+            <StatCard 
+              icon={Clock} 
+              label="Total Branches" 
+              value={dashboardStats?.totalBranches?.toString() || "0"} 
+              color="bg-orange-500" 
             />
-            <StatCard
-              icon={Clock}
-              label="Total Branches"
-              value={dashboardStats?.totalBranches?.toString() || "0"}
-              color="bg-orange-500"
-            />
-            <StatCard
-              icon={TrendingUp}
-              label="Pending Approvals"
-              value={dashboardStats?.pendingUsers?.toString() || "0"}
-              color="bg-emerald-600"
+            <StatCard 
+              icon={TrendingUp} 
+              label="Pending Approvals" 
+              value={dashboardStats?.pendingUsers?.toString() || "0"} 
+              color="bg-emerald-600" 
             />
           </div>
 
@@ -352,12 +299,14 @@ export const Dashboard = () => {
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.students')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.teachers')}</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.attendance')}</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-center">{t('dashboard.finance')}</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase tracking-wider text-right">{t('dashboard.status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {branchHealth.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-8 text-center">
+                        <td colSpan={6} className="px-6 py-8 text-center">
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                             <p className="text-sm text-slate-500 mt-2">Loading branch reports...</p>
@@ -378,6 +327,20 @@ export const Dashboard = () => {
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.students ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.teachers ?? 0}</td>
                         <td className="px-6 py-4 text-center font-bold text-emerald-600">{branch?.attendance ?? 0}%</td>
+                        <td className="px-6 py-4 text-center font-bold text-slate-700 dark:text-slate-200">{branch?.finance ?? 0}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => {
+                              if (branch) {
+                                setSelectedBranchId(branch.id);
+                                setSelectedBranch(branch);
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${branch?.risk === 'Normal' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
+                          >
+                            {branch?.risk || ''}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -422,14 +385,14 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* Branch Summary Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* Power of Three: Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Users size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.students')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.totalStudents ?? 0}</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">318</p>
             <p className="text-xs text-emerald-600 font-bold mt-1">+2.1% this term</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
@@ -437,61 +400,86 @@ export const Dashboard = () => {
               <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><GraduationCap size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.teachers')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchTeacherCount}</p>
-            <p className="text-xs text-slate-500 font-bold mt-1">Teaching staff only</p>
-          </div>
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-slate-100 text-slate-600 rounded-xl"><Users size={20} /></div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Branch Staff</p>
-                <p className="text-xs text-slate-500 mt-1">Role breakdown for this branch</p>
-              </div>
-            </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchStaffCount}</p>
-            {selectedBranchStaffRoles.length ? (
-              <div className="mt-4 space-y-2">
-                {selectedBranchStaffRoles.map((role: any) => (
-                  <div key={role.role} className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">{role.role.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}</span>
-                    <span className="font-black">{role.count}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 font-bold mt-1">All branch employees</p>
-            )}
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">24</p>
+            <p className="text-xs text-slate-500 font-bold mt-1">6 on exam duty</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-orange-100 text-orange-600 rounded-xl"><Clock size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.attendance')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.attendance ? `${selectedBranchReport.attendance}%` : 'N/A'}</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">93.8%</p>
             <p className="text-xs text-emerald-600 font-bold mt-1">+0.7% vs last week</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+          {/* Pending Actions */}
+          <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Switch Branch</h3>
-                <p className="text-xs text-slate-500">Select another branch to inspect</p>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.pendingActions')}</h3>
+                <p className="text-xs text-slate-500">{t('dashboard.attentionItems')}</p>
               </div>
+              <span className="px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full text-[10px] font-black">5 {t('dashboard.items')}</span>
             </div>
-            <div className="p-6 space-y-2">
-              {branches.map((branch) => (
-                <button
-                  key={branch.id}
-                  onClick={() => {
-                    setSelectedBranchId(branch.id);
-                    setSelectedBranch(branch);
-                  }}
-                  className={`w-full p-3 rounded-xl text-left text-sm font-bold transition-all ${branch.id === selectedBranch.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 border border-transparent hover:border-slate-200'}`}>
-                  {branch.name}
-                </button>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {[
+                { label: 'VP attendance queue items', count: '4', color: 'bg-rose-500', action: 'Review' },
+                { label: 'Finance clerk fee exception', count: '1', color: 'bg-amber-500', action: 'Approve' },
+                { label: 'Compliance risks escalated', count: '2', color: 'bg-amber-500', action: 'Inspect' },
+                { label: 'Exam unveil requests', count: '3', color: 'bg-blue-500', action: 'Decide' },
+                { label: 'Bus route update pending', count: '1', color: 'bg-orange-500', action: 'Confirm' },
+              ].map((item) => (
+                <div key={item.label} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
+                    <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full">{item.count}</span>
+                  </div>
+                  <button className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    {item.action}
+                  </button>
+                </div>
               ))}
+            </div>
+          </div>
+
+          {/* Performance Snapshot with Traffic Lights */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.healthCheck')}</h3>
+            {[
+              { label: 'Finance', value: 'On Track', status: 'green' },
+              { label: 'Attendance', value: '93.8%', status: 'green' },
+              { label: 'Facilities', value: 'All Green', status: 'green' },
+              { label: 'Exams', value: '3 Locked', status: 'yellow' },
+              { label: 'Compliance', value: '2 Risks', status: 'yellow' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-500">{item.value}</span>
+                  <div className={`w-3 h-3 rounded-full ${item.status === 'green' ? 'bg-emerald-500' : item.status === 'yellow' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Switch Branch</h4>
+              <div className="space-y-2">
+                {branches.map((branch) => (
+                  <button
+                    key={branch.id}
+                    onClick={() => {
+                      setSelectedBranchId(branch.id);
+                      setSelectedBranch(branch);
+                    }}
+                    className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all ${branch.id === selectedBranch.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 border border-transparent hover:border-slate-200'}`}
+                  >
+                    {branch.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -532,14 +520,16 @@ export const Dashboard = () => {
         </section>
       )}
 
-      {(isVP || isSuperAdmin) && (
-        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${gradesLocked
-          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
-          : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-          }`}>
+      {(role === 'school-admin' || isVP || isSuperAdmin) && (
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${
+          gradesLocked
+            ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+            : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
+        }`}>
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-full ${gradesLocked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
-              }`}>
+            <div className={`p-3 rounded-full ${
+              gradesLocked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+            }`}>
               {gradesLocked ? <Lock size={24} /> : <Unlock size={24} />}
             </div>
             <div>
@@ -566,14 +556,15 @@ export const Dashboard = () => {
                 Calculate Ranks
               </button>
             )}
-            {((role as string) === 'school-admin' || isSuperAdmin) && (
+            {(role === 'school-admin' || isSuperAdmin) && (
               <button
                 disabled={isSuperAdmin}
                 onClick={() => setGradesLocked(!gradesLocked)}
-                className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${gradesLocked
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-amber-600 hover:bg-amber-700 text-white'
-                  }`}
+                className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${
+                  gradesLocked
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-amber-600 hover:bg-amber-700 text-white'
+                }`}
               >
                 {gradesLocked ? 'Open Insertion' : 'Close Insertion'}
               </button>
@@ -671,14 +662,16 @@ export const Dashboard = () => {
             <div key={notice.id} className="p-4 md:p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${notice.category === 'Logistics' ? 'bg-amber-100 text-amber-700' :
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    notice.category === 'Logistics' ? 'bg-amber-100 text-amber-700' :
                     notice.category === 'Finance' ? 'bg-emerald-100 text-emerald-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
+                    'bg-blue-100 text-blue-700'
+                  }`}>
                     {notice.category}
                   </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${notice.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
-                    }`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    notice.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
                     {notice.priority}
                   </span>
                 </div>
@@ -686,7 +679,7 @@ export const Dashboard = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 font-medium">{notice.time}</span>
                     {isAdmin && (
-                      <button
+                      <button 
                         onClick={() => deleteNotice(notice.id)}
                         className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors"
                         title="Delete Notice"
@@ -722,7 +715,7 @@ export const Dashboard = () => {
                 <ShieldAlert size={20} className="text-rose-600" />
                 Priority Watchlist
                 <div className={`transition-transform duration-300 ${watchlistExpanded ? 'rotate-90' : ''}`}>
-                  <ArrowRight size={18} className="text-slate-400" />
+                   <ArrowRight size={18} className="text-slate-400" />
                 </div>
               </button>
               <Link to="/analytics" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-widest">
@@ -833,7 +826,7 @@ export const Dashboard = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">Post New Notice</h3>
-              <button type="button" title="Close notice modal" onClick={() => setShowNoticeModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => setShowNoticeModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -851,21 +844,21 @@ export const Dashboard = () => {
               setShowNoticeModal(false);
             }}>
               <div className="space-y-1">
-                <label htmlFor="notice-title" className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
-                <input id="notice-title" name="title" required type="text" placeholder="e.g. Public Holiday Announcement" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
+                <input name="title" required type="text" placeholder="e.g. Public Holiday Announcement" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="notice-category" className="text-[10px] font-bold text-slate-500 uppercase">Category</label>
-                  <select id="notice-category" name="category" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Category</label>
+                  <select name="category" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <option value="Academic">Academic</option>
                     <option value="Logistics">Logistics</option>
                     <option value="Finance">Finance</option>
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="notice-priority" className="text-[10px] font-bold text-slate-500 uppercase">Priority</label>
-                  <select id="notice-priority" name="priority" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Priority</label>
+                  <select name="priority" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
                     <option value="Normal">Normal</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
@@ -873,12 +866,12 @@ export const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label htmlFor="notice-content" className="text-[10px] font-bold text-slate-500 uppercase">Content</label>
-                <textarea id="notice-content" name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Content</label>
+                <textarea name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notice-expiry" className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
-                <input id="notice-expiry" name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
+                <input name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
@@ -943,7 +936,7 @@ export const Dashboard = () => {
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h3>
-              <button type="button" title="Close event modal" onClick={() => {
+              <button onClick={() => {
                 setShowEventModal(false);
                 setEditingEvent(null);
               }} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -952,34 +945,31 @@ export const Dashboard = () => {
             </div>
             <form className="p-6 space-y-4" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
               <div className="space-y-1">
-                <label htmlFor="event-title" className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
-                <input
-                  id="event-title"
-                  name="title"
-                  required
-                  type="text"
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
+                <input 
+                  name="title" 
+                  required 
+                  type="text" 
                   defaultValue={editingEvent?.title}
-                  placeholder="e.g. Parent-Teacher Meeting"
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  placeholder="e.g. Parent-Teacher Meeting" 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="event-date" className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
-                  <input
-                    id="event-date"
-                    name="date"
-                    required
-                    type="date"
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
+                  <input 
+                    name="date" 
+                    required 
+                    type="date" 
                     defaultValue={editingEvent?.date}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="event-type" className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
-                  <select
-                    id="event-type"
-                    name="type"
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
+                  <select 
+                    name="type" 
                     required
                     defaultValue={editingEvent?.type}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -992,14 +982,13 @@ export const Dashboard = () => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label htmlFor="event-description" className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
-                <textarea
-                  id="event-description"
-                  name="description"
-                  rows={3}
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
+                <textarea 
+                  name="description" 
+                  rows={3} 
                   defaultValue={editingEvent?.description || ''}
-                  placeholder="Event details..."
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  placeholder="Event details..." 
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
                 />
               </div>
               <div className="pt-4">

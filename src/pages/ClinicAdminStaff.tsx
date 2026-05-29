@@ -313,10 +313,10 @@ export const ClinicAdminStaff = () => {
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{staff.digitalId}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${staff.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                          : staff.status === 'Pending'
-                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                            : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        : staff.status === 'Pending'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300'
                         }`}>
                         {staff.status === 'Approved' && <CheckCircle size={12} />}
                         {staff.status === 'Pending' && <Clock size={12} />}
@@ -564,8 +564,8 @@ export const ClinicAdminStaff = () => {
                 onClick={handleAction}
                 disabled={processing}
                 className={`flex-1 px-4 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${confirmAction.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                    confirmAction.action === 'revoke' ? 'bg-amber-600 hover:bg-amber-700' :
-                      'bg-rose-600 hover:bg-rose-700'
+                  confirmAction.action === 'revoke' ? 'bg-amber-600 hover:bg-amber-700' :
+                    'bg-rose-600 hover:bg-rose-700'
                   }`}
               >
                 {processing ? 'Processing...' : (
