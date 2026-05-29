@@ -1,4 +1,4 @@
-import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText } from 'lucide-react';
+import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
@@ -7,6 +7,7 @@ import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeS
 import { useUser } from '../context/UserContext';
 import { StudentRegistration } from '../components/StudentRegistration';
 import * as sectionService from '../services/sectionService';
+import { exportToExcel } from '../utils/exportUtils';
 
 export const Students = () => {
   const navigate = useNavigate();
@@ -82,6 +83,7 @@ export const Students = () => {
   const [selectedBulkSectionIds, setSelectedBulkSectionIds] = useState<Set<string>>(new Set());
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [loadingBulkSections, setLoadingBulkSections] = useState(false);
+  const [autoDistributing, setAutoDistributing] = useState(false);
 
   const handlePhoneInput = (value: string) => {
     // Remove any non-digit characters
@@ -294,6 +296,34 @@ export const Students = () => {
     }
   }, [bulkTargetGrade, showBulkAssignModal]);
 
+  const handleAutoDistribute = async () => {
+    if (!filterGrade) {
+      showToast('Select a grade filter first to auto-distribute unassigned students', 'error');
+      return;
+    }
+
+    setAutoDistributing(true);
+    try {
+      const result = await sectionService.autoDistributeStudents(filterGrade);
+      if (result.successful === 0 && result.failed === 0) {
+        showToast(
+          `No unassigned students found for Grade ${filterGrade}. Ensure students have no section and matching grade.`,
+          'error'
+        );
+      } else {
+        showToast(
+          `Auto-distributed ${result.successful} student(s)${result.failed > 0 ? `, ${result.failed} failed` : ''} for Grade ${filterGrade}`,
+          result.failed === 0 ? 'success' : 'error'
+        );
+        fetchStudents();
+      }
+    } catch (err: any) {
+      showToast(getErrorMessage(err, 'Failed to auto-distribute students'), 'error');
+    } finally {
+      setAutoDistributing(false);
+    }
+  };
+
   useEffect(() => { fetchStudents(); }, [filterStatus]);
   useEffect(() => { fetchClasses(); }, []);
 
@@ -424,14 +454,20 @@ export const Students = () => {
   };
 
   const handleExport = () => {
-    const rows = students.map(s => `${s.digitalId},${s.firstName} ${s.lastName},${s.email},${s.grade},${s.className || 'Unassigned'},${s.status}`);
-    const csv = ['ID,Name,Email,Grade,Class,Status', ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'students.csv';
-    a.click();
+    if (filtered.length === 0) {
+      showToast('No students to export for the current filters', 'error');
+      return;
+    }
+
+    const rows = filtered.map((s) => ({
+      Student: `${s.firstName} ${s.lastName}`.trim(),
+      'Digital ID': s.digitalId || '',
+      Section: formatSectionDisplay(s.section),
+      Grade: formatGradeDisplay(s.grade),
+      Status: s.status || '',
+    }));
+
+    exportToExcel([{ name: 'Students', rows }], 'students');
   };
 
   const filtered = students.filter(s => {
@@ -554,6 +590,22 @@ export const Students = () => {
           <option value="Suspended">Suspended</option>
           <option value="Graduated">Graduated</option>
         </select>
+        {canViewStudentRecord && activeView === 'students' && filterGrade && (
+          <button
+            type="button"
+            onClick={handleAutoDistribute}
+            disabled={autoDistributing || loading}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+            title={`Auto-distribute all unassigned Grade ${filterGrade} students across available sections`}
+          >
+            {autoDistributing ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <RefreshCw size={16} />
+            )}
+            Auto-Distribute Unassigned
+          </button>
+        )}
       </div>
 
       {isSchoolAdmin && activeView === 'registration' ? (
