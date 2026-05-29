@@ -8,6 +8,8 @@ import payrollService, { FinanceSettingsAudit } from '../services/payrollService
 import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
 import settingsService, { type BranchGradeFee, type MonthlyProfitTarget } from '../services/settingsService';
 import { authService } from '../services/authService';
+import { SettingsSubTabs, SettingsPanel } from '../components/settings/SettingsSubTabs';
+import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
 
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
@@ -198,6 +200,17 @@ export const Settings = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeSubTab, setActiveSubTab] = useState('branding');
+
+  const superAdminSubTabs = role === 'super-admin' ? SUPER_ADMIN_SUBTABS[activeTab] : undefined;
+  const showSubSection = (subId: string) =>
+    !superAdminSubTabs || activeSubTab === subId;
+
+  useEffect(() => {
+    if (role === 'super-admin' && SUPER_ADMIN_SUBTABS[activeTab]) {
+      setActiveSubTab(getDefaultSubTab(activeTab));
+    }
+  }, [activeTab, role]);
 
   // Load grading configs from backend on mount
   useEffect(() => {
@@ -363,8 +376,11 @@ export const Settings = () => {
       setTimeout(() => setSuccessMessage(''), 5000);
     } else if (activeTab === 'General' && role === 'super-admin') {
       await saveGeneralSettings();
-    } else if (activeTab === 'Security' && role === 'super-admin') {
+    } else if (activeTab === 'Security' && role === 'super-admin' && activeSubTab === 'smtp') {
       await handleSaveSmtp();
+    } else if (activeTab === 'Security') {
+      setSuccessMessage('Use the form above to change your password.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } else {
       setSuccessMessage('No changes to save for this tab.');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -452,24 +468,36 @@ export const Settings = () => {
           ))}
         </div>
 
-        <div className="flex-1 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden transition-all duration-500">
+        <div className="flex-1 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden transition-all duration-500 flex flex-col min-h-[520px] max-h-[calc(100vh-10rem)]">
           <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-            <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{activeTab} Configuration</h3>
+            <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
+              {superAdminSubTabs ? getSubTabLabel(activeTab, activeSubTab) : activeTab}
+              <span className="text-slate-400 font-bold text-sm normal-case tracking-normal ml-2">
+                {superAdminSubTabs ? `· ${activeTab}` : ' Configuration'}
+              </span>
+            </h3>
             <button className="text-blue-600 dark:text-blue-400 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest hover:underline bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-xl">
               <HelpCircle size={16} />
               <span>Need help?</span>
             </button>
           </div>
 
-          <div className="p-6 space-y-6">
+          <div className="p-6 flex flex-col gap-6 flex-1 min-h-0 overflow-hidden">
             {successMessage && (
               <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300 p-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400" />
                 <span>{successMessage}</span>
               </div>
             )}
+
+            {superAdminSubTabs && (
+              <SettingsSubTabs tabs={superAdminSubTabs} active={activeSubTab} onChange={setActiveSubTab} />
+            )}
+
             {activeTab === 'General' && (
-              <div className="space-y-6">
+              <SettingsPanel>
+                <div className="space-y-6">
+                {showSubSection('branding') && (
                 <div className="grid grid-cols-1 gap-6">
                   <div className="space-y-4">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Name (Official)</h4>
@@ -551,6 +579,11 @@ export const Settings = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+                )}
+
+                {showSubSection('contact') && (
+                <>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
                     <input
@@ -587,10 +620,21 @@ export const Settings = () => {
                       ))}
                     </select>
                   </div>
+                  <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
+                  <textarea
+                    rows={3}
+                    value={address}
+                    onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
+                    disabled={role !== 'super-admin'}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
+                </>
+                )}
 
-                {role === 'super-admin' && (
-                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                {role === 'super-admin' && showSubSection('controls') && (
+                  <div className="pt-2 space-y-4">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Global System Controls</h4>
                     <div
                       onClick={async () => {
@@ -648,22 +692,20 @@ export const Settings = () => {
                   </div>
                 )}
 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
-                  <textarea
-                    rows={3}
-                    value={address}
-                    onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
-                    disabled={role !== 'super-admin'}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                {role !== 'super-admin' && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
+                    <Lock size={14} />
+                    Some global branding settings are restricted to Super Admins.
+                  </div>
+                )}
                 </div>
-              </div>
+              </SettingsPanel>
             )}
 
             {activeTab === 'Security' && (
+              <SettingsPanel>
               <div className="space-y-8">
-                {/* Change Password Section */}
+                {showSubSection('password') && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-3">
                     <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
@@ -813,10 +855,22 @@ export const Settings = () => {
                       )}
                     </button>
                   </form>
-                </div>
 
-                {role === 'super-admin' && (
-                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Use strong passwords</p>
+                      <p className="text-xs text-slate-500">Combine letters, numbers, and special characters.</p>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Change regularly</p>
+                      <p className="text-xs text-slate-500">Update your password every 3–6 months.</p>
+                    </div>
+                  </div>
+                </div>
+                )}
+
+                {role === 'super-admin' && showSubSection('smtp') && (
+                  <div className="space-y-6">
                     <div className="flex items-center gap-3">
                       <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
                         <Mail size={24} />
@@ -896,34 +950,13 @@ export const Settings = () => {
                     </div>
                   </div>
                 )}
-
-                {/* Account Security Info */}
-                <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-white">Security Tips</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🔒 Use Strong Passwords</p>
-                      <p className="text-xs text-slate-500">Combine letters, numbers, and special characters</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🔄 Change Regularly</p>
-                      <p className="text-xs text-slate-500">Update your password every 3-6 months</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">🚫 Don't Share</p>
-                      <p className="text-xs text-slate-500">Never share your password with anyone</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">⚠️ Avoid Reuse</p>
-                      <p className="text-xs text-slate-500">Use unique passwords for different accounts</p>
-                    </div>
-                  </div>
-                </div>
               </div>
+              </SettingsPanel>
             )}
 
             {activeTab === 'Financial Policy' && (
-              <div className="space-y-8">
+              <SettingsPanel>
+              <div className="space-y-6">
                 {financeSuccessMsg && (
                   <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
                     {financeSuccessMsg}
@@ -936,7 +969,8 @@ export const Settings = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {showSubSection('student-fees') && (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                   {/* Student Registration Fee */}
                   <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                     <div>
@@ -1047,29 +1081,15 @@ export const Settings = () => {
                     )}
                   </div>
                 </div>
+                )}
 
-                {role === 'super-admin' && (
-                  <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-8">
-                    {/* Global Finance Configuration */}
-                    <div className="pb-6 border-b border-slate-100 dark:border-slate-800 space-y-6">
+                {role === 'super-admin' && showSubSection('payroll-loans') && (
+                    <div className="space-y-6">
                       <div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Global Finance Configuration</h4>
-                        <p className="text-xs text-slate-500 font-medium">Configure global parameters for employee payroll penalties and loans.</p>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Payroll & Loans</h4>
+                        <p className="text-xs text-slate-500 font-medium">Employee penalties and loan repayment rules.</p>
                       </div>
-
-                      {financeSuccessMsg && (
-                        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
-                          {financeSuccessMsg}
-                        </div>
-                      )}
-
-                      {financeErrorMsg && (
-                        <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
-                          {financeErrorMsg}
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                           <div>
                             <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Daily Penalty Rate (ETB)</label>
@@ -1157,11 +1177,13 @@ export const Settings = () => {
                           </button>
                         </div>
                       </div>
+                    </div>
+                )}
 
-                      {/* Settings Audit Log Table */}
-                      <div className="pt-4 space-y-3">
+                {role === 'super-admin' && showSubSection('audit') && (
+                      <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log (Activity Trail)</h5>
+                          <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log</h5>
                           <span className="text-[9px] font-bold text-slate-400 uppercase">Updates list in real-time</span>
                         </div>
                         <div className="overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
@@ -1195,11 +1217,13 @@ export const Settings = () => {
                           </table>
                         </div>
                       </div>
-                    </div>
+                )}
 
+                {role === 'super-admin' && showSubSection('fee-structure') && (
+                  <div className="space-y-4">
                     <div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure Management</h4>
-                      <p className="text-xs text-slate-500 font-medium">Configure school fees per branch and grade level.</p>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure</h4>
+                      <p className="text-xs text-slate-500 font-medium">Per branch and grade level.</p>
                     </div>
 
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -1305,12 +1329,14 @@ export const Settings = () => {
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                )}
 
-                          {/* Monthly Net Profit Target */}
-                          <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                {role === 'super-admin' && showSubSection('profit-targets') && (
+                          <div className="space-y-4">
                             <div>
-                              <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Monthly Net Profit Target</h4>
-                              <p className="text-xs text-slate-500 font-medium">Set the expected profit for each Ethiopian month. Compare with actual collections.</p>
+                              <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Monthly Profit Target</h4>
+                              <p className="text-xs text-slate-500 font-medium">Ethiopian calendar months vs actual collections.</p>
                             </div>
 
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
@@ -1397,14 +1423,15 @@ export const Settings = () => {
                                   </div>
                                 ) : null;
                               })()}
-                            </div>
+                      </div>
                           </div>
-                        </div>
                 )}
-                    </div>
+              </div>
+              </SettingsPanel>
             )}
 
-                    {activeTab === 'Grading System' && (
+            {activeTab === 'Grading System' && (
+              <SettingsPanel>
                       <div className="space-y-8 animate-in fade-in duration-300">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                           <div>
@@ -1587,9 +1614,11 @@ export const Settings = () => {
                           </div>
                         )}
                       </div>
-                    )}
+              </SettingsPanel>
+            )}
 
-                    {activeTab === 'Appearance' && (
+            {activeTab === 'Appearance' && (
+              <SettingsPanel>
                       <div className="space-y-6">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           {(['Standard', 'Modern', 'Compact', 'Classic'] as UIStyle[]).map((t) => (
@@ -1615,22 +1644,16 @@ export const Settings = () => {
                           </div>
                         </div>
                       </div>
-                    )}
+              </SettingsPanel>
+            )}
 
-                    {activeTab === 'Grading System' && role === 'super-admin' && (
+            {activeTab === 'Grading System' && role === 'super-admin' && (
                       <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-2">
                         <AlertCircle size={14} />
                         READ-ONLY: Grading configurations are managed at the School Admin level.
                       </div>
                     )}
-                    {role !== 'super-admin' && activeTab === 'General' && (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
-                        <Lock size={14} />
-                        Some global branding settings are restricted to Super Admins.
-                      </div>
-                    )}
-
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               {activeTab === 'Grading System' && (
                 <button
                   onClick={handlePublishChanges}
@@ -1641,18 +1664,20 @@ export const Settings = () => {
                   <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
                 </button>
               )}
+              {(activeTab === 'General' || (activeTab === 'Security' && role === 'super-admin' && activeSubTab === 'smtp')) && (
               <button
                 onClick={handleSaveChanges}
-                disabled={(gradingLoading && activeTab === 'Grading System') || generalSaving || smtpSaving}
+                disabled={generalSaving || smtpSaving}
                 className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
               >
                 <Save size={18} />
                 <span>{generalSaving || smtpSaving ? 'Saving…' : 'Save Changes'}</span>
               </button>
+              )}
             </div>
           </div>
         </div>
       </div>
-        </div>
-        );
+    </div>
+  );
 };
