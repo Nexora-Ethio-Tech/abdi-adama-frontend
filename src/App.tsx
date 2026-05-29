@@ -59,6 +59,7 @@ const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const StudentSchedulePage = lazy(() => import('./pages/StudentSchedule'));
 const PayrollManagement = lazy(() => import('./pages/PayrollManagement'));
 const LoanManagement = lazy(() => import('./pages/LoanManagement'));
+const ChatbotManagement = lazy(() => import('./pages/ChatbotManagement'));
 const EmployeeProfiles = lazy(() => import('./pages/EmployeeProfiles'));
 const MyFinance = lazy(() => import('./pages/MyFinance'));
 
@@ -290,6 +291,12 @@ function App() {
               <Route path="loans" element={
                 <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin', 'auditor']}>
                   <LoanManagement />
+                </ProtectedRoute>
+              } />
+
+              <Route path="chatbot-management" element={
+                <ProtectedRoute allowedRoles={['super-admin']}>
+                  <ChatbotManagement />
                 </ProtectedRoute>
               } />
 
