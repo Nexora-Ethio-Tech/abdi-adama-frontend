@@ -15,6 +15,7 @@ import auditorService, {
   type FinancialReport,
   type AuditTrailEntry
 } from '../services/auditorService';
+import { exportToExcel } from '../utils/exportUtils';
 import {
   ethiopianToGregorianIso,
   formatEthiopianLabel
@@ -221,6 +222,41 @@ export const AuditorDashboard = () => {
     await fetchData();
   };
 
+  const handleExportTransactions = () => {
+    if (filteredPayments.length === 0) {
+      setError('No transactions available to export.');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    console.log('📊 [AuditorDashboard] Exporting Transactions:', {
+      count: filteredPayments.length,
+      dateRange: `${transactionStartEth || 'all'} to ${transactionEndEth || 'all'}`,
+      data: filteredPayments.slice(0, 5).map((p) => ({
+        date: formatEthiopianLabel(p.date),
+        student: p.student_name,
+        amount: Number(p.amount),
+        type: p.type,
+        verifiedBy: p.verified_by
+      }))
+    });
+
+    exportToExcel([
+      {
+        name: 'Transactions',
+        rows: filteredPayments.map((payment) => ({
+          Date: formatEthiopianLabel(payment.date),
+          Student: payment.student_name,
+          StudentId: payment.student_id,
+          Amount: Number(payment.amount),
+          Type: payment.type,
+          VerifiedBy: payment.verified_by,
+          DateCreated: new Date(payment.created_at).toLocaleString()
+        }))
+      }
+    ], `auditor-transactions-${transactionStartEth || 'all'}-${transactionEndEth || 'all'}`);
+  };
+
   const handleClearAuditFilter = async () => {
     setFinanceStartEth('');
     setFinanceEndEth('');
@@ -261,42 +297,62 @@ export const AuditorDashboard = () => {
   const handleExportReport = () => {
     if (!financialReport) return;
 
-    const rows: string[][] = [
-      ['Auditor Financial Report'],
-      ['Period', `${financialReport.period.startDate} to ${financialReport.period.endDate}`],
-      [],
-      ['Summary'],
-      ['Total Transactions', financialReport.summary.totalTransactions.toString()],
-      ['Total Collected', financialReport.summary.totalCollected.toString()],
-      [],
-      ['By Type'],
-      ['Type', 'Transactions', 'Total Collected'],
-      ...financialReport.byType.map((item) => [
-        item.type,
-        item.count.toString(),
-        Number(item.total).toLocaleString()
-      ]),
-      [],
-      ['Daily Breakdown'],
-      ['Date', 'Transactions', 'Total Collected'],
-      ...financialReport.dailyBreakdown.map((item) => [
-        new Date(item.date).toLocaleDateString(),
-        item.transactions.toString(),
-        Number(item.total).toLocaleString()
-      ])
-    ];
+    console.log('💰 [AuditorDashboard] Exporting Financial Report:', {
+      period: `${financialReport.period.startDate} to ${financialReport.period.endDate}`,
+      summary: {
+        totalTransactions: financialReport.summary.totalTransactions,
+        totalCollected: financialReport.summary.totalCollected
+      },
+      byType: financialReport.byType.map((item) => ({
+        type: item.type,
+        count: item.count,
+        total: item.total
+      })),
+      dailyBreakdownCount: financialReport.dailyBreakdown.length,
+      transactionSampleCount: financialReport.transactions.length
+    });
 
-    const csvContent = rows
-      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `auditor-financial-report-${financialReport.period.startDate}-${financialReport.period.endDate}.csv`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    exportToExcel([
+      {
+        name: 'Transactions',
+        rows: financialReport.transactions.map((transaction) => ({
+          Date: transaction.date,
+          Student: transaction.student_name,
+          StudentId: transaction.student_id,
+          Amount: Number(transaction.amount),
+          Type: transaction.type,
+          VerifiedBy: transaction.verified_by,
+          BranchId: transaction.branch_id,
+          CreatedAt: transaction.created_at
+        }))
+      },
+      {
+        name: 'Summary',
+        rows: [
+          {
+            Period: `${financialReport.period.startDate} to ${financialReport.period.endDate}`,
+            TotalTransactions: financialReport.summary.totalTransactions,
+            TotalCollected: financialReport.summary.totalCollected
+          }
+        ]
+      },
+      {
+        name: 'By Type',
+        rows: financialReport.byType.map((item) => ({
+          Type: item.type,
+          Transactions: Number(item.count),
+          TotalCollected: Number(item.total)
+        }))
+      },
+      {
+        name: 'Daily Breakdown',
+        rows: financialReport.dailyBreakdown.map((item) => ({
+          Date: new Date(item.date).toLocaleDateString(),
+          Transactions: Number(item.transactions),
+          TotalCollected: Number(item.total)
+        }))
+      }
+    ], `auditor-financial-report-${financialReport.period.startDate}-${financialReport.period.endDate}`);
   };
 
   const filteredPayments = payments.filter(payment =>
@@ -523,6 +579,12 @@ export const AuditorDashboard = () => {
                   className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-sm font-bold rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all uppercase tracking-wide"
                 >
                   Clear
+                </button>
+                <button
+                  onClick={handleExportTransactions}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/25 uppercase tracking-wide"
+                >
+                  Export Transactions
                 </button>
               </div>
             </div>
@@ -1015,14 +1077,19 @@ export const AuditorDashboard = () => {
                 >
                   Generate Report
                 </button>
-                {financialReport && (
+                {financialReport ? (
                   <button
-                    onClick={handleExportReport}
-                    className="w-full md:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20"
+                    onClick={() => {
+                      console.log('✅ [AuditorDashboard] Download Excel clicked - Report available:', financialReport);
+                      handleExportReport();
+                    }}
+                    className="w-full md:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl hover:bg-emerald-700 font-bold text-sm transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 justify-center"
                   >
                     <FileText size={16} />
-                    <span>Download CSV</span>
+                    <span>Download Excel</span>
                   </button>
+                ) : (
+                  <p className="text-xs text-slate-400">📌 Generate report first to enable export</p>
                 )}
               </div>
 
