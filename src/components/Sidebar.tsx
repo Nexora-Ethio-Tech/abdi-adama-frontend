@@ -239,7 +239,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </div>
         </div>
         <button
+          type="button"
           onClick={onClose}
+          aria-label={t('sidebar.closeMenu') || 'Close sidebar'}
+          title={t('sidebar.closeMenu') || 'Close sidebar'}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg lg:hidden text-slate-500 dark:text-white"
         >
           <X size={20} />
