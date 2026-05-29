@@ -508,7 +508,7 @@ export const Students = () => {
                   </div>
                 </div>
               )}
-              
+
               <table className="w-full text-left">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
