@@ -137,7 +137,7 @@ export interface CreateFinancialPolicyData {
 // Dashboard
 export const getDashboard = async (): Promise<SchoolAdminDashboard> => {
   const response = await api.get('/school-admin/dashboard');
-  return response.data;
+  return response.data?.data ?? response.data;
 };
 
 // User Registration
@@ -197,6 +197,40 @@ export const createPendingApplication = async (data: any) => {
 export const getPendingApplications = async (): Promise<Application[]> => {
   const response = await api.get('/school-admin/applications');
   return response.data?.data || response.data || [];
+};
+
+export interface AdmissionDocument {
+  id: string;
+  type: string;
+  file_name: string;
+  file_size: number | null;
+  mime_type: string | null;
+  uploaded_at: string | null;
+  source: string;
+}
+
+export interface StudentAdmissionRecord {
+  student: {
+    student_id: string;
+    user_id: string;
+    name: string;
+    email: string;
+    digital_id: string;
+    grade: string;
+    student_status: string | null;
+    status: string;
+    section_name: string | null;
+    section_label: string | null;
+    enrolled_at: string;
+  };
+  application: Record<string, any> | null;
+  documents: AdmissionDocument[];
+  hasApplication: boolean;
+}
+
+export const getStudentAdmissionRecord = async (studentId: string): Promise<StudentAdmissionRecord> => {
+  const response = await api.get(`/school-admin/students/${studentId}/admission-record`);
+  return response.data.data;
 };
 
 export const createPublicPendingApplication = async (data: any) => {

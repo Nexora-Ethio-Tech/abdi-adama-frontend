@@ -6,8 +6,7 @@ import { Link } from 'react-router-dom';
 import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
-import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
-import classService from '../services/classService';
+import { getDashboard as getSchoolAdminDashboard, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -58,23 +57,12 @@ export const Dashboard = () => {
             setDashboardStats(response.data);
           }
         } else if (role === 'school-admin') {
-          const [data, studentsRes, teachersRes, classesRes, pendingStudentsRes, atRiskData, eventsData] = await Promise.all([
+          const [dashboardData, atRiskData, eventsData] = await Promise.all([
             getSchoolAdminDashboard(),
-            getBranchUsers('student', 'Approved'),
-            getBranchTeachers(),
-            classService.getAllClasses(),
-            getBranchUsers('student', 'Pending'),
             getAtRiskStudents(),
             getUpcomingEvents(5)
           ]);
-          const approvedTeachers = (teachersRes.data || []).filter((t: any) => t.status === 'Approved');
-          setSchoolAdminStats({
-            ...data,
-            totalStudents: studentsRes.data?.length || 0,
-            totalTeachers: approvedTeachers.length,
-            totalClasses: classesRes.data?.length || 0,
-            pendingApplications: pendingStudentsRes.data?.length || 0
-          });
+          setSchoolAdminStats(dashboardData);
           setAtRiskStudents(atRiskData.students || []);
           setUpcomingEvents(eventsData || []);
         }
