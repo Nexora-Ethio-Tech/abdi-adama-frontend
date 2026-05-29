@@ -1,6 +1,6 @@
-import { BookOpen, User, Calendar, GraduationCap, Search, Award } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, User, Calendar, GraduationCap, Search, Award, AlertCircle } from 'lucide-react';
 import { StudentCourse, getMyGradesForSemester, getMyHistory } from '../services/studentPortalService';
 
 export const StudentCourses = () => {
@@ -17,7 +17,12 @@ export const StudentCourses = () => {
   const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<StudentCourse | null>(null);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
+  const [gradingMethods, setGradingMethods] = useState<Array<{ id: string; label: string; maxWeight: number }>>([]);
+  const gradingWeightSum = useMemo(() => gradingMethods.reduce((sum, m) => sum + (m.maxWeight || 0), 0), [gradingMethods]);
+  const weightSumError = gradingWeightSum !== 100;
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+
 
   // Academic History state
   const [historyYear, setHistoryYear] = useState<string | null>(null);
@@ -30,7 +35,7 @@ export const StudentCourses = () => {
 
   // Status check helper
   const getStatus = (course: any) => {
-    if (course.final_50 === null || course.final_50 === undefined) {
+    if (!course || course.total === null || course.total === undefined) {
       return 'PENDING';
     }
     const totalScore = Number(course.total) || 0;
@@ -45,7 +50,9 @@ export const StudentCourses = () => {
       const semNum = selectedSemester === 'First Semester' ? 1 : 2;
       const data = await getMyGradesForSemester(semNum, selectedYear);
       const coursesData = data.courses || [];
+      const methods = data.gradingMethods || [];
       setCourses(coursesData);
+      setGradingMethods(methods);
       if (coursesData.length > 0) {
         setSelectedCourse(coursesData[0]);
       } else {
@@ -325,7 +332,13 @@ export const StudentCourses = () => {
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
                   <div className="p-8">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
-                    <div className="overflow-x-auto">
+                    {weightSumError && (
+  <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-lg mb-4">
+    <AlertCircle size={18} />
+    <span>Grading weights total {gradingWeightSum}%, which does not equal 100%.</span>
+  </div>
+)}
+<div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                           <tr>
@@ -335,44 +348,61 @@ export const StudentCourses = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                              {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                              {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                              {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                          </tr>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
-                            <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium"></td>
-                            <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                              {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
-                            </td>
-                          </tr>
+                          {gradingMethods.length > 0 ? (
+                            gradingMethods.map((method) => {
+                              const gradeVal = selectedCourse.grades?.[method.id];
+                              return (
+                                <tr key={method.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{method.label}</td>
+                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">{method.maxWeight}%</td>
+                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                    {gradeVal !== null && gradeVal !== undefined ? Number(gradeVal).toFixed(1) : '--'}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                  {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
+                                </td>
+                              </tr>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                  {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
+                                </td>
+                              </tr>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                              </tr>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">30%</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                  {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
+                                </td>
+                              </tr>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
+                              </tr>
+                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
+                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">50%</td>
+                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                                  {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
+                                </td>
+                              </tr>
+                            </>
+                          )}
                           <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
                             <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>
                             <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400">100%</td>

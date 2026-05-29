@@ -1,6 +1,5 @@
-
 import { useParams, Link } from 'react-router-dom';
-import { mockStudents, mockGradingConfigs } from '../data/mockData';
+import { mockStudents } from '../data/mockData';
 import {
   ArrowLeft,
   User,
@@ -19,11 +18,16 @@ import {
   AlertTriangle,
   X,
   Edit2,
-  Save
+  Save,
+  CheckCircle2,
+  XCircle,
+  Loader2
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import * as sectionService from '../services/sectionService';
+import { getGradingConfigsForGrade } from '../services/studentPortalService';
 
 export const StudentProfile = () => {
   const { id } = useParams();
@@ -32,11 +36,73 @@ export const StudentProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedBio, setEditedBio] = useState('');
   const [selectedHistoryYear, setSelectedHistoryYear] = useState('all');
+  
+  // Section assignment state
+  const [showSectionModal, setShowSectionModal] = useState(false);
+  const [availableSections, setAvailableSections] = useState<sectionService.SectionInfo[]>([]);
+  const [selectedSection, setSelectedSection] = useState('');
+  const [loadingSections, setLoadingSections] = useState(false);
+  const [sectionAssigning, setSectionAssigning] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+
   const student = mockStudents.find(s => s.id === id) as any;
   const gradeLevel = student?.grade?.replace(/[A-Z]/g, '');
-  const gradingMethods = mockGradingConfigs[gradeLevel] || mockGradingConfigs['default'];
+
+  // Grading methods: load from backend, fallback to empty
+  const [gradingMethods, setGradingMethods] = useState<Array<{ id: string; label: string; maxWeight: number }>>([]);
+  useEffect(() => {
+    if (gradeLevel) {
+      getGradingConfigsForGrade(gradeLevel)
+        .then((methods) => setGradingMethods(methods || []))
+        .catch(() => setGradingMethods([]));
+    }
+  }, [gradeLevel]);
 
   const isParent = role === 'parent';
+  const isSchoolAdmin = role === 'school-admin';
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // Fetch available sections when modal opens
+  useEffect(() => {
+    if (showSectionModal && student?.grade) {
+      fetchAvailableSections();
+    }
+  }, [showSectionModal, student?.grade]);
+
+  const fetchAvailableSections = async () => {
+    try {
+      setLoadingSections(true);
+      const sections = await sectionService.getAvailableSections(student.grade);
+      setAvailableSections(sections);
+      if (sections.length > 0 && !selectedSection) {
+        setSelectedSection(sections[0].id);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch sections:', err);
+      showToast(err.response?.data?.error || 'Failed to fetch sections', 'error');
+    } finally {
+      setLoadingSections(false);
+    }
+  };
+
+  const handleAssignSection = async () => {
+    if (!selectedSection || !id) return;
+    try {
+      setSectionAssigning(true);
+      const result = await sectionService.assignStudentToSection(id, selectedSection, 'Admin assignment');
+      showToast(result.message, 'success');
+      setShowSectionModal(false);
+      // In a real app, would refresh student data here
+    } catch (err: any) {
+      showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
+    } finally {
+      setSectionAssigning(false);
+    }
+  };
 
   if (!student) {
     return (
@@ -133,6 +199,39 @@ export const StudentProfile = () => {
               Contact Parent
             </button>
           </div>
+
+          {/* Section Assignment (School Admin Only) */}
+          {isSchoolAdmin && (
+            <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+              <h4 className="font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
+                <GraduationCap size={16} className="text-blue-600" />
+                Section Assignment
+              </h4>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Current Section</p>
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    {student.section || 'Not Assigned'}
+                  </p>
+                </div>
+                {student.previousSection && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Previous Section</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
+                      {student.previousSection}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setShowSectionModal(true)}
+                className="w-full mt-4 flex items-center justify-center gap-2 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold"
+              >
+                <Edit2 size={16} />
+                Change Section
+              </button>
+            </div>
+          )}
 
           <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
             <h4 className="font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -388,6 +487,98 @@ export const StudentProfile = () => {
         </div>
       </div>
 
+      {/* Section Assignment Modal */}
+      {showSectionModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl animate-in zoom-in-95 duration-200 w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-blue-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black flex items-center gap-2">
+                    <GraduationCap size={24} />
+                    Assign Section
+                  </h3>
+                  <p className="text-blue-100 text-xs font-medium mt-1">For {student.name}</p>
+                </div>
+                <button
+                  onClick={() => setShowSectionModal(false)}
+                  className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+                  title="Close"
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {loadingSections ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-blue-600" size={24} />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                      Select Section
+                    </label>
+                    <select
+                      value={selectedSection}
+                      onChange={(e) => setSelectedSection(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
+                    >
+                      <option value="">-- Select a section --</option>
+                      {availableSections.map(section => (
+                        <option key={section.id} value={section.id}>
+                          {section.name} ({section.current_count}/{section.capacity} students)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedSection && availableSections.find(s => s.id === selectedSection) && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                        Available Slots: {availableSections.find(s => s.id === selectedSection)?.available_slots}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-6 flex gap-3">
+              <button
+                onClick={() => setShowSectionModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignSection}
+                disabled={!selectedSection || sectionAssigning}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-bold text-sm"
+              >
+                {sectionAssigning ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Assign Section
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Transcript Modal */}
       {showTranscript && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -515,6 +706,30 @@ export const StudentProfile = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast.show && (
+        <div className="fixed bottom-4 right-4 z-[200] animate-in slide-in-from-bottom-5 duration-300">
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
+            toast.type === 'success'
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle2 className="text-green-600 dark:text-green-400" size={20} />
+            ) : (
+              <XCircle className="text-red-600 dark:text-red-400" size={20} />
+            )}
+            <p className={`text-sm font-bold ${
+              toast.type === 'success'
+                ? 'text-green-800 dark:text-green-200'
+                : 'text-red-800 dark:text-red-200'
+            }`}>
+              {toast.message}
+            </p>
           </div>
         </div>
       )}

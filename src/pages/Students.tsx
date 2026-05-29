@@ -1,4 +1,4 @@
-import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2 } from 'lucide-react';
+import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, Repeat2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
@@ -6,6 +6,7 @@ import classService from '../services/classService';
 import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
 import { StudentRegistration } from '../components/StudentRegistration';
+import * as sectionService from '../services/sectionService';
 
 export const Students = () => {
   const navigate = useNavigate();
@@ -25,15 +26,35 @@ export const Students = () => {
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showAssignSectionModal, setShowAssignSectionModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke'; student: any }>({ show: false, action: 'approve', student: null });
   const [processing, setProcessing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ show: boolean; student: any }>({ show: false, student: null });
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [availableSectionsForSingle, setAvailableSectionsForSingle] = useState<sectionService.SectionInfo[]>([]);
+  const [selectedSectionForStudent, setSelectedSectionForStudent] = useState('');
+  const [assigningSection, setAssigningSection] = useState(false);
+  const [autoAssigning, setAutoAssigning] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   const [editFormData, setEditFormData] = useState<any>({});
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+
+  // Bulk section assignment state
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
+  const [bulkTargetGrade, setBulkTargetGrade] = useState('');
+  const [availableSections, setAvailableSections] = useState<sectionService.SectionInfo[]>([]);
+  const [bulkTargetSection, setBulkTargetSection] = useState('');
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [loadingBulkSections, setLoadingBulkSections] = useState(false);
+
+  // Swap sections state
+  const [showSwapModal, setShowSwapModal] = useState(false);
+  const [swapStudentA, setSwapStudentA] = useState<any>(null);
+  const [swapStudentBId, setSwapStudentBId] = useState('');
+  const [swappingStudents, setSwappingStudents] = useState(false);
 
   const handlePhoneInput = (value: string) => {
     // Remove any non-digit characters
@@ -66,6 +87,93 @@ export const Students = () => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
+
+  const toggleStudentSelection = (studentId: string) => {
+    const newSelected = new Set(selectedStudentIds);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudentIds(newSelected);
+  };
+
+  const selectAllFiltered = () => {
+    if (selectedStudentIds.size === filtered.length) {
+      setSelectedStudentIds(new Set());
+    } else {
+      setSelectedStudentIds(new Set(filtered.map(s => s.id)));
+    }
+  };
+
+  const openBulkAssignModal = async () => {
+    if (selectedStudentIds.size === 0) {
+      showToast('Please select at least one student', 'error');
+      return;
+    }
+
+    const firstStudent = students.find(s => selectedStudentIds.has(s.id));
+    const gradeToUse = firstStudent?.grade || filterGrade;
+    if (gradeToUse) {
+      setBulkTargetGrade(gradeToUse);
+      setBulkTargetSection('');
+      setAvailableSections([]);
+      setShowBulkAssignModal(true);
+      return;
+    }
+
+    setShowBulkAssignModal(true);
+  };
+
+  const fetchBulkSections = async (grade: string) => {
+    try {
+      setLoadingBulkSections(true);
+      const sections = await sectionService.getAvailableSections(grade);
+      setAvailableSections(sections);
+      if (sections.length > 0 && !bulkTargetSection) {
+        setBulkTargetSection(sections[0].id);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch sections:', err);
+      showToast(err.response?.data?.error || 'Failed to fetch sections', 'error');
+    } finally {
+      setLoadingBulkSections(false);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkTargetSection || selectedStudentIds.size === 0) {
+      showToast('Please select a section', 'error');
+      return;
+    }
+    try {
+      setBulkAssigning(true);
+      const studentIds = Array.from(selectedStudentIds);
+      const result = await sectionService.bulkAssignStudents(
+        bulkTargetSection,
+        studentIds,
+        'Bulk assignment from Students list'
+      );
+      showToast(
+        `${result.summary.successful} student(s) assigned successfully${result.summary.failed > 0 ? `, ${result.summary.failed} failed` : ''}`,
+        result.summary.failed === 0 ? 'success' : 'error'
+      );
+      setShowBulkAssignModal(false);
+      setSelectedStudentIds(new Set());
+      // In a real app, would refresh student data
+    } catch (err: any) {
+      showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
+    } finally {
+      setBulkAssigning(false);
+    }
+  };
+
+  // Fetch sections when grade changes
+  useEffect(() => {
+    if (bulkTargetGrade && showBulkAssignModal) {
+      fetchBulkSections(bulkTargetGrade);
+    }
+  }, [bulkTargetGrade, showBulkAssignModal]);
 
   useEffect(() => { fetchStudents(); }, [filterStatus]);
   useEffect(() => { fetchClasses(); }, []);
@@ -374,9 +482,46 @@ export const Students = () => {
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              {/* Bulk Actions Bar */}
+              {selectedStudentIds.size > 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Check size={20} className="text-blue-600" />
+                    <span className="font-bold text-sm text-blue-700 dark:text-blue-300">
+                      {selectedStudentIds.size} student{selectedStudentIds.size !== 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={openBulkAssignModal}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold"
+                    >
+                      <GraduationCap size={16} />
+                      Assign Section
+                    </button>
+                    <button
+                      onClick={() => setSelectedStudentIds(new Set())}
+                      className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 transition-colors text-sm font-bold"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <table className="w-full text-left">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
+                      <input
+                        type="checkbox"
+                        checked={selectedStudentIds.size === filtered.length && filtered.length > 0}
+                        onChange={selectAllFiltered}
+                        className="rounded cursor-pointer"
+                        title="Select all visible students"
+                        aria-label="Select all students"
+                      />
+                    </th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grade</th>
@@ -388,23 +533,22 @@ export const Students = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                         No students found. Add your first student!
                       </td>
                     </tr>
                   ) : (
                     filtered.map((student) => (
-                      <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <tr key={student.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 ${selectedStudentIds.has(student.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl flex items-center justify-center font-bold text-sm">
-                              {student.firstName?.[0]}{student.lastName?.[0]}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-800 dark:text-white">{student.firstName} {student.lastName}</p>
-                              <p className="text-xs text-slate-500">{student.email}</p>
-                            </div>
-                          </div>
+                          <input
+                            type="checkbox"
+                            checked={selectedStudentIds.has(student.id)}
+                            onChange={() => toggleStudentSelection(student.id)}
+                            className="rounded cursor-pointer"
+                            title={`Select ${student.firstName}`}
+                            aria-label={`Select ${student.firstName}`}
+                          />
                         </td>
                         <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
@@ -428,6 +572,39 @@ export const Students = () => {
                               aria-label="Assign class"
                             >
                               <Users size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setSelectedStudent(student);
+                                setSelectedSectionForStudent('');
+                                setShowAssignSectionModal(true);
+                                try {
+                                  const sections = await sectionService.getAvailableSections(student.grade);
+                                  setAvailableSectionsForSingle(sections);
+                                  if (sections.length > 0) setSelectedSectionForStudent(sections[0].id);
+                                } catch (err) {
+                                  showToast('Failed to fetch sections', 'error');
+                                }
+                              }}
+                              className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
+                              title="Assign Section"
+                              aria-label="Assign section"
+                            >
+                              <GraduationCap size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSwapStudentA(student);
+                                setSwapStudentBId('');
+                                setShowSwapModal(true);
+                              }}
+                              className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 rounded-lg transition-colors"
+                              title="Swap Section"
+                              aria-label="Swap section with another student"
+                            >
+                              <Repeat2 size={16} />
                             </button>
                             <button
                               type="button"
@@ -479,6 +656,102 @@ export const Students = () => {
             </div>
           )}
         </>
+      )}
+
+      {/* Assign Section Modal (single student) */}
+      {showAssignSectionModal && selectedStudent && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 text-green-600 rounded-lg"><GraduationCap size={20} /></div>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Assign Section</h3>
+                  <p className="text-xs text-slate-500">{selectedStudent.firstName} {selectedStudent.lastName} — Grade {selectedStudent.grade}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssignSectionModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close assign section modal"
+                aria-label="Close assign section modal"
+              ><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4 max-h-72 overflow-y-auto">
+              {availableSectionsForSingle.length === 0 ? (
+                <div className="text-center text-slate-500 py-6">No sections available for this grade.</div>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="single-section" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">Select Section</label>
+                    <select
+                      id="single-section"
+                      value={selectedSectionForStudent}
+                      onChange={(e) => setSelectedSectionForStudent(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
+                    >
+                      {availableSectionsForSingle.map(sec => (
+                        <option key={sec.id} value={sec.id}>{sec.name} ({sec.current_count}/{sec.capacity})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!selectedSectionForStudent) return showToast('Please select a section', 'error');
+                        setAssigningSection(true);
+                        try {
+                          const res = await sectionService.assignStudentToSection(selectedStudent.userId || selectedStudent.id, selectedSectionForStudent, 'Manual assignment from UI');
+                          if (res.success) {
+                            showToast('Student assigned to section', 'success');
+                            setShowAssignSectionModal(false);
+                            fetchStudents();
+                          } else {
+                            showToast(res.message || 'Assignment failed', 'error');
+                          }
+                        } catch (err: any) {
+                          showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
+                        } finally {
+                          setAssigningSection(false);
+                        }
+                      }}
+                      disabled={assigningSection}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-bold"
+                    >
+                      {assigningSection ? 'Assigning...' : 'Assign Section'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setAutoAssigning(true);
+                        try {
+                          const res = await sectionService.autoAssignStudent(selectedStudent.userId || selectedStudent.id);
+                          if (res.success) {
+                            showToast('Student auto-assigned to ' + res.toSection, 'success');
+                            setShowAssignSectionModal(false);
+                            fetchStudents();
+                          } else {
+                            showToast(res.message || 'Auto-assign failed', 'error');
+                          }
+                        } catch (err: any) {
+                          showToast(err.response?.data?.error || err.message || 'Auto-assign failed', 'error');
+                        } finally {
+                          setAutoAssigning(false);
+                        }
+                      }}
+                      disabled={autoAssigning}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-bold"
+                    >
+                      {autoAssigning ? 'Auto-assigning...' : 'Auto-assign'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Add Modal */}
@@ -683,6 +956,215 @@ export const Students = () => {
               >
                 Delete Student
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Assign Section Modal */}
+      {showBulkAssignModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-blue-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black flex items-center gap-2">
+                    <GraduationCap size={24} />
+                    Bulk Assign Section
+                  </h3>
+                  <p className="text-blue-100 text-xs font-medium mt-1">{selectedStudentIds.size} students selected</p>
+                </div>
+                <button
+                  onClick={() => setShowBulkAssignModal(false)}
+                  className="p-2 hover:bg-blue-700 rounded-lg transition-colors"
+                  title="Close"
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {loadingBulkSections ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-blue-600" size={24} />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="bulk-grade" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                      Target Grade
+                    </label>
+                    <select
+                      id="bulk-grade"
+                      value={bulkTargetGrade}
+                      onChange={(e) => {
+                        setBulkTargetGrade(e.target.value);
+                        setBulkTargetSection(''); // Reset section when grade changes
+                      }}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
+                    >
+                      <option value="">-- Select grade --</option>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
+                        <option key={g} value={String(g)}>Grade {g}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {bulkTargetGrade && (
+                    <div>
+                      <label htmlFor="bulk-section" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                        Select Section
+                      </label>
+                      <select
+                        id="bulk-section"
+                        value={bulkTargetSection}
+                        onChange={(e) => setBulkTargetSection(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
+                      >
+                        <option value="">-- Select a section --</option>
+                        {availableSections.map(section => (
+                          <option key={section.id} value={section.id}>
+                            {section.name} ({section.current_count}/{section.capacity} students)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {bulkTargetSection && availableSections.find(s => s.id === bulkTargetSection) && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                      <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                        Available Slots: {availableSections.find(s => s.id === bulkTargetSection)?.available_slots}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-6 flex gap-3">
+              <button
+                onClick={() => setShowBulkAssignModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-bold text-sm"
+                disabled={bulkAssigning}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkAssign}
+                disabled={!bulkTargetSection || bulkAssigning}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-bold text-sm"
+              >
+                {bulkAssigning ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    Assign to {selectedStudentIds.size} Student{selectedStudentIds.size !== 1 ? 's' : ''}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Swap Sections Modal */}
+      {showSwapModal && swapStudentA && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg"><Repeat2 size={20} /></div>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Swap Section</h3>
+                  <p className="text-xs text-slate-500">{swapStudentA.firstName} {swapStudentA.lastName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSwapModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close swap modal"
+                aria-label="Close swap modal"
+              ><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Select another student to swap sections with {swapStudentA.firstName}.
+              </p>
+              <div>
+                <label htmlFor="swap-student" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  Select Student to Swap With
+                </label>
+                <select
+                  id="swap-student"
+                  value={swapStudentBId}
+                  onChange={(e) => setSwapStudentBId(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-purple-500/50 outline-none"
+                >
+                  <option value="">-- Select a student --</option>
+                  {filtered
+                    .filter(s => s.id !== swapStudentA.id && s.grade === swapStudentA.grade)
+                    .map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.firstName} {s.lastName} (Section: {s.section || 'Unassigned'})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              {filtered.filter(s => s.id !== swapStudentA.id && s.grade === swapStudentA.grade).length === 0 && (
+                <p className="text-xs text-orange-600 dark:text-orange-400">No other students in the same grade to swap with.</p>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSwapModal(false)}
+                  disabled={swappingStudents}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!swapStudentBId) {
+                      showToast('Please select a student to swap with', 'error');
+                      return;
+                    }
+                    setSwappingStudents(true);
+                    try {
+                      const result = await sectionService.swapStudentSections(
+                        swapStudentA.userId || swapStudentA.id,
+                        swapStudentBId
+                      );
+                      if (result.success) {
+                        showToast('Students swapped successfully', 'success');
+                        setShowSwapModal(false);
+                        fetchStudents();
+                      } else {
+                        showToast(result.message || 'Swap failed', 'error');
+                      }
+                    } catch (err: any) {
+                      showToast(err.response?.data?.error || err.message || 'Failed to swap sections', 'error');
+                    } finally {
+                      setSwappingStudents(false);
+                    }
+                  }}
+                  disabled={!swapStudentBId || swappingStudents}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-bold disabled:cursor-not-allowed"
+                >
+                  {swappingStudents ? 'Swapping...' : 'Swap Sections'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

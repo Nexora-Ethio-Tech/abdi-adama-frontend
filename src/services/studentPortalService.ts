@@ -64,6 +64,7 @@ export interface StudentCourse {
   max_mid?: number | null;
   mid_30?: number | null;
   max_final?: number | null;
+  grades?: Record<string, number | null>;
 }
 
 // Grade Interface
@@ -156,5 +157,11 @@ export const getMyGradesForSemester = async (semester: number, year?: string): P
 
 export const getMyAttendance = async (): Promise<any> => {
   const response = await api.get('/student/attendance');
+  return response.data.data;
+};
+
+// Get published grading config for a grade level (works for Student and Parent too)
+export const getGradingConfigsForGrade = async (gradeLevel: string): Promise<Array<{ id: string; label: string; maxWeight: number }>> => {
+  const response = await api.get(`/grading-configs/${encodeURIComponent(gradeLevel)}`);
   return response.data.data;
 };

@@ -261,27 +261,43 @@ export interface GradingMethod {
   maxWeight: number;
 }
 
-export const mockGradingConfigs: Record<string, GradingMethod[]> = {
-  'default': [
-    { id: 'mid', label: 'Mid-Exam', maxWeight: 30 },
-    { id: 'final', label: 'Final-Exam', maxWeight: 50 },
-    { id: 'quiz', label: 'Quiz', maxWeight: 10 },
-    { id: 'assignment', label: 'Assignment', maxWeight: 10 },
-  ],
-  '10': [
-    { id: 'mid', label: 'Mid-Exam', maxWeight: 30 },
-    { id: 'final', label: 'Final-Exam', maxWeight: 40 },
-    { id: 'quiz', label: 'Quiz', maxWeight: 10 },
-    { id: 'classwork', label: 'Class-Work', maxWeight: 10 },
-    { id: 'activity', label: 'Class Activity', maxWeight: 10 },
-  ],
-  '9': [
-    { id: 'mid', label: 'Mid-Exam', maxWeight: 25 },
-    { id: 'final', label: 'Final-Exam', maxWeight: 50 },
-    { id: 'homework', label: 'Home-Work', maxWeight: 15 },
-    { id: 'test', label: 'Test', maxWeight: 10 },
-  ]
+const getInitialGradingConfigs = () => {
+  const defaultConfigs = {
+    'default': [
+      { id: 'mid', label: 'Mid-Exam', maxWeight: 30 },
+      { id: 'final', label: 'Final-Exam', maxWeight: 50 },
+      { id: 'quiz', label: 'Quiz', maxWeight: 10 },
+      { id: 'assignment', label: 'Assignment', maxWeight: 10 },
+    ],
+    '10': [
+      { id: 'mid', label: 'Mid-Exam', maxWeight: 30 },
+      { id: 'final', label: 'Final-Exam', maxWeight: 40 },
+      { id: 'quiz', label: 'Quiz', maxWeight: 10 },
+      { id: 'classwork', label: 'Class-Work', maxWeight: 10 },
+      { id: 'activity', label: 'Class Activity', maxWeight: 10 },
+    ],
+    '9': [
+      { id: 'mid', label: 'Mid-Exam', maxWeight: 25 },
+      { id: 'final', label: 'Final-Exam', maxWeight: 50 },
+      { id: 'homework', label: 'Home-Work', maxWeight: 15 },
+      { id: 'test', label: 'Test', maxWeight: 10 },
+    ]
+  };
+
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('abdi_adama_grading_configs');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing grading configs from localStorage', e);
+      }
+    }
+  }
+  return defaultConfigs;
 };
+
+export const mockGradingConfigs: Record<string, GradingMethod[]> = getInitialGradingConfigs();
 
 export interface CommunicationLog {
   id: string;

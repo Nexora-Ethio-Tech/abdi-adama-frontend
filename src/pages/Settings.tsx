@@ -5,6 +5,7 @@ import { useAppearance, type UIStyle } from '../context/AppearanceContext';
 import { mockGradingConfigs } from '../data/mockData';
 import { useUser } from '../context/UserContext';
 import payrollService, { FinanceSetting, FinanceSettingsAudit } from '../services/payrollService';
+import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
 
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
@@ -107,8 +108,9 @@ export const Settings = () => {
     }
   }, [location.search, location.hash, tabs]);
 
-  const [selectedGrade, setSelectedGrade] = useState('10');
-  const [gradeConfigs, setGradeConfigs] = useState(mockGradingConfigs);
+  const [selectedGrade, setSelectedGrade] = useState('1');
+  const [gradeConfigs, setGradeConfigs] = useState<Record<string, Array<{ id: string; label: string; maxWeight: number }>>>(mockGradingConfigs);
+  const [gradingLoading, setGradingLoading] = useState(false);
   const [newMethodLabel, setNewMethodLabel] = useState('');
   const [newMethodWeight, setNewMethodWeight] = useState(10);
   const [profitTargetMonth, setProfitTargetMonth] = useState('1');
@@ -117,6 +119,93 @@ export const Settings = () => {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Load grading configs from backend on mount
+  useEffect(() => {
+    if (role === 'school-admin') {
+      setGradingLoading(true);
+      getGradingConfigs()
+        .then((dbConfigs) => {
+          const merged = { ...mockGradingConfigs, ...dbConfigs };
+          setGradeConfigs(merged);
+          Object.assign(mockGradingConfigs, merged);
+        })
+        .catch(() => {
+          // Fallback to localStorage / defaults if backend unavailable
+          const stored = localStorage.getItem('abdi_adama_grading_configs');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              setGradeConfigs(parsed);
+              Object.assign(mockGradingConfigs, parsed);
+            } catch { /* ignore */ }
+          }
+        })
+        .finally(() => setGradingLoading(false));
+    }
+  }, [role]);
+
+  const updateGradeConfig = (newMethods: any[]) => {
+    setGradeConfigs((prev) => ({
+      ...prev,
+      [selectedGrade]: newMethods,
+    }));
+  };
+
+  const handleSaveChanges = () => {
+    if (activeTab === 'Grading System') {
+      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
+      Object.keys(mockGradingConfigs).forEach(key => delete (mockGradingConfigs as any)[key]);
+      Object.assign(mockGradingConfigs, gradeConfigs);
+      setSuccessMessage('Grading configurations saved locally as draft. Click Publish to push to all teachers.');
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } else {
+      setSuccessMessage('System settings saved successfully!');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    }
+  };
+
+  const handlePublishChanges = async () => {
+    const currentMethods = gradeConfigs[selectedGrade] || gradeConfigs['default'] || [];
+    setGradingLoading(true);
+    try {
+      await publishGradingConfigs(selectedGrade, currentMethods);
+      // Also persist all grades locally
+      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
+      Object.keys(mockGradingConfigs).forEach(key => delete (mockGradingConfigs as any)[key]);
+      Object.assign(mockGradingConfigs, gradeConfigs);
+      setSuccessMessage(`Grade ${selectedGrade} grading structure published! Teachers, Students & Parents can now see the updated format.`);
+    } catch (err: any) {
+      // Fallback: still save locally
+      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
+      Object.assign(mockGradingConfigs, gradeConfigs);
+      setSuccessMessage(`Published locally. (Backend: ${err?.response?.data?.message || err?.message || 'unavailable'})`);
+    } finally {
+      setGradingLoading(false);
+      setTimeout(() => setSuccessMessage(''), 6000);
+    }
+  };
+
+  const addPresetMethod = (label: string, weight: number) => {
+    const currentMethods = JSON.parse(
+      JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || [])
+    );
+    const exists = currentMethods.some((m: any) => m.label.toLowerCase() === label.toLowerCase());
+    if (exists) {
+      const updated = currentMethods.map((m: any) =>
+        m.label.toLowerCase() === label.toLowerCase() ? { ...m, maxWeight: weight } : m
+      );
+      updateGradeConfig(updated);
+    } else {
+      currentMethods.push({
+        id: label.toLowerCase().replace(/\s+/g, '-'),
+        label: label,
+        maxWeight: weight,
+      });
+      updateGradeConfig(currentMethods);
+    }
+  };
 
   const ethiopianMonths = [
     { id: '1', ge: 'Meskerem', am: 'መስከረም', mockActual: 420000 },
@@ -168,6 +257,12 @@ export const Settings = () => {
           </div>
 
           <div className="p-6 space-y-6">
+            {successMessage && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300 p-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400" />
+                <span>{successMessage}</span>
+              </div>
+            )}
             {activeTab === 'General' && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-6">
@@ -941,7 +1036,7 @@ export const Settings = () => {
             )}
 
             {activeTab === 'Grading System' && (
-              <div className="space-y-8">
+              <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                   <div>
                     <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
@@ -952,28 +1047,43 @@ export const Settings = () => {
                     onChange={(e) => setSelectedGrade(e.target.value)}
                     className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
                   >
-                    <option value="9">Grade 9</option>
-                    <option value="10">Grade 10</option>
-                    <option value="11">Grade 11</option>
-                    <option value="12">Grade 12</option>
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
+                      <option key={g} value={g}>Grade {g}</option>
+                    ))}
                   </select>
                 </div>
 
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default']).reduce((acc, m) => acc + m.maxWeight, 0) === 100
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-rose-100 text-rose-700 animate-pulse'
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
                         }`}>
-                        Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default']).reduce((acc, m) => acc + m.maxWeight, 0)}%
+                        Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
                       </span>
+                      <button
+                        onClick={() => {
+                          const recommended = [
+                            { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
+                            { id: 'test-1', label: 'Test 1', maxWeight: 10 },
+                            { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
+                            { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
+                            { id: 'assignment', label: 'Assignment', maxWeight: 5 },
+                            { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
+                          ];
+                          updateGradeConfig(recommended);
+                        }}
+                        className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
+                      >
+                        Apply Recommended Template
+                      </button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-3">
-                    {(gradeConfigs[selectedGrade] || gradeConfigs['default']).map((method, idx) => (
+                    {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
                       <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
                         <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
                           {idx + 1}
@@ -983,11 +1093,9 @@ export const Settings = () => {
                             type="text"
                             value={method.label}
                             onChange={(e) => {
-                              const newConfigs = { ...gradeConfigs };
-                              const methods = [...(newConfigs[selectedGrade] || gradeConfigs['default'])];
-                              methods[idx].label = e.target.value;
-                              newConfigs[selectedGrade] = methods;
-                              setGradeConfigs(newConfigs);
+                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                              currentMethods[idx].label = e.target.value;
+                              updateGradeConfig(currentMethods);
                             }}
                             className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
                           />
@@ -998,11 +1106,9 @@ export const Settings = () => {
                               type="number"
                               value={method.maxWeight}
                               onChange={(e) => {
-                                const newConfigs = { ...gradeConfigs };
-                                const methods = [...(newConfigs[selectedGrade] || gradeConfigs['default'])];
-                                methods[idx].maxWeight = parseInt(e.target.value) || 0;
-                                newConfigs[selectedGrade] = methods;
-                                setGradeConfigs(newConfigs);
+                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
+                                updateGradeConfig(currentMethods);
                               }}
                               className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
                             />
@@ -1010,10 +1116,9 @@ export const Settings = () => {
                           </div>
                           <button
                             onClick={() => {
-                              const newConfigs = { ...gradeConfigs };
-                              const methods = (newConfigs[selectedGrade] || gradeConfigs['default']).filter((_, i) => i !== idx);
-                              newConfigs[selectedGrade] = methods;
-                              setGradeConfigs(newConfigs);
+                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                              const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
+                              updateGradeConfig(filtered);
                             }}
                             className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
                           >
@@ -1025,53 +1130,76 @@ export const Settings = () => {
                   </div>
                 </div>
 
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
-                  <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Add New Assessment Method</h5>
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <input
-                      type="text"
-                      placeholder="e.g. Class Activity, Project"
-                      value={newMethodLabel}
-                      onChange={(e) => setNewMethodLabel(e.target.value)}
-                      className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
-                        <input
-                          type="number"
-                          value={newMethodWeight}
-                          onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
-                          className="w-12 bg-transparent font-bold text-center outline-none"
-                        />
-                        <span className="text-xs font-bold text-slate-400">%</span>
+                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
+                  <div>
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { label: 'Quiz 1', weight: 5 },
+                        { label: 'Test 1', weight: 10 },
+                        { label: 'Mid Exam', weight: 25 },
+                        { label: 'Quiz 2', weight: 5 },
+                        { label: 'Assignment', weight: 5 },
+                        { label: 'Final Exam', weight: 50 },
+                      ].map((preset) => (
+                        <button
+                          key={preset.label}
+                          onClick={() => addPresetMethod(preset.label, preset.weight)}
+                          className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <Plus size={12} className="text-blue-500" />
+                          {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <input
+                        type="text"
+                        placeholder="e.g. Class Activity, Project"
+                        value={newMethodLabel}
+                        onChange={(e) => setNewMethodLabel(e.target.value)}
+                        className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
+                          <input
+                            type="number"
+                            value={newMethodWeight}
+                            onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
+                            className="w-12 bg-transparent font-bold text-center outline-none"
+                          />
+                          <span className="text-xs font-bold text-slate-400">%</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (!newMethodLabel) return;
+                            const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                            currentMethods.push({
+                              id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
+                              label: newMethodLabel,
+                              maxWeight: newMethodWeight
+                            });
+                            updateGradeConfig(currentMethods);
+                            setNewMethodLabel('');
+                          }}
+                          className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
+                        >
+                          <Plus size={20} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          if (!newMethodLabel) return;
-                          const newConfigs = { ...gradeConfigs };
-                          const methods = [...(newConfigs[selectedGrade] || gradeConfigs['default'])];
-                          methods.push({
-                            id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
-                            label: newMethodLabel,
-                            maxWeight: newMethodWeight
-                          });
-                          newConfigs[selectedGrade] = methods;
-                          setGradeConfigs(newConfigs);
-                          setNewMethodLabel('');
-                        }}
-                        className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
-                      >
-                        <Plus size={20} />
-                      </button>
                     </div>
                   </div>
                 </div>
 
-                {(gradeConfigs[selectedGrade] || gradeConfigs['default']).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
+                {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
                   <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
                     <AlertCircle size={20} className="flex-shrink-0" />
-                    <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default']).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
+                    <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
                   </div>
                 )}
               </div>
@@ -1118,8 +1246,22 @@ export const Settings = () => {
               </div>
             )}
 
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+              {activeTab === 'Grading System' && (
+                <button
+                  onClick={handlePublishChanges}
+                  disabled={gradingLoading}
+                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
+                >
+                  {gradingLoading ? <CheckCircle size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                  <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
+                </button>
+              )}
+              <button
+                onClick={handleSaveChanges}
+                disabled={gradingLoading && activeTab === 'Grading System'}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
+              >
                 <Save size={18} />
                 <span>Save Changes</span>
               </button>

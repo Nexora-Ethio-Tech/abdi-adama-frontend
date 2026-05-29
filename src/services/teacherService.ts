@@ -100,6 +100,12 @@ export const getStudentAllGrades = async (studentId: string) => {
   return response.data.data;
 };
 
+// Get grading config for a grade level
+export const getGradingConfigsForGrade = async (gradeLevel: string): Promise<Array<{ id: string; label: string; maxWeight: number }>> => {
+  const response = await api.get(`/grading-configs/${encodeURIComponent(gradeLevel)}`);
+  return response.data.data;
+};
+
 // ─── Weekly Plans ─────────────────────────────────────────────────────────────
 export const submitWeeklyPlan = async (data: {
   date: string;

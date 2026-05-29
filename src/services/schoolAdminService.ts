@@ -559,3 +559,17 @@ export const getGeneratedSchedule = async () => {
   const response = await api.get('/schedule/timetable');
   return response.data.data;
 };
+
+// Grading Configurations
+export const getGradingConfigs = async (): Promise<Record<string, Array<{ id: string; label: string; maxWeight: number }>>> => {
+  const response = await api.get('/school-admin/grading-configs');
+  return response.data.data;
+};
+
+export const publishGradingConfigs = async (
+  gradeLevel: string,
+  configs: Array<{ id: string; label: string; maxWeight: number }>
+): Promise<any> => {
+  const response = await api.post('/school-admin/grading-configs', { gradeLevel, configs });
+  return response.data;
+};
