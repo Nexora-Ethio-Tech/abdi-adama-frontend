@@ -215,8 +215,10 @@ const financeClerkService = {
   },
 
   // 2c3. Get global registration fee assigned by super admin
-  getGlobalRegistrationFee: async (): Promise<GlobalRegistrationFee> => {
-    const response = await api.get('/finance-clerk/registration-fee');
+  getGlobalRegistrationFee: async (grade?: string): Promise<GlobalRegistrationFee> => {
+    const response = await api.get('/finance-clerk/registration-fee', {
+      params: grade ? { grade } : undefined
+    });
     return {
       amount: Number(response.data.data?.amount) || 0,
       source: response.data.data?.source || 'unknown'
@@ -296,7 +298,7 @@ const financeClerkService = {
   },
 
   // 9. Approve a pending application (finalize registration)
-  approveApplication: async (applicationId: string, data: { amount: number; reference?: string }) => {
+  approveApplication: async (applicationId: string, data: { amount?: number; reference?: string }) => {
     const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
   },

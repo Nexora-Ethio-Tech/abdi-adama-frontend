@@ -25,7 +25,6 @@ interface PendingApplication {
 }
 
 interface ApprovalPayload {
-  amount: number;
   reference?: string;
 }
 
@@ -95,34 +94,33 @@ export const FinanceClerkRegistration = () => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
 
-  useEffect(() => {
-    const loadFee = async () => {
-      try {
-        setLoadingPolicy(true);
-        const fee = await financeClerkService.getGlobalRegistrationFee();
-        setApprovalData((prev) => ({ ...prev, amount: Number(fee.amount) || 0 }));
-        setFeeSource(fee.source || 'unknown');
-        setFeeLoadError(null);
-      } catch (err: any) {
-        console.error('Failed to load global registration fee:', err);
-        setApprovalData((prev) => ({ ...prev, amount: 0 }));
-        setFeeSource('unknown');
-        setFeeLoadError('Unable to load the current registration fee. Enter the amount manually.');
-      } finally {
-        setLoadingPolicy(false);
+  const loadRegistrationFee = async (grade?: string) => {
+    try {
+      setLoadingPolicy(true);
+      setFeeLoadError(null);
+      const fee = await financeClerkService.getGlobalRegistrationFee(grade);
+      setApprovalData((prev) => ({ ...prev, amount: Number(fee.amount) || 0 }));
+      setFeeSource(fee.source || 'unknown');
+      if (!fee.amount || fee.amount <= 0) {
+        setFeeLoadError(
+          'Registration fee is not configured in system settings. Contact the administrator before approving.'
+        );
       }
-    };
+    } catch (err: any) {
+      console.error('Failed to load registration fee:', err);
+      setApprovalData((prev) => ({ ...prev, amount: 0 }));
+      setFeeSource('unknown');
+      setFeeLoadError('Unable to load the registration fee from the database.');
+    } finally {
+      setLoadingPolicy(false);
+    }
+  };
 
-    loadFee();
-  }, []);
-
-  const handleApproveClick = (app: PendingApplication) => {
+  const handleApproveClick = async (app: PendingApplication) => {
     setSelectedApp(app);
-    setApprovalData({
-      amount: approvalData.amount,
-      reference: ''
-    });
+    setApprovalData({ amount: 0, reference: '' });
     setShowApprovalForm(true);
+    await loadRegistrationFee(app.grade_applying);
   };
 
   const handleApprove = async () => {
@@ -133,7 +131,6 @@ export const FinanceClerkRegistration = () => {
       setError(null);
 
       const payload: ApprovalPayload = {
-        amount: approvalData.amount,
         reference: approvalData.reference || undefined,
       };
 
@@ -319,28 +316,21 @@ export const FinanceClerkRegistration = () => {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
-                  Payment Amount (ETB) *
+                  Registration Fee (ETB)
                 </label>
-                <input
-                  type="number"
-                  value={approvalData.amount}
-                  onChange={(e) => setApprovalData({ ...approvalData, amount: Number(e.target.value) })}
-                  placeholder={
-                    loadingPolicy
-                      ? 'Loading global fee...'
-                      : approvalData.amount > 0
-                      ? 'Auto-filled from global fee settings'
-                      : 'Enter amount manually'
-                  }
-                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                  disabled={loadingPolicy}
-                />
+                <div className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-white">
+                  {loadingPolicy ? (
+                    <span className="text-sm text-slate-500">Loading fee from database...</span>
+                  ) : approvalData.amount > 0 ? (
+                    <span className="text-2xl font-black">{approvalData.amount.toLocaleString()} ETB</span>
+                  ) : (
+                    <span className="text-sm font-semibold text-amber-600">Not configured</span>
+                  )}
+                </div>
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  {approvalData.amount > 0
-                    ? 'This amount is populated from the backend registration fee settings.'
-                    : 'No registration fee is currently configured; enter the payment amount manually.'}
+                  This fee is set in system configuration and cannot be changed here. Verify the applicant paid this exact amount before approving.
                 </p>
-                {feeSource !== 'unknown' && (
+                {feeSource !== 'unknown' && approvalData.amount > 0 && (
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                     Source: {feeSource}
                   </p>
@@ -383,7 +373,7 @@ export const FinanceClerkRegistration = () => {
               </button>
               <button
                 onClick={handleApprove}
-                disabled={approving || approvalData.amount <= 0 || loadingPolicy}
+                disabled={approving || approvalData.amount <= 0 || loadingPolicy || !!feeLoadError}
                 className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-lg font-bold transition-all flex items-center justify-center gap-2"
               >
                 {approving ? (

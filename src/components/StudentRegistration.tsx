@@ -18,10 +18,58 @@ type PipelineFilter = 'pending' | 'exam-queue' | 'awaiting-finance' | 'completed
 type AppStatus = 'pending' | 'declined' | 'approved' | 'exam-pending' | 'exam-passed' | 'exam-failed' | 'awaiting-payment' | 'payment-confirmed';
 
 interface PendingApp {
-  id: string; name: string; dob: string; parentName: string; phone: string; email: string;
-  previousSchool: string; lastGrade: string; date: string; status: AppStatus;
+  id: string;
+  name: string;
+  dob: string;
+  gender: string;
+  digitalId: string;
+  parentName: string;
+  phone: string;
+  parentPhone: string;
+  email: string;
+  address: string;
+  previousSchool: string;
+  lastGrade: string;
+  date: string;
+  status: AppStatus;
+  bloodGroup: string;
+  allergies: string;
+  chronicConditions: string;
+  medications: string;
+  notes: string;
+  transcriptFileName: string;
+  transcriptFileSize: number | null;
   examDetails?: { date: string; time: string; location: string; subjects: string; notes: string };
 }
+
+const displayValue = (value?: string | null) => {
+  const trimmed = String(value ?? '').trim();
+  return trimmed.length > 0 ? trimmed : '—';
+};
+
+const mapApiApplicationToPendingApp = (app: any): PendingApp => ({
+  id: app.id,
+  name: app.applicant_name || 'Unknown',
+  dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
+  gender: app.gender || '',
+  digitalId: app.digital_id || '',
+  parentName: app.parent_name || 'N/A',
+  phone: app.applicant_phone || app.parent_phone || 'N/A',
+  parentPhone: app.parent_phone || app.applicant_phone || 'N/A',
+  email: app.applicant_email || '',
+  address: app.address || '',
+  previousSchool: app.previous_school || '',
+  lastGrade: app.grade_applying || 'N/A',
+  date: app.created_at ? new Date(app.created_at).toLocaleDateString() : '',
+  status: app.status as AppStatus,
+  bloodGroup: app.blood_group || '',
+  allergies: app.allergies || '',
+  chronicConditions: app.chronic_conditions || '',
+  medications: app.current_medications || '',
+  notes: app.notes || '',
+  transcriptFileName: app.transcript_file_name || '',
+  transcriptFileSize: app.transcript_file_size != null ? Number(app.transcript_file_size) : null,
+});
 
 interface StudentRegistrationProps {
   isAdminView?: boolean;
@@ -182,18 +230,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           const res = await getPendingApplications();
           const applications = Array.isArray(res) ? res : (res || []);
           if (Array.isArray(applications)) {
-            const mapped = applications.map((app: any) => ({
-              id: app.id,
-              name: app.applicant_name,
-              dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
-              parentName: app.parent_name || 'N/A',
-              phone: app.applicant_phone || 'N/A',
-              email: app.applicant_email || 'N/A',
-              previousSchool: app.notes || 'None',
-              lastGrade: app.grade_applying || 'N/A',
-              date: new Date(app.created_at).toLocaleDateString(),
-              status: app.status as AppStatus,
-            }));
+            const mapped = applications.map(mapApiApplicationToPendingApp);
             setPendingApps(mapped);
           } else {
             console.warn('Unexpected pending applications response:', res);
@@ -428,18 +465,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         const res = await getPendingApplications();
         const applications = Array.isArray(res) ? res : (res || []);
         if (Array.isArray(applications)) {
-          const mapped = applications.map((app: any) => ({
-            id: app.id,
-            name: app.applicant_name,
-            dob: app.dob ? new Date(app.dob).toISOString().split('T')[0] : '',
-            parentName: app.parent_name || 'N/A',
-            phone: app.applicant_phone || 'N/A',
-            email: app.applicant_email || 'N/A',
-            previousSchool: app.previous_school || 'N/A',
-            lastGrade: app.grade_applying || 'N/A',
-            date: new Date(app.created_at).toLocaleDateString(),
-            status: app.status as AppStatus,
-          }));
+          const mapped = applications.map(mapApiApplicationToPendingApp);
           setPendingApps(mapped);
 
           if (onCreated) {
@@ -504,8 +530,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  const showEmailToast = (to: string, subject: string) => {
-    setEmailToast(`📧 Email sent to ${to}: "${subject}"`);
+  const showPhoneNotice = (phone: string, message: string) => {
+    const contact = displayValue(phone) === '—' ? 'the parent phone on file' : phone;
+    setEmailToast(`📱 Notify ${contact}: ${message}`);
     setTimeout(() => setEmailToast(null), 4000);
   };
 
@@ -515,7 +542,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const app = pendingApps.find(a => a.id === appId);
       setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'declined' as AppStatus } : a));
       setSuccessMessage(`Application ${appId} has been declined.`);
-      if (app) showEmailToast(app.email, 'Application Update: Not Accepted');
+      if (app) showPhoneNotice(app.phone, 'Application not accepted — contact family by phone');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -549,7 +576,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const app = pendingApps.find(a => a.id === selectedAppForGrade);
       setPendingApps(prev => prev.map(a => a.id === selectedAppForGrade ? { ...a, status: 'awaiting-payment' as AppStatus, lastGrade: selectedGrade } : a));
       setSuccessMessage(`${app?.name} forwarded to finance for Grade ${selectedGrade}.`);
-      if (app) showEmailToast(app.email, `Forwarded to Finance for Grade ${selectedGrade}`);
+      if (app) showPhoneNotice(app.phone, `Forwarded to finance for Grade ${selectedGrade} — notify by phone when ready`);
 
       setShowGradeModal(false);
       setSelectedAppForGrade(null);
@@ -568,7 +595,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const app = pendingApps.find(a => a.id === appId);
       setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-pending' as AppStatus, examDetails: { ...examConfig } } : a));
       setSuccessMessage(`${app?.name} added to exam queue.`);
-      if (app) showEmailToast(app.email, 'Entrance Exam Required — Details Inside');
+      if (app) showPhoneNotice(app.phone, 'Entrance exam scheduled — share details by phone');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -578,19 +605,18 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   };
 
   const handleExamResult = async (appId: string, passed: boolean) => {
+    if (passed) {
+      // Same grade-selection step as Pass (direct) before forwarding to finance
+      handlePass(appId);
+      return;
+    }
+
     try {
-      const newStatus = passed ? 'awaiting-payment' : 'exam-failed';
-      await updateApplicationStatus(appId, { status: newStatus });
+      await updateApplicationStatus(appId, { status: 'exam-failed' });
       const app = pendingApps.find(a => a.id === appId);
-      if (passed) {
-        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
-        setSuccessMessage(`${app?.name} passed the exam! Forwarded to finance.`);
-        if (app) showEmailToast(app.email, 'Exam Passed! Proceed to Finance');
-      } else {
-        setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-failed' as AppStatus } : a));
-        setSuccessMessage(`${app?.name} did not pass the exam.`);
-        if (app) showEmailToast(app.email, 'Exam Result: Not Passed');
-      }
+      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-failed' as AppStatus } : a));
+      setSuccessMessage(`${app?.name} did not pass the exam.`);
+      if (app) showPhoneNotice(app.phone, 'Exam not passed — notify family by phone');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -615,12 +641,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         await updateApplicationStatus(appId, { status: 'payment-confirmed' });
         setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'payment-confirmed' as AppStatus } : a));
         setSuccessMessage(`${app?.name} marked as Passed (Paid)! Enrolled successfully.`);
-        if (app) showEmailToast(app.email, 'Payment Confirmed! Officially Enrolled');
+        if (app) showPhoneNotice(app.phone, 'Payment confirmed — officially enrolled');
       } else {
         await updateApplicationStatus(appId, { status: 'declined' });
         setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'declined' as AppStatus } : a));
         setSuccessMessage(`${app?.name} marked as Failed (Unpaid)!`);
-        if (app) showEmailToast(app.email, 'Application Closed: Payment Not Received');
+        if (app) showPhoneNotice(app.phone, 'Payment not received — application closed');
       }
       setShowFeeModal(false);
       setSelectedAppForFee(null);
@@ -651,7 +677,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     <div className="space-y-6">
       {emailToast && (
         <div className="fixed top-6 right-6 z-[300] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-right-8 text-sm font-bold max-w-md">
-          <Mail size={18} className="text-blue-400 flex-shrink-0" />
+          <Clock size={18} className="text-blue-400 flex-shrink-0" />
           <span>{emailToast}</span>
         </div>
       )}
@@ -821,11 +847,44 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase">Parent</p><p className="font-bold dark:text-slate-200">{app.parentName}</p></div>
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase">Phone</p><p className="font-bold dark:text-slate-200">{app.phone}</p></div>
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase">Prev School</p><p className="font-bold dark:text-slate-200">{app.previousSchool}</p></div>
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase">Email</p><p className="font-bold dark:text-slate-200">{app.email}</p></div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p><p className="font-bold dark:text-slate-200">{displayValue(app.dob)}</p></div>
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p><p className="font-bold dark:text-slate-200">{displayValue(app.gender)}</p></div>
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Grade Applying</p><p className="font-bold dark:text-slate-200">Grade {displayValue(app.lastGrade)}</p></div>
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Fayda ID</p><p className="font-bold dark:text-slate-200 font-mono text-[11px]">{displayValue(app.digitalId)}</p></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Parent / Guardian</p><p className="font-bold dark:text-slate-200">{displayValue(app.parentName)}</p></div>
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</p><p className="font-bold dark:text-slate-200">{displayValue(app.phone)}</p></div>
+                      <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Address</p><p className="font-bold dark:text-slate-200">{displayValue(app.address)}</p></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Previous School</p><p className="font-bold dark:text-slate-200">{displayValue(app.previousSchool)}</p></div>
+                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Email</p><p className="font-bold dark:text-slate-200 break-all">{displayValue(app.email)}</p></div>
+                      <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Transcript</p><p className="font-bold dark:text-slate-200">{app.transcriptFileName ? `${app.transcriptFileName}${app.transcriptFileSize ? ` (${(app.transcriptFileSize / 1024).toFixed(0)} KB)` : ''}` : '—'}</p></div>
+                    </div>
+
+                    {(app.bloodGroup || app.allergies || app.chronicConditions || app.medications) && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><HeartPulse size={12} /> Medical Information</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Blood Group</span><p className="font-bold dark:text-slate-200">{displayValue(app.bloodGroup)}</p></div>
+                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Allergies</span><p className="font-bold dark:text-slate-200">{displayValue(app.allergies)}</p></div>
+                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Chronic Conditions</span><p className="font-bold dark:text-slate-200">{displayValue(app.chronicConditions)}</p></div>
+                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Medications</span><p className="font-bold dark:text-slate-200">{displayValue(app.medications)}</p></div>
+                        </div>
+                      </div>
+                    )}
+
+                    {app.notes && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 text-xs">
+                        <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Notes</p>
+                        <p className="text-blue-900 dark:text-blue-200 font-medium">{app.notes}</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Exam Details (if exam-pending) */}
@@ -843,9 +902,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
                   {/* Action Buttons per Status */}
                   <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
+                    {(app.status === 'pending' || app.transcriptFileName) && (
+                      <button
+                        onClick={() => app.transcriptFileName && setViewingTranscript(app)}
+                        disabled={!app.transcriptFileName}
+                        className="px-5 py-2.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                      >
+                        <FileText size={16} /> View Transcript
+                      </button>
+                    )}
                     {app.status === 'pending' && (
                       <>
-                        <button onClick={() => setViewingTranscript(app)} className="px-5 py-2.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><FileText size={16} /> Transcript</button>
                         <button onClick={() => handleDecline(app.id)} className="px-5 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><X size={16} /> Decline</button>
                         <button onClick={() => handlePass(app.id)} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass</button>
                         <button onClick={() => handlePassAfterExam(app.id)} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95"><BookOpen size={16} /> Pass After Exam</button>
@@ -853,7 +920,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     )}
                     {app.status === 'exam-pending' && (
                       <>
-                        <button onClick={() => handleExamResult(app.id, true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><Check size={14} /> Exam Passed</button>
+                        <button onClick={() => handleExamResult(app.id, true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><Check size={14} /> Pass</button>
                         <button onClick={() => handleExamResult(app.id, false)} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><X size={14} /> Exam Failed</button>
                       </>
                     )}
@@ -1448,7 +1515,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Assign Grade</h3>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select the grade to forward this applicant to finance.</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">
+                Select the grade this student will enroll in, then forward to finance for payment.
+              </p>
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-3">

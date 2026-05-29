@@ -109,6 +109,15 @@ export const Students = () => {
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
   };
 
+  const getErrorMessage = (err: any, fallback: string) => {
+    const payload = err?.response?.data;
+    if (typeof payload?.error === 'string') return payload.error;
+    if (payload?.error?.message) return payload.error.message;
+    if (typeof payload?.message === 'string') return payload.message;
+    if (typeof err?.message === 'string') return err.message;
+    return fallback;
+  };
+
   const toggleStudentSelection = (studentId: string) => {
     const newSelected = new Set(selectedStudentIds);
     if (newSelected.has(studentId)) {
@@ -149,7 +158,7 @@ export const Students = () => {
       setSelectedBulkSectionIds(new Set());
     } catch (err: any) {
       console.error('Failed to fetch sections:', err);
-      showToast(err.response?.data?.error || 'Failed to fetch sections', 'error');
+      showToast(getErrorMessage(err, 'Failed to fetch sections'), 'error');
     } finally {
       setLoadingBulkSections(false);
     }
@@ -241,7 +250,7 @@ export const Students = () => {
       setSelectedBulkSectionIds(new Set());
       fetchStudents();
     } catch (err: any) {
-      showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
+      showToast(getErrorMessage(err, 'Failed to assign section'), 'error');
     } finally {
       setBulkAssigning(false);
     }
@@ -640,11 +649,13 @@ export const Students = () => {
                                 setSelectedSectionForStudent('');
                                 setShowAssignSectionModal(true);
                                 try {
-                                  const sections = await sectionService.getAvailableSections(student.grade);
+                                  const gradeParam = getGradeNumber(student.grade) || student.grade;
+                                  const sections = await sectionService.getAvailableSections(gradeParam);
                                   setAvailableSectionsForSingle(sections);
                                   if (sections.length > 0) setSelectedSectionForStudent(sections[0].id);
                                 } catch (err) {
-                                  showToast('Failed to fetch sections', 'error');
+                                  setAvailableSectionsForSingle([]);
+                                  showToast(getErrorMessage(err, 'Failed to fetch sections'), 'error');
                                 }
                               }}
                               className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
@@ -728,7 +739,11 @@ export const Students = () => {
                         if (!selectedSectionForStudent) return showToast('Please select a section', 'error');
                         setAssigningSection(true);
                         try {
-                          const res = await sectionService.assignStudentToSection(selectedStudent.userId || selectedStudent.id, selectedSectionForStudent, 'Manual assignment from UI');
+                          const res = await sectionService.assignStudentToSection(
+                            selectedStudent.id,
+                            selectedSectionForStudent,
+                            'Manual assignment from UI'
+                          );
                           if (res.success) {
                             showToast('Student assigned to section', 'success');
                             setShowAssignSectionModal(false);
@@ -737,7 +752,7 @@ export const Students = () => {
                             showToast(res.message || 'Assignment failed', 'error');
                           }
                         } catch (err: any) {
-                          showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
+                          showToast(getErrorMessage(err, 'Failed to assign section'), 'error');
                         } finally {
                           setAssigningSection(false);
                         }
@@ -752,7 +767,7 @@ export const Students = () => {
                       onClick={async () => {
                         setAutoAssigning(true);
                         try {
-                          const res = await sectionService.autoAssignStudent(selectedStudent.userId || selectedStudent.id);
+                          const res = await sectionService.autoAssignStudent(selectedStudent.id);
                           if (res.success) {
                             showToast('Student auto-assigned to ' + res.toSection, 'success');
                             setShowAssignSectionModal(false);
@@ -761,7 +776,7 @@ export const Students = () => {
                             showToast(res.message || 'Auto-assign failed', 'error');
                           }
                         } catch (err: any) {
-                          showToast(err.response?.data?.error || err.message || 'Auto-assign failed', 'error');
+                          showToast(getErrorMessage(err, 'Auto-assign failed'), 'error');
                         } finally {
                           setAutoAssigning(false);
                         }
