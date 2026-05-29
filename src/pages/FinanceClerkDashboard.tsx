@@ -264,8 +264,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const openTransportModal = (student: TransportStudentInfo) => {
     // Fetch Super Admin policy fee for this student's grade
-    // Finance Clerk cannot edit; fee is read-only
-    const policy = transportPolicies.find((item) => item.grade_level === student.grade)
+    // Finance Clerk cannot edit; fee is read-only and uses policy value only
+    const policy = transportPolicies.find((item) => {
+      // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
+      const policyGradeNum = item.grade_level?.replace(/\D/g, '');
+      const studentGradeNum = student.grade?.replace(/\D/g, '');
+      return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
+    })
       || transportPolicies.find((item) => !item.grade_level)
       || transportPolicies[0]
       || null;
@@ -274,8 +279,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setTransportStudent(student);
     setTransportData({
       driverId,
-      // Use policy fee if valid; fallback to student's current fee
-      transportFee: policyFee > 0 ? policyFee : Number(student.bus_fee || 0),
+      // Use ONLY the Super Admin configured policy fee (or 0 if not set)
+      transportFee: policyFee,
     });
     setShowTransportModal(true);
   };
@@ -358,10 +363,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     if (!transportStudent || !transportData.driverId) return;
 
     try {
+      // Use the policy fee set at modal open time
+      const finalFee = selectedTransportPolicy ? Number(selectedTransportPolicy.bus_fee || 0) : 0;
       await financeClerkService.assignTransport({
         studentId: transportStudent.id,
         driverId: transportData.driverId,
-        transportFee: Number(transportData.transportFee),
+        transportFee: finalFee,
       });
       setSuccess('Transport assignment saved successfully');
       setShowTransportModal(false);
@@ -536,7 +543,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   });
   const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
   const selectedTransportPolicy = transportStudent
-    ? transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null
+    ? transportPolicies.find((item) => {
+        // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
+        const policyGradeNum = item.grade_level?.replace(/\D/g, '');
+        const studentGradeNum = transportStudent.grade?.replace(/\D/g, '');
+        return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
+      }) || transportPolicies.find((item) => !item.grade_level) || null
     : null;
   const headerTitleMap = {
     all: 'Collections',

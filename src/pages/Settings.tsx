@@ -6,7 +6,7 @@ import { mockGradingConfigs } from '../data/mockData';
 import { useUser } from '../context/UserContext';
 import payrollService, { FinanceSettingsAudit } from '../services/payrollService';
 import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
-import settingsService, { type BranchGradeFee, type MonthlyProfitTarget } from '../services/settingsService';
+import settingsService, { type BranchGradeFee, type BranchProfitSummary, type MonthlyProfitTarget } from '../services/settingsService';
 import { authService } from '../services/authService';
 import { SettingsSubTabs, SettingsPanel } from '../components/settings/SettingsSubTabs';
 import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
@@ -32,6 +32,11 @@ export const Settings = () => {
   const [feeRegistration, setFeeRegistration] = useState(2500);
   const [feeBus, setFeeBus] = useState(1200);
   const [profitTargets, setProfitTargets] = useState<MonthlyProfitTarget[]>([]);
+  const [profitTargetBranchId, setProfitTargetBranchId] = useState('');
+  const [profitTargetMonth, setProfitTargetMonth] = useState('1');
+  const [profitTargetAmount, setProfitTargetAmount] = useState('500000');
+  const [profitSummary, setProfitSummary] = useState<BranchProfitSummary | null>(null);
+  const [profitSummaryLoading, setProfitSummaryLoading] = useState(false);
   const [smtpSettings, setSmtpSettings] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_from: '' });
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
@@ -112,7 +117,38 @@ export const Settings = () => {
     if (branches.length > 0 && !feeBranchId) {
       setFeeBranchId(branches[0].id);
     }
-  }, [branches, feeBranchId]);
+    if (branches.length > 0 && !profitTargetBranchId) {
+      setProfitTargetBranchId(branches[0].id);
+    }
+  }, [branches, feeBranchId, profitTargetBranchId]);
+
+  const loadProfitSummary = useCallback(async () => {
+    if (!profitTargetBranchId || role !== 'super-admin') return;
+    setProfitSummaryLoading(true);
+    try {
+      const summary = await settingsService.getBranchProfitSummary({
+        branchId: profitTargetBranchId,
+        ethiopianMonth: Number(profitTargetMonth),
+      });
+      setProfitSummary(summary);
+      setProfitTargetAmount(
+        summary.saved_target != null
+          ? String(summary.saved_target)
+          : String(Math.round(summary.suggested_target))
+      );
+    } catch (err) {
+      console.error('Failed to load profit summary:', err);
+      setProfitSummary(null);
+    } finally {
+      setProfitSummaryLoading(false);
+    }
+  }, [profitTargetBranchId, profitTargetMonth, role]);
+
+  useEffect(() => {
+    if (role === 'super-admin' && profitTargetBranchId && activeTab === 'Financial Policy') {
+      loadProfitSummary();
+    }
+  }, [role, profitTargetBranchId, profitTargetMonth, activeTab, loadProfitSummary]);
 
   const loadFinanceSettings = async () => {
     try {
@@ -193,8 +229,6 @@ export const Settings = () => {
   const [gradingLoading, setGradingLoading] = useState(false);
   const [newMethodLabel, setNewMethodLabel] = useState('');
   const [newMethodWeight, setNewMethodWeight] = useState(10);
-  const [profitTargetMonth, setProfitTargetMonth] = useState('1');
-  const [profitTargetAmount, setProfitTargetAmount] = useState('500000');
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -321,14 +355,20 @@ export const Settings = () => {
   };
 
   const handleSetProfitTarget = async () => {
+    if (!profitTargetBranchId) {
+      setFinanceErrorMsg('Select a branch first');
+      return;
+    }
     setFinanceLoading(true);
     try {
       await settingsService.upsertProfitTarget({
+        branchId: profitTargetBranchId,
         ethiopianMonth: Number(profitTargetMonth),
         targetAmount: Number(profitTargetAmount),
       });
       await loadProfitTargets();
-      setFinanceSuccessMsg('Monthly profit target saved');
+      await loadProfitSummary();
+      setFinanceSuccessMsg('Monthly profit target saved for this branch');
       setTimeout(() => setFinanceSuccessMsg(''), 4000);
     } catch (err: any) {
       setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to save profit target');
@@ -429,19 +469,19 @@ export const Settings = () => {
   };
 
   const ethiopianMonths = [
-    { id: '1', ge: 'Meskerem', am: 'መስከረም', mockActual: 420000 },
-    { id: '2', ge: 'Tikimt', am: 'ጥቅምት', mockActual: 480000 },
-    { id: '3', ge: 'Hidar', am: 'ኅዳር', mockActual: 510000 },
-    { id: '4', ge: 'Tahisas', am: 'ታኅሣሥ', mockActual: 390000 },
-    { id: '5', ge: 'Tir', am: 'ጥር', mockActual: 530000 },
-    { id: '6', ge: 'Yekatit', am: 'የካቲት', mockActual: 475000 },
-    { id: '7', ge: 'Megabit', am: 'መጋቢት', mockActual: 560000 },
-    { id: '8', ge: 'Miyazya', am: 'ሚያዝያ', mockActual: 440000 },
-    { id: '9', ge: 'Ginbot', am: 'ግንቦት', mockActual: 500000 },
-    { id: '10', ge: 'Sene', am: 'ሰኔ', mockActual: 410000 },
-    { id: '11', ge: 'Hamle', am: 'ሐምሌ', mockActual: 350000 },
-    { id: '12', ge: 'Nehase', am: 'ነሐሴ', mockActual: 380000 },
-    { id: '13', ge: 'Pagumē', am: 'ጳጉሜን', mockActual: 90000 },
+    { id: '1', ge: 'Meskerem', am: 'መስከረም' },
+    { id: '2', ge: 'Tikimt', am: 'ጥቅምት' },
+    { id: '3', ge: 'Hidar', am: 'ኅዳር' },
+    { id: '4', ge: 'Tahisas', am: 'ታኅሣሥ' },
+    { id: '5', ge: 'Tir', am: 'ጥር' },
+    { id: '6', ge: 'Yekatit', am: 'የካቲት' },
+    { id: '7', ge: 'Megabit', am: 'መጋቢት' },
+    { id: '8', ge: 'Miyazya', am: 'ሚያዝያ' },
+    { id: '9', ge: 'Ginbot', am: 'ግንቦት' },
+    { id: '10', ge: 'Sene', am: 'ሰኔ' },
+    { id: '11', ge: 'Hamle', am: 'ሐምሌ' },
+    { id: '12', ge: 'Nehase', am: 'ነሐሴ' },
+    { id: '13', ge: 'Pagumē', am: 'ጳጉሜን' },
   ];
 
   return (
@@ -1333,98 +1373,179 @@ export const Settings = () => {
                 )}
 
                 {role === 'super-admin' && showSubSection('profit-targets') && (
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Monthly Profit Target</h4>
-                              <p className="text-xs text-slate-500 font-medium">Ethiopian calendar months vs actual collections.</p>
-                            </div>
+                  <div className="space-y-5">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Branch Profit Target</h4>
+                      <p className="text-xs text-slate-500 font-medium">
+                        Set targets per branch using real student fee collections minus staff payroll for the selected period.
+                      </p>
+                    </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
-                            <select
-                              value={profitTargetMonth}
-                              onChange={(e) => setProfitTargetMonth(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                            >
-                              {ethiopianMonths.map((m) => (
-                                <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Profit (ETB)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 500000"
-                              value={profitTargetAmount}
-                              onChange={(e) => setProfitTargetAmount(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <button
-                              type="button"
-                              onClick={handleSetProfitTarget}
-                              disabled={financeLoading}
-                              className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-blue-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
-                            >
-                              <Save size={14} />
-                              Set Target
-                            </button>
-                          </div>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                          <select
+                            value={profitTargetBranchId}
+                            onChange={(e) => setProfitTargetBranchId(e.target.value)}
+                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {branches.map((b) => (
+                              <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                          </select>
                         </div>
-
-                        {/* Comparison View */}
-                        {(() => {
-                          const currentMonth = ethiopianMonths.find(m => m.id === profitTargetMonth);
-                          const saved = profitTargets.find((t) => t.ethiopian_month === Number(profitTargetMonth));
-                          const target = saved
-                            ? Number(saved.target_amount)
-                            : profitTargetAmount
-                              ? parseInt(profitTargetAmount, 10)
-                              : 0;
-                          const actual = saved ? Number(saved.actual_amount) : 0;
-                          const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
-                          const status = percent >= 100 ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
-                          const statusColor = percent >= 100 ? 'text-emerald-600 bg-emerald-50' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
-                          const barColor = percent >= 100 ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
-
-                                return target > 0 ? (
-                                  <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentMonth?.ge} ({currentMonth?.am})</p>
-                                        <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
-                                          {actual.toLocaleString()} <span className="text-sm text-slate-400 font-bold">/ {target.toLocaleString()} ETB</span>
-                                        </p>
-                                      </div>
-                                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
-                                        {status} — {percent}%
-                                      </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                                          style={{ width: `${percent}%` }}
-                                          role="progressbar"
-                                          aria-valuenow={percent}
-                                          aria-valuemin={0}
-                                          aria-valuemax={100}
-                                        />
-                                      </div>
-                                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                                        <span>0 ETB</span>
-                                        <span>{target.toLocaleString()} ETB (Target)</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : null;
-                              })()}
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
+                          <select
+                            value={profitTargetMonth}
+                            onChange={(e) => setProfitTargetMonth(e.target.value)}
+                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {ethiopianMonths.map((m) => (
+                              <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+
+                      {profitSummaryLoading ? (
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider py-6 text-center">Loading branch financials…</p>
+                      ) : profitSummary ? (
+                        <>
+                          <p className="text-[10px] text-slate-500 font-medium">
+                            Period mapped to <strong>{profitSummary.monthName} {profitSummary.gregYear}</strong> (Gregorian) ·{' '}
+                            {profitSummary.student_transaction_count} student payment{profitSummary.student_transaction_count === 1 ? '' : 's'} recorded
+                            {profitSummary.payroll_status
+                              ? ` · Payroll: ${profitSummary.payroll_status}`
+                              : ' · No payroll run for this month yet'}
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                              <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Student income</p>
+                              <p className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+                                {profitSummary.student_income.toLocaleString()} ETB
+                              </p>
+                              <p className="text-[10px] text-emerald-600/80 mt-1">Sum of fee collections</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+                              <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Staff payout</p>
+                              <p className="text-xl font-black text-rose-800 dark:text-rose-300 mt-1">
+                                {profitSummary.staff_payout.toLocaleString()} ETB
+                              </p>
+                              <p className="text-[10px] text-rose-600/80 mt-1">Net pay + employer pension</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                              <p className="text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Suggested target</p>
+                              <p className="text-xl font-black text-blue-800 dark:text-blue-300 mt-1">
+                                {profitSummary.suggested_target.toLocaleString()} ETB
+                              </p>
+                              <p className="text-[10px] text-blue-600/80 mt-1">Income − staff payout</p>
+                            </div>
                           </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                            <div className="space-y-1">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
+                              <input
+                                type="number"
+                                placeholder={String(Math.round(profitSummary.suggested_target))}
+                                value={profitTargetAmount}
+                                onChange={(e) => setProfitTargetAmount(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
+                                className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+                              >
+                                Use suggested
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSetProfitTarget}
+                                disabled={financeLoading || !profitTargetBranchId}
+                                className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                              >
+                                <Save size={14} />
+                                Save target
+                              </button>
+                            </div>
+                          </div>
+
+                          {(() => {
+                            const target = Number(profitTargetAmount) || 0;
+                            const actual = profitSummary.actual_net_profit;
+                            const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
+                            const status = actual >= target ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
+                            const statusColor = actual >= target ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
+                            const barColor = actual >= target ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+                            const monthLabel = ethiopianMonths.find((m) => m.id === profitTargetMonth);
+
+                            if (target <= 0) return null;
+                            return (
+                              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                                <div className="flex items-center justify-between gap-4 flex-wrap">
+                                  <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                      {profitSummary.branch_name} · {monthLabel?.ge}
+                                    </p>
+                                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
+                                      Actual net {actual.toLocaleString()}{' '}
+                                      <span className="text-sm text-slate-400 font-bold">/ target {target.toLocaleString()} ETB</span>
+                                    </p>
+                                  </div>
+                                  <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
+                                    {status} — {percent}%
+                                  </div>
+                                </div>
+                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                  <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${percent}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <p className="text-xs text-slate-400 py-4">Select a branch to load financial data.</p>
+                      )}
+                    </div>
+
+                    {profitTargets.filter((t) => t.branch_id === profitTargetBranchId).length > 0 && (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <table className="w-full text-left text-[10px] min-w-[520px]">
+                          <thead className="bg-slate-50 dark:bg-slate-800/50">
+                            <tr>
+                              <th className="px-4 py-3 font-black uppercase text-slate-400">Month</th>
+                              <th className="px-4 py-3 font-black uppercase text-slate-400">Target</th>
+                              <th className="px-4 py-3 font-black uppercase text-slate-400">Actual net</th>
+                              <th className="px-4 py-3 font-black uppercase text-slate-400">Income</th>
+                              <th className="px-4 py-3 font-black uppercase text-slate-400">Staff</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {profitTargets
+                              .filter((t) => t.branch_id === profitTargetBranchId)
+                              .map((t) => {
+                                const m = ethiopianMonths.find((em) => em.id === String(t.ethiopian_month));
+                                return (
+                                  <tr key={t.id}>
+                                    <td className="px-4 py-2 font-bold">{m?.ge ?? t.ethiopian_month}</td>
+                                    <td className="px-4 py-2">{Number(t.target_amount).toLocaleString()}</td>
+                                    <td className="px-4 py-2">{Number(t.actual_net_profit ?? t.actual_amount ?? 0).toLocaleString()}</td>
+                                    <td className="px-4 py-2 text-emerald-600">{Number(t.student_income ?? 0).toLocaleString()}</td>
+                                    <td className="px-4 py-2 text-rose-600">{Number(t.staff_payout ?? 0).toLocaleString()}</td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
               </SettingsPanel>

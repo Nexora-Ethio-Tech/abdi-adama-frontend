@@ -243,9 +243,10 @@ export const Staff = () => {
         branchId: createForm.branchId
       };
 
-      // Only add password if provided
-      if (createForm.password) {
-        data.password = createForm.password;
+      // Only add password if provided (trimmed)
+      const trimmedPassword = createForm.password.trim();
+      if (trimmedPassword) {
+        data.password = trimmedPassword;
       }
 
       console.log('📤 Sending data:', data);
@@ -261,9 +262,16 @@ export const Staff = () => {
       }
 
       console.log('✅ User created:', response);
+      const payload = response?.data?.user != null ? response.data : response;
       setShowCreateModal(false);
       setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
-      setSuccessModal({ show: true, data: response.data });
+      setSuccessModal({
+        show: true,
+        data: {
+          user: payload.user,
+          temporaryPassword: payload.temporaryPassword ?? payload.temporary_password,
+        },
+      });
       const branchList = await fetchBranches();
       fetchUsers(branchList);
     } catch (err: any) {
