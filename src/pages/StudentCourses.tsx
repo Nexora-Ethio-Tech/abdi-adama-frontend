@@ -33,17 +33,23 @@ export const StudentCourses = () => {
   // Available academic years
   const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
 
-  // Status check helper
   const getStatus = (course: any) => {
     if (!course || course.total === null || course.total === undefined) {
       return 'PENDING';
     }
-    const totalScore = Number(course.total) || 0;
+    const totalScore = Number(course.total);
+    if (!Number.isFinite(totalScore)) return 'PENDING';
     return totalScore >= 50 ? 'PASSED' : 'FAILED';
   };
 
+  const getSubmittedTotal = (course: any) => {
+    if (course?.total === null || course?.total === undefined) return null;
+    const totalScore = Number(course.total);
+    return Number.isFinite(totalScore) ? totalScore : null;
+  };
+
   // Fetch current term courses and grades
-  const fetchCourses = async () => {
+  const fetchCourses = async (preserveSelection = false) => {
     try {
       setLoading(true);
       setError('');
@@ -54,7 +60,12 @@ export const StudentCourses = () => {
       setCourses(coursesData);
       setGradingMethods(methods);
       if (coursesData.length > 0) {
-        setSelectedCourse(coursesData[0]);
+        if (preserveSelection && selectedCourse) {
+          const stillThere = coursesData.find((c: StudentCourse) => c.id === selectedCourse.id);
+          setSelectedCourse(stillThere || coursesData[0]);
+        } else {
+          setSelectedCourse(coursesData[0]);
+        }
       } else {
         setSelectedCourse(null);
       }
@@ -67,9 +78,15 @@ export const StudentCourses = () => {
 
   useEffect(() => {
     if (viewMode === 'current') {
-      fetchCourses();
+      fetchCourses(true);
     }
   }, [viewMode, selectedSemester, selectedYear]);
+
+  useEffect(() => {
+    if (viewMode !== 'current') return;
+    const interval = setInterval(() => fetchCourses(true), 30000);
+    return () => clearInterval(interval);
+  }, [viewMode, selectedSemester, selectedYear, selectedCourse?.id]);
 
   // Sync search input query when selected course changes
   useEffect(() => {
@@ -117,12 +134,13 @@ export const StudentCourses = () => {
 
   // Calculate semester average for history metrics
   const semesterAverage = useMemo(() => {
-    if (!historyData || !historyData.courses) return 0;
-    const scores = historyData.courses.map((c: any) => {
+    if (!historyData || !historyData.courses) return 'N/A';
+    const scored = historyData.courses.filter((c: any) => c.score !== null && c.score !== undefined);
+    if (scored.length === 0) return 'N/A';
+    const scores = scored.map((c: any) => {
       const numScore = typeof c.score === 'string' ? parseFloat(c.score) : c.score;
       return isNaN(numScore) ? 0 : numScore;
     });
-    if (scores.length === 0) return 0;
     return Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
   }, [historyData]);
 
@@ -131,29 +149,14 @@ export const StudentCourses = () => {
       {/* Header & Tab Selector */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Grades & Courses</h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track your real-time academic performance across semesters.</p>
-        </div>
-
-        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
-          <button
-            onClick={() => navigate('/courses')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'current'
-              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-              }`}
-          >
-            Current Term
-          </button>
-          <button
-            onClick={() => navigate('/attendance')}
-            className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'history'
-              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-              }`}
-          >
-            Academic History
-          </button>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">
+            {viewMode === 'current' ? 'Grades & Courses' : 'Academic History'}
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">
+            {viewMode === 'current'
+              ? 'Track live grades and course details for the current term.'
+              : 'Historical summary of completed courses and final results by year and semester.'}
+          </p>
         </div>
       </div>
 
@@ -292,6 +295,11 @@ export const StudentCourses = () => {
                             <User size={14} />
                             Instructor: {typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}
                           </div>
+                          {(selectedCourse as any).class_name && (
+                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                              Class: {(selectedCourse as any).class_name}{(selectedCourse as any).section_name ? ` — Section ${(selectedCourse as any).section_name}` : ''}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -312,7 +320,8 @@ export const StudentCourses = () => {
                         <div className="space-y-2">
                           <div className="flex justify-between items-end">
                             <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
-                              {selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) : 0}%
+                              {getSubmittedTotal(selectedCourse) !== null ? Math.round(getSubmittedTotal(selectedCourse)!) : '--'}
+                              {getSubmittedTotal(selectedCourse) !== null ? '%' : ''}
                             </span>
                           </div>
 
@@ -324,7 +333,7 @@ export const StudentCourses = () => {
                                   ? 'bg-gradient-to-r from-rose-400 to-red-500'
                                   : 'bg-gradient-to-r from-amber-400 to-orange-500'
                                 }`}
-                              style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
+                              style={{ width: `${getSubmittedTotal(selectedCourse) !== null ? Math.min(100, Math.max(0, getSubmittedTotal(selectedCourse)!)) : 0}%` }}
                             ></div>
                           </div>
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
@@ -454,7 +463,7 @@ export const StudentCourses = () => {
 
                         <div className="text-right">
                           <span className="text-2xl font-black text-slate-800 dark:text-white">
-                            {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
+                            {getSubmittedTotal(selectedCourse) !== null ? Number(getSubmittedTotal(selectedCourse)).toFixed(1) : '--'}
                           </span>
                           <span className="text-sm text-slate-400 font-bold"> / 100</span>
                         </div>
@@ -463,7 +472,7 @@ export const StudentCourses = () => {
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
                           <span>Total Score Progress</span>
-                          <span>{selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) + '%' : '0%'}</span>
+                          <span>{getSubmittedTotal(selectedCourse) !== null ? Math.round(getSubmittedTotal(selectedCourse)!) + '%' : 'Pending'}</span>
                         </div>
                         <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                           <div
@@ -569,7 +578,9 @@ export const StudentCourses = () => {
                     <GraduationCap size={16} className="text-emerald-600" />
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester Average</span>
                   </div>
-                  <p className="text-xl font-black text-slate-800 dark:text-white">{semesterAverage}%</p>
+                  <p className="text-xl font-black text-slate-800 dark:text-white">
+                    {typeof semesterAverage === 'number' ? `${semesterAverage}%` : semesterAverage}
+                  </p>
                 </div>
               </div>
             )}
@@ -582,25 +593,29 @@ export const StudentCourses = () => {
             ) : historyData && historyData.courses ? (
               <div className="overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800">
                 <table className="w-full text-left">
-                  <thead className="bg-slate-50 dark:bg-slate-800/50">
-                    <tr>
-                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Subject</th>
-                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {historyData.courses.map((course: any, i: number) => (
-                      <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-8 py-5">
-                          <p className="font-bold text-slate-800 dark:text-white">{course.name}</p>
-                        </td>
-                        <td className="px-8 py-5 text-right">
-                          <span className="inline-flex items-center px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-sm font-black">
-                            {typeof course.score === 'string' && course.score.includes('%') ? course.score : `${course.score}%`}
-                          </span>
-                        </td>
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Course</th>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Code</th>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Final Score</th>
                       </tr>
-                    ))}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {historyData.courses.map((course: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{course.name}</td>
+                          <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
+                          <td className="px-8 py-5 text-right">
+                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${
+                              course.score_display === 'Pending' || course.score === null
+                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            }`}>
+                              {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>

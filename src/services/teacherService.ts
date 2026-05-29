@@ -59,6 +59,8 @@ export const enterGrade = async (data: {
 // Bulk create grades
 export const bulkEnterGrades = async (data: {
   courseId: string;
+  academicYear?: string;
+  semester?: number;
   grades: Array<{
     studentId: string;
     type: string;

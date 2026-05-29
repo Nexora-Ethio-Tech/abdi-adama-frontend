@@ -33,6 +33,8 @@ export const GradeEntry = () => {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [selectedYear, setSelectedYear] = useState('2025/2026');
+  const [selectedSemester, setSelectedSemester] = useState<'First Semester' | 'Second Semester'>('Second Semester');
 
   // Load teacher's classes on mount
   useEffect(() => {
@@ -56,8 +58,8 @@ export const GradeEntry = () => {
     setLoadingStudents(true);
     setLoadingMethods(true);
 
-    // Load students
-    getClassStudents(cls.id)
+    const rosterClassId = (cls as any).class_id || cls.id;
+    getClassStudents(rosterClassId)
       .then((data) => setStudents(data || []))
       .catch(() => setStudents([]))
       .finally(() => setLoadingStudents(false));
@@ -129,7 +131,13 @@ export const GradeEntry = () => {
         }
       }
       if (gradeEntries.length > 0) {
-        await bulkEnterGrades({ courseId: selectedCourseId, grades: gradeEntries });
+        const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+        await bulkEnterGrades({
+          courseId: selectedCourseId,
+          academicYear: selectedYear,
+          semester: semNum,
+          grades: gradeEntries,
+        });
       }
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
@@ -190,12 +198,12 @@ export const GradeEntry = () => {
 
                 <div className="space-y-2">
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Select Subject</p>
-                  {cls.subject ? (
+                  {cls.subject || (cls as any).name ? (
                     <button
-                      onClick={() => handleSelectClass(cls, cls.id, cls.subject!)}
+                      onClick={() => handleSelectClass(cls, (cls as any).course_id || cls.id, cls.subject || (cls as any).name)}
                       className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-blue-600 hover:text-white transition-all text-sm font-medium"
                     >
-                      {cls.subject}
+                      {cls.subject || (cls as any).name}
                       <ChevronRight size={16} />
                     </button>
                   ) : (
@@ -233,6 +241,27 @@ export const GradeEntry = () => {
             <span className="px-3 py-1 bg-blue-100 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-bold uppercase">
               {selectedSubject}
             </span>
+          </div>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold"
+              aria-label="Academic Year"
+            >
+              <option value="2025/2026">2025/2026</option>
+              <option value="2024/2025">2024/2025</option>
+              <option value="2023/2024">2023/2024</option>
+            </select>
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value as 'First Semester' | 'Second Semester')}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold"
+              aria-label="Semester"
+            >
+              <option>First Semester</option>
+              <option>Second Semester</option>
+            </select>
           </div>
           {gradingMethods.length > 0 && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">

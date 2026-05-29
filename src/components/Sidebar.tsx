@@ -59,6 +59,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   };
   const displaySchoolName = getLocalizedSchoolName();
 
+  const parentChildId =
+    role === 'parent' && location.pathname.includes('/dashboard/parent')
+      ? new URLSearchParams(location.search).get('childId')
+      : null;
+
+  const buildParentPortalPath = (tab: string) => {
+    const params = new URLSearchParams({ tab });
+    if (parentChildId) params.set('childId', parentChildId);
+    return `/dashboard/parent?${params.toString()}`;
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -129,10 +140,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         ];
       case 'parent':
         return [
-          { icon: LayoutDashboard, label: t('nav.myDashboard') || 'My Dashboard', path: '/dashboard/parent?tab=dashboard' },
-          { icon: BookOpen, label: 'Grades & Courses', path: '/dashboard/parent?tab=grades' },
-          { icon: GraduationCap, label: 'Academic History', path: '/dashboard/parent?tab=history' },
-          { icon: HeartPulse, label: 'Clinic Support', path: '/dashboard/parent?tab=clinic' },
+          { icon: LayoutDashboard, label: t('nav.myDashboard') || 'My Dashboard', path: buildParentPortalPath('dashboard') },
+          { icon: BookOpen, label: 'Grades & Courses', path: buildParentPortalPath('grades') },
+          { icon: GraduationCap, label: 'Academic History', path: buildParentPortalPath('history') },
+          { icon: HeartPulse, label: 'Clinic Support', path: buildParentPortalPath('clinic') },
         ];
       case 'finance-clerk':
         return [

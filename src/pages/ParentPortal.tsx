@@ -37,7 +37,6 @@ import {
   getParentChildHistory,
   getChildTeachers,
   getChildAttendance,
-  getChildAcademicHistory,
   getChildClinicUpdates,
   getDriverUpdates,
   getSchoolAnnouncements,
@@ -48,7 +47,6 @@ import {
   Teacher,
   AttendanceRecord,
   AttendanceStatistics,
-  AcademicHistoryEntry,
   ClinicVisit,
   HealthProfile,
   DriverUpdate,
@@ -91,8 +89,6 @@ export const ParentPortal = () => {
   const currentLog = useMemo(() => commLogs[currentLogIndex] || null, [commLogs, currentLogIndex]);
 
   // Clinic Chat State
-  const [clinicChildren, setClinicChildren] = useState<ParentChild[]>([]);
-  const [selectedClinicChildId, setSelectedClinicChildId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newChatMessage, setNewChatMessage] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -111,10 +107,6 @@ export const ParentPortal = () => {
 
   // NEW: Clinic Support Sub-Tab
   const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('chat');
-
-  // NEW: Academic History State
-  const [academicHistory, setAcademicHistory] = useState<AcademicHistoryEntry[]>([]);
-  const [historyLoading2, setHistoryLoading2] = useState(false);
 
   // NEW: Clinic Updates State
   const [clinicVisits, setClinicVisits] = useState<ClinicVisit[]>([]);
@@ -159,9 +151,45 @@ export const ParentPortal = () => {
   }, []);
 
 
+  const resetChildScopedState = () => {
+    setCourses([]);
+    setSelectedCourse(null);
+    setHistoryData(null);
+    setCommLogs([]);
+    setCurrentLogIndex(0);
+    setChatMessages([]);
+    setChildTeachers([]);
+    setAttendanceRecords([]);
+    setAttendanceStats(null);
+    setClinicVisits([]);
+    setHealthProfile({});
+    setGradesError('');
+  };
+
+  const buildSearchParams = (tab: string, childId?: string | null) => {
+    const params: Record<string, string> = { tab };
+    if (childId) params.childId = childId;
+    return params;
+  };
+
+  const selectChild = (child: ParentChild, tabOverride?: string) => {
+    resetChildScopedState();
+    setSelectedChild(child);
+    setSearchParams(buildSearchParams(tabOverride ?? activePortalTab, child.id));
+    setShowCommBook(false);
+  };
+
   const getStatus = (course: any) => {
-    if (course.final_50 === null || course.final_50 === undefined) return 'PENDING';
-    return Number(course.total) >= 50 ? 'PASSED' : 'FAILED';
+    if (!course || course.total === null || course.total === undefined) return 'PENDING';
+    const totalScore = Number(course.total);
+    if (!Number.isFinite(totalScore)) return 'PENDING';
+    return totalScore >= 50 ? 'PASSED' : 'FAILED';
+  };
+
+  const getSubmittedTotal = (course: any) => {
+    if (course?.total === null || course?.total === undefined) return null;
+    const totalScore = Number(course.total);
+    return Number.isFinite(totalScore) ? totalScore : null;
   };
 
   const getProgressBarClass = (course: any) => {
@@ -193,7 +221,7 @@ export const ParentPortal = () => {
 
   const handleViewModeChange = (mode: 'current' | 'history') => {
     setViewMode(mode);
-    setSearchParams({ tab: mode === 'current' ? 'grades' : 'history' });
+    setSearchParams(buildSearchParams(mode === 'current' ? 'grades' : 'history', selectedChild?.id));
     setShowCommBook(false);
   };
 
@@ -212,9 +240,7 @@ export const ParentPortal = () => {
       .then(d => {
         const kids = d.children || [];
         setChildren(kids);
-        setClinicChildren(kids);
-        
-        // Map fetched announcements to SchoolNotice structure and sync to store
+
         const mappedNotices = (d.announcements || []).map((a: any) => ({
           id: a.id,
           title: a.title,
@@ -228,13 +254,29 @@ export const ParentPortal = () => {
         setNotices(mappedNotices);
 
         if (kids.length > 0) {
-          setSelectedChild(kids[0]);
-          setSelectedClinicChildId(kids[0].id);
+          const urlChildId = searchParams.get('childId');
+          const fromUrl = urlChildId ? kids.find(k => k.id === urlChildId) : undefined;
+          const initialChild = fromUrl ?? kids[0];
+          setSelectedChild(initialChild);
+          if (!urlChildId || !fromUrl) {
+            setSearchParams(buildSearchParams(activePortalTab, initialChild.id), { replace: true });
+          }
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [setNotices]);
+
+  // Keep selected child in sync when childId URL param changes
+  useEffect(() => {
+    const urlChildId = searchParams.get('childId');
+    if (!urlChildId || children.length === 0) return;
+    const match = children.find(c => c.id === urlChildId);
+    if (match && match.id !== selectedChild?.id) {
+      resetChildScopedState();
+      setSelectedChild(match);
+    }
+  }, [searchParams, children, selectedChild?.id]);
 
   // Fetch all clinic messages for previews on Dashboard
   useEffect(() => {
@@ -257,23 +299,47 @@ export const ParentPortal = () => {
 
   // Fetch specific child grades
   useEffect(() => {
-    if (!selectedChild || (activePortalTab !== 'grades' && activePortalTab !== 'history')) return;
+    if (!selectedChild || activePortalTab !== 'grades') return;
     if (viewMode !== 'current') return;
-    setGradesLoading(true);
-    setGradesError('');
-    const semNum = selectedSemester === 'First Semester' ? 1 : 2;
-    getParentChildGrades(selectedChild.id, semNum, selectedYear)
-      .then(d => {
-        const c = d?.courses || [];
-        setCourses(c);
-        setSelectedCourse(c[0] || null);
-      })
-      .catch(e => {
-        setGradesError(e.message || 'Failed to fetch child courses.');
-        setCourses([]);
-        setSelectedCourse(null);
-      })
-      .finally(() => setGradesLoading(false));
+
+    let cancelled = false;
+    const loadGrades = (preserveSelection = false) => {
+      setGradesLoading(true);
+      setGradesError('');
+      const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+      getParentChildGrades(selectedChild.id, semNum, selectedYear)
+        .then(d => {
+          if (cancelled) return;
+          const c = d?.courses || [];
+          setCourses(c);
+          if (c.length > 0) {
+            setSelectedCourse((prev: any) => {
+              if (preserveSelection && prev) {
+                return c.find((course: any) => course.id === prev.id) || c[0];
+              }
+              return c[0];
+            });
+          } else {
+            setSelectedCourse(null);
+          }
+        })
+        .catch(e => {
+          if (cancelled) return;
+          setGradesError(e.message || 'Failed to fetch child courses.');
+          setCourses([]);
+          setSelectedCourse(null);
+        })
+        .finally(() => {
+          if (!cancelled) setGradesLoading(false);
+        });
+    };
+
+    loadGrades(true);
+    const interval = setInterval(() => loadGrades(true), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [selectedChild, selectedSemester, selectedYear, activePortalTab, viewMode]);
 
   useEffect(() => {
@@ -287,11 +353,11 @@ export const ParentPortal = () => {
     return courses.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
   }, [courses, courseSearchQuery, selectedCourse]);
 
-  // Fetch child academic history
+  // Fetch child academic history (dedicated history tab only)
   useEffect(() => {
-    if (!selectedChild || (activePortalTab !== 'grades' && activePortalTab !== 'history') || !historyYear || !historySemester) return;
-    if (viewMode !== 'history') return;
+    if (!selectedChild || activePortalTab !== 'history' || !historyYear || !historySemester) return;
     setHistoryLoading(true);
+    setHistoryData(null);
     const semNum = historySemester === 'First Semester' ? 1 : 2;
     getParentChildHistory(selectedChild.id, historyYear, semNum)
       .then(d => {
@@ -299,12 +365,14 @@ export const ParentPortal = () => {
       })
       .catch(() => setHistoryData(null))
       .finally(() => setHistoryLoading(false));
-  }, [selectedChild, historyYear, historySemester, activePortalTab, viewMode]);
+  }, [selectedChild, historyYear, historySemester, activePortalTab]);
 
   const semesterAverage = useMemo(() => {
-    if (!historyData?.courses) return 0;
-    const scores = historyData.courses.map((c: any) => parseFloat(c.score) || 0);
-    return scores.length ? Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length) : 0;
+    if (!historyData?.courses) return 'N/A';
+    const scored = historyData.courses.filter((c: any) => c.score !== null && c.score !== undefined);
+    if (scored.length === 0) return 'N/A';
+    const scores = scored.map((c: any) => parseFloat(String(c.score)) || 0);
+    return Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
   }, [historyData]);
 
   // Fetch communication book logs when requested
@@ -322,9 +390,10 @@ export const ParentPortal = () => {
 
   // Fetch active clinic chat thread
   useEffect(() => {
-    if (!selectedClinicChildId || activePortalTab !== 'clinic') return;
+    if (!selectedChild || activePortalTab !== 'clinic') return;
     setChatLoading(true);
-    api.get(`/clinic/chat?childId=${encodeURIComponent(selectedClinicChildId)}`)
+    setChatMessages([]);
+    api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChild.id)}`)
       .then(res => {
         const msgs = (res.data?.data || []).map((m: any) => ({
           id: m.id,
@@ -338,24 +407,18 @@ export const ParentPortal = () => {
       })
       .catch(console.error)
       .finally(() => setChatLoading(false));
-  }, [selectedClinicChildId, activePortalTab]);
+  }, [selectedChild, activePortalTab]);
 
   // Scroll to bottom of chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Ensure clinic tab has an active child selected
+  // Fetch child's teachers when on teachers tab
   useEffect(() => {
-    if (activePortalTab === 'clinic' && !selectedClinicChildId && selectedChild) {
-      setSelectedClinicChildId(selectedChild.id);
-    }
-  }, [activePortalTab, selectedClinicChildId, selectedChild]);
-
-  // NEW: Fetch child's teachers when selected child changes
-  useEffect(() => {
-    if (!selectedChild) return;
+    if (!selectedChild || activePortalTab !== 'teachers') return;
     setTeachersLoading(true);
+    setChildTeachers([]);
     getChildTeachers(selectedChild.id)
       .then(teachers => setChildTeachers(teachers || []))
       .catch(err => {
@@ -363,42 +426,46 @@ export const ParentPortal = () => {
         setChildTeachers([]);
       })
       .finally(() => setTeachersLoading(false));
-  }, [selectedChild]);
+  }, [selectedChild, activePortalTab]);
 
-  // NEW: Fetch attendance data when selected child changes
+  // Fetch attendance when on dashboard or attendance tab (with auto-refresh)
   useEffect(() => {
-    if (!selectedChild) return;
-    setAttendanceLoading(true);
-    getChildAttendance(selectedChild.id)
-      .then(data => {
-        setAttendanceRecords(data.records || []);
-        setAttendanceStats(data.statistics || {});
-      })
-      .catch(err => {
-        console.error('Failed to fetch attendance:', err);
-        setAttendanceRecords([]);
-        setAttendanceStats({});
-      })
-      .finally(() => setAttendanceLoading(false));
-  }, [selectedChild]);
+    if (!selectedChild || (activePortalTab !== 'dashboard' && activePortalTab !== 'attendance')) return;
 
-  // NEW: Fetch academic history when selected child changes
-  useEffect(() => {
-    if (!selectedChild) return;
-    setHistoryLoading2(true);
-    getChildAcademicHistory(selectedChild.id)
-      .then(history => setAcademicHistory(history || []))
-      .catch(err => {
-        console.error('Failed to fetch academic history:', err);
-        setAcademicHistory([]);
-      })
-      .finally(() => setHistoryLoading2(false));
-  }, [selectedChild]);
+    let cancelled = false;
+    const loadAttendance = () => {
+      setAttendanceLoading(true);
+      getChildAttendance(selectedChild.id)
+        .then(data => {
+          if (cancelled) return;
+          setAttendanceRecords(data.records || []);
+          setAttendanceStats(data.statistics || {});
+        })
+        .catch(err => {
+          if (cancelled) return;
+          console.error('Failed to fetch attendance:', err);
+          setAttendanceRecords([]);
+          setAttendanceStats({});
+        })
+        .finally(() => {
+          if (!cancelled) setAttendanceLoading(false);
+        });
+    };
 
-  // NEW: Fetch clinic updates when selected child changes
+    loadAttendance();
+    const interval = setInterval(loadAttendance, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [selectedChild, activePortalTab]);
+
+  // Fetch clinic updates when on clinic tab
   useEffect(() => {
-    if (!selectedChild) return;
+    if (!selectedChild || activePortalTab !== 'clinic') return;
     setClinicUpdatesLoading(true);
+    setClinicVisits([]);
+    setHealthProfile({});
     getChildClinicUpdates(selectedChild.id)
       .then(data => {
         setClinicVisits(data.visits || []);
@@ -410,7 +477,7 @@ export const ParentPortal = () => {
         setHealthProfile({});
       })
       .finally(() => setClinicUpdatesLoading(false));
-  }, [selectedChild]);
+  }, [selectedChild, activePortalTab]);
 
   // NEW: Fetch driver updates for dashboard
   useEffect(() => {
@@ -438,9 +505,9 @@ export const ParentPortal = () => {
       .finally(() => setAnnouncementsLoading(false));
   }, [activePortalTab]);
 
-  // NEW: Fetch financial summary for all children
+  // Fetch financial summary for finance tab
   useEffect(() => {
-    if (activePortalTab !== 'dashboard') return;
+    if (activePortalTab !== 'finance') return;
     setFinancialLoading(true);
     getFinancialSummary()
       .then(data => setFinancialData(data || []))
@@ -453,17 +520,17 @@ export const ParentPortal = () => {
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChatMessage.trim() || !selectedClinicChildId) return;
+    if (!newChatMessage.trim() || !selectedChild) return;
     try {
       const res = await api.post('/clinic/chat', {
         message: newChatMessage,
-        childId: selectedClinicChildId
+        childId: selectedChild.id
       });
       const m = res.data?.data || res.data;
       setChatMessages(prev => [...prev, {
         id: m.id || Date.now().toString(),
         role: 'parent',
-        child_id: selectedClinicChildId,
+        child_id: selectedChild.id,
         text: m.text || m.message,
         timestamp: m.timestamp || 'Just now'
       }]);
@@ -475,7 +542,7 @@ export const ParentPortal = () => {
   };
 
   const handleTabChange = (tab: string) => {
-    setSearchParams({ tab });
+    setSearchParams(buildSearchParams(tab, selectedChild?.id));
     setShowCommBook(false);
   };
 
@@ -501,6 +568,45 @@ export const ParentPortal = () => {
     });
     return Object.values(latest);
   }, [allClinicMessages]);
+
+  const selectedChildFinancial = useMemo(() => {
+    if (!selectedChild) return [];
+    return financialData.filter(f => f.student_id === selectedChild.id);
+  }, [financialData, selectedChild]);
+
+  const openClinicForChild = (childId: string) => {
+    const child = children.find(c => c.id === childId);
+    if (child) {
+      selectChild(child, 'clinic');
+    } else {
+      setClinicSupportTab('chat');
+      handleTabChange('clinic');
+    }
+    setClinicSupportTab('chat');
+  };
+
+  const renderChildPicker = () => {
+    if (children.length <= 1) return null;
+    return (
+      <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+        {children.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => selectChild(c)}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              selectedChild?.id === c.id
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+            }`}
+          >
+            {c.fullName}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -548,30 +654,48 @@ export const ParentPortal = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {children.map((child) => (
+              {children.map((child) => {
+                const isSelected = selectedChild?.id === child.id;
+                return (
                 <div
                   key={child.id}
-                  onClick={() => {
-                    setSelectedChild(child);
-                    handleTabChange('grades');
-                  }}
+                  onClick={() => selectChild(child)}
                   className="group relative cursor-pointer"
                 >
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg opacity-0 group-hover:opacity-10 transition duration-500" />
-                  <div className="relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm group-hover:shadow-xl group-hover:-translate-y-1.5 transition-all duration-500">
+                  <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg transition duration-500 ${isSelected ? 'opacity-20' : 'opacity-0 group-hover:opacity-10'}`} />
+                  <div className={`relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1.5 transition-all duration-500 ${
+                    isSelected
+                      ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/30'
+                      : 'border-slate-100 dark:border-slate-800'
+                  }`}>
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-850 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-2xl shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
+                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-all duration-500 ${
+                          isSelected
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-50 dark:bg-slate-850 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
+                        }`}>
                           {child.fullName.charAt(0)}
                         </div>
                         <div>
                           <h4 className="text-xl font-black text-slate-900 dark:text-white mb-1">{child.fullName}</h4>
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grade {child.grade}</p>
+                          {isSelected && (
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Currently Selected</p>
+                          )}
                         </div>
                       </div>
-                      <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          selectChild(child, 'grades');
+                        }}
+                        className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all"
+                        title={`View ${child.fullName}'s grades`}
+                      >
                         <ChevronRight size={20} />
-                      </div>
+                      </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-5">
@@ -586,7 +710,8 @@ export const ParentPortal = () => {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -604,22 +729,30 @@ export const ParentPortal = () => {
             </button>
             <div className="px-6 pb-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-5">
+                {attendanceLoading ? (
+                  <div className="col-span-full flex justify-center py-6">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : (
+                  <>
                 <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Total Days</p>
-                  <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{attendanceStats?.total_days ?? 0}</p>
+                  <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{Number(attendanceStats?.total_days ?? 0)}</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Present</p>
-                  <p className="mt-3 text-3xl font-black text-emerald-600">{attendanceStats?.present_days ?? 0}</p>
+                  <p className="mt-3 text-3xl font-black text-emerald-600">{Number(attendanceStats?.present_days ?? 0)}</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Absent</p>
-                  <p className="mt-3 text-3xl font-black text-rose-600">{attendanceStats?.absent_days ?? 0}</p>
+                  <p className="mt-3 text-3xl font-black text-rose-600">{Number(attendanceStats?.absent_days ?? 0)}</p>
                 </div>
                 <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Rate</p>
-                  <p className="mt-3 text-3xl font-black text-blue-600">{(attendanceStats?.attendance_percentage ?? 0).toFixed(1)}%</p>
+                  <p className="mt-3 text-3xl font-black text-blue-600">{Number(attendanceStats?.attendance_percentage ?? 0).toFixed(1)}%</p>
                 </div>
+                  </>
+                )}
               </div>
               {attendanceExpanded && (
                 <div className="space-y-4 mt-3">
@@ -726,11 +859,7 @@ export const ParentPortal = () => {
                       clinicPreviews.map((m, idx) => (
                         <div
                           key={idx}
-                          onClick={() => {
-                            setSelectedClinicChildId(m.child_id);
-                            setClinicSupportTab('chat');
-                            handleTabChange('clinic');
-                          }}
+                          onClick={() => openClinicForChild(m.child_id)}
                           className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
                         >
                           <div className="flex justify-between items-center">
@@ -787,11 +916,7 @@ export const ParentPortal = () => {
                     clinicPreviews.map((m, idx) => (
                       <div
                         key={idx}
-                        onClick={() => {
-                          setSelectedClinicChildId(m.child_id);
-                          setClinicSupportTab('chat');
-                          handleTabChange('clinic');
-                        }}
+                        onClick={() => openClinicForChild(m.child_id)}
                         className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
                       >
                         <div className="flex justify-between items-center">
@@ -828,64 +953,21 @@ export const ParentPortal = () => {
         </div>
       )}
 
-      {/* ==================== 2 & 3. GRADES & COURSES / ACADEMIC HISTORY VIEWS ==================== */}
-      {(activePortalTab === 'grades' || activePortalTab === 'history') && (
+      {/* ==================== 2. GRADES & COURSES TAB ==================== */}
+      {activePortalTab === 'grades' && (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {/* Header & Tab Selector (Identical to Student Portal) */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black text-slate-900 dark:text-white">Grades & Courses</h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track your real-time academic performance across semesters.</p>
-            </div>
-
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 w-full md:w-fit">
-              <button
-                onClick={() => handleViewModeChange('current')}
-                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  viewMode === 'current'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                }`}
-              >
-                Current Term
-              </button>
-              <button
-                onClick={() => handleViewModeChange('history')}
-                className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  viewMode === 'history'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                    : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
-                }`}
-              >
-                Academic History
-              </button>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track live grades and course details for the current term.</p>
             </div>
           </div>
 
           {/* Child Picker (Scope to Parent Role) */}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
-            {children.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => {
-                  setSelectedChild(c);
-                  setShowCommBook(false);
-                }}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                  selectedChild?.id === c.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
-                }`}
-              >
-                {c.fullName}
-              </button>
-            ))}
-          </div>
+          {renderChildPicker()}
 
           {selectedChild ? (
-            viewMode === 'current' ? (
-              // ================= CURRENT TERM VIEW (Identical UI/UX to Student Portal) =================
+              // ================= CURRENT TERM VIEW =================
               <div className="space-y-8">
                 {/* First Div: Controls Row */}
                 <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
@@ -1290,133 +1372,140 @@ export const ParentPortal = () => {
                   )
                 )}
               </div>
-            ) : (
-              // ================= ACADEMIC HISTORY VIEW (Identical UI/UX to Student Portal) =================
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
-                      <GraduationCap size={28} />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-black text-slate-900 dark:text-white">Academic History</h3>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">Archive of verified results</p>
-                    </div>
-                  </div>
-
-                  {/* First Div: Year and Semester selectors */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div>
-                      <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
-                      <select
-                        title="Select Academic Year"
-                        value={historyYear || ''}
-                        onChange={(e) => {
-                          setHistoryYear(e.target.value || null);
-                          setHistoryData(null);
-                        }}
-                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
-                      >
-                        <option value="">-- Select Year --</option>
-                        {academicYears.map((year) => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-black text-slate-650 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
-                      <select
-                        title="Select Semester"
-                        value={historySemester || ''}
-                        onChange={(e) => {
-                          setHistorySemester(e.target.value || null);
-                          setHistoryData(null);
-                        }}
-                        disabled={!historyYear}
-                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white"
-                      >
-                        <option value="">-- Select Semester --</option>
-                        <option>First Semester</option>
-                        <option>Second Semester</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Metrics Header */}
-                  {historyYear && historySemester && historyData && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 mb-3">
-                          <Calendar size={16} className="text-blue-600" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Year</span>
-                        </div>
-                        <p className="text-xl font-black text-slate-800 dark:text-white">{historyYear}</p>
-                      </div>
-
-                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 mb-3">
-                          <BookOpen size={16} className="text-purple-600" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester</span>
-                        </div>
-                        <p className="text-xl font-black text-slate-800 dark:text-white">{historySemester}</p>
-                      </div>
-
-                      <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center gap-3 mb-3">
-                          <GraduationCap size={16} className="text-emerald-600" />
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Semester Average</span>
-                        </div>
-                        <p className="text-xl font-black text-slate-800 dark:text-white">{semesterAverage}%</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Second Div: History Data Table with Subject and Total columns */}
-                  {historyLoading ? (
-                    <div className="flex justify-center items-center h-32">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : historyData && historyData.courses ? (
-                    <div className="overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800">
-                      <table className="w-full text-left">
-                        <thead className="bg-slate-50 dark:bg-slate-800/50">
-                          <tr>
-                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Subject</th>
-                            <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {historyData.courses.map((course: any, i: number) => (
-                            <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                              <td className="px-8 py-5">
-                                <p className="font-bold text-slate-800 dark:text-white">{course.name}</p>
-                              </td>
-                              <td className="px-8 py-5 text-right">
-                                <span className="inline-flex items-center px-4 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full text-sm font-black">
-                                  {typeof course.score === 'string' && course.score.includes('%') ? course.score : `${course.score}%`}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : historyYear && historySemester ? (
-                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
-                      <p className="font-medium">No results archived for the selected period.</p>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
-                      <p className="font-medium">Select both Academic Year and Semester to load historical records.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
           ) : (
             <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl text-center text-slate-500 text-sm border border-slate-100 dark:border-slate-800 animate-pulse">
               Please link a child student account to verify academic courses and progress.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== 3. ACADEMIC HISTORY TAB (Summary Only) ==================== */}
+      {activePortalTab === 'history' && (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white">Academic History</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">
+              Historical summary of completed courses and final results by year and semester.
+            </p>
+          </div>
+
+          {renderChildPicker()}
+
+          {selectedChild ? (
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
+                  <GraduationCap size={28} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Historical Records</h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">Final course results archive</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div>
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
+                  <select
+                    title="Select Academic Year"
+                    value={historyYear || ''}
+                    onChange={(e) => {
+                      setHistoryYear(e.target.value || null);
+                      setHistoryData(null);
+                    }}
+                    className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                  >
+                    <option value="">-- Select Year --</option>
+                    {academicYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
+                  <select
+                    title="Select Semester"
+                    value={historySemester || ''}
+                    onChange={(e) => {
+                      setHistorySemester(e.target.value || null);
+                      setHistoryData(null);
+                    }}
+                    disabled={!historyYear}
+                    className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 dark:text-white"
+                  >
+                    <option value="">-- Select Semester --</option>
+                    <option>First Semester</option>
+                    <option>Second Semester</option>
+                  </select>
+                </div>
+              </div>
+
+              {historyYear && historySemester && historyData && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Academic Year</p>
+                    <p className="text-xl font-black text-slate-800 dark:text-white">{historyYear}</p>
+                  </div>
+                  <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Semester</p>
+                    <p className="text-xl font-black text-slate-800 dark:text-white">{historySemester}</p>
+                  </div>
+                  <div className="p-5 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Semester Average</p>
+                    <p className="text-xl font-black text-slate-800 dark:text-white">
+                      {typeof semesterAverage === 'number' ? `${semesterAverage}%` : semesterAverage}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {historyLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : historyData && historyData.courses && historyData.courses.length > 0 ? (
+                <div className="overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50">
+                      <tr>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Course</th>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Code</th>
+                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Final Score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {historyData.courses.map((course: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{course.name}</td>
+                          <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
+                          <td className="px-8 py-5 text-right">
+                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${
+                              course.score_display === 'Pending' || course.score === null
+                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            }`}>
+                              {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : historyYear && historySemester ? (
+                <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
+                  <p className="font-medium">No courses found for the selected academic year and semester.</p>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl border border-dashed">
+                  <p className="font-medium">Select an academic year and semester to view historical results.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl text-center text-slate-500 text-sm border border-slate-100 dark:border-slate-800">
+              Select a child to view academic history.
             </div>
           )}
         </div>
@@ -1432,22 +1521,7 @@ export const ParentPortal = () => {
           </div>
 
           {/* Child Picker */}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
-            {children.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedChild(c)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                  selectedChild?.id === c.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
-                }`}
-              >
-                {c.fullName}
-              </button>
-            ))}
-          </div>
+          {renderChildPicker()}
 
           {/* Teachers Grid */}
           {teachersLoading ? (
@@ -1523,22 +1597,7 @@ export const ParentPortal = () => {
           </div>
 
           {/* Child Picker */}
-          <div className="flex flex-wrap items-center gap-3 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
-            {children.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setSelectedChild(c)}
-                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                  selectedChild?.id === c.id
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
-                }`}
-              >
-                {c.fullName}
-              </button>
-            ))}
-          </div>
+          {renderChildPicker()}
 
           {/* Attendance Stats */}
           {attendanceLoading ? (
@@ -1644,17 +1703,21 @@ export const ParentPortal = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black text-slate-900 dark:text-white">Fees & Financial Summary</h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track fees, payments, and financial status for all your children.</p>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">
+                Track fees, payments, and financial status for {selectedChild?.fullName || 'your selected child'}.
+              </p>
             </div>
           </div>
+
+          {renderChildPicker()}
 
           {financialLoading ? (
             <div className="flex justify-center items-center h-48">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
             </div>
-          ) : financialData.length > 0 ? (
+          ) : selectedChildFinancial.length > 0 ? (
             <div className="space-y-6">
-              {financialData.map((financial) => (
+              {selectedChildFinancial.map((financial) => (
                 <div key={financial.student_id} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg hover:shadow-xl transition-all">
                   <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-6 mb-8">
                     <div>
@@ -1714,7 +1777,9 @@ export const ParentPortal = () => {
           ) : (
             <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
               <DollarSign className="text-slate-300 mx-auto mb-4" size={40} />
-              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No financial data available.</p>
+              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">
+                {selectedChild ? 'No financial data available for this child.' : 'Select a child to view financial information.'}
+              </p>
             </div>
           )}
         </div>
@@ -1768,15 +1833,16 @@ export const ParentPortal = () => {
                 <div className="flex flex-col items-start md:items-end">
                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Select Child</span>
                   <div className="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                    {clinicChildren.length === 0 ? (
+                    {children.length === 0 ? (
                       <div className="px-4 py-1.5 text-xs text-slate-400">No children found</div>
                     ) : (
-                      clinicChildren.map((c) => (
+                      children.map((c) => (
                         <button
                           key={c.id}
-                          onClick={() => setSelectedClinicChildId(c.id)}
+                          type="button"
+                          onClick={() => selectChild(c, 'clinic')}
                           className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            selectedClinicChildId === c.id
+                            selectedChild?.id === c.id
                               ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
                               : 'text-slate-500 hover:text-slate-800'
                           }`}

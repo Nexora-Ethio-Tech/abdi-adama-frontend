@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Send, HeartPulse, User, ShieldAlert, Check, CheckCheck } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { ShootingStars } from '../components/Effects';
 import api from '../services/api';
 import { getParentDashboard } from '../services/parentService';
@@ -20,8 +21,9 @@ interface ChatMessage {
 }
 
 export const ParentClinicChat = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [children, setChildren] = useState<Child[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState<string | null>(searchParams.get('childId'));
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -39,7 +41,13 @@ export const ParentClinicChat = () => {
         const kids = data.children || [];
         setChildren(kids);
         if (kids.length > 0) {
-          setSelectedChildId(kids[0].id);
+          const urlChildId = searchParams.get('childId');
+          const fromUrl = urlChildId ? kids.find(k => k.id === urlChildId) : undefined;
+          const initialId = fromUrl?.id ?? kids[0].id;
+          setSelectedChildId(initialId);
+          if (!urlChildId || !fromUrl) {
+            setSearchParams({ childId: initialId }, { replace: true });
+          }
         }
       } catch (err) {
         console.error('Failed to load children:', err);
@@ -131,7 +139,10 @@ export const ParentClinicChat = () => {
                 children.map((child: Child) => (
                   <button
                     key={child.id}
-                    onClick={() => setSelectedChildId(child.id)}
+                    onClick={() => {
+                      setSelectedChildId(child.id);
+                      setSearchParams({ childId: child.id });
+                    }}
                     className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChildId === child.id ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm' : 'text-slate-500'}`}
                   >
                     {(child.fullName || '').split(' ')[0] || 'Child'}

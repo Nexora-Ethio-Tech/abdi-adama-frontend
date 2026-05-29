@@ -140,8 +140,8 @@ export const FinanceClerkRegistration = () => {
       const result = await financeClerkService.approveApplication(selectedApp.id, payload);
 
       setApprovedApp(result);
+      setShowCredentials(true);
       setSuccessMessage(`✅ Payment approved! Student ID: ${result.student?.user?.digital_id || result.application?.student_id_generated || 'Generated'}`);
-      setShowCredentials(false);
 
       // Remove from pending list
       setPendingApplications(prev =>
@@ -159,31 +159,6 @@ export const FinanceClerkRegistration = () => {
       setError(err.message || 'Failed to approve application');
     } finally {
       setApproving(false);
-    }
-  };
-
-  const handleReject = async (applicationId: string) => {
-    if (!confirm('Are you sure you want to reject this application?')) return;
-
-    try {
-      const response = await fetch(
-        `${API}/api/school-admin/applications/${applicationId}/status`,
-        {
-          method: 'PATCH',
-          headers: authHeaders(),
-          body: JSON.stringify({ status: 'declined' }),
-        }
-      );
-
-      if (response.ok) {
-        setSuccessMessage('Application rejected');
-        setPendingApplications(prev =>
-          prev.filter(app => app.id !== applicationId)
-        );
-        setTimeout(() => setSuccessMessage(null), 3000);
-      }
-    } catch (err: any) {
-      setError('Failed to reject application');
     }
   };
 
@@ -315,14 +290,6 @@ export const FinanceClerkRegistration = () => {
                 </button>
 
                 <button
-                  onClick={() => handleReject(app.id)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl font-bold text-sm transition-all"
-                >
-                  <X size={16} />
-                  Reject
-                </button>
-
-                <button
                   onClick={() => handleDownloadTranscript(app)}
                   className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm transition-all"
                 >
@@ -438,132 +405,171 @@ export const FinanceClerkRegistration = () => {
 
       {/* Credentials Display Modal */}
       {approvedApp && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <h2 className="text-xl font-bold text-emerald-600 mb-4 flex items-center gap-2">
-              <Check size={24} />
-              Payment Approved!
-            </h2>
+        <>
+          <style>{`
+            @media print {
+              body * { visibility: hidden !important; }
+              #credential-print-sheet,
+              #credential-print-sheet * { visibility: visible !important; }
+              #credential-print-sheet {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                padding: 12mm 15mm !important;
+                background: white !important;
+                color: #0f172a !important;
+              }
+            }
+          `}</style>
 
-            <div className="space-y-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase mb-1">Student ID</p>
-                <div className="flex items-center gap-2">
-                  <code className="text-lg font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
-                    {getStudentCredential().id}
-                  </code>
-                  <button
-                    onClick={() => copyText(getStudentCredential().id, 'Student ID')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                  >
-                    Copy
-                  </button>
+          <div id="credential-print-sheet" className="hidden print:block fixed inset-0 z-[9999] bg-white text-slate-900">
+            <div className="max-w-[180mm] mx-auto pt-[8mm]">
+              <h1 className="text-lg font-bold tracking-tight border-b-2 border-slate-800 pb-2 mb-6">
+                Login Credentials
+              </h1>
+              <div className="grid grid-cols-2 gap-x-10 gap-y-5 text-sm">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Student ID</p>
+                  <p className="text-base font-mono font-bold">{getStudentCredential().id}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Student Password</p>
+                  <p className="text-base font-mono font-bold">{getStudentCredential().password}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Parent ID</p>
+                  <p className="text-base font-mono font-bold">{getParentCredential().id}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Parent Password</p>
+                  <p className="text-base font-mono font-bold">{getParentCredential().password}</p>
                 </div>
               </div>
-
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase mb-1">
-                  Student Password (Temporary)
-                </p>
-                <div className="flex items-center gap-2">
-                  <code className="text-sm font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
-                    {showCredentials
-                      ? getStudentCredential().password
-                      : '••••••••'}
-                  </code>
-                  <button
-                    onClick={() => setShowCredentials(!showCredentials)}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                  >
-                    {showCredentials ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                  <button
-                    onClick={() => copyText(getStudentCredential().password, 'Student password')}
-                    className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase mb-1">Parent ID</p>
-                <code className="text-lg font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 block">
-                  {getParentCredential().id}
-                </code>
-                <button
-                  onClick={() => copyText(getParentCredential().id, 'Parent ID')}
-                  className="mt-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 text-sm font-semibold"
-                >
-                  Copy
-                </button>
-              </div>
-
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase mb-1">
-                  Parent Password (Temporary)
-                </p>
-                <code className="text-sm font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 block">
-                  {showCredentials
-                    ? getParentCredential().password
-                    : '••••••••'}
-                </code>
-                <button
-                  onClick={() => copyText(getParentCredential().password, 'Parent password')}
-                  className="mt-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-700 dark:text-slate-300 text-sm font-semibold"
-                >
-                  Copy
-                </button>
-              </div>
             </div>
-
-            <div className="flex flex-col gap-3 mb-4">
-              <button
-                onClick={() => {
-                  const student = getStudentCredential();
-                  const parent = getParentCredential();
-                  copyText(
-                    `Student ID: ${student.id}\nStudent Password: ${student.password}\nParent ID: ${parent.id}\nParent Password: ${parent.password}`,
-                    'All credentials'
-                  );
-                }}
-                className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-semibold transition-all"
-              >
-                Copy all credentials
-              </button>
-              <button
-                onClick={() => {
-                  if (!showCredentials) {
-                    setShowCredentials(true);
-                    setTimeout(() => window.print(), 120);
-                  } else {
-                    window.print();
-                  }
-                }}
-                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all"
-              >
-                Print credentials
-              </button>
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-6">
-              <p className="text-xs text-amber-700 dark:text-amber-300 font-semibold">
-                ⚠️ Note: School Admin will now complete final registration by selecting a class and section. These credentials will be activated after finalization.
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                setApprovedApp(null);
-                setSuccessMessage(null);
-                setShowCredentials(false);
-              }}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all"
-            >
-              Close
-            </button>
           </div>
-        </div>
+
+          <div className="credential-modal-screen fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 print:hidden">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+              <h2 className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-2">
+                <Check size={24} />
+                Payment Approved
+              </h2>
+
+              <div className="space-y-4 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">Student ID</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-lg font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                      {getStudentCredential().id}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copyText(getStudentCredential().id, 'Student ID')}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-sm font-semibold"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">Student Password</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                      {showCredentials ? getStudentCredential().password : '••••••••'}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => setShowCredentials(!showCredentials)}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                      aria-label={showCredentials ? 'Hide passwords' : 'Show passwords'}
+                    >
+                      {showCredentials ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copyText(getStudentCredential().password, 'Student password')}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-sm font-semibold"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">Parent ID</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-lg font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                      {getParentCredential().id}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copyText(getParentCredential().id, 'Parent ID')}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-sm font-semibold"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">Parent Password</p>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm font-mono font-bold text-slate-900 dark:text-white flex-1 bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                      {showCredentials ? getParentCredential().password : '••••••••'}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => copyText(getParentCredential().password, 'Parent password')}
+                      className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-sm font-semibold"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const student = getStudentCredential();
+                    const parent = getParentCredential();
+                    copyText(
+                      `Student ID: ${student.id}\nStudent Password: ${student.password}\nParent ID: ${parent.id}\nParent Password: ${parent.password}`,
+                      'All credentials'
+                    );
+                  }}
+                  className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-xl font-semibold transition-all"
+                >
+                  Copy all credentials
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCredentials(true);
+                    setTimeout(() => window.print(), 150);
+                  }}
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-all"
+                >
+                  Print credentials (A4)
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovedApp(null);
+                  setShowCredentials(false);
+                }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

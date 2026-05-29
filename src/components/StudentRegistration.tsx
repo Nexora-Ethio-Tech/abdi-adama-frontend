@@ -54,6 +54,13 @@ function formatPhoneNumber(phone: string | null | undefined): string {
   return '+251' + digitsOnly;
 }
 
+function toTitleCase(str: string): string {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function validatePhoneNumber(phone: string | null | undefined): { isValid: boolean; error?: string } {
   const raw = (phone || '').toString();
   const cleaned = raw.replace(/[^\d]/g, '');
@@ -84,8 +91,10 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
     if (!formData.name || !formData.name.trim()) {
       errors.name = 'Full Name is required';
     }
-    if (!formData.digital_id || !formData.digital_id.trim()) {
-      errors.digital_id = 'Fayda Alias Number is required';
+    if (formData.digital_id && formData.digital_id.trim()) {
+      if (!/^\d{16}$/.test(formData.digital_id.trim())) {
+        errors.digital_id = 'Fayda Alias Number must be exactly 16 digits';
+      }
     }
     if (!formData.dob) {
       errors.dob = 'Date of Birth is required';
@@ -117,13 +126,7 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
   return errors;
 }
 
-// Applications are fetched from backend on mount; this is an empty default
-const initialPendingApplications: PendingApp[] = [
-  { id: 'APP1', name: 'Zekarias Teshome', dob: '2012-08-20', parentName: 'Teshome G/Mariam', phone: '+251911445566', email: 'teshome@gmail.com', previousSchool: 'St. Joseph School', lastGrade: '7', date: '2026-04-12', status: 'pending' },
-  { id: 'APP2', name: 'Liyu Solomon', dob: '2013-05-10', parentName: 'Solomon Ayele', phone: '+251911778899', email: 'solomon.a@gmail.com', previousSchool: 'Future Talent Academy', lastGrade: '6', date: '2026-04-13', status: 'pending' },
-  { id: 'APP3', name: 'Hanna Mekonnen', dob: '2012-11-03', parentName: 'Mekonnen Tadesse', phone: '+251922334455', email: 'mekonnen.t@gmail.com', previousSchool: 'Bright Future Academy', lastGrade: '8', date: '2026-04-10', status: 'exam-pending', examDetails: { date: '2026-05-01', time: '9:00 AM', location: 'Main Campus Hall B', subjects: 'Math, English', notes: 'Bring pencils and eraser.' } },
-  { id: 'APP4', name: 'Dawit Abebe', dob: '2013-02-15', parentName: 'Abebe Kebede', phone: '+251933556677', email: 'abebe.k@gmail.com', previousSchool: 'Unity School', lastGrade: '7', date: '2026-04-08', status: 'awaiting-payment' },
-];
+const initialPendingApplications: PendingApp[] = [];
 
 export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
@@ -304,7 +307,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        setFileError('File size must be less than 2MB');
+        setFileError('The file must be less than 2 MB');
         setFileName(null);
       } else {
         setFileError(null);
@@ -332,8 +335,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const gender = formData.get('gender') as string;
       const parentName = formData.get('parentName') as string;
       const phone = formData.get('phone') as string;
-      const rawEmail = formData.get('email') as string | null;
-      const email = rawEmail && rawEmail.trim() ? rawEmail.trim() : '';
       const address = formData.get('address') as string;
       const previousSchool = formData.get('previousSchool') as string;
       const grade = formData.get('grade') as string;
@@ -376,15 +377,13 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
       // Create FormData for file upload (only append non-empty values)
       const submitData = new FormData();
-      submitData.append('name', name?.trim() || '');
+      submitData.append('name', toTitleCase(name) || '');
       submitData.append('digital_id', digital_id?.trim() || '');
       submitData.append('dob', dob || '');
       submitData.append('gender', gender || '');
-      submitData.append('parentName', parentName?.trim() || '');
+      submitData.append('parentName', toTitleCase(parentName) || '');
       submitData.append('parentPhone', formattedPhone);
-      // Only append email if provided; backend will treat missing/empty as null
-      if (email) submitData.append('email', email);
-      submitData.append('address', address?.trim() || '');
+      submitData.append('address', toTitleCase(address) || '');
       // Append previousSchool only when provided
       if (previousSchool?.trim()) submitData.append('previousSchool', previousSchool.trim());
       submitData.append('grade', grade || '');
@@ -406,7 +405,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         const file = fileList[0];
         // Validate file on client side again before sending
         if (file.size > 2 * 1024 * 1024) {
-          setFileError('File is larger than 2MB. Please choose a smaller file.');
+          setFileError('The file must be less than 2 MB');
           return;
         }
         submitData.append('transcript', file);
@@ -637,7 +636,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     if (pipelineFilter === 'pending') return app.status === 'pending';
     if (pipelineFilter === 'exam-queue') return app.status === 'exam-pending';
     if (pipelineFilter === 'awaiting-finance') return app.status === 'awaiting-payment';
-    if (pipelineFilter === 'completed') return ['declined', 'exam-failed', 'payment-confirmed'].includes(app.status);
+    if (pipelineFilter === 'completed') return ['declined', 'exam-failed', 'registered'].includes(app.status);
     return false;
   });
 
@@ -645,7 +644,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     pending: pendingApps.filter(a => a.status === 'pending').length,
     'exam-queue': pendingApps.filter(a => a.status === 'exam-pending').length,
     'awaiting-finance': pendingApps.filter(a => a.status === 'awaiting-payment').length,
-    completed: pendingApps.filter(a => ['declined', 'exam-failed', 'payment-confirmed'].includes(a.status)).length,
+    completed: pendingApps.filter(a => ['declined', 'exam-failed', 'registered'].includes(a.status)).length,
   };
 
   return (
@@ -923,19 +922,35 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Full Name <span className="text-rose-500">*</span></label>
-                    <input required name="name" type="text" placeholder="Enter student full name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.name
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                    <input required name="name" type="text" placeholder="Enter student full name"
+                      onBlur={(e) => { e.target.value = toTitleCase(e.target.value); }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.name
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`} />
                     {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-rose-500">*</span></label>
-                    <input required name="digital_id" type="text" placeholder="e.g. FAN-12345678" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.digital_id
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
-                    <p className="text-[10px] text-slate-400 pl-1">Alias number from the Ethiopia Digital ID (Fayda) card</p>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-slate-400 font-medium">(optional)</span></label>
+                    <input
+                      name="digital_id"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={16}
+                      placeholder="16-digit number (e.g. 1234567890123456)"
+                      onKeyDown={(e) => {
+                        if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 16);
+                      }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.digital_id
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`} />
+                    <p className="text-[10px] text-slate-400 pl-1">Exactly 16 digits — numbers only (Ethiopia Fayda card alias)</p>
                     {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
                   </div>
                   <div className="space-y-1">
@@ -1002,19 +1017,27 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent/Guardian Name <span className="text-rose-500">*</span></label>
-                    <input required name="parentName" type="text" placeholder="Enter parent name" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.parentName
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                    <input
+                      required
+                      name="parentName"
+                      type="text"
+                      placeholder="Enter parent name"
+                      onBlur={(e) => { e.target.value = toTitleCase(e.target.value); }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.parentName
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`} />
                     {validationErrors.parentName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.parentName}</p>}
                   </div>
+
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Parent Phone <span className="text-rose-500">*</span></label>
-                    <div className={`flex items-center w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus-within:ring-2 transition-all ${(validationErrors.phone || validationErrors.parentPhone)
-                      ? 'border-rose-300 focus-within:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus-within:ring-blue-500'
-                      }`}>
-                      <span className="text-slate-400 dark:text-slate-500 font-bold mr-1">+251</span>
+                    <div className="flex items-center gap-2">
+                      {/* Fixed country code box */}
+                      <div className="flex items-center justify-center px-4 py-2 bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-black text-slate-600 dark:text-slate-300 select-none whitespace-nowrap">
+                        +251
+                      </div>
+                      {/* Local phone number input */}
                       <input
                         required
                         type="tel"
@@ -1022,31 +1045,35 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         maxLength={9}
                         placeholder="9xxxxxxxx"
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
-                          e.target.value = value;
+                          e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
                         }}
-                        onKeyPress={(e) => {
-                          if (!/\d/.test(e.key)) {
+                        onKeyDown={(e) => {
+                          if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
                             e.preventDefault();
                           }
                         }}
                         name="phone"
-                        className="w-full bg-transparent outline-none font-bold text-slate-800 dark:text-slate-100 placeholder-slate-400"
-                      />
+                        className={`flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 font-bold ${(validationErrors.phone || validationErrors.parentPhone)
+                          ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                          : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                          }`} />
                     </div>
-                    <p className="text-[10px] text-slate-400 pl-1">Format: 9xxxxxxxx (9 digits only)</p>
+                    <p className="text-[10px] text-slate-400 pl-1">Must start with 9 or 7 — 9 digits only</p>
                     {(validationErrors.phone || validationErrors.parentPhone) && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {(validationErrors.phone || validationErrors.parentPhone)}</p>}
                   </div>
-                  <div className="space-y-1 md:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Email (optional)</label>
-                    <input name="email" type="email" placeholder="Parent or applicant email (optional)" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 border-slate-200 dark:border-slate-700 focus:ring-blue-500" />
-                  </div>
+
                   <div className="space-y-1 md:col-span-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Address <span className="text-rose-500">*</span></label>
-                    <input required name="address" type="text" placeholder="City, Sub-city, Woreda" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                    <input
+                      required
+                      name="address"
+                      type="text"
+                      placeholder="City, Sub-city, Woreda"
+                      onBlur={(e) => { e.target.value = toTitleCase(e.target.value); }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.address
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`} />
                     {validationErrors.address && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.address}</p>}
                   </div>
                 </div>
@@ -1064,10 +1091,30 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
-                    <input name="grade" type="number" min="1" step="1" placeholder="e.g. 9" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                    <input
+                      name="grade"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="e.g. 9"
+                      onKeyDown={(e) => {
+                        if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => {
+                        if (e.target.value.trim()) {
+                          setValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.grade;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`} />
+                    {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
                   </div>
                 </div>
 
@@ -1091,10 +1138,14 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                         {fileName || 'Click to upload transcript'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">PDF, PNG, JPG (Max 2MB)</p>
+                      <p className="text-xs text-slate-400 mt-1">Accepted formats: PDF, PNG, JPG (Max 2MB)</p>
                     </div>
                   </div>
-                  {fileError && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {fileError}</p>}
+                  {fileError && (
+                    <p className="text-sm text-rose-600 font-bold text-center flex items-center justify-center gap-1 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl py-2 px-4">
+                      <AlertTriangle size={14} /> {fileError}
+                    </p>
+                  )}
                 </div>
               </div>
 
