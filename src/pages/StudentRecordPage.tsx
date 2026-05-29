@@ -1,0 +1,470 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import {
+  ArrowLeft,
+  FileText,
+  Loader2,
+  User,
+  HeartPulse,
+  GraduationCap,
+  Clock,
+  Download,
+  X
+} from 'lucide-react';
+import api from '../services/api';
+import { getStudentAdmissionRecord, type StudentAdmissionRecord } from '../services/schoolAdminService';
+
+const displayValue = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') return '—';
+  return String(value);
+};
+
+const formatDate = (value?: string | null) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+};
+
+export const StudentRecordPage = () => {
+  const { studentId } = useParams<{ studentId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo =
+    (location.state as { returnTo?: string } | null)?.returnTo || '/students';
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [record, setRecord] = useState<StudentAdmissionRecord | null>(null);
+
+  const [viewingDoc, setViewingDoc] = useState<{ applicationId: string; fileName: string } | null>(null);
+  const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [docLoading, setDocLoading] = useState(false);
+  const [docError, setDocError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!studentId) return;
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getStudentAdmissionRecord(studentId);
+        if (!cancelled) setRecord(data);
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(
+            err.response?.data?.message ||
+              err.response?.data?.error?.message ||
+              err.message ||
+              'Failed to load student record'
+          );
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId]);
+
+  useEffect(() => {
+    let objectUrl: string | null = null;
+
+    const fetchDoc = async () => {
+      if (!viewingDoc) return;
+      setDocLoading(true);
+      setDocError(null);
+      setDocUrl(null);
+      try {
+        const response = await api.get(
+          `/school-admin/applications/${viewingDoc.applicationId}/transcript`,
+          { responseType: 'blob' }
+        );
+        objectUrl = URL.createObjectURL(response.data);
+        setDocUrl(objectUrl);
+      } catch (err: any) {
+        setDocError(
+          err.response?.data?.message ||
+            err.message ||
+            'Failed to load document'
+        );
+      } finally {
+        setDocLoading(false);
+      }
+    };
+
+    fetchDoc();
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setDocUrl(null);
+    };
+  }, [viewingDoc]);
+
+  const student = record?.student;
+  const app = record?.application;
+  const studentName = student?.name || 'Student';
+  const enrollmentStatus =
+    student?.student_status ||
+    (student?.status === 'Pending' ? 'Active' : student?.status) ||
+    'Active';
+  const applicationStatusLabel =
+    app?.student_user_id || app?.registration_completed_at
+      ? 'Active'
+      : displayValue(app?.status).replace(/-/g, ' ');
+
+  return (
+    <div className="space-y-6 pb-12">
+      <button
+        type="button"
+        onClick={() => navigate(returnTo)}
+        className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-bold uppercase tracking-widest"
+      >
+        <ArrowLeft size={14} />
+        Back
+      </button>
+
+      <div>
+        <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+          Student Record
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
+          Complete admission and application information
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="animate-spin text-blue-600" size={32} />
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6">
+          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Current enrollment */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                <User size={20} />
+              </div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">{studentName}</h2>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Digital ID</p>
+                <p className="font-bold dark:text-slate-200 font-mono">{displayValue(student?.digital_id)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Grade</p>
+                <p className="font-bold dark:text-slate-200">{displayValue(student?.grade)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Section</p>
+                <p className="font-bold dark:text-slate-200">
+                  {student?.section_label
+                    ? `${student.section_name || ''} — Section ${student.section_label}`.trim()
+                    : displayValue(student?.section_name)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
+                <p className="font-bold dark:text-slate-200">{displayValue(enrollmentStatus)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Enrolled</p>
+                <p className="font-bold dark:text-slate-200">{formatDate(student?.enrolled_at)}</p>
+              </div>
+            </div>
+          </div>
+
+          {!record?.hasApplication ? (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-8 text-center">
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                No admission application is linked to this student. They may have been added manually
+                without going through the registration pipeline.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Application details */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8 space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                      <GraduationCap size={20} />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                        Application Details
+                      </h2>
+                      <p className="text-xs text-slate-500">
+                        Submitted {formatDate(app?.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700">
+                    {applicationStatusLabel}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Applicant Name</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.applicant_name)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p>
+                    <p className="font-bold dark:text-slate-200">{formatDate(app?.dob)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.gender)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Fayda ID</p>
+                    <p className="font-bold dark:text-slate-200 font-mono text-[11px]">
+                      {displayValue(app?.digital_id)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Parent / Guardian</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.parent_name)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Parent Phone</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.parent_phone)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Applicant Phone</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.applicant_phone)}</p>
+                  </div>
+                  <div className="md:col-span-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Address</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.address)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Grade Applying</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.grade_applying)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Last Grade Completed</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.last_grade_completed)}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Previous School</p>
+                    <p className="font-bold dark:text-slate-200">{displayValue(app?.previous_school)}</p>
+                  </div>
+                </div>
+
+                {(app?.blood_group || app?.allergies || app?.chronic_conditions || app?.current_medications) && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <HeartPulse size={12} /> Medical Information
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Blood Group</span>
+                        <p className="font-bold dark:text-slate-200">{displayValue(app?.blood_group)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Allergies</span>
+                        <p className="font-bold dark:text-slate-200">{displayValue(app?.allergies)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Chronic Conditions</span>
+                        <p className="font-bold dark:text-slate-200">{displayValue(app?.chronic_conditions)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase">Medications</span>
+                        <p className="font-bold dark:text-slate-200">{displayValue(app?.current_medications)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {(app?.exam_date || app?.exam_location) && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl">
+                    <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                      <Clock size={12} /> Exam Information
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-[10px] text-amber-500 font-bold uppercase">Date</span>
+                        <p className="font-bold text-amber-800 dark:text-amber-200">{formatDate(app?.exam_date)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-amber-500 font-bold uppercase">Time</span>
+                        <p className="font-bold text-amber-800 dark:text-amber-200">{displayValue(app?.exam_time)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-amber-500 font-bold uppercase">Location</span>
+                        <p className="font-bold text-amber-800 dark:text-amber-200">{displayValue(app?.exam_location)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-amber-500 font-bold uppercase">Subjects</span>
+                        <p className="font-bold text-amber-800 dark:text-amber-200">{displayValue(app?.exam_subjects)}</p>
+                      </div>
+                      {app?.exam_notes && (
+                        <div className="md:col-span-4">
+                          <span className="text-[10px] text-amber-500 font-bold uppercase">Notes</span>
+                          <p className="font-bold text-amber-800 dark:text-amber-200">{app.exam_notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(app?.finance_status || app?.registration_completed_at) && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Finance Status</p>
+                      <p className="font-bold dark:text-slate-200">{displayValue(app?.finance_status)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Payment Amount</p>
+                      <p className="font-bold dark:text-slate-200">{displayValue(app?.payment_amount)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Payment Reference</p>
+                      <p className="font-bold dark:text-slate-200">{displayValue(app?.payment_reference)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Registration Completed</p>
+                      <p className="font-bold dark:text-slate-200">{formatDate(app?.registration_completed_at)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {app?.notes && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 text-xs">
+                    <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Notes</p>
+                    <p className="text-blue-900 dark:text-blue-200 font-medium">{app.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Documents */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                    <FileText size={20} />
+                  </div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                    Documents & Transcript
+                  </h2>
+                </div>
+
+                {record.documents.length === 0 ? (
+                  <p className="text-sm text-slate-500">No documents were submitted with this application.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {record.documents.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800"
+                      >
+                        <div>
+                          <p className="font-bold text-sm text-slate-800 dark:text-slate-200">{doc.file_name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            {doc.type === 'transcript' ? 'Transcript' : 'Attachment'}
+                            {doc.file_size ? ` · ${(doc.file_size / 1024).toFixed(0)} KB` : ''}
+                            {doc.uploaded_at ? ` · ${formatDate(doc.uploaded_at)}` : ''}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {doc.source === 'application' && app?.id && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewingDoc({ applicationId: app.id, fileName: doc.file_name })
+                                }
+                                className="px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-xs font-bold flex items-center gap-2"
+                              >
+                                <FileText size={14} /> View
+                              </button>
+                              <a
+                                href={`/api/school-admin/applications/${app.id}/transcript`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-xs font-bold flex items-center gap-2"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  api
+                                    .get(`/school-admin/applications/${app.id}/transcript`, {
+                                      responseType: 'blob'
+                                    })
+                                    .then((res) => {
+                                      const url = URL.createObjectURL(res.data);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = doc.file_name;
+                                      a.click();
+                                      URL.revokeObjectURL(url);
+                                    });
+                                }}
+                              >
+                                <Download size={14} /> Download
+                              </a>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Document viewer modal */}
+      {viewingDoc && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-4xl h-[80vh] flex flex-col">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate pr-4">
+                {viewingDoc.fileName}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setViewingDoc(null)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close document viewer"
+                aria-label="Close document viewer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 p-4">
+              {docLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="animate-spin text-blue-600" size={28} />
+                </div>
+              ) : docError ? (
+                <p className="text-sm text-rose-500 text-center">{docError}</p>
+              ) : docUrl ? (
+                <iframe title={viewingDoc.fileName} src={docUrl} className="w-full h-full rounded-lg border border-slate-200 dark:border-slate-700" />
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StudentRecordPage;

@@ -15,6 +15,7 @@ const FinanceRoute = lazy(() => import('./pages/FinanceRoute').then((m) => ({ de
 const AuditorFinance = lazy(() => import('./pages/AuditorFinance').then((m) => ({ default: m.AuditorFinance })));
 const Branches = lazy(() => import('./pages/Branches').then((m) => ({ default: m.Branches })));
 const StudentProfile = lazy(() => import('./pages/StudentProfile').then((m) => ({ default: m.StudentProfile })));
+const StudentRecordPage = lazy(() => import('./pages/StudentRecordPage').then((m) => ({ default: m.StudentRecordPage })));
 const Analytics = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.Analytics })));
 const StudentPortal = lazy(() => import('./pages/StudentPortal').then((m) => ({ default: m.StudentPortal })));
 const StudentCourses = lazy(() => import('./pages/StudentCourses').then((m) => ({ default: m.StudentCourses })));
@@ -202,6 +203,12 @@ function App() {
               <Route path="students" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'parent', 'vice-principal']}>
                   <Students />
+                </ProtectedRoute>
+              } />
+
+              <Route path="students/:studentId/record" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin', 'vice-principal']}>
+                  <StudentRecordPage />
                 </ProtectedRoute>
               } />
 

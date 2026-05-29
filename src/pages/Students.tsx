@@ -1,6 +1,6 @@
-import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap } from 'lucide-react';
+import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
 import classService from '../services/classService';
 import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
@@ -10,8 +10,10 @@ import * as sectionService from '../services/sectionService';
 
 export const Students = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { role, user } = useUser();
   const isSchoolAdmin = role === 'school-admin';
+  const canViewStudentRecord = role === 'school-admin' || role === 'super-admin' || role === 'vice-principal';
 
   const formatGradeDisplay = (grade?: string | null) => {
     const trimmed = String(grade || '').trim();
@@ -47,11 +49,15 @@ export const Students = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [search, setSearch] = useState('');
-  const [filterGrade, setFilterGrade] = useState('');
-  const [filterSection, setFilterSection] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [activeView, setActiveView] = useState<'students' | 'registration' | 'add'>('students');
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [filterGrade, setFilterGrade] = useState(() => searchParams.get('grade') || '');
+  const [filterSection, setFilterSection] = useState(() => searchParams.get('section') || '');
+  const [filterStatus, setFilterStatus] = useState(() => searchParams.get('status') || '');
+  const [activeView, setActiveView] = useState<'students' | 'registration' | 'add'>(() => {
+    const view = searchParams.get('view');
+    if (view === 'registration' || view === 'add') return view;
+    return 'students';
+  });
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -117,6 +123,31 @@ export const Students = () => {
     if (typeof err?.message === 'string') return err.message;
     return fallback;
   };
+
+  const buildReturnTo = () => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (filterGrade) params.set('grade', filterGrade);
+    if (filterSection) params.set('section', filterSection);
+    if (filterStatus) params.set('status', filterStatus);
+    if (activeView !== 'students') params.set('view', activeView);
+    const qs = params.toString();
+    return `/students${qs ? `?${qs}` : ''}`;
+  };
+
+  const openStudentRecord = (student: { id: string }) => {
+    navigate(`/students/${student.id}/record`, { state: { returnTo: buildReturnTo() } });
+  };
+
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (search) next.set('q', search);
+    if (filterGrade) next.set('grade', filterGrade);
+    if (filterSection) next.set('section', filterSection);
+    if (filterStatus) next.set('status', filterStatus);
+    if (activeView !== 'students') next.set('view', activeView);
+    setSearchParams(next, { replace: true });
+  }, [search, filterGrade, filterSection, filterStatus, activeView, setSearchParams]);
 
   const toggleStudentSelection = (studentId: string) => {
     const newSelected = new Set(selectedStudentIds);
@@ -592,6 +623,9 @@ export const Students = () => {
                     </th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
+                    {canViewStudentRecord && (
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student Record</th>
+                    )}
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Section</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grade</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
@@ -601,7 +635,7 @@ export const Students = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                      <td colSpan={canViewStudentRecord ? 8 : 7} className="px-6 py-12 text-center text-slate-500">
                         No students found. Add your first student!
                       </td>
                     </tr>
@@ -620,6 +654,20 @@ export const Students = () => {
                         </td>
                         <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">{student.firstName} {student.lastName}</td>
                         <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
+                        {canViewStudentRecord && (
+                          <td className="px-6 py-4">
+                            <button
+                              type="button"
+                              onClick={() => openStudentRecord(student)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-xs font-bold transition-colors"
+                              title="View student record"
+                              aria-label={`View record for ${student.firstName} ${student.lastName}`}
+                            >
+                              <FileText size={14} />
+                              View
+                            </button>
+                          </td>
+                        )}
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{formatSectionDisplay(student.section)}</td>
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{formatGradeDisplay(student.grade)}</td>
                         <td className="px-6 py-4">
