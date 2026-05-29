@@ -27,6 +27,7 @@ export const Chatbot = () => {
     setMessage('');
     setIsLoading(true);
 
+
     try {
       const response = await fetch('https://kaleabbelayhun-abdiragbackend.hf.space/chat', {
         method: 'POST',

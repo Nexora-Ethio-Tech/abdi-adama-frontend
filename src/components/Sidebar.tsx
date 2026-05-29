@@ -23,7 +23,8 @@ import {
   Lock,
   DollarSign,
   Truck,
-  Landmark
+  Landmark,
+  MessageSquare,
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -85,6 +86,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
           { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
           { icon: Wallet, label: 'My Finance', path: '/my-finance' },
+          { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
         return baseItems;
