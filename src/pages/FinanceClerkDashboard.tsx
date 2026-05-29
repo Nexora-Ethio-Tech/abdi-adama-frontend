@@ -901,7 +901,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Route</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Transport Fee</th>
                   <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
@@ -923,9 +922,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
                         {student.route_name || 'No route'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                      {Number(student.bus_fee || 0).toLocaleString()} ETB
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-2">

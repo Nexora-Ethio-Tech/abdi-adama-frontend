@@ -2,7 +2,16 @@ import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
-import { getTeacherDashboard, getMyWeeklyPlans, submitWeeklyPlan, updateWeeklyPlan } from '../services/teacherService';
+import { 
+  getTeacherDashboard, 
+  getMyWeeklyPlans, 
+  submitWeeklyPlan, 
+  updateWeeklyPlan,
+  getMyClasses,
+  getDepartmentHeads,
+  getDeptPlans,
+  reviewDeptPlan
+} from '../services/teacherService';
 
 export const TeacherPortal = () => {
   const { user } = useUser();
@@ -15,77 +24,56 @@ export const TeacherPortal = () => {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
+  // Additional states for dynamic fields
+  const [myClasses, setMyClasses] = useState<any[]>([]);
+  const [deptHeads, setDeptHeads] = useState<any[]>([]);
+
   // Department Tasks states
   const [deptSearch, setDeptSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
   const [reviewingPlanId, setReviewingPlanId] = useState<string | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
-  const [deptPlans, setDeptPlans] = useState<any[]>([
-    {
-      id: 'mock-1',
-      teacherName: 'Abebe Bikila',
-      subject: 'Mathematics',
-      date: '2026-06-01',
-      content: 'Algebra - Quadratic Equations and Functions',
-      objectives: 'Students will learn to solve quadratic equations using factoring and the quadratic formula.',
-      teachingMethod: 'Guided discovery and classroom exercises',
-      duration: '45 minutes',
-      status: 'Pending',
-      feedback: '',
-      rating: 0,
-    },
-    {
-      id: 'mock-2',
-      teacherName: 'Aster Aweke',
-      subject: 'English Language',
-      date: '2026-06-02',
-      content: 'Grammar - Present Perfect and Past Simple Tenses',
-      objectives: 'Differentiate between present perfect and past simple in conversation and writing.',
-      teachingMethod: 'Interactive dialogue and peer correction',
-      duration: '45 minutes',
-      status: 'Approved',
-      feedback: 'Excellent structure, activities are well-planned.',
-      rating: 5,
-    },
-    {
-      id: 'mock-3',
-      teacherName: 'Tilahun Gessese',
-      subject: 'Chemistry',
-      date: '2026-06-03',
-      content: 'Atomic Structure and Periodic Trends',
-      objectives: 'Explain periodic trends in electronegativity, ionization energy, and atomic radius.',
-      teachingMethod: 'Multimedia presentation and practice problems',
-      duration: '50 minutes',
-      status: 'Revision Required',
-      feedback: 'Please add details about laboratory safety procedures.',
-      rating: 3,
-    }
-  ]);
+  const [deptPlans, setDeptPlans] = useState<any[]>([]);
 
   const filteredDeptPlans = deptPlans.filter(plan => {
-    const matchesSearch = plan.teacherName.toLowerCase().includes(deptSearch.toLowerCase()) || plan.subject.toLowerCase().includes(deptSearch.toLowerCase());
+    const teacherName = plan.teacher_name || plan.teacherName || '';
+    const subject = plan.subject || '';
+    const matchesSearch = teacherName.toLowerCase().includes(deptSearch.toLowerCase()) || subject.toLowerCase().includes(deptSearch.toLowerCase());
     const matchesFilter = deptFilter === 'All' || plan.status === deptFilter;
     return matchesSearch && matchesFilter;
   });
 
-  const handleApproveDeptPlan = (id: string) => {
-    setDeptPlans(prev => prev.map(p => p.id === id ? { ...p, status: 'Approved', feedback: 'Approved by Department Head' } : p));
-    showToast('Plan approved successfully!', 'success');
+  const handleApproveDeptPlan = async (id: string) => {
+    try {
+      await reviewDeptPlan(id, { status: 'Approved', feedback: 'Approved by Department Head' });
+      showToast('Plan approved successfully!', 'success');
+      const dPlans = await getDeptPlans();
+      setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Failed to approve plan', 'error');
+    }
   };
 
-  const handleRejectDeptPlan = () => {
+  const handleRejectDeptPlan = async () => {
     if (!reviewingPlanId) return;
-    setDeptPlans(prev => prev.map(p => p.id === reviewingPlanId ? { ...p, status: 'Revision Required', feedback: reviewFeedback } : p));
-    setReviewingPlanId(null);
-    setReviewFeedback('');
-    showToast('Revision request submitted!', 'success');
+    try {
+      await reviewDeptPlan(reviewingPlanId, { status: 'Revision Required', feedback: reviewFeedback });
+      showToast('Revision request submitted!', 'success');
+      setReviewingPlanId(null);
+      setReviewFeedback('');
+      const dPlans = await getDeptPlans();
+      setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Failed to submit revision request', 'error');
+    }
   };
 
   const emptyPlan = {
     date: new Date().toISOString().split('T')[0],
     content: '', objectives: '', teacherActivity: '',
     timeDuration: '', studentActivity: '', teachingMethod: '',
-    teachingAids: '', evaluation: '', remark: '', status: 'Pending' as 'Pending' | 'Draft'
+    teachingAids: '', evaluation: '', remark: '', status: 'Pending' as 'Pending' | 'Draft',
+    courseId: '', subject: '', deptHeadId: '', weekNumber: 1
   };
   const [planForm, setPlanForm] = useState(emptyPlan);
   const location = useLocation();
@@ -98,12 +86,22 @@ export const TeacherPortal = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, planList] = await Promise.all([
+      const [dash, planList, classList] = await Promise.all([
         getTeacherDashboard(),
-        getMyWeeklyPlans()
+        getMyWeeklyPlans(),
+        getMyClasses()
       ]);
       setDashboard(dash);
       setPlans(Array.isArray(planList) ? planList : []);
+      setMyClasses(Array.isArray(classList) ? classList : []);
+      
+      const deptHeadsList = await getDepartmentHeads();
+      setDeptHeads(Array.isArray(deptHeadsList) ? deptHeadsList : []);
+
+      if (dash?.teacherInfo?.is_dean) {
+        const dPlans = await getDeptPlans();
+        setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
+      }
     } catch (err) {
       console.error('Teacher portal error:', err);
     } finally {
@@ -160,13 +158,18 @@ export const TeacherPortal = () => {
       teachingAids: plan.teaching_aids || plan.teachingAids || '',
       evaluation: plan.evaluation || '',
       remark: plan.remark || '',
-      status: plan.status || 'Pending'
+      status: plan.status || 'Pending',
+      courseId: plan.course_id || plan.courseId || '',
+      subject: plan.subject || '',
+      deptHeadId: plan.dept_head_id || plan.deptHeadId || '',
+      weekNumber: plan.week_number || plan.weekNumber || 1
     });
     setIsPlanModalOpen(true);
   };
 
   const todaySchedule = dashboard?.todaySchedule || [];
   const pendingPlans = plans.filter(p => p.status === 'Pending').length;
+  const isDean = dashboard?.teacherInfo?.is_dean === true;
 
   if (loading) {
     return (
@@ -183,7 +186,7 @@ export const TeacherPortal = () => {
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'plans', label: 'Weekly Plans' },
-          { id: 'dept-tasks', label: 'Department Tasks' },
+          ...(isDean ? [{ id: 'dept-tasks', label: 'Department Tasks' }] : []),
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
             className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}>
@@ -277,18 +280,19 @@ export const TeacherPortal = () => {
               <table className="w-full text-left min-w-[900px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                    {['Date', 'Content', 'Objectives', 'Method', 'Duration', 'Status', 'Feedback', 'Actions'].map(h => (
+                    {['Date', 'Subject', 'Content', 'Objectives', 'Method', 'Duration', 'Status', 'Feedback', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {plans.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-slate-500">No plans yet. Create your first plan!</td></tr>
+                    <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500">No plans yet. Create your first plan!</td></tr>
                   ) : (
                     plans.map((plan: any) => (
                       <tr key={plan.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors">
                         <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.date?.slice(0, 10)}</td>
+                        <td className="px-4 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">{plan.subject || '—'}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate">{plan.content}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate">{plan.objectives}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[100px] truncate">{plan.teaching_method || plan.teachingMethod}</td>
@@ -382,9 +386,9 @@ export const TeacherPortal = () => {
                   ) : (
                     filteredDeptPlans.map((plan: any) => (
                       <tr key={plan.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors">
-                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.teacherName}</td>
-                        <td className="px-4 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">{plan.subject}</td>
-                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.date}</td>
+                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.teacher_name || plan.teacherName}</td>
+                        <td className="px-4 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">{plan.subject || '—'}</td>
+                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.date?.slice(0, 10)}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate" title={plan.content}>{plan.content}</td>
                         <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[150px] truncate" title={plan.objectives}>{plan.objectives}</td>
                         <td className="px-4 py-4">
@@ -399,6 +403,7 @@ export const TeacherPortal = () => {
                             {[1, 2, 3, 4, 5].map(star => (
                               <button
                                 key={star}
+                                type="button"
                                 title={`Rate ${star} out of 5`}
                                 onClick={() =>
                                   setDeptPlans(prev =>
@@ -409,7 +414,7 @@ export const TeacherPortal = () => {
                               >
                                 <Star
                                   size={16}
-                                  className={star <= (plan.rating || 0)
+                                  className={star <= (plan.dean_rating || plan.deanRating || plan.rating || 0)
                                     ? 'text-amber-400 fill-amber-400'
                                     : 'text-slate-300 dark:text-slate-600'}
                                 />
@@ -417,20 +422,22 @@ export const TeacherPortal = () => {
                             ))}
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-xs text-slate-500 max-w-[150px] truncate" title={plan.feedback || '—'}>
-                          {plan.feedback || <span className="text-slate-400">—</span>}
+                        <td className="px-4 py-4 text-xs text-slate-500 max-w-[150px] truncate" title={plan.dean_feedback || plan.deanFeedback || plan.feedback || '—'}>
+                          {plan.dean_feedback || plan.deanFeedback || plan.feedback || <span className="text-slate-400">—</span>}
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2">
                             {plan.status === 'Pending' && (
                               <>
                                 <button
+                                  type="button"
                                   onClick={() => handleApproveDeptPlan(plan.id)}
                                   className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
                                 >
                                   Approve
                                 </button>
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setReviewingPlanId(plan.id);
                                     setReviewFeedback('');
@@ -527,6 +534,46 @@ export const TeacherPortal = () => {
                     onChange={e => setPlanForm({ ...planForm, timeDuration: e.target.value })}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="planCourseId" className="text-xs font-bold text-slate-500 uppercase">Course / Class</label>
+                  <select
+                    id="planCourseId"
+                    required
+                    value={planForm.courseId || ''}
+                    onChange={e => {
+                      const selected = myClasses.find(c => c.id === e.target.value);
+                      setPlanForm({
+                        ...planForm,
+                        courseId: e.target.value,
+                        subject: selected ? (selected.name || selected.class_name || selected.subject) : ''
+                      });
+                    }}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Course</option>
+                    {myClasses.map(c => (
+                      <option key={c.id} value={c.id}>{c.name || c.class_name || c.subject} {c.section ? `(${c.section})` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="planDeptHeadId" className="text-xs font-bold text-slate-500 uppercase">Department Head</label>
+                  <select
+                    id="planDeptHeadId"
+                    required
+                    value={planForm.deptHeadId || ''}
+                    onChange={e => setPlanForm({ ...planForm, deptHeadId: e.target.value })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select Dept Head</option>
+                    {deptHeads.map(dh => (
+                      <option key={dh.teacher_id} value={dh.teacher_id}>{dh.name} ({dh.department || 'Dean'})</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
