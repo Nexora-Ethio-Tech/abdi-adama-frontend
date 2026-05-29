@@ -12,7 +12,7 @@ interface AssignmentResult {
 
 export const StudentSectionAssignment = () => {
   const { branch_id } = useUser();
-  
+
   // Auto-distribute mode state
   const [selectedGrade, setSelectedGrade] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,9 +50,9 @@ export const StudentSectionAssignment = () => {
         }, 3000);
       }
     } catch (err: any) {
-      const message = err.response?.data?.error?.message || 
-                     err.message || 
-                     'Failed to auto-distribute students';
+      const message = err.response?.data?.error?.message ||
+        err.message ||
+        'Failed to auto-distribute students';
       setError(message);
       console.error('Auto-distribute error:', err);
     } finally {
@@ -143,9 +143,8 @@ export const StudentSectionAssignment = () => {
                   {results.results.map((result, idx) => (
                     <div
                       key={idx}
-                      className={`p-3 border-b border-slate-200 last:border-b-0 ${
-                        result.success ? 'bg-green-50' : 'bg-red-50'
-                      }`}
+                      className={`p-3 border-b border-slate-200 last:border-b-0 ${result.success ? 'bg-green-50' : 'bg-red-50'
+                        }`}
                     >
                       <div className="flex items-start gap-3">
                         {result.success ? (

@@ -959,345 +959,345 @@ export const Settings = () => {
                             <td className="px-4 py-3 text-right">
                               <button title="Delete Bole Branch fees" aria-label="Delete Bole Branch fees" className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
                             </td>
+                          </div>
+
+                          {/* Monthly Net Profit Target */}
+                          <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                            <div>
+                              <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Monthly Net Profit Target</h4>
+                              <p className="text-xs text-slate-500 font-medium">Set the expected profit for each Ethiopian month. Compare with actual collections.</p>
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
+                                  <select
+                                    value={profitTargetMonth}
+                                    onChange={(e) => setProfitTargetMonth(e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                  >
+                                    {ethiopianMonths.map((m) => (
+                                      <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Profit (ETB)</label>
+                                  <input
+                                    type="number"
+                                    placeholder="e.g. 500000"
+                                    value={profitTargetAmount}
+                                    onChange={(e) => setProfitTargetAmount(e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div className="flex items-end">
+                                  <button className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-blue-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2">
+                                    <Save size={14} />
+                                    Set Target
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Comparison View */}
+                              {(() => {
+                                const currentMonth = ethiopianMonths.find(m => m.id === profitTargetMonth);
+                                const target = profitTargetAmount ? parseInt(profitTargetAmount) : 0;
+                                const actual = currentMonth?.mockActual || 0;
+                                const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
+                                const status = percent >= 100 ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
+                                const statusColor = percent >= 100 ? 'text-emerald-600 bg-emerald-50' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
+                                const barColor = percent >= 100 ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+
+                                return target > 0 ? (
+                                  <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentMonth?.ge} ({currentMonth?.am})</p>
+                                        <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
+                                          {actual.toLocaleString()} <span className="text-sm text-slate-400 font-bold">/ {target.toLocaleString()} ETB</span>
+                                        </p>
+                                      </div>
+                                      <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
+                                        {status} — {percent}%
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full rounded-full transition-all duration-700 ${barColor}`}
+                                          style={{ width: `${percent}%` }}
+                                          role="progressbar"
+                                          aria-valuenow={percent}
+                                          aria-valuemin={0}
+                                          aria-valuemax={100}
+                                        />
+                                      </div>
+                                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                                        <span>0 ETB</span>
+                                        <span>{target.toLocaleString()} ETB (Target)</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ) : null;
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                )}
                     </div>
+            )}
 
-                    {/* Monthly Net Profit Target */}
-                    <div className="pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                      <div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Monthly Net Profit Target</h4>
-                        <p className="text-xs text-slate-500 font-medium">Set the expected profit for each Ethiopian month. Compare with actual collections.</p>
-                      </div>
+                    {activeTab === 'Grading System' && (
+                      <div className="space-y-8 animate-in fade-in duration-300">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <div>
+                            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
+                          </div>
+                          <select
+                            value={selectedGrade}
+                            onChange={(e) => setSelectedGrade(e.target.value)}
+                            className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+                          >
+                            {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
+                              <option key={g} value={g}>Grade {g}</option>
+                            ))}
+                          </select>
+                        </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
-                            <select
-                              value={profitTargetMonth}
-                              onChange={(e) => setProfitTargetMonth(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                            >
-                              {ethiopianMonths.map((m) => (
-                                <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
-                              ))}
-                            </select>
+                        <div className="space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
+                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
+                                }`}>
+                                Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
+                              </span>
+                              <button
+                                onClick={() => {
+                                  const recommended = [
+                                    { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
+                                    { id: 'test-1', label: 'Test 1', maxWeight: 10 },
+                                    { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
+                                    { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
+                                    { id: 'assignment', label: 'Assignment', maxWeight: 5 },
+                                    { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
+                                  ];
+                                  updateGradeConfig(recommended);
+                                }}
+                                className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
+                              >
+                                Apply Recommended Template
+                              </button>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Target Profit (ETB)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 500000"
-                              value={profitTargetAmount}
-                              onChange={(e) => setProfitTargetAmount(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <div className="flex items-end">
-                            <button className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-blue-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2">
-                              <Save size={14} />
-                              Set Target
-                            </button>
+
+                          <div className="grid grid-cols-1 gap-3">
+                            {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
+                              <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
+                                <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
+                                  {idx + 1}
+                                </div>
+                                <div className="flex-1">
+                                  <input
+                                    type="text"
+                                    title="Assessment method name"
+                                    aria-label="Assessment method name"
+                                    placeholder="Enter assessment method"
+                                    value={method.label}
+                                    onChange={(e) => {
+                                      const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                      currentMethods[idx].label = e.target.value;
+                                      updateGradeConfig(currentMethods);
+                                    }}
+                                    className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                                    <input
+                                      type="number"
+                                      title="Assessment method weight in points"
+                                      aria-label="Assessment method weight in points"
+                                      placeholder="0"
+                                      value={method.maxWeight}
+                                      onChange={(e) => {
+                                        const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                        currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
+                                        updateGradeConfig(currentMethods);
+                                      }}
+                                      className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
+                                    />
+                                    <span className="text-[10px] font-black text-slate-400">PTS</span>
+                                  </div>
+                                  <button
+                                    title="Delete assessment method"
+                                    aria-label="Delete assessment method"
+                                    onClick={() => {
+                                      const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                      const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
+                                      updateGradeConfig(filtered);
+                                    }}
+                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
 
-                        {/* Comparison View */}
-                        {(() => {
-                          const currentMonth = ethiopianMonths.find(m => m.id === profitTargetMonth);
-                          const target = profitTargetAmount ? parseInt(profitTargetAmount) : 0;
-                          const actual = currentMonth?.mockActual || 0;
-                          const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
-                          const status = percent >= 100 ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
-                          const statusColor = percent >= 100 ? 'text-emerald-600 bg-emerald-50' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
-                          const barColor = percent >= 100 ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+                        <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
+                          <div>
+                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
+                            <div className="flex flex-wrap gap-2">
+                              {[
+                                { label: 'Quiz 1', weight: 5 },
+                                { label: 'Test 1', weight: 10 },
+                                { label: 'Mid Exam', weight: 25 },
+                                { label: 'Quiz 2', weight: 5 },
+                                { label: 'Assignment', weight: 5 },
+                                { label: 'Final Exam', weight: 50 },
+                              ].map((preset) => (
+                                <button
+                                  key={preset.label}
+                                  onClick={() => addPresetMethod(preset.label, preset.weight)}
+                                  className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
+                                >
+                                  <Plus size={12} className="text-blue-500" />
+                                  {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
 
-                          return target > 0 ? (
-                            <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{currentMonth?.ge} ({currentMonth?.am})</p>
-                                  <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
-                                    {actual.toLocaleString()} <span className="text-sm text-slate-400 font-bold">/ {target.toLocaleString()} ETB</span>
-                                  </p>
-                                </div>
-                                <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
-                                  {status} — {percent}%
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-                                    style={{ width: `${percent}%` }}
-                                    role="progressbar"
-                                    aria-valuenow={percent}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
+                          <div>
+                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
+                            <div className="flex flex-col md:flex-row gap-4">
+                              <input
+                                type="text"
+                                title="Custom assessment method name"
+                                aria-label="Custom assessment method name"
+                                placeholder="e.g. Class Activity, Project"
+                                value={newMethodLabel}
+                                onChange={(e) => setNewMethodLabel(e.target.value)}
+                                className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              />
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
+                                  <input
+                                    type="number"
+                                    title="Assessment weight percentage"
+                                    aria-label="Assessment weight percentage"
+                                    placeholder="0"
+                                    value={newMethodWeight}
+                                    onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
+                                    className="w-12 bg-transparent font-bold text-center outline-none"
                                   />
+                                  <span className="text-xs font-bold text-slate-400">%</span>
                                 </div>
-                                <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                                  <span>0 ETB</span>
-                                  <span>{target.toLocaleString()} ETB (Target)</span>
-                                </div>
+                                <button
+                                  title="Add custom assessment method"
+                                  aria-label="Add custom assessment method"
+                                  onClick={() => {
+                                    if (!newMethodLabel) return;
+                                    const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                    currentMethods.push({
+                                      id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
+                                      label: newMethodLabel,
+                                      maxWeight: newMethodWeight
+                                    });
+                                    updateGradeConfig(currentMethods);
+                                    setNewMethodLabel('');
+                                  }}
+                                  className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
+                                >
+                                  <Plus size={20} />
+                                </button>
                               </div>
                             </div>
-                          ) : null;
-                        })()}
+                          </div>
+                        </div>
+
+                        {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
+                          <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
+                            <AlertCircle size={20} className="flex-shrink-0" />
+                            <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    )}
 
-            {activeTab === 'Grading System' && (
-              <div className="space-y-8 animate-in fade-in duration-300">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
-                  </div>
-                  <select
-                    value={selectedGrade}
-                    onChange={(e) => setSelectedGrade(e.target.value)}
-                    className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
-                  >
-                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
-                      <option key={g} value={g}>Grade {g}</option>
-                    ))}
-                  </select>
-                </div>
+                    {activeTab === 'Appearance' && (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {(['Standard', 'Modern', 'Compact', 'Classic'] as UIStyle[]).map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => setStyle(t)}
+                              className={`p-4 rounded-xl border-2 text-center transition-all ${style === t ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'}`}
+                            >
+                              <p className="font-bold text-sm">{t}</p>
+                            </button>
+                          ))}
+                        </div>
+                        <div
+                          onClick={() => setAutoDarkMode(!autoDarkMode)}
+                          className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Automatic Dark Mode</p>
+                            <p className="text-xs text-slate-500">Switch theme based on system preferences.</p>
+                          </div>
+                          <div className={`w-12 h-6 rounded-full relative transition-colors ${autoDarkMode ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${autoDarkMode ? 'right-1' : 'left-1'}`} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                        : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
-                        }`}>
-                        Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
-                      </span>
+                    {activeTab === 'Grading System' && role === 'super-admin' && (
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-2">
+                        <AlertCircle size={14} />
+                        READ-ONLY: Grading configurations are managed at the School Admin level.
+                      </div>
+                    )}
+                    {role !== 'super-admin' && activeTab === 'General' && (
+                      <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
+                        <Lock size={14} />
+                        Some global branding settings are restricted to Super Admins.
+                      </div>
+                    )}
+
+                    <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+                      {activeTab === 'Grading System' && (
+                        <button
+                          onClick={handlePublishChanges}
+                          disabled={gradingLoading}
+                          className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
+                        >
+                          {gradingLoading ? <CheckCircle size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+                          <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
+                        </button>
+                      )}
                       <button
-                        onClick={() => {
-                          const recommended = [
-                            { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
-                            { id: 'test-1', label: 'Test 1', maxWeight: 10 },
-                            { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
-                            { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
-                            { id: 'assignment', label: 'Assignment', maxWeight: 5 },
-                            { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
-                          ];
-                          updateGradeConfig(recommended);
-                        }}
-                        className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
+                        onClick={handleSaveChanges}
+                        disabled={gradingLoading && activeTab === 'Grading System'}
+                        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
                       >
-                        Apply Recommended Template
+                        <Save size={18} />
+                        <span>Save Changes</span>
                       </button>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
-                      <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
-                        <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
-                          {idx + 1}
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            type="text"
-                            title="Assessment method name"
-                            aria-label="Assessment method name"
-                            placeholder="Enter assessment method"
-                            value={method.label}
-                            onChange={(e) => {
-                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                              currentMethods[idx].label = e.target.value;
-                              updateGradeConfig(currentMethods);
-                            }}
-                            className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
-                          />
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                            <input
-                              type="number"
-                              title="Assessment method weight in points"
-                              aria-label="Assessment method weight in points"
-                              placeholder="0"
-                              value={method.maxWeight}
-                              onChange={(e) => {
-                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
-                                updateGradeConfig(currentMethods);
-                              }}
-                              className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
-                            />
-                            <span className="text-[10px] font-black text-slate-400">PTS</span>
-                          </div>
-                          <button
-                            title="Delete assessment method"
-                            aria-label="Delete assessment method"
-                            onClick={() => {
-                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                              const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
-                              updateGradeConfig(filtered);
-                            }}
-                            className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
-                  <div>
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { label: 'Quiz 1', weight: 5 },
-                        { label: 'Test 1', weight: 10 },
-                        { label: 'Mid Exam', weight: 25 },
-                        { label: 'Quiz 2', weight: 5 },
-                        { label: 'Assignment', weight: 5 },
-                        { label: 'Final Exam', weight: 50 },
-                      ].map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() => addPresetMethod(preset.label, preset.weight)}
-                          className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
-                        >
-                          <Plus size={12} className="text-blue-500" />
-                          {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <input
-                        type="text"
-                        title="Custom assessment method name"
-                        aria-label="Custom assessment method name"
-                        placeholder="e.g. Class Activity, Project"
-                        value={newMethodLabel}
-                        onChange={(e) => setNewMethodLabel(e.target.value)}
-                        className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
-                          <input
-                            type="number"
-                            title="Assessment weight percentage"
-                            aria-label="Assessment weight percentage"
-                            placeholder="0"
-                            value={newMethodWeight}
-                            onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
-                            className="w-12 bg-transparent font-bold text-center outline-none"
-                          />
-                          <span className="text-xs font-bold text-slate-400">%</span>
-                        </div>
-                        <button
-                          title="Add custom assessment method"
-                          aria-label="Add custom assessment method"
-                          onClick={() => {
-                            if (!newMethodLabel) return;
-                            const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                            currentMethods.push({
-                              id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
-                              label: newMethodLabel,
-                              maxWeight: newMethodWeight
-                            });
-                            updateGradeConfig(currentMethods);
-                            setNewMethodLabel('');
-                          }}
-                          className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
-                        >
-                          <Plus size={20} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
-                  <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
-                    <AlertCircle size={20} className="flex-shrink-0" />
-                    <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'Appearance' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {(['Standard', 'Modern', 'Compact', 'Classic'] as UIStyle[]).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setStyle(t)}
-                      className={`p-4 rounded-xl border-2 text-center transition-all ${style === t ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'}`}
-                    >
-                      <p className="font-bold text-sm">{t}</p>
-                    </button>
-                  ))}
-                </div>
-                <div
-                  onClick={() => setAutoDarkMode(!autoDarkMode)}
-                  className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                >
-                  <div>
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Automatic Dark Mode</p>
-                    <p className="text-xs text-slate-500">Switch theme based on system preferences.</p>
-                  </div>
-                  <div className={`w-12 h-6 rounded-full relative transition-colors ${autoDarkMode ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${autoDarkMode ? 'right-1' : 'left-1'}`} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'Grading System' && role === 'super-admin' && (
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-2">
-                <AlertCircle size={14} />
-                READ-ONLY: Grading configurations are managed at the School Admin level.
-              </div>
-            )}
-            {role !== 'super-admin' && activeTab === 'General' && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
-                <Lock size={14} />
-                Some global branding settings are restricted to Super Admins.
-              </div>
-            )}
-
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-              {activeTab === 'Grading System' && (
-                <button
-                  onClick={handlePublishChanges}
-                  disabled={gradingLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
-                >
-                  {gradingLoading ? <CheckCircle size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                  <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
-                </button>
-              )}
-              <button
-                onClick={handleSaveChanges}
-                disabled={gradingLoading && activeTab === 'Grading System'}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
-              >
-                <Save size={18} />
-                <span>Save Changes</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
-  );
+        </div>
+        );
 };

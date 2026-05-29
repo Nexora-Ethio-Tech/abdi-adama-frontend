@@ -19,12 +19,8 @@ export const Classes = () => {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
-  const [createForm, setCreateForm] = useState<CreateClassData>({
-    name: '',
-    capacity: 40,
-    section: ''
-  });
-  const [editForm, setEditForm] = useState<UpdateClassData>({});
+  const [createForm, setCreateForm] = useState({ grade: '', section: '', capacity: 40 });
+  const [editForm, setEditForm] = useState<{ grade?: string; section?: string; capacity?: number }>({});
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
   const [confirmDelete, setConfirmDelete] = useState<{ show: boolean; classId: string | null }>({ show: false, classId: null });
@@ -98,15 +94,34 @@ export const Classes = () => {
     }
   };
 
+  const extractDigits = (value?: string | null) => {
+    const match = String(value || '').match(/(\d{1,2})/);
+    return match ? match[1] : '';
+  };
+
+  const formatClassSectionDisplay = (section?: string | null) => {
+    if (!section) return 'Section -';
+    const trimmed = section.trim();
+    const digits = trimmed.match(/(\d+)/);
+    if (digits) return `Section ${digits[1]}`;
+    const letter = trimmed.toUpperCase().charAt(0);
+    if (letter >= 'A' && letter <= 'Z') return `Section ${letter.charCodeAt(0) - 64}`;
+    return `Section ${trimmed}`;
+  };
+
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const response = await classService.createClass(createForm);
+      const response = await classService.createClass({
+        name: `Grade ${createForm.grade}`,
+        section: `Section ${createForm.section}`,
+        capacity: createForm.capacity
+      });
       console.log('✅ Class created:', response);
       showToast('Class created successfully!', 'success');
       setShowCreateModal(false);
-      setCreateForm({ name: '', capacity: 40, section: '' });
+      setCreateForm({ grade: '', section: '', capacity: 40 });
       fetchClasses();
     } catch (err: any) {
       console.error('❌ Error creating class:', err);
@@ -121,7 +136,12 @@ export const Classes = () => {
     if (!selectedClass) return;
     setUpdating(true);
     try {
-      const response = await classService.updateClass(selectedClass.id, editForm);
+      const updatePayload: UpdateClassData = {};
+      if (editForm.grade) updatePayload.name = `Grade ${editForm.grade}`;
+      if (editForm.section) updatePayload.section = `Section ${editForm.section}`;
+      if (editForm.capacity !== undefined) updatePayload.capacity = editForm.capacity;
+
+      const response = await classService.updateClass(selectedClass.id, updatePayload);
       console.log('✅ Class updated:', response);
       showToast('Class updated successfully!', 'success');
       setShowEditModal(false);
@@ -174,9 +194,9 @@ export const Classes = () => {
   const openEditModal = (classItem: Class) => {
     setSelectedClass(classItem);
     setEditForm({
-      name: classItem.name,
-      capacity: classItem.capacity,
-      section: classItem.section
+      grade: extractDigits(classItem.name),
+      section: extractDigits(classItem.section),
+      capacity: classItem.capacity
     });
     setShowEditModal(true);
   };
@@ -254,7 +274,7 @@ export const Classes = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-800 dark:text-white">{classItem.name}</h3>
-                      <p className="text-xs text-slate-500">Section {String(classItem.section?.charCodeAt(0) - 'A'.charCodeAt(0) + 1 || '-')}</p>
+                      <p className="text-xs text-slate-500">{formatClassSectionDisplay(classItem.section)}</p>
                     </div>
                   </div>
                 </div>
@@ -321,12 +341,13 @@ export const Classes = () => {
 
             <form className="p-6 space-y-4" onSubmit={handleCreateClass}>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Class Name</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
                 <input
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-                  placeholder="e.g. Grade 10"
+                  type="number"
+                  min="1"
+                  value={createForm.grade}
+                  onChange={(e) => setCreateForm({ ...createForm, grade: e.target.value.replace(/\D/g, '') })}
+                  placeholder="1"
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -335,10 +356,11 @@ export const Classes = () => {
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Section</label>
                 <input
-                  type="text"
+                  type="number"
+                  min="1"
                   value={createForm.section}
-                  onChange={(e) => setCreateForm({ ...createForm, section: e.target.value })}
-                  placeholder="e.g. A"
+                  onChange={(e) => setCreateForm({ ...createForm, section: e.target.value.replace(/\D/g, '') })}
+                  placeholder="1"
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -397,12 +419,13 @@ export const Classes = () => {
 
             <form className="p-6 space-y-4" onSubmit={handleUpdateClass}>
               <div>
-                <label className="text-xs font-bold text-slate-500 uppercase">Class Name</label>
+                <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
                 <input
-                  type="text"
-                  title="Class name"
-                  value={editForm.name || ''}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  type="number"
+                  min="1"
+                  title="Class grade"
+                  value={editForm.grade || ''}
+                  onChange={(e) => setEditForm({ ...editForm, grade: e.target.value.replace(/\D/g, '') })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -410,10 +433,11 @@ export const Classes = () => {
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Section</label>
                 <input
-                  type="text"
+                  type="number"
+                  min="1"
                   title="Class section"
                   value={editForm.section || ''}
-                  onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
+                  onChange={(e) => setEditForm({ ...editForm, section: e.target.value.replace(/\D/g, '') })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

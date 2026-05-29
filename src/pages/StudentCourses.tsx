@@ -139,8 +139,8 @@ export const StudentCourses = () => {
           <button
             onClick={() => navigate('/courses')}
             className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'current'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
           >
             Current Term
@@ -148,8 +148,8 @@ export const StudentCourses = () => {
           <button
             onClick={() => navigate('/attendance')}
             className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'history'
-                ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
+              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-lg'
+              : 'text-slate-500 hover:text-slate-700 dark:text-slate-400'
               }`}
           >
             Academic History
@@ -257,8 +257,8 @@ export const StudentCourses = () => {
                               setDropdownOpen(false);
                             }}
                             className={`w-full text-left px-4 py-3 rounded-xl transition-all ${selectedCourse?.id === course.id
-                                ? 'bg-blue-600 text-white'
-                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                              ? 'bg-blue-600 text-white'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
                               }`}
                           >
                             <p className="text-sm font-bold">{course.name}</p>
@@ -319,10 +319,10 @@ export const StudentCourses = () => {
                           <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
                             <div
                               className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
-                                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                                  : getStatus(selectedCourse) === 'FAILED'
-                                    ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                    : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                                ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                                : getStatus(selectedCourse) === 'FAILED'
+                                  ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
                                 }`}
                               style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
                             ></div>
@@ -339,12 +339,12 @@ export const StudentCourses = () => {
                   <div className="p-8">
                     <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
                     {weightSumError && (
-  <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-lg mb-4">
-    <AlertCircle size={18} />
-    <span>Grading weights total {gradingWeightSum}%, which does not equal 100%.</span>
-  </div>
-)}
-<div className="overflow-x-auto">
+                      <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-lg mb-4">
+                        <AlertCircle size={18} />
+                        <span>Grading weights total {gradingWeightSum}%, which does not equal 100%.</span>
+                      </div>
+                    )}
+                    <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
                           <tr>
@@ -468,10 +468,10 @@ export const StudentCourses = () => {
                         <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
-                                ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                                : getStatus(selectedCourse) === 'FAILED'
-                                  ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
+                              ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                              : getStatus(selectedCourse) === 'FAILED'
+                                ? 'bg-gradient-to-r from-rose-400 to-red-500'
+                                : 'bg-gradient-to-r from-amber-400 to-orange-500'
                               }`}
                             style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
                           ></div>

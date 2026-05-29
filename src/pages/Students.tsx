@@ -13,12 +13,33 @@ export const Students = () => {
   const { role, user } = useUser();
   const isSchoolAdmin = role === 'school-admin';
 
-  // Helper function to convert section letters to numbers (A→1, B→2, C→3, etc.)
-  const getSectionNumber = (section: string | null | undefined): string => {
+  const formatGradeDisplay = (grade?: string | null) => {
+    const trimmed = String(grade || '').trim();
+    const match = trimmed.match(/(\d{1,2})/);
+    return match ? `Grade ${match[1]}` : trimmed || '-';
+  };
+
+  const getGradeNumber = (grade?: string | null) => {
+    const match = String(grade || '').trim().match(/(\d{1,2})/);
+    return match ? match[1] : '';
+  };
+
+  const formatSectionDisplay = (section?: string | null) => {
     if (!section) return '-';
-    const letterCode = section.toUpperCase().charCodeAt(0);
-    const baseCode = 'A'.charCodeAt(0);
-    return String(letterCode - baseCode + 1);
+    const trimmed = section.trim();
+    const digits = trimmed.match(/(\d+)/);
+    if (digits) return `Section ${digits[1]}`;
+    const letter = trimmed.toUpperCase().charAt(0);
+    if (letter >= 'A' && letter <= 'Z') return `Section ${letter.charCodeAt(0) - 64}`;
+    return `Section ${trimmed}`;
+  };
+
+  const getSectionNumber = (section?: string | null) => {
+    const digits = String(section || '').trim().match(/(\d+)/);
+    if (digits) return digits[1];
+    const letter = String(section || '').trim().toUpperCase().charAt(0);
+    if (letter >= 'A' && letter <= 'Z') return String(letter.charCodeAt(0) - 64);
+    return '';
   };
 
   const [students, setStudents] = useState<any[]>([]);
@@ -121,7 +142,7 @@ export const Students = () => {
     }
 
     const firstStudent = students.find(s => selectedStudentIds.has(s.id));
-    const gradeToUse = firstStudent?.grade || filterGrade;
+    const gradeToUse = filterGrade ? `Grade ${filterGrade}` : firstStudent?.grade;
     setBulkTargetGrade(gradeToUse || '');
     setSelectedBulkSectionIds(new Set());
     setAvailableSections([]);
@@ -158,9 +179,23 @@ export const Students = () => {
       return;
     }
 
+    const targetGrade = bulkTargetGrade || (filterGrade ? `Grade ${filterGrade}` : '');
+    const selectedStudentIdsForGrade = students
+      .filter((student) => selectedStudentIds.has(student.id) && getGradeNumber(student.grade) === getGradeNumber(targetGrade))
+      .map((student) => student.id);
+
+    if (selectedStudentIdsForGrade.length === 0) {
+      showToast('No selected students match the target grade. Please choose the correct grade and try again.', 'error');
+      return;
+    }
+
+    const ignoredCount = selectedStudentIds.size - selectedStudentIdsForGrade.length;
+    if (ignoredCount > 0) {
+      showToast(`${selectedStudentIdsForGrade.length} student(s) from ${targetGrade} will be assigned. ${ignoredCount} selected student(s) were skipped because they are in a different grade.`, 'success');
+    }
+
     const selectedSections = availableSections.filter(section => selectedBulkSectionIds.has(section.id));
     const totalAvailableSlots = selectedSections.reduce((sum, section) => sum + Math.max(0, section.available_slots), 0);
-    const studentIds = Array.from(selectedStudentIds);
 
     if (totalAvailableSlots === 0) {
       showToast('No available slots in the selected sections', 'error');
@@ -171,30 +206,20 @@ export const Students = () => {
       setBulkAssigning(true);
       const sectionsWithSlots = selectedSections.map(section => ({ ...section }));
       const assignments: Record<string, string[]> = {};
-      let sectionIndex = 0;
+      const studentIds = [...selectedStudentIdsForGrade];
 
       for (const studentId of studentIds) {
-        if (sectionsWithSlots.length === 0) break;
-
-        let assigned = false;
-        let attempts = 0;
-
-        while (!assigned && attempts < sectionsWithSlots.length) {
-          const section = sectionsWithSlots[sectionIndex % sectionsWithSlots.length];
-          sectionIndex += 1;
-          attempts += 1;
-
-          if (section.available_slots > 0) {
-            assignments[section.id] = assignments[section.id] || [];
-            assignments[section.id].push(studentId);
-            section.available_slots -= 1;
-            assigned = true;
-          }
-        }
-
-        if (!assigned) {
+        const availableSections = sectionsWithSlots.filter(section => section.available_slots > 0);
+        if (availableSections.length === 0) {
           break;
         }
+
+        const randomIndex = Math.floor(Math.random() * availableSections.length);
+        const targetSection = availableSections[randomIndex];
+
+        assignments[targetSection.id] = assignments[targetSection.id] || [];
+        assignments[targetSection.id].push(studentId);
+        targetSection.available_slots -= 1;
       }
 
       const assignedCount = Object.values(assignments).reduce((sum, ids) => sum + ids.length, 0);
@@ -377,7 +402,7 @@ export const Students = () => {
     setSelectedStudent(student);
     setEditFormData({
       name: `${student.firstName} ${student.lastName}`.trim(),
-      grade: student.grade || '',
+      grade: formatGradeDisplay(student.grade),
       parentPhone: student.parentPhone || '+251'
     });
     setGeneratedPassword(null);
@@ -397,12 +422,10 @@ export const Students = () => {
 
   const filtered = students.filter(s => {
     const matchSearch = !search || `${s.firstName} ${s.lastName} ${s.email} ${s.digitalId}`.toLowerCase().includes(search.toLowerCase());
-    const matchGrade = !filterGrade || String(s.grade) === filterGrade;
-    // Section match: determine student's section
-    let matchSection = true;
-    if (filterSection) {
-      matchSection = s.section === filterSection;
-    }
+    const studentGradeNumber = getGradeNumber(s.grade);
+    const studentSectionNumber = getSectionNumber(s.section);
+    const matchGrade = !filterGrade || studentGradeNumber === filterGrade;
+    const matchSection = !filterSection || studentSectionNumber === filterSection;
 
     return matchSearch && matchGrade && matchSection;
   });
@@ -501,8 +524,8 @@ export const Students = () => {
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Sections</option>
-          {['A', 'B', 'C', 'D', 'E', 'F'].map((s, idx) => (
-            <option key={s} value={s}>Section {idx + 1}</option>
+          {[1, 2, 3, 4, 5, 6].map((section) => (
+            <option key={section} value={String(section)}>Section {section}</option>
           ))}
         </select>
         <select
@@ -614,8 +637,8 @@ export const Students = () => {
                         </td>
                         <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">{student.firstName} {student.lastName}</td>
                         <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Section {getSectionNumber(student.section)}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{formatSectionDisplay(student.section)}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{formatGradeDisplay(student.grade)}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${student.status === 'Active' ? 'bg-green-100 text-green-700' :
                             student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
@@ -877,7 +900,7 @@ export const Students = () => {
                 >
                   <option value="">Select Grade</option>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                    <option key={g} value={String(g)}>Grade {g}</option>
+                    <option key={g} value={`Grade ${g}`}>Grade {g}</option>
                   ))}
                 </select>
               </div>
@@ -1072,7 +1095,7 @@ export const Students = () => {
                     >
                       <option value="">-- Select grade --</option>
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                        <option key={g} value={String(g)}>Grade {g}</option>
+                        <option key={g} value={`Grade ${g}`}>Grade {g}</option>
                       ))}
                     </select>
                   </div>

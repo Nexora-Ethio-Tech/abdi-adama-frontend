@@ -192,13 +192,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const checkActive = (itemPath: string) => {
     if (isExamLockedDown) return false;
     const currentFull = location.pathname + location.search;
-    
+
     if (role === 'parent') {
       const itemTab = new URLSearchParams(itemPath.split('?')[1] || '').get('tab') || 'dashboard';
       const currentTab = new URLSearchParams(location.search).get('tab') || 'dashboard';
       return itemTab === currentTab;
     }
-    
+
     if (itemPath === '/') {
       return location.pathname === '/' || location.pathname === getDashboardRoute(role);
     }
