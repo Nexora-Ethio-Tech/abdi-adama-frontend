@@ -56,6 +56,7 @@ export interface FinancialReport {
     totalTransactions: number;
     totalCollected: number;
   };
+  transactions: Transaction[];
   byType: {
     type: string;
     count: string;

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { CreditCard, ArrowUpRight, ArrowDownRight, Search, FileText, Users, Plus, X, Check, AlertCircle, Bell, History, ShieldCheck, Clock, Filter, ChevronDown, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState } from 'react';
@@ -190,6 +191,8 @@ export const Finance = () => {
   };
 
   const handleExport = () => {
+    console.log('💾 Export button clicked!', { activeView, summariesCount: filteredSummaries.length, auditCount: filteredAuditLogs.length });
+    
     const dataToExport = activeView === 'audit'
       ? filteredAuditLogs.map(log => ({
         Target: log.studentName,
@@ -208,6 +211,7 @@ export const Finance = () => {
         Amount: s.amount
       }));
 
+    console.log('📊 Data to export:', dataToExport.length, 'records');
     exportToCSV(dataToExport, activeView === 'audit' ? 'Finance_Audit_Log' : 'Finance_Ledger');
   };
 
@@ -323,7 +327,11 @@ export const Finance = () => {
               />
             </div>
             <button
-              onClick={handleExport}
+              type="button"
+              onClick={(e) => {
+                console.log('🔘 Button clicked, event:', e);
+                handleExport();
+              }}
               className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-2 whitespace-nowrap bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-2xl border border-blue-100 dark:border-blue-800"
             >
               <FileText size={16} />
