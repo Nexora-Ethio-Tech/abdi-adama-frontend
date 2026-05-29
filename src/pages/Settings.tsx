@@ -1,11 +1,13 @@
-import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock, Eye, EyeOff, CheckCircle, Shield } from 'lucide-react';
-import { useState, useEffect, useMemo } from 'react';
+import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, Trash2, AlertCircle, Lock, Unlock, CheckCircle, Shield, Mail } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
 import { mockGradingConfigs } from '../data/mockData';
 import { useUser } from '../context/UserContext';
-import payrollService, { FinanceSetting, FinanceSettingsAudit } from '../services/payrollService';
+import payrollService, { FinanceSettingsAudit } from '../services/payrollService';
 import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
+import settingsService, { type BranchGradeFee, type MonthlyProfitTarget } from '../services/settingsService';
+import { authService } from '../services/authService';
 
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
@@ -14,8 +16,25 @@ export const Settings = () => {
   const { schoolName, setSchoolName, schoolMotto, setSchoolMotto, role, branches, gradesLocked, setGradesLocked, registrationOpen, setRegistrationOpen } = useUser();
 
   // Finance Module Settings & Auditing State
-  const [financeSettings, setFinanceSettings] = useState<FinanceSetting[]>([]);
   const [financeAuditLog, setFinanceAuditLog] = useState<FinanceSettingsAudit[]>([]);
+  const [systemEmail, setSystemEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [academicYears, setAcademicYears] = useState<Array<{ id: string; year_name: string; is_active: boolean }>>([]);
+  const [selectedAcademicYearId, setSelectedAcademicYearId] = useState('');
+  const [generalSaving, setGeneralSaving] = useState(false);
+  const [branchGradeFees, setBranchGradeFees] = useState<BranchGradeFee[]>([]);
+  const [feeBranchId, setFeeBranchId] = useState('');
+  const [feeGrade, setFeeGrade] = useState('KG');
+  const [feeMonthly, setFeeMonthly] = useState(5000);
+  const [feeRegistration, setFeeRegistration] = useState(2500);
+  const [feeBus, setFeeBus] = useState(1200);
+  const [profitTargets, setProfitTargets] = useState<MonthlyProfitTarget[]>([]);
+  const [smtpSettings, setSmtpSettings] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_from: '' });
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpTestEmail, setSmtpTestEmail] = useState('');
+  const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpMessage, setSmtpMessage] = useState('');
   const [dailyPenaltyRate, setDailyPenaltyRate] = useState<number>(150);
   const [maxLoanMonths, setMaxLoanMonths] = useState<number>(3);
   const [loanDeductionPct, setLoanDeductionPct] = useState<number>(30);
@@ -27,16 +46,75 @@ export const Settings = () => {
   const [financeSuccessMsg, setFinanceSuccessMsg] = useState('');
   const [financeErrorMsg, setFinanceErrorMsg] = useState('');
 
+  const applySystemSettings = useCallback((settings: Record<string, string>) => {
+    if (settings.school_name_oromic !== undefined) {
+      setSchoolName({
+        oromic: settings.school_name_oromic || '',
+        amharic: settings.school_name_amharic || '',
+        english: settings.school_name_english || '',
+      });
+    }
+    if (settings.school_motto_oromic !== undefined) {
+      setSchoolMotto({
+        oromic: settings.school_motto_oromic || '',
+        amharic: settings.school_motto_amharic || '',
+        english: settings.school_motto_english || '',
+      });
+    }
+    if (settings.system_email !== undefined) setSystemEmail(settings.system_email);
+    if (settings.phone !== undefined) setPhone(settings.phone);
+    if (settings.address !== undefined) setAddress(settings.address);
+    if (settings.grades_locked !== undefined) {
+      setGradesLocked(settings.grades_locked === 'true');
+    }
+    if (settings.registration_open !== undefined) {
+      setRegistrationOpen(settings.registration_open !== 'false');
+    }
+    if (settings.active_academic_year_id) {
+      setSelectedAcademicYearId(settings.active_academic_year_id);
+    }
+  }, [setSchoolName, setSchoolMotto, setGradesLocked, setRegistrationOpen]);
+
+  const loadGeneralSettings = async () => {
+    const [settings, years] = await Promise.all([
+      settingsService.getSystemSettings(),
+      settingsService.getAcademicYears(),
+    ]);
+    applySystemSettings(settings);
+    setAcademicYears(years);
+    const active = years.find((y: { is_active: boolean }) => y.is_active);
+    if (active) setSelectedAcademicYearId(active.id);
+  };
+
+  const loadFeeStructure = async () => {
+    const fees = await settingsService.getBranchGradeFees();
+    setBranchGradeFees(fees);
+  };
+
+  const loadProfitTargets = async () => {
+    const targets = await settingsService.getProfitTargets();
+    setProfitTargets(targets);
+  };
+
   useEffect(() => {
     if (role === 'super-admin') {
       loadFinanceSettings();
+      loadGeneralSettings().catch(console.error);
+      loadFeeStructure().catch(console.error);
+      loadProfitTargets().catch(console.error);
+      settingsService.getSmtpSettings().then(setSmtpSettings).catch(console.error);
     }
   }, [role]);
+
+  useEffect(() => {
+    if (branches.length > 0 && !feeBranchId) {
+      setFeeBranchId(branches[0].id);
+    }
+  }, [branches, feeBranchId]);
 
   const loadFinanceSettings = async () => {
     try {
       const settings = await payrollService.getFinanceSettings();
-      setFinanceSettings(settings);
 
       const penalty = settings.find(s => s.key === 'daily_penalty_rate');
       if (penalty) setDailyPenaltyRate(Number(penalty.value));
@@ -153,16 +231,143 @@ export const Settings = () => {
     }));
   };
 
-  const handleSaveChanges = () => {
+  const saveGeneralSettings = async () => {
+    setGeneralSaving(true);
+    setSuccessMessage('');
+    try {
+      await settingsService.updateSystemSettings({
+        school_name_oromic: schoolName.oromic,
+        school_name_amharic: schoolName.amharic,
+        school_name_english: schoolName.english,
+        school_motto_oromic: schoolMotto.oromic,
+        school_motto_amharic: schoolMotto.amharic,
+        school_motto_english: schoolMotto.english,
+        system_email: systemEmail,
+        phone,
+        address,
+        grades_locked: gradesLocked ? 'true' : 'false',
+        registration_open: registrationOpen ? 'true' : 'false',
+        active_academic_year_id: selectedAcademicYearId || '',
+      });
+      if (selectedAcademicYearId) {
+        const active = academicYears.find((y) => y.is_active);
+        if (!active || active.id !== selectedAcademicYearId) {
+          await settingsService.activateAcademicYear(selectedAcademicYearId);
+          await loadGeneralSettings();
+        }
+      }
+      setSuccessMessage('System settings saved successfully!');
+      setTimeout(() => setSuccessMessage(''), 4000);
+    } catch (err: any) {
+      setSuccessMessage(err.response?.data?.error?.message || 'Failed to save system settings');
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } finally {
+      setGeneralSaving(false);
+    }
+  };
+
+  const persistGlobalToggle = async (key: 'grades_locked' | 'registration_open', value: boolean) => {
+    if (role !== 'super-admin') return;
+    try {
+      await settingsService.updateSystemSettings({
+        [key]: value ? 'true' : 'false',
+      });
+    } catch (err) {
+      console.error('Failed to persist toggle', err);
+    }
+  };
+
+  const handleApplyFeeConfig = async () => {
+    if (!feeBranchId) return;
+    setFinanceLoading(true);
+    try {
+      await settingsService.upsertBranchGradeFee({
+        branchId: feeBranchId,
+        gradeLevel: feeGrade,
+        monthlyFee: feeMonthly,
+        registrationFee: feeRegistration,
+        busFee: feeBus,
+      });
+      await loadFeeStructure();
+      setFinanceSuccessMsg('Fee configuration applied');
+      setTimeout(() => setFinanceSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to save fee configuration');
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
+
+  const handleDeleteFeeConfig = async (id: string) => {
+    try {
+      await settingsService.deleteBranchGradeFee(id);
+      await loadFeeStructure();
+    } catch (err: any) {
+      setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to delete fee configuration');
+    }
+  };
+
+  const handleSetProfitTarget = async () => {
+    setFinanceLoading(true);
+    try {
+      await settingsService.upsertProfitTarget({
+        ethiopianMonth: Number(profitTargetMonth),
+        targetAmount: Number(profitTargetAmount),
+      });
+      await loadProfitTargets();
+      setFinanceSuccessMsg('Monthly profit target saved');
+      setTimeout(() => setFinanceSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to save profit target');
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
+
+  const handleSaveSmtp = async () => {
+    setSmtpSaving(true);
+    setSmtpMessage('');
+    try {
+      const payload: Record<string, string> = { ...smtpSettings };
+      if (smtpPass.trim()) payload.smtp_pass = smtpPass;
+      await settingsService.updateSmtpSettings(payload);
+      setSmtpPass('');
+      setSmtpMessage('SMTP settings saved');
+    } catch (err: any) {
+      setSmtpMessage(err.response?.data?.error?.message || 'Failed to save SMTP settings');
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    if (!smtpTestEmail) return;
+    setSmtpSaving(true);
+    setSmtpMessage('');
+    try {
+      const result = await settingsService.testSmtpSettings(smtpTestEmail);
+      setSmtpMessage(result.message || 'Test email sent');
+    } catch (err: any) {
+      setSmtpMessage(err.response?.data?.error?.message || 'SMTP test failed');
+    } finally {
+      setSmtpSaving(false);
+    }
+  };
+
+  const handleSaveChanges = async () => {
     if (activeTab === 'Grading System') {
       localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
       Object.keys(mockGradingConfigs).forEach(key => delete (mockGradingConfigs as any)[key]);
       Object.assign(mockGradingConfigs, gradeConfigs);
       setSuccessMessage('Grading configurations saved locally as draft. Click Publish to push to all teachers.');
       setTimeout(() => setSuccessMessage(''), 5000);
+    } else if (activeTab === 'General' && role === 'super-admin') {
+      await saveGeneralSettings();
+    } else if (activeTab === 'Security' && role === 'super-admin') {
+      await handleSaveSmtp();
     } else {
-      setSuccessMessage('System settings saved successfully!');
-      setTimeout(() => setSuccessMessage(''), 4000);
+      setSuccessMessage('No changes to save for this tab.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     }
   };
 
@@ -339,17 +544,38 @@ export const Settings = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
-                    <input type="email" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="admin@abdiadama.edu" />
+                    <input
+                      type="email"
+                      value={systemEmail}
+                      onChange={(e) => role === 'super-admin' && setSystemEmail(e.target.value)}
+                      disabled={role !== 'super-admin'}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
-                    <input type="text" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="+251 911 22 33 44" />
+                    <input
+                      type="text"
+                      value={phone}
+                      onChange={(e) => role === 'super-admin' && setPhone(e.target.value)}
+                      disabled={role !== 'super-admin'}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
-                    <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                      <option>2025/2026 (Current)</option>
-                      <option>2026/2027 (Upcoming)</option>
+                    <select
+                      value={selectedAcademicYearId}
+                      onChange={(e) => role === 'super-admin' && setSelectedAcademicYearId(e.target.value)}
+                      disabled={role !== 'super-admin' || academicYears.length === 0}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select academic year</option>
+                      {academicYears.map((y) => (
+                        <option key={y.id} value={y.id}>
+                          {y.year_name}{y.is_active ? ' (Current)' : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -358,7 +584,11 @@ export const Settings = () => {
                   <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Global System Controls</h4>
                     <div
-                      onClick={() => setGradesLocked(!gradesLocked)}
+                      onClick={async () => {
+                        const next = !gradesLocked;
+                        setGradesLocked(next);
+                        await persistGlobalToggle('grades_locked', next);
+                      }}
                       className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${gradesLocked
                         ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'
                         : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
@@ -381,7 +611,11 @@ export const Settings = () => {
                     </div>
 
                     <div
-                      onClick={() => setRegistrationOpen(!registrationOpen)}
+                      onClick={async () => {
+                        const next = !registrationOpen;
+                        setRegistrationOpen(next);
+                        await persistGlobalToggle('registration_open', next);
+                      }}
                       className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${!registrationOpen
                         ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'
                         : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
@@ -407,7 +641,13 @@ export const Settings = () => {
 
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
-                  <textarea rows={3} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="Bole Sub-city, Woreda 03, House No 1234, Addis Ababa, Ethiopia" />
+                  <textarea
+                    rows={3}
+                    value={address}
+                    onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
+                    disabled={role !== 'super-admin'}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
               </div>
             )}
@@ -462,29 +702,15 @@ export const Settings = () => {
 
                       setPasswordLoading(true);
                       try {
-                        const response = await fetch('/api/auth/change-password', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('abdi_adama_token')}`
-                          },
-                          body: JSON.stringify({
-                            currentPassword: passwordForm.currentPassword,
-                            newPassword: passwordForm.newPassword
-                          })
-                        });
-
-                        const data = await response.json();
-
-                        if (response.ok && data.success) {
-                          setPasswordSuccess(true);
-                          setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                          setTimeout(() => setPasswordSuccess(false), 5000);
-                        } else {
-                          setPasswordError(data.error?.message || 'Failed to change password');
-                        }
+                        await authService.changePassword(
+                          passwordForm.currentPassword,
+                          passwordForm.newPassword
+                        );
+                        setPasswordSuccess(true);
+                        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                        setTimeout(() => setPasswordSuccess(false), 5000);
                       } catch (err: any) {
-                        setPasswordError('Network error. Please try again.');
+                        setPasswordError(err.response?.data?.error?.message || 'Failed to change password');
                       } finally {
                         setPasswordLoading(false);
                       }
@@ -579,6 +805,88 @@ export const Settings = () => {
                     </button>
                   </form>
                 </div>
+
+                {role === 'super-admin' && (
+                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
+                        <Mail size={24} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-slate-800 dark:text-white">SMTP / Email</h4>
+                        <p className="text-xs text-slate-500">Outgoing mail for admissions and notifications</p>
+                      </div>
+                    </div>
+                    {smtpMessage && (
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-200">
+                        {smtpMessage}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Host</label>
+                        <input
+                          value={smtpSettings.smtp_host}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Port</label>
+                        <input
+                          value={smtpSettings.smtp_port}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: e.target.value })}
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP User</label>
+                        <input
+                          value={smtpSettings.smtp_user}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">From Address</label>
+                        <input
+                          value={smtpSettings.smtp_from}
+                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from: e.target.value })}
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
+                        <input
+                          type="password"
+                          value={smtpPass}
+                          onChange={(e) => setSmtpPass(e.target.value)}
+                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1 md:col-span-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="email"
+                            value={smtpTestEmail}
+                            onChange={(e) => setSmtpTestEmail(e.target.value)}
+                            placeholder="you@example.com"
+                            className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleTestSmtp}
+                            disabled={smtpSaving || !smtpTestEmail}
+                            className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                          >
+                            Send Test
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Account Security Info */}
                 <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
@@ -884,30 +1192,58 @@ export const Settings = () => {
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                        <select className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select
+                          value={feeBranchId}
+                          onChange={(e) => setFeeBranchId(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        >
                           {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
-                        <select className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select
+                          value={feeGrade}
+                          onChange={(e) => setFeeGrade(e.target.value)}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        >
                           {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
-                        <input type="number" placeholder="5000" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input
+                          type="number"
+                          value={feeMonthly}
+                          onChange={(e) => setFeeMonthly(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
-                        <input type="number" placeholder="2500" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input
+                          type="number"
+                          value={feeRegistration}
+                          onChange={(e) => setFeeRegistration(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
-                        <input type="number" placeholder="1200" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input
+                          type="number"
+                          value={feeBus}
+                          onChange={(e) => setFeeBus(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                        />
                       </div>
                       <div className="flex items-end lg:col-span-5">
-                        <button className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none">
+                        <button
+                          type="button"
+                          onClick={handleApplyFeeConfig}
+                          disabled={financeLoading || !feeBranchId}
+                          className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none disabled:opacity-50"
+                        >
                           <Plus size={16} />
                           <span>Apply Fee Configuration</span>
                         </button>
@@ -927,26 +1263,32 @@ export const Settings = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                            <td className="px-4 py-3 font-medium">Main Branch</td>
-                            <td className="px-4 py-3 font-bold text-blue-600">Grade 10</td>
-                            <td className="px-4 py-3 font-bold">5,000 ETB</td>
-                            <td className="px-4 py-3 font-bold">2,500 ETB</td>
-                            <td className="px-4 py-3 font-bold">1,200 ETB</td>
-                            <td className="px-4 py-3 text-right">
-                              <button className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
-                            </td>
-                          </tr>
-                          <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                            <td className="px-4 py-3 font-medium">Bole Branch</td>
-                            <td className="px-4 py-3 font-bold text-blue-600">Grade 9</td>
-                            <td className="px-4 py-3 font-bold">4,800 ETB</td>
-                            <td className="px-4 py-3 font-bold">2,200 ETB</td>
-                            <td className="px-4 py-3 font-bold">1,000 ETB</td>
-                            <td className="px-4 py-3 text-right">
-                              <button className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
-                            </td>
-                          </tr>
+                          {branchGradeFees.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px]">
+                                No fee configurations yet. Apply one above.
+                              </td>
+                            </tr>
+                          ) : (
+                            branchGradeFees.map((fee) => (
+                              <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                <td className="px-4 py-3 font-medium">{fee.branch_name}</td>
+                                <td className="px-4 py-3 font-bold text-blue-600">Grade {fee.grade_level}</td>
+                                <td className="px-4 py-3 font-bold">{Number(fee.monthly_fee).toLocaleString()} ETB</td>
+                                <td className="px-4 py-3 font-bold">{Number(fee.registration_fee).toLocaleString()} ETB</td>
+                                <td className="px-4 py-3 font-bold">{Number(fee.bus_fee).toLocaleString()} ETB</td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteFeeConfig(fee.id)}
+                                    className="text-rose-500 hover:text-rose-700 p-1"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -983,7 +1325,12 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="flex items-end">
-                            <button className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-blue-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSetProfitTarget}
+                              disabled={financeLoading}
+                              className="w-full bg-slate-900 dark:bg-blue-600 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-blue-700 transition-all shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
                               <Save size={14} />
                               Set Target
                             </button>
@@ -993,8 +1340,13 @@ export const Settings = () => {
                         {/* Comparison View */}
                         {(() => {
                           const currentMonth = ethiopianMonths.find(m => m.id === profitTargetMonth);
-                          const target = profitTargetAmount ? parseInt(profitTargetAmount) : 0;
-                          const actual = currentMonth?.mockActual || 0;
+                          const saved = profitTargets.find((t) => t.ethiopian_month === Number(profitTargetMonth));
+                          const target = saved
+                            ? Number(saved.target_amount)
+                            : profitTargetAmount
+                              ? parseInt(profitTargetAmount, 10)
+                              : 0;
+                          const actual = saved ? Number(saved.actual_amount) : 0;
                           const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
                           const status = percent >= 100 ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
                           const statusColor = percent >= 100 ? 'text-emerald-600 bg-emerald-50' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
@@ -1259,11 +1611,11 @@ export const Settings = () => {
               )}
               <button
                 onClick={handleSaveChanges}
-                disabled={gradingLoading && activeTab === 'Grading System'}
+                disabled={(gradingLoading && activeTab === 'Grading System') || generalSaving || smtpSaving}
                 className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
               >
                 <Save size={18} />
-                <span>Save Changes</span>
+                <span>{generalSaving || smtpSaving ? 'Saving…' : 'Save Changes'}</span>
               </button>
             </div>
           </div>

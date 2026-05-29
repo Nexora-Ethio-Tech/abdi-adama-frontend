@@ -130,6 +130,39 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     };
   });
 
+  // ─── Load public system settings (branding, global flags) ────────────────
+  useEffect(() => {
+    const loadPublicSettings = async () => {
+      try {
+        const { default: settingsService } = await import('../services/settingsService');
+        const settings = await settingsService.getPublicSystemSettings();
+        if (settings.school_name_oromic) {
+          setSchoolName({
+            oromic: settings.school_name_oromic,
+            amharic: settings.school_name_amharic || '',
+            english: settings.school_name_english || '',
+          });
+        }
+        if (settings.school_motto_oromic) {
+          setSchoolMotto({
+            oromic: settings.school_motto_oromic,
+            amharic: settings.school_motto_amharic || '',
+            english: settings.school_motto_english || '',
+          });
+        }
+        if (settings.grades_locked !== undefined) {
+          setGradesLocked(settings.grades_locked === 'true');
+        }
+        if (settings.registration_open !== undefined) {
+          setRegistrationOpen(settings.registration_open !== 'false');
+        }
+      } catch {
+        // Keep local defaults if API unavailable
+      }
+    };
+    loadPublicSettings();
+  }, []);
+
   // ─── Fetch Real Branches ───────────────────────────────────────────────────
   useEffect(() => {
     const fetchBranches = async () => {
