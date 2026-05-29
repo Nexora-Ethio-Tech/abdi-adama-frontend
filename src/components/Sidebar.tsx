@@ -92,6 +92,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
           { icon: BookOpen, label: 'Classes', path: '/classes' },
+          { icon: Users, label: 'Student Section Assignment', path: '/student-section-assignment' },
           { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: Users, label: 'Staff Management', path: '/staff' },
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },

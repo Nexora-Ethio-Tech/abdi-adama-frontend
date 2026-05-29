@@ -69,11 +69,25 @@ export const bulkAssignStudents = async (
  */
 export const swapStudentSections = async (
   studentAId: string,
-  studentBId: string
+  studentBId: string,
+  assignedByUserId?: string
 ): Promise<{ success: boolean; message: string }> => {
   const response = await api.post(`/sections/swap-sections`, {
     studentAId,
-    studentBId
+    studentBId,
+    assignedByUserId
+  });
+  return response.data.data;
+};
+
+/**
+ * Auto-distribute all unassigned students in a grade fairly across available sections
+ */
+export const autoDistributeStudents = async (
+  grade: string
+): Promise<{ successful: number; failed: number; results: AssignmentResult[] }> => {
+  const response = await api.post(`/sections/auto-distribute`, {
+    grade
   });
   return response.data.data;
 };

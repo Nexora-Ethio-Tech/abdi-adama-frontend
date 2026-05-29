@@ -254,7 +254,7 @@ export const Classes = () => {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-800 dark:text-white">{classItem.name}</h3>
-                      <p className="text-xs text-slate-500">Section {classItem.section}</p>
+                      <p className="text-xs text-slate-500">Section {String(classItem.section?.charCodeAt(0) - 'A'.charCodeAt(0) + 1 || '-')}</p>
                     </div>
                   </div>
                 </div>

@@ -763,24 +763,24 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <div className="grid grid-cols-2 gap-3 pt-4">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Exam Date</label>
-                        <input type="date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="date" title="Exam date" aria-label="Exam date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</label>
-                        <input type="time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="time" title="Exam time" aria-label="Exam time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Location</label>
-                      <input type="text" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      <input type="text" title="Exam location" aria-label="Exam location" placeholder="Enter exam location" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subjects</label>
-                      <input type="text" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      <input type="text" title="Exam subjects" aria-label="Exam subjects" placeholder="Enter subjects" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instructions for Students</label>
-                      <textarea rows={2} value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+                      <textarea rows={2} title="Exam instructions" aria-label="Exam instructions" placeholder="Enter instructions for students" value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
                     </div>
                     <p className="text-[10px] text-amber-600 font-medium">💡 These details are sent to every applicant you assign to "Pass After Exam".</p>
                   </div>
@@ -955,7 +955,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
-                    <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
+                    <input required name="dob" type="date" title="Date of Birth" aria-label="Date of Birth" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
                       ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                       : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                       }`} />
@@ -963,7 +963,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
-                    <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
+                    <select name="gender" title="Gender" aria-label="Gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
                       ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                       : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                       }`}>
@@ -985,7 +985,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
-                      <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <select name="bloodGroup" title="Blood Group" aria-label="Blood Group" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Select Blood Group</option>
                         <option>O+</option>
                         <option>O-</option>
@@ -1093,6 +1093,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <input
                       type="file"
                       name="transcript"
+                      title="Upload student transcript"
+                      aria-label="Upload student transcript"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileUpload}
                       className="absolute inset-0 opacity-0 cursor-pointer"
@@ -1219,7 +1221,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Promote To Grade</label>
-                      <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <select title="Promote To Grade" aria-label="Promote To Grade" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option>Grade 9</option>
                         <option>Grade 10</option>
                         <option>Grade 11</option>
@@ -1284,6 +1286,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
               <button
                 onClick={() => setViewingTranscript(null)}
+                title="Close transcript verification modal"
+                aria-label="Close transcript verification modal"
                 className="p-3 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
               >
                 <X size={24} />
@@ -1486,6 +1490,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Tuition (ETB)</label>
                   <input
                     type="number"
+                    title="Monthly tuition in ETB"
+                    aria-label="Monthly tuition in ETB"
+                    placeholder="Enter monthly tuition"
                     value={customFees.monthly_fee}
                     onChange={(e) => setCustomFees({ ...customFees, monthly_fee: Number(e.target.value) })}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
@@ -1495,6 +1502,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transport Fee (ETB)</label>
                   <input
                     type="number"
+                    title="Transport fee in ETB"
+                    aria-label="Transport fee in ETB"
+                    placeholder="Enter transport fee"
                     value={customFees.bus_fee}
                     onChange={(e) => setCustomFees({ ...customFees, bus_fee: Number(e.target.value) })}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
@@ -1504,6 +1514,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Status</label>
                 <select
+                  title="Fee status"
+                  aria-label="Fee status"
                   value={customFees.fee_status}
                   onChange={(e) => setCustomFees({ ...customFees, fee_status: e.target.value as any })}
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none"

@@ -10,8 +10,16 @@ import * as sectionService from '../services/sectionService';
 
 export const Students = () => {
   const navigate = useNavigate();
-  const { role } = useUser();
+  const { role, user } = useUser();
   const isSchoolAdmin = role === 'school-admin';
+
+  // Helper function to convert section letters to numbers (A→1, B→2, C→3, etc.)
+  const getSectionNumber = (section: string | null | undefined): string => {
+    if (!section) return '-';
+    const letterCode = section.toUpperCase().charCodeAt(0);
+    const baseCode = 'A'.charCodeAt(0);
+    return String(letterCode - baseCode + 1);
+  };
 
   const [students, setStudents] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
@@ -46,7 +54,7 @@ export const Students = () => {
   const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
   const [bulkTargetGrade, setBulkTargetGrade] = useState('');
   const [availableSections, setAvailableSections] = useState<sectionService.SectionInfo[]>([]);
-  const [bulkTargetSection, setBulkTargetSection] = useState('');
+  const [selectedBulkSectionIds, setSelectedBulkSectionIds] = useState<Set<string>>(new Set());
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [loadingBulkSections, setLoadingBulkSections] = useState(false);
 
@@ -114,14 +122,9 @@ export const Students = () => {
 
     const firstStudent = students.find(s => selectedStudentIds.has(s.id));
     const gradeToUse = firstStudent?.grade || filterGrade;
-    if (gradeToUse) {
-      setBulkTargetGrade(gradeToUse);
-      setBulkTargetSection('');
-      setAvailableSections([]);
-      setShowBulkAssignModal(true);
-      return;
-    }
-
+    setBulkTargetGrade(gradeToUse || '');
+    setSelectedBulkSectionIds(new Set());
+    setAvailableSections([]);
     setShowBulkAssignModal(true);
   };
 
@@ -130,9 +133,7 @@ export const Students = () => {
       setLoadingBulkSections(true);
       const sections = await sectionService.getAvailableSections(grade);
       setAvailableSections(sections);
-      if (sections.length > 0 && !bulkTargetSection) {
-        setBulkTargetSection(sections[0].id);
-      }
+      setSelectedBulkSectionIds(new Set());
     } catch (err: any) {
       console.error('Failed to fetch sections:', err);
       showToast(err.response?.data?.error || 'Failed to fetch sections', 'error');
@@ -141,26 +142,87 @@ export const Students = () => {
     }
   };
 
+  const toggleBulkSectionSelection = (sectionId: string) => {
+    const updated = new Set(selectedBulkSectionIds);
+    if (updated.has(sectionId)) {
+      updated.delete(sectionId);
+    } else {
+      updated.add(sectionId);
+    }
+    setSelectedBulkSectionIds(updated);
+  };
+
   const handleBulkAssign = async () => {
-    if (!bulkTargetSection || selectedStudentIds.size === 0) {
-      showToast('Please select a section', 'error');
+    if (selectedBulkSectionIds.size === 0 || selectedStudentIds.size === 0) {
+      showToast('Please select at least one section and one student', 'error');
       return;
     }
+
+    const selectedSections = availableSections.filter(section => selectedBulkSectionIds.has(section.id));
+    const totalAvailableSlots = selectedSections.reduce((sum, section) => sum + Math.max(0, section.available_slots), 0);
+    const studentIds = Array.from(selectedStudentIds);
+
+    if (totalAvailableSlots === 0) {
+      showToast('No available slots in the selected sections', 'error');
+      return;
+    }
+
     try {
       setBulkAssigning(true);
-      const studentIds = Array.from(selectedStudentIds);
-      const result = await sectionService.bulkAssignStudents(
-        bulkTargetSection,
-        studentIds,
-        'Bulk assignment from Students list'
+      const sectionsWithSlots = selectedSections.map(section => ({ ...section }));
+      const assignments: Record<string, string[]> = {};
+      let sectionIndex = 0;
+
+      for (const studentId of studentIds) {
+        if (sectionsWithSlots.length === 0) break;
+
+        let assigned = false;
+        let attempts = 0;
+
+        while (!assigned && attempts < sectionsWithSlots.length) {
+          const section = sectionsWithSlots[sectionIndex % sectionsWithSlots.length];
+          sectionIndex += 1;
+          attempts += 1;
+
+          if (section.available_slots > 0) {
+            assignments[section.id] = assignments[section.id] || [];
+            assignments[section.id].push(studentId);
+            section.available_slots -= 1;
+            assigned = true;
+          }
+        }
+
+        if (!assigned) {
+          break;
+        }
+      }
+
+      const assignedCount = Object.values(assignments).reduce((sum, ids) => sum + ids.length, 0);
+      const unassignedCount = studentIds.length - assignedCount;
+
+      const bulkResults = await Promise.all(
+        Object.entries(assignments).map(async ([sectionId, ids]) => {
+          return sectionService.bulkAssignStudents(
+            sectionId,
+            ids,
+            'Bulk assignment from Students list'
+          );
+        })
       );
+
+      const combinedResults = bulkResults.flatMap(result => result.results);
+      const successful = combinedResults.filter(r => r.success).length;
+      const failed = combinedResults.filter(r => !r.success).length + unassignedCount;
+
       showToast(
-        `${result.summary.successful} student(s) assigned successfully${result.summary.failed > 0 ? `, ${result.summary.failed} failed` : ''}`,
-        result.summary.failed === 0 ? 'success' : 'error'
+        `${successful} student(s) assigned successfully${failed > 0 ? `, ${failed} failed` : ''}`,
+        failed === 0 ? 'success' : 'error'
       );
+
       setShowBulkAssignModal(false);
       setSelectedStudentIds(new Set());
-      // In a real app, would refresh student data
+      setSelectedBulkSectionIds(new Set());
+      fetchStudents();
     } catch (err: any) {
       showToast(err.response?.data?.error || err.message || 'Failed to assign section', 'error');
     } finally {
@@ -439,8 +501,8 @@ export const Students = () => {
           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Sections</option>
-          {['A', 'B', 'C', 'D', 'E', 'F'].map(s => (
-            <option key={s} value={s}>Section {s}</option>
+          {['A', 'B', 'C', 'D', 'E', 'F'].map((s, idx) => (
+            <option key={s} value={s}>Section {idx + 1}</option>
           ))}
         </select>
         <select
@@ -524,8 +586,8 @@ export const Students = () => {
                     </th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Section</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grade</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Class</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
                   </tr>
@@ -550,9 +612,10 @@ export const Students = () => {
                             aria-label={`Select ${student.firstName}`}
                           />
                         </td>
+                        <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-slate-100">{student.firstName} {student.lastName}</td>
                         <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{student.digitalId}</td>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Section {getSectionNumber(student.section)}</td>
                         <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Grade {student.grade}</td>
-                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{student.className || 'Unassigned'}</td>
                         <td className="px-6 py-4">
                           <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${student.status === 'Active' ? 'bg-green-100 text-green-700' :
                             student.status === 'Inactive' ? 'bg-slate-100 text-slate-600' :
@@ -882,7 +945,7 @@ export const Students = () => {
                     onClick={() => handleAssignClass(cls.id)}
                     className="w-full p-4 text-left border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-300 transition-all"
                   >
-                    <p className="font-bold text-slate-800 dark:text-white">{cls.name} — Section {cls.section}</p>
+                    <p className="font-bold text-slate-800 dark:text-white">{cls.name} — Section {getSectionNumber(cls.section)}</p>
                     <p className="text-xs text-slate-500 mt-1">Capacity: {cls.capacity} students</p>
                   </button>
                 ))
@@ -1003,7 +1066,7 @@ export const Students = () => {
                       value={bulkTargetGrade}
                       onChange={(e) => {
                         setBulkTargetGrade(e.target.value);
-                        setBulkTargetSection(''); // Reset section when grade changes
+                        setSelectedBulkSectionIds(new Set());
                       }}
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
                     >
@@ -1016,29 +1079,51 @@ export const Students = () => {
 
                   {bulkTargetGrade && (
                     <div>
-                      <label htmlFor="bulk-section" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                        Select Section
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                        Select Sections
                       </label>
-                      <select
-                        id="bulk-section"
-                        value={bulkTargetSection}
-                        onChange={(e) => setBulkTargetSection(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
-                      >
-                        <option value="">-- Select a section --</option>
-                        {availableSections.map(section => (
-                          <option key={section.id} value={section.id}>
-                            {section.name} ({section.current_count}/{section.capacity} students)
-                          </option>
-                        ))}
-                      </select>
+                      {availableSections.length === 0 ? (
+                        <p className="text-sm text-slate-500">No sections available for this grade.</p>
+                      ) : (
+                        <div className="grid gap-2 max-h-64 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-3">
+                          {availableSections.map((section) => {
+                            const selected = selectedBulkSectionIds.has(section.id);
+                            const sectionDisabled = section.available_slots <= 0;
+                            return (
+                              <label
+                                key={section.id}
+                                className={`flex items-start gap-3 p-3 rounded-xl border ${selected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-slate-200 dark:border-slate-700'} ${sectionDisabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} transition-all`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  disabled={sectionDisabled}
+                                  onChange={() => toggleBulkSectionSelection(section.id)}
+                                  className="mt-1 h-4 w-4 accent-blue-600"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100">{section.name}</p>
+                                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                                      {section.available_slots} slot{section.available_slots !== 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                    {section.current_count}/{section.capacity} students assigned
+                                  </p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {bulkTargetSection && availableSections.find(s => s.id === bulkTargetSection) && (
+                  {selectedBulkSectionIds.size > 0 && (
                     <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                       <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
-                        Available Slots: {availableSections.find(s => s.id === bulkTargetSection)?.available_slots}
+                        Selected sections: {selectedBulkSectionIds.size} · Total available slots: {availableSections.filter(section => selectedBulkSectionIds.has(section.id)).reduce((sum, section) => sum + Math.max(0, section.available_slots), 0)}
                       </p>
                     </div>
                   )}
@@ -1057,7 +1142,7 @@ export const Students = () => {
               </button>
               <button
                 onClick={handleBulkAssign}
-                disabled={!bulkTargetSection || bulkAssigning}
+                disabled={selectedBulkSectionIds.size === 0 || bulkAssigning}
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors font-bold text-sm"
               >
                 {bulkAssigning ? (
@@ -1068,7 +1153,7 @@ export const Students = () => {
                 ) : (
                   <>
                     <Check size={16} />
-                    Assign to {selectedStudentIds.size} Student{selectedStudentIds.size !== 1 ? 's' : ''}
+                    Assign Students
                   </>
                 )}
               </button>
@@ -1116,7 +1201,7 @@ export const Students = () => {
                     .filter(s => s.id !== swapStudentA.id && s.grade === swapStudentA.grade)
                     .map(s => (
                       <option key={s.id} value={s.id}>
-                        {s.firstName} {s.lastName} (Section: {s.section || 'Unassigned'})
+                        {s.firstName} {s.lastName} (Section {getSectionNumber(s.section)})
                       </option>
                     ))}
                 </select>
@@ -1144,7 +1229,8 @@ export const Students = () => {
                     try {
                       const result = await sectionService.swapStudentSections(
                         swapStudentA.userId || swapStudentA.id,
-                        swapStudentBId
+                        swapStudentBId,
+                        user?.id
                       );
                       if (result.success) {
                         showToast('Students swapped successfully', 'success');

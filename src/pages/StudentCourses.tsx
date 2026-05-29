@@ -176,8 +176,11 @@ export const StudentCourses = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Year Selector */}
                 <div>
-                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
+                  <label htmlFor="course-year" className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
                   <select
+                    id="course-year"
+                    title="Academic Year"
+                    aria-label="Academic Year"
                     value={selectedYear}
                     onChange={(e) => {
                       setSelectedYear(e.target.value);
@@ -193,8 +196,11 @@ export const StudentCourses = () => {
 
                 {/* Semester Selector */}
                 <div>
-                  <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
+                  <label htmlFor="course-semester" className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
                   <select
+                    id="course-semester"
+                    title="Semester"
+                    aria-label="Semester"
                     value={selectedSemester}
                     onChange={(e) => {
                       setSelectedSemester(e.target.value);
@@ -499,8 +505,11 @@ export const StudentCourses = () => {
             {/* First Div: Year and Semester selectors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div>
-                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
+                <label htmlFor="history-year" className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Academic Year</label>
                 <select
+                  id="history-year"
+                  title="Select Academic Year"
+                  aria-label="Select Academic Year"
                   value={historyYear || ''}
                   onChange={(e) => {
                     setHistoryYear(e.target.value || null);
@@ -516,8 +525,11 @@ export const StudentCourses = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
+                <label htmlFor="history-semester" className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Select Semester</label>
                 <select
+                  id="history-semester"
+                  title="Select Semester"
+                  aria-label="Select Semester"
                   value={historySemester || ''}
                   onChange={(e) => {
                     setHistorySemester(e.target.value || null);

@@ -309,6 +309,9 @@ export const Settings = () => {
                         <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
                         <input
                           type="text"
+                          title="School motto in Oromic"
+                          aria-label="School motto in Oromic"
+                          placeholder="Enter Oromic motto"
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
                           value={schoolMotto.oromic}
                           onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, oromic: e.target.value })}
@@ -319,6 +322,9 @@ export const Settings = () => {
                         <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
                         <input
                           type="text"
+                          title="School motto in Amharic"
+                          aria-label="School motto in Amharic"
+                          placeholder="Enter Amharic motto"
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
                           value={schoolMotto.amharic}
                           onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, amharic: e.target.value })}
@@ -329,6 +335,9 @@ export const Settings = () => {
                         <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
                         <input
                           type="text"
+                          title="School motto in English"
+                          aria-label="School motto in English"
+                          placeholder="Enter English motto"
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
                           value={schoolMotto.english}
                           onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, english: e.target.value })}
@@ -339,15 +348,15 @@ export const Settings = () => {
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
-                    <input type="email" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="admin@abdiadama.edu" />
+                    <input type="email" title="System email" aria-label="System email" placeholder="Enter system email" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="admin@abdiadama.edu" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
-                    <input type="text" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="+251 911 22 33 44" />
+                    <input type="text" title="Phone number" aria-label="Phone number" placeholder="Enter phone number" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500" defaultValue="+251 911 22 33 44" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
-                    <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <select title="Academic year" aria-label="Academic year" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                       <option>2025/2026 (Current)</option>
                       <option>2026/2027 (Upcoming)</option>
                     </select>
@@ -676,6 +685,8 @@ export const Settings = () => {
                       <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Fee Deadline (Day)</label>
                       <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which all student fee payments must be settled.</p>
                       <select
+                        title="Student fee payment deadline"
+                        aria-label="Student fee payment deadline"
                         className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                         value={studentPaymentDeadline}
                         onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
@@ -704,6 +715,8 @@ export const Settings = () => {
                       <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Staff Salary Deadline (Day)</label>
                       <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which employee salaries must be disbursed.</p>
                       <select
+                        title="Staff salary deadline"
+                        aria-label="Staff salary deadline"
                         className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                         value={staffSalaryDeadline}
                         onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
@@ -884,30 +897,30 @@ export const Settings = () => {
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                        <select className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select title="Select branch" aria-label="Select branch" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
                           {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
-                        <select className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
+                        <select title="Select grade level" aria-label="Select grade level" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500">
                           {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
                         </select>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
-                        <input type="number" placeholder="5000" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input type="number" title="Monthly fee amount" aria-label="Monthly fee amount" placeholder="5000" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
-                        <input type="number" placeholder="2500" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input type="number" title="Registration fee amount" aria-label="Registration fee amount" placeholder="2500" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
-                        <input type="number" placeholder="1200" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input type="number" title="Bus fee amount" aria-label="Bus fee amount" placeholder="1200" className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500" />
                       </div>
                       <div className="flex items-end lg:col-span-5">
-                        <button className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none">
+                        <button title="Apply fee configuration" aria-label="Apply fee configuration" className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none">
                           <Plus size={16} />
                           <span>Apply Fee Configuration</span>
                         </button>
@@ -934,7 +947,7 @@ export const Settings = () => {
                             <td className="px-4 py-3 font-bold">2,500 ETB</td>
                             <td className="px-4 py-3 font-bold">1,200 ETB</td>
                             <td className="px-4 py-3 text-right">
-                              <button className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
+                              <button title="Delete Main Branch fees" aria-label="Delete Main Branch fees" className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
                             </td>
                           </tr>
                           <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
@@ -944,11 +957,8 @@ export const Settings = () => {
                             <td className="px-4 py-3 font-bold">2,200 ETB</td>
                             <td className="px-4 py-3 font-bold">1,000 ETB</td>
                             <td className="px-4 py-3 text-right">
-                              <button className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
+                              <button title="Delete Bole Branch fees" aria-label="Delete Bole Branch fees" className="text-rose-500 hover:text-rose-700 p-1"><Trash2 size={14} /></button>
                             </td>
-                          </tr>
-                        </tbody>
-                      </table>
                     </div>
 
                     {/* Monthly Net Profit Target */}
@@ -1018,6 +1028,10 @@ export const Settings = () => {
                                   <div
                                     className={`h-full rounded-full transition-all duration-700 ${barColor}`}
                                     style={{ width: `${percent}%` }}
+                                    role="progressbar"
+                                    aria-valuenow={percent}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
                                   />
                                 </div>
                                 <div className="flex justify-between text-[10px] font-bold text-slate-400">
@@ -1091,6 +1105,9 @@ export const Settings = () => {
                         <div className="flex-1">
                           <input
                             type="text"
+                            title="Assessment method name"
+                            aria-label="Assessment method name"
+                            placeholder="Enter assessment method"
                             value={method.label}
                             onChange={(e) => {
                               const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
@@ -1104,6 +1121,9 @@ export const Settings = () => {
                           <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
                             <input
                               type="number"
+                              title="Assessment method weight in points"
+                              aria-label="Assessment method weight in points"
+                              placeholder="0"
                               value={method.maxWeight}
                               onChange={(e) => {
                                 const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
@@ -1115,6 +1135,8 @@ export const Settings = () => {
                             <span className="text-[10px] font-black text-slate-400">PTS</span>
                           </div>
                           <button
+                            title="Delete assessment method"
+                            aria-label="Delete assessment method"
                             onClick={() => {
                               const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
                               const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
@@ -1159,6 +1181,8 @@ export const Settings = () => {
                     <div className="flex flex-col md:flex-row gap-4">
                       <input
                         type="text"
+                        title="Custom assessment method name"
+                        aria-label="Custom assessment method name"
                         placeholder="e.g. Class Activity, Project"
                         value={newMethodLabel}
                         onChange={(e) => setNewMethodLabel(e.target.value)}
@@ -1169,6 +1193,9 @@ export const Settings = () => {
                           <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
                           <input
                             type="number"
+                            title="Assessment weight percentage"
+                            aria-label="Assessment weight percentage"
+                            placeholder="0"
                             value={newMethodWeight}
                             onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
                             className="w-12 bg-transparent font-bold text-center outline-none"
@@ -1176,6 +1203,8 @@ export const Settings = () => {
                           <span className="text-xs font-bold text-slate-400">%</span>
                         </div>
                         <button
+                          title="Add custom assessment method"
+                          aria-label="Add custom assessment method"
                           onClick={() => {
                             if (!newMethodLabel) return;
                             const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));

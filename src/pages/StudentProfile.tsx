@@ -380,8 +380,11 @@ export const StudentProfile = () => {
                 Academic History
               </h4>
               <div className="flex items-center gap-2">
-                 <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Filter Year:</span>
+                 <label htmlFor="history-filter-year" className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Filter Year:</label>
                  <select
+                   id="history-filter-year"
+                   title="Filter academic history year"
+                   aria-label="Filter academic history year"
                    value={selectedHistoryYear}
                    onChange={(e) => setSelectedHistoryYear(e.target.value)}
                    className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -521,10 +524,13 @@ export const StudentProfile = () => {
               ) : (
                 <>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                    <label htmlFor="profile-section-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
                       Select Section
                     </label>
                     <select
+                      id="profile-section-select"
+                      title="Select Section"
+                      aria-label="Select Section"
                       value={selectedSection}
                       onChange={(e) => setSelectedSection(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -586,11 +592,14 @@ export const StudentProfile = () => {
             <div className="sticky top-0 bg-white border-b border-slate-100 dark:border-slate-800 px-8 py-4 flex items-center justify-between z-10">
               <h3 className="text-xl font-bold text-slate-800 dark:text-white">Academic Transcript</h3>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold">
+                <button type="button" title="Print transcript" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold">
                   <Printer size={18} />
                   Print Now
                 </button>
                 <button
+                  type="button"
+                  title="Close transcript modal"
+                  aria-label="Close transcript modal"
                   onClick={() => setShowTranscript(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                 >
