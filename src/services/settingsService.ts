@@ -14,10 +14,32 @@ export interface BranchGradeFee {
 
 export interface MonthlyProfitTarget {
   id: string;
+  branch_id: string;
+  branch_name?: string;
   ethiopian_month: number;
   target_year: number;
   target_amount: number;
-  actual_amount: number;
+  student_income?: number;
+  staff_payout?: number;
+  actual_net_profit?: number;
+  actual_amount?: number;
+}
+
+export interface BranchProfitSummary {
+  branch_id: string;
+  branch_name: string;
+  ethiopian_month: number;
+  target_year: number;
+  student_income: number;
+  student_transaction_count: number;
+  staff_payout: number;
+  payroll_status: string | null;
+  suggested_target: number;
+  actual_net_profit: number;
+  saved_target: number | null;
+  gregMonth: number;
+  gregYear: number;
+  monthName: string;
 }
 
 export interface SmtpSettings {
@@ -79,14 +101,25 @@ const settingsService = {
     return response.data;
   },
 
-  getProfitTargets: async (year?: number): Promise<MonthlyProfitTarget[]> => {
-    const response = await api.get('/super-admin/profit-targets', {
-      params: year ? { year } : undefined,
-    });
+  getBranchProfitSummary: async (params: {
+    branchId: string;
+    ethiopianMonth: number;
+    year?: number;
+  }): Promise<BranchProfitSummary> => {
+    const response = await api.get('/super-admin/profit-targets/branch-summary', { params });
+    return response.data.data;
+  },
+
+  getProfitTargets: async (params?: {
+    year?: number;
+    branchId?: string;
+  }): Promise<MonthlyProfitTarget[]> => {
+    const response = await api.get('/super-admin/profit-targets', { params });
     return response.data.data;
   },
 
   upsertProfitTarget: async (data: {
+    branchId: string;
     ethiopianMonth: number;
     targetAmount: number;
     year?: number;

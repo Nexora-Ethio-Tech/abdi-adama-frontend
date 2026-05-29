@@ -240,6 +240,32 @@ export const submitGrade = async (data: SubmitGradeData) => {
   return response.data;
 };
 
+export const submitCourseGrades = async (courseId: string, submissionType: string) => {
+  const response = await api.post('/teacher/grades/submit-course', { courseId, submissionType });
+  return response.data;
+};
+
+export const getGradeSubmissions = async () => {
+  const response = await api.get('/teacher/grade-submissions');
+  return response.data.data;
+};
+
+export const getDepartmentHeads = async () => {
+  const response = await api.get('/teacher/department-heads');
+  return response.data.data;
+};
+
+export const getDeptPlans = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await api.get(`/teacher/dept-plans${params}`);
+  return response.data.data;
+};
+
+export const reviewDeptPlan = async (planId: string, data: { status: string; feedback?: string; rating?: number }) => {
+  const response = await api.patch(`/teacher/dept-plans/${planId}/review`, data);
+  return response.data;
+};
+
 const teacherService = {
   getMyClasses,
   getClassStudents,
@@ -260,6 +286,11 @@ const teacherService = {
   getCommunicationLogs,
   getClassGrades,
   submitGrade,
+  submitCourseGrades,
+  getGradeSubmissions,
+  getDepartmentHeads,
+  getDeptPlans,
+  reviewDeptPlan,
 };
 
 export default teacherService;

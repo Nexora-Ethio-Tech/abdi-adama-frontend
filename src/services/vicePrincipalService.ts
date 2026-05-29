@@ -130,3 +130,15 @@ export const approveAttendance = async (alertId: string, data: { status: 'Approv
   const response = await api.patch(`/vice-principal/attendance-alerts/${alertId}`, data);
   return response.data;
 };
+
+// Grade Submissions
+export const getVPGradeSubmissions = async () => {
+  const response = await api.get('/vice-principal/grade-submissions');
+  return response.data.data;
+};
+
+export const getVPSubmittedGrades = async (courseId: string, submissionType: string) => {
+  const response = await api.get(`/vice-principal/grades/${courseId}/${encodeURIComponent(submissionType)}`);
+  return response.data.data;
+};
+

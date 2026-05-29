@@ -264,8 +264,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const openTransportModal = (student: TransportStudentInfo) => {
     // Fetch Super Admin policy fee for this student's grade
-    // Finance Clerk cannot edit; fee is read-only
-    const policy = transportPolicies.find((item) => item.grade_level === student.grade)
+    // Finance Clerk cannot edit; fee is read-only and uses policy value only
+    const policy = transportPolicies.find((item) => {
+      // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
+      const policyGradeNum = item.grade_level?.replace(/\D/g, '');
+      const studentGradeNum = student.grade?.replace(/\D/g, '');
+      return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
+    })
       || transportPolicies.find((item) => !item.grade_level)
       || transportPolicies[0]
       || null;
@@ -274,8 +279,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setTransportStudent(student);
     setTransportData({
       driverId,
-      // Use policy fee if valid; fallback to student's current fee
-      transportFee: policyFee > 0 ? policyFee : Number(student.bus_fee || 0),
+      // Use ONLY the Super Admin configured policy fee (or 0 if not set)
+      transportFee: policyFee,
     });
     setShowTransportModal(true);
   };
@@ -358,10 +363,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     if (!transportStudent || !transportData.driverId) return;
 
     try {
+      // Use the policy fee set at modal open time
+      const finalFee = selectedTransportPolicy ? Number(selectedTransportPolicy.bus_fee || 0) : 0;
       await financeClerkService.assignTransport({
         studentId: transportStudent.id,
         driverId: transportData.driverId,
-        transportFee: Number(transportData.transportFee),
+        transportFee: finalFee,
       });
       setSuccess('Transport assignment saved successfully');
       setShowTransportModal(false);
@@ -536,7 +543,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   });
   const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
   const selectedTransportPolicy = transportStudent
-    ? transportPolicies.find((item) => item.grade_level === transportStudent.grade) || transportPolicies.find((item) => !item.grade_level) || null
+    ? transportPolicies.find((item) => {
+        // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
+        const policyGradeNum = item.grade_level?.replace(/\D/g, '');
+        const studentGradeNum = transportStudent.grade?.replace(/\D/g, '');
+        return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
+      }) || transportPolicies.find((item) => !item.grade_level) || null
     : null;
   const headerTitleMap = {
     all: 'Collections',
@@ -889,7 +901,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Driver</th>
                   <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Route</th>
-                  <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Transport Fee</th>
                   <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                 </tr>
               </thead>
@@ -911,9 +922,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold">
                         {student.route_name || 'No route'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                      {Number(student.bus_fee || 0).toLocaleString()} ETB
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex flex-wrap items-center justify-end gap-2">

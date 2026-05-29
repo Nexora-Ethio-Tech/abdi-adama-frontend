@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Award, Edit2, X, Plus, TrendingUp, Trash2, Users, Save } from 'lucide-react';
+import { Award, Edit2, X, Plus, TrendingUp, Trash2, Users, Save, Lock, Loader2, CheckCircle2 } from 'lucide-react';
 import * as teacherService from '../services/teacherService';
 
 interface Course {
@@ -30,11 +30,19 @@ interface Grade {
   grade: string;
 }
 
+interface GradingConfig {
+  id: string;
+  label: string;
+  maxWeight: number;
+}
+
 export const TeacherGrades = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [grades, setGrades] = useState<Grade[]>([]);
+  const [gradingConfigs, setGradingConfigs] = useState<GradingConfig[]>([]);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -42,13 +50,15 @@ export const TeacherGrades = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedGrade, setSelectedGrade] = useState<Grade | null>(null);
   const [bulkGrades, setBulkGrades] = useState<Record<string, { score: number; total: number }>>({});
+  const [submittingLock, setSubmittingLock] = useState<Record<string, boolean>>({});
+  
   const [formData, setFormData] = useState({
     studentId: '',
     courseId: '',
-    type: 'Mid-Exam',
+    type: '',
     score: 0,
     total: 100,
-    weight: '30',
+    weight: '10',
   });
 
   useEffect(() => {
@@ -64,9 +74,7 @@ export const TeacherGrades = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      // TODO: Replace with actual course endpoint when available
       const classes = await teacherService.getMyClasses();
-      // Map classes to courses for now
       const coursesData = classes.map((cls: any) => ({
         id: cls.id,
         name: cls.subject || cls.name,
@@ -89,23 +97,40 @@ export const TeacherGrades = () => {
     try {
       setLoading(true);
       setError(null);
-      const gradesData = await teacherService.getCourseGrades(selectedCourse);
-      setGrades(gradesData || []);
       
-      // Extract unique students from grades
-      const studentMap = new Map<string, Student>();
-      gradesData.forEach((g: Grade) => {
-        if (!studentMap.has(g.student_id)) {
-          studentMap.set(g.student_id, {
-            id: g.student_id,
-            name: g.student_name,
-            digitalId: g.digital_id,
-            grade: g.grade,
-          });
-        }
-      });
-      const uniqueStudents = Array.from(studentMap.values());
-      setStudents(uniqueStudents);
+      const courseObj = courses.find(c => c.id === selectedCourse);
+      if (!courseObj) return;
+
+      const [gradesData, rosterData, subsData] = await Promise.all([
+        teacherService.getCourseGrades(selectedCourse),
+        teacherService.getClassStudents(selectedCourse),
+        teacherService.getGradeSubmissions()
+      ]);
+
+      setGrades(gradesData || []);
+      setSubmissions(subsData || []);
+
+      // Load configs
+      const gradeLvl = courseObj.gradeLevel ? courseObj.gradeLevel.replace(/\D/g, '') : 'default';
+      const configs = await teacherService.getGradingConfigsForGrade(gradeLvl || 'default');
+      setGradingConfigs(configs || []);
+      
+      if (configs.length > 0 && !formData.type) {
+        setFormData(prev => ({ 
+          ...prev, 
+          type: configs[0].id, 
+          weight: String(configs[0].maxWeight) 
+        }));
+      }
+
+      const list = Array.isArray(rosterData) ? rosterData : [];
+      const transformedStudents = list.map((s: any) => ({
+        id: s.id,
+        name: s.name || `${s.first_name || s.firstName} ${s.last_name || s.lastName}`,
+        digitalId: s.digital_id || s.digitalId,
+        grade: s.grade || courseObj.gradeLevel,
+      }));
+      setStudents(transformedStudents);
     } catch (err: any) {
       console.error('Failed to fetch grades:', err);
       setError(err.response?.data?.error?.message || 'Failed to load grades');
@@ -116,25 +141,35 @@ export const TeacherGrades = () => {
     }
   };
 
+  const isComponentLocked = (typeId: string) => {
+    return submissions.some(s => s.course_id === selectedCourse && s.submission_type === typeId);
+  };
+
   const handleSubmitGrade = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isComponentLocked(formData.type)) {
+      alert('This assessment type has been submitted and locked.');
+      return;
+    }
     try {
       await teacherService.enterGrade(formData);
       setShowAddModal(false);
       resetForm();
       fetchGrades();
     } catch (err: any) {
-      const errorMsg = err.response?.status === 423
-        ? 'Grades are locked. Contact Vice Principal to unlock.'
-        : err.response?.data?.error?.message || 'Failed to submit grade';
+      const errorMsg = err.response?.data?.error?.message || 'Failed to submit grade';
       alert(errorMsg);
     }
   };
 
   const handleBulkSubmit = async () => {
+    if (isComponentLocked(formData.type)) {
+      alert('This assessment type has been submitted and locked.');
+      return;
+    }
     try {
       const gradesArray = Object.entries(bulkGrades)
-        .filter(([_, data]) => data.score > 0)
+        .filter(([_, data]) => data.score !== undefined)
         .map(([studentId, data]) => ({
           studentId,
           type: formData.type,
@@ -157,9 +192,7 @@ export const TeacherGrades = () => {
       setBulkGrades({});
       fetchGrades();
     } catch (err: any) {
-      const errorMsg = err.response?.status === 423
-        ? 'Grades are locked. Contact Vice Principal to unlock.'
-        : err.response?.data?.error?.message || 'Failed to submit grades';
+      const errorMsg = err.response?.data?.error?.message || 'Failed to submit grades';
       alert(errorMsg);
     }
   };
@@ -167,6 +200,10 @@ export const TeacherGrades = () => {
   const handleUpdateGrade = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGrade) return;
+    if (isComponentLocked(formData.type)) {
+      alert('This assessment type has been submitted and locked.');
+      return;
+    }
     try {
       await teacherService.updateGrade(selectedGrade.id, {
         score: formData.score,
@@ -178,23 +215,43 @@ export const TeacherGrades = () => {
       setSelectedGrade(null);
       fetchGrades();
     } catch (err: any) {
-      const errorMsg = err.response?.status === 423
-        ? 'Grades are locked. Contact Vice Principal to unlock.'
-        : err.response?.data?.error?.message || 'Failed to update grade';
+      const errorMsg = err.response?.data?.error?.message || 'Failed to update grade';
       alert(errorMsg);
     }
   };
 
   const handleDeleteGrade = async (gradeId: string) => {
+    const grade = grades.find(g => g.id === gradeId);
+    if (grade && isComponentLocked(grade.type)) {
+      alert('This grade is submitted and locked, and cannot be deleted.');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this grade?')) return;
     try {
       await teacherService.deleteGrade(gradeId);
       fetchGrades();
     } catch (err: any) {
-      const errorMsg = err.response?.status === 423
-        ? 'Grades are locked. Contact Vice Principal to unlock.'
-        : err.response?.data?.error?.message || 'Failed to delete grade';
+      const errorMsg = err.response?.data?.error?.message || 'Failed to delete grade';
       alert(errorMsg);
+    }
+  };
+
+  const handleSubmitComponentGrades = async (typeId: string) => {
+    const config = gradingConfigs.find(c => c.id === typeId);
+    const label = config ? config.label : typeId;
+    if (!confirm(`Are you sure you want to submit and lock all grades for "${label}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setSubmittingLock(prev => ({ ...prev, [typeId]: true }));
+    try {
+      await teacherService.submitCourseGrades(selectedCourse, typeId);
+      alert('Grades locked and submitted successfully!');
+      fetchGrades();
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to submit grades');
+    } finally {
+      setSubmittingLock(prev => ({ ...prev, [typeId]: false }));
     }
   };
 
@@ -212,13 +269,15 @@ export const TeacherGrades = () => {
   };
 
   const resetForm = () => {
+    const defaultType = gradingConfigs.length > 0 ? gradingConfigs[0].id : 'Mid-Exam';
+    const defaultWeight = gradingConfigs.length > 0 ? String(gradingConfigs[0].maxWeight) : '30';
     setFormData({
       studentId: '',
       courseId: selectedCourse,
-      type: 'Mid-Exam',
+      type: defaultType,
       score: 0,
       total: 100,
-      weight: '30',
+      weight: defaultWeight,
     });
   };
 
@@ -226,37 +285,31 @@ export const TeacherGrades = () => {
     return grades.filter((g) => g.student_id === studentId);
   };
 
-  const calculateAverage = (studentId: string) => {
-    const studentGrades = getStudentGrades(studentId);
-    if (studentGrades.length === 0) return 'N/A';
-    const avg =
-      studentGrades.reduce((sum, g) => sum + (g.score / g.total) * 100, 0) /
-      studentGrades.length;
-    return avg.toFixed(1) + '%';
-  };
-
   if (loading && !courses.length) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <Loader2 className="animate-spin text-blue-600" size={32} />
       </div>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Grade Management</h1>
-          <p className="text-gray-600 dark:text-gray-400">Enter and manage student grades by course</p>
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Grade Management</h1>
+          <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Enter, review, and lock student scores</p>
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => setShowBulkModal(true)}
+            onClick={() => {
+              resetForm();
+              setShowBulkModal(true);
+            }}
             disabled={students.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs uppercase tracking-widest"
           >
-            <Users className="w-5 h-5" />
+            <Users className="w-4 h-4" />
             Bulk Entry
           </button>
           <button
@@ -264,29 +317,31 @@ export const TeacherGrades = () => {
               resetForm();
               setShowAddModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 text-xs uppercase tracking-widest"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             Add Grade
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/50 rounded-xl text-rose-700 dark:text-rose-400 font-medium">
           {error}
         </div>
       )}
 
-      <div className="mb-6 bg-white dark:bg-slate-900 rounded-lg shadow p-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Course</label>
+      {/* Select Course */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl p-6">
+        <label htmlFor="courseSelect" className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Select Course</label>
         <select
+          id="courseSelect"
           value={selectedCourse}
           onChange={(e) => {
             setSelectedCourse(e.target.value);
-            setFormData((prev) => ({ ...prev, courseId: e.target.value }));
+            setFormData((prev) => ({ ...prev, courseId: e.target.value, type: '' }));
           }}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+          className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           {courses.map((course) => (
             <option key={course.id} value={course.id}>
@@ -296,149 +351,179 @@ export const TeacherGrades = () => {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Grades Entered</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Average</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {students.map((student) => {
-              const studentGrades = getStudentGrades(student.id);
+      {/* Grading Components & Lock Status */}
+      {gradingConfigs.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl p-6">
+          <h2 className="text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4">Assessment Components & Locking</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            {gradingConfigs.map((config) => {
+              const locked = isComponentLocked(config.id);
               return (
-                <tr key={student.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
-                        {student.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <span className="font-medium text-gray-900 dark:text-white">{student.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{student.digitalId}</td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                      {studentGrades.length}
+                <div key={config.id} className="flex flex-col justify-between p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="mb-3">
+                    <p className="text-sm font-black text-slate-800 dark:text-slate-200">{config.label}</p>
+                    <p className="text-xs text-slate-500">Max Weight: {config.maxWeight}%</p>
+                  </div>
+                  {locked ? (
+                    <span className="w-full py-2 bg-emerald-100 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 rounded-xl text-center text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 border border-emerald-200/50">
+                      <Lock size={12} /> Locked
                     </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-green-600" />
-                      <span className="font-bold text-gray-900">{calculateAverage(student.id)}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
+                  ) : (
                     <button
-                      onClick={() => {
-                        setFormData((prev) => ({ ...prev, studentId: student.id }));
-                        setShowAddModal(true);
-                      }}
-                      className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                      type="button"
+                      disabled={submittingLock[config.id]}
+                      onClick={() => handleSubmitComponentGrades(config.id)}
+                      className="w-full py-2 bg-blue-600 hover:bg-blue-750 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
                     >
-                      Add Grade
+                      {submittingLock[config.id] ? 'Submitting...' : 'Submit & Lock'}
                     </button>
-                  </td>
-                </tr>
+                  )}
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-
-      {students.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No students found in this class.</p>
-        </div>
-      )}
-
-      {/* Recent Grades */}
-      {grades.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Grades</h2>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assessment</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Percentage</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Weight</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {grades.slice(0, 10).map((grade) => {
-                  const percentage = ((grade.score / grade.total) * 100).toFixed(1);
-                  return (
-                  <tr key={grade.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{grade.student_name}</td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                        {grade.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{grade.score}/{grade.total}</td>
-                    <td className="px-6 py-4">
-                      <span className={`font-bold ${
-                        Number(percentage) >= 80 ? 'text-green-600' :
-                        Number(percentage) >= 60 ? 'text-blue-600' :
-                        Number(percentage) >= 40 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {percentage}%
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{grade.weight}%</td>
-                    <td className="px-6 py-4 text-right flex gap-2 justify-end">
-                      <button
-                        onClick={() => openEditModal(grade)}
-                        className="p-1 text-gray-600 hover:text-blue-600"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteGrade(grade.id)}
-                        className="p-1 text-gray-600 hover:text-red-600"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </div>
         </div>
       )}
 
+      {/* Grade Book Spreadsheet */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Student</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">ID</th>
+                {gradingConfigs.map(config => (
+                  <th key={config.id} className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">{config.label}</th>
+                ))}
+                <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Weighted Avg</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              {students.length === 0 ? (
+                <tr>
+                  <td colSpan={3 + gradingConfigs.length} className="px-6 py-12 text-center text-slate-500">No students in this class.</td>
+                </tr>
+              ) : (
+                students.map((student) => {
+                  const studentGrades = getStudentGrades(student.id);
+                  let totalWeighted = 0;
+                  let totalWeightPossible = 0;
+
+                  const columns = gradingConfigs.map(config => {
+                    const grade = studentGrades.find(g => g.type === config.id || g.type.toLowerCase() === config.id.toLowerCase());
+                    const locked = isComponentLocked(config.id);
+
+                    if (grade) {
+                      const percentage = grade.total > 0 ? (grade.score / grade.total) * 100 : 0;
+                      totalWeighted += percentage * (config.maxWeight / 100);
+                      totalWeightPossible += config.maxWeight;
+                    }
+
+                    return (
+                      <td key={config.id} className="px-6 py-4 text-center">
+                        {grade ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                              {grade.score} / {grade.total}
+                            </span>
+                            {!locked ? (
+                              <div className="flex gap-1 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  onClick={() => openEditModal(grade)}
+                                  className="text-slate-400 hover:text-blue-600 p-0.5"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteGrade(grade.id)}
+                                  className="text-slate-400 hover:text-rose-600 p-0.5"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-emerald-600 text-xs font-bold" title="Locked">🔒</span>
+                            )}
+                          </div>
+                        ) : (
+                          !locked ? (
+                            <button
+                              onClick={() => {
+                                setFormData({
+                                  studentId: student.id,
+                                  courseId: selectedCourse,
+                                  type: config.id,
+                                  score: 0,
+                                  total: 100,
+                                  weight: String(config.maxWeight),
+                                });
+                                setShowAddModal(true);
+                              }}
+                              className="text-blue-600 hover:underline text-xs font-bold"
+                            >
+                              + Add
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 text-xs">—</span>
+                          )
+                        )}
+                      </td>
+                    );
+                  });
+
+                  const weightedAverage = totalWeightPossible > 0 
+                    ? ((totalWeighted / (totalWeightPossible / 100))).toFixed(1) + '%'
+                    : '—';
+
+                  return (
+                    <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 group transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-350 font-bold text-sm">
+                            {student.name.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{student.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-slate-500">{student.digitalId}</td>
+                      {columns}
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <TrendingUp className="w-4 h-4 text-emerald-500" />
+                          <span className="text-sm font-black text-slate-800 dark:text-slate-100">{weightedAverage}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* Add Grade Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Add Grade</h2>
-              <button onClick={() => setShowAddModal(false)}>
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-150 dark:border-slate-800 pb-3">
+              <h2 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tight">Enter Score</h2>
+              <button type="button" aria-label="Close" onClick={() => setShowAddModal(false)}>
+                <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
             <form onSubmit={handleSubmitGrade} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
+                <label htmlFor="modalStudent" className="text-xs font-bold text-slate-500 uppercase">Student *</label>
                 <select
+                  id="modalStudent"
                   required
                   value={formData.studentId}
                   onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
                 >
                   <option value="">Select Student</option>
                   {students.map((student) => (
@@ -449,70 +534,78 @@ export const TeacherGrades = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Type *</label>
+                <label htmlFor="modalType" className="text-xs font-bold text-slate-500 uppercase">Assessment Type *</label>
                 <select
+                  id="modalType"
                   required
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  onChange={(e) => {
+                    const matched = gradingConfigs.find(c => c.id === e.target.value);
+                    setFormData({ 
+                      ...formData, 
+                      type: e.target.value,
+                      weight: matched ? String(matched.maxWeight) : formData.weight
+                    });
+                  }}
+                  className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm"
                 >
-                  <option value="Mid-Exam">Mid-Exam</option>
-                  <option value="Final-Exam">Final-Exam</option>
-                  <option value="Quiz">Quiz</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="Class-Work">Class-Work</option>
-                  <option value="Home-Work">Home-Work</option>
+                  {gradingConfigs.map(config => (
+                    <option key={config.id} value={config.id}>{config.label} ({config.maxWeight}%)</option>
+                  ))}
                 </select>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Score *</label>
+                  <label htmlFor="modalScore" className="text-xs font-bold text-slate-500 uppercase">Score *</label>
                   <input
+                    id="modalScore"
                     type="number"
                     required
                     min="0"
                     value={formData.score}
                     onChange={(e) => setFormData({ ...formData, score: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total *</label>
+                  <label htmlFor="modalTotal" className="text-xs font-bold text-slate-500 uppercase">Out Of *</label>
                   <input
+                    id="modalTotal"
                     type="number"
                     required
                     min="1"
                     value={formData.total}
                     onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
+                  <label htmlFor="modalWeight" className="text-xs font-bold text-slate-500 uppercase">Weight % *</label>
                   <input
+                    id="modalWeight"
                     type="number"
                     required
                     min="0"
                     max="100"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-sm font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-bold"
                 >
-                  Submit Grade
+                  Save Score
                 </button>
               </div>
             </form>
@@ -522,68 +615,71 @@ export const TeacherGrades = () => {
 
       {/* Edit Grade Modal */}
       {showEditModal && selectedGrade && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Edit Grade</h2>
-              <button onClick={() => setShowEditModal(false)}>
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-150 dark:border-slate-800 pb-3">
+              <h2 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tight">Edit Score</h2>
+              <button type="button" aria-label="Close edit" onClick={() => setShowEditModal(false)}>
+                <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
             <form onSubmit={handleUpdateGrade} className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Student: <span className="font-medium text-gray-900">{selectedGrade.student_name}</span></p>
-                <p className="text-sm text-gray-600">Assessment: <span className="font-medium text-gray-900">{selectedGrade.type}</span></p>
+              <div className="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs space-y-1">
+                <p className="text-slate-500 uppercase font-bold tracking-wider">Student: <span className="text-slate-900 dark:text-slate-200 font-black">{selectedGrade.student_name}</span></p>
+                <p className="text-slate-500 uppercase font-bold tracking-wider">Assessment: <span className="text-slate-900 dark:text-slate-200 font-black">{selectedGrade.type}</span></p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Score *</label>
+                  <label htmlFor="editScore" className="text-xs font-bold text-slate-500 uppercase">Score *</label>
                   <input
+                    id="editScore"
                     type="number"
                     required
                     min="0"
                     value={formData.score}
                     onChange={(e) => setFormData({ ...formData, score: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total *</label>
+                  <label htmlFor="editTotal" className="text-xs font-bold text-slate-500 uppercase">Out Of *</label>
                   <input
+                    id="editTotal"
                     type="number"
                     required
                     min="1"
                     value={formData.total}
                     onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
+                  <label htmlFor="editWeight" className="text-xs font-bold text-slate-500 uppercase">Weight % *</label>
                   <input
+                    id="editWeight"
                     type="number"
                     required
                     min="0"
                     max="100"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg text-sm text-center"
                   />
                 </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-sm font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-bold"
                 >
-                  Update Grade
+                  Update Score
                 </button>
               </div>
             </form>
@@ -593,63 +689,70 @@ export const TeacherGrades = () => {
 
       {/* Bulk Entry Modal */}
       {showBulkModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-3xl p-6 flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center border-b border-slate-150 dark:border-slate-800 pb-3 mb-4">
               <div>
-                <h2 className="text-xl font-bold">Bulk Grade Entry</h2>
-                <p className="text-sm text-gray-600">Enter grades for all students at once</p>
+                <h2 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tight">Bulk Grade Entry</h2>
+                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Enter grades for the whole class roster at once</p>
               </div>
-              <button onClick={() => { setShowBulkModal(false); setBulkGrades({}); }}>
-                <X className="w-5 h-5" />
+              <button type="button" aria-label="Close bulk" onClick={() => { setShowBulkModal(false); setBulkGrades({}); }}>
+                <X className="w-5 h-5 text-slate-400" />
               </button>
             </div>
 
-            <div className="mb-4 grid grid-cols-3 gap-4 p-4 bg-purple-50 rounded-lg">
+            <div className="grid grid-cols-3 gap-4 p-4 bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-2xl mb-4 text-sm">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Type *</label>
+                <label htmlFor="bulkType" className="text-xs font-bold text-purple-750 dark:text-purple-300 uppercase">Assessment Type *</label>
                 <select
+                  id="bulkType"
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  onChange={(e) => {
+                    const matched = gradingConfigs.find(c => c.id === e.target.value);
+                    setFormData({ 
+                      ...formData, 
+                      type: e.target.value,
+                      weight: matched ? String(matched.maxWeight) : formData.weight
+                    });
+                  }}
+                  className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-lg text-sm"
                 >
-                  <option value="Mid-Exam">Mid-Exam</option>
-                  <option value="Final-Exam">Final-Exam</option>
-                  <option value="Quiz">Quiz</option>
-                  <option value="Assignment">Assignment</option>
-                  <option value="Class-Work">Class-Work</option>
-                  <option value="Home-Work">Home-Work</option>
+                  {gradingConfigs.map(config => (
+                    <option key={config.id} value={config.id}>{config.label} ({config.maxWeight}%)</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks *</label>
+                <label htmlFor="bulkTotal" className="text-xs font-bold text-purple-750 dark:text-purple-300 uppercase">Total Marks *</label>
                 <input
+                  id="bulkTotal"
                   type="number"
                   min="1"
                   value={formData.total}
                   onChange={(e) => setFormData({ ...formData, total: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-lg text-sm text-center"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Weight % *</label>
+                <label htmlFor="bulkWeight" className="text-xs font-bold text-purple-750 dark:text-purple-300 uppercase">Weight % *</label>
                 <input
+                  id="bulkWeight"
                   type="number"
                   min="0"
                   max="100"
                   value={formData.weight}
                   onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  className="w-full mt-1 px-4 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 rounded-lg text-sm text-center"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {students.map((student) => (
-                <div key={student.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{student.name}</p>
-                    <p className="text-sm text-gray-600">{student.digitalId}</p>
+                <div key={student.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-850 rounded-xl hover:bg-slate-100 transition-colors">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{student.name}</p>
+                    <p className="text-xs text-slate-500 font-mono">{student.digitalId}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <input
@@ -657,35 +760,35 @@ export const TeacherGrades = () => {
                       min="0"
                       max={formData.total}
                       placeholder="Score"
-                      value={bulkGrades[student.id]?.score || ''}
+                      value={bulkGrades[student.id]?.score !== undefined ? bulkGrades[student.id].score : ''}
                       onChange={(e) => {
-                        const score = Number(e.target.value);
+                        const val = e.target.value === '' ? undefined : Number(e.target.value);
                         setBulkGrades({
                           ...bulkGrades,
-                          [student.id]: { score, total: formData.total }
+                          [student.id]: { score: val!, total: formData.total }
                         });
                       }}
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center"
+                      className="w-20 px-3 py-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-center font-bold text-sm"
                     />
-                    <span className="text-gray-600">/ {formData.total}</span>
+                    <span className="text-xs text-slate-400 font-bold">/ {formData.total}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
               <button
                 type="button"
                 onClick={() => { setShowBulkModal(false); setBulkGrades({}); }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 text-sm font-bold"
               >
                 Cancel
               </button>
               <button
                 onClick={handleBulkSubmit}
-                className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-750 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
               >
-                <Save className="w-5 h-5" />
+                <Save size={16} />
                 Save All Grades
               </button>
             </div>
