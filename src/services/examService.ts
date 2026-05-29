@@ -83,3 +83,80 @@ export const createExam = async (examData: {
   const response = await api.post('/teacher/exams', examData);
   return response.data.data;
 };
+
+// ─── Teacher Exam Management APIs ───────────────────────────────────────────
+
+/**
+ * Get all exams for the current teacher (draft and published)
+ */
+export const getTeacherExams = async (): Promise<{
+  draftExams: any[];
+  publishedExams: any[];
+}> => {
+  const response = await api.get('/teacher/exams');
+  return response.data.data;
+};
+
+/**
+ * Get a specific exam by ID
+ */
+export const getTeacherExamById = async (examId: string): Promise<any> => {
+  const response = await api.get(`/teacher/exams/${examId}`);
+  return response.data.data;
+};
+
+/**
+ * Create a new exam (draft)
+ * POST /api/exams
+ */
+export const saveTeacherExam = async (examData: {
+  classId: string;
+  title: string;
+  examType: string;
+  totalMarks: number;
+  duration: number;
+  instructions?: string;
+  selectedSection?: string;
+  questions?: any[];
+}): Promise<any> => {
+  const response = await api.post('/teacher/exams', examData);
+  return response.data.data;
+};
+
+/**
+ * Update a draft exam
+ * PATCH /api/exams/:id
+ */
+export const updateTeacherExam = async (
+  examId: string,
+  updateData: {
+    title?: string;
+    examType?: string;
+    totalMarks?: number;
+    duration?: number;
+    instructions?: string;
+    selectedSection?: string;
+    questions?: any[];
+  }
+): Promise<any> => {
+  const response = await api.patch(`/teacher/exams/${examId}`, updateData);
+  return response.data.data;
+};
+
+/**
+ * Publish a draft exam
+ * POST /api/exams/:id/publish
+ */
+export const publishTeacherExam = async (examId: string): Promise<any> => {
+  const response = await api.post(`/teacher/exams/${examId}/publish`);
+  return response.data.data;
+};
+
+/**
+ * Delete a draft exam
+ * DELETE /api/exams/:id
+ */
+export const deleteTeacherExam = async (examId: string): Promise<any> => {
+  const response = await api.delete(`/teacher/exams/${examId}`);
+  return response.data.data;
+};

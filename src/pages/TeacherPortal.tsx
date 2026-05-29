@@ -1,4 +1,4 @@
-import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star } from 'lucide-react';
+import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
@@ -12,10 +12,17 @@ import {
   getDeptPlans,
   reviewDeptPlan
 } from '../services/teacherService';
+import {
+  getTeacherExams,
+  saveTeacherExam,
+  updateTeacherExam,
+  publishTeacherExam,
+  deleteTeacherExam
+} from '../services/examService';
 
 export const TeacherPortal = () => {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'dept-tasks'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'exams' | 'dept-tasks'>('overview');
   const [dashboard, setDashboard] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +30,22 @@ export const TeacherPortal = () => {
   const [editingPlan, setEditingPlan] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+
+  // Exams states
+  const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+  const [draftExams, setDraftExams] = useState<any[]>([]);
+  const [publishedExams, setPublishedExams] = useState<any[]>([]);
+  const [editingExam, setEditingExam] = useState<any>(null);
+  const [examForm, setExamForm] = useState({
+    title: '',
+    examType: 'Mid Exam',
+    totalMarks: 100,
+    duration: 60,
+    instructions: '',
+    selectedClass: '',
+    selectedSection: '',
+    questions: [] as any[],
+  });
 
   // Additional states for dynamic fields
   const [myClasses, setMyClasses] = useState<any[]>([]);
@@ -45,7 +68,9 @@ export const TeacherPortal = () => {
 
   const handleApproveDeptPlan = async (id: string) => {
     try {
-      await reviewDeptPlan(id, { status: 'Approved', feedback: 'Approved by Department Head' });
+      const plan = deptPlans.find(p => p.id === id);
+      const rating = plan?.rating || plan?.dean_rating || 0;
+      await reviewDeptPlan(id, { status: 'Approved', feedback: 'Approved by Department Head', rating });
       showToast('Plan approved successfully!', 'success');
       const dPlans = await getDeptPlans();
       setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
@@ -57,7 +82,9 @@ export const TeacherPortal = () => {
   const handleRejectDeptPlan = async () => {
     if (!reviewingPlanId) return;
     try {
-      await reviewDeptPlan(reviewingPlanId, { status: 'Revision Required', feedback: reviewFeedback });
+      const plan = deptPlans.find(p => p.id === reviewingPlanId);
+      const rating = plan?.rating || plan?.dean_rating || 0;
+      await reviewDeptPlan(reviewingPlanId, { status: 'Revision Required', feedback: reviewFeedback, rating });
       showToast('Revision request submitted!', 'success');
       setReviewingPlanId(null);
       setReviewFeedback('');
@@ -86,14 +113,21 @@ export const TeacherPortal = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, planList, classList] = await Promise.all([
+      const [dash, planList, classList, examsData] = await Promise.all([
         getTeacherDashboard(),
         getMyWeeklyPlans(),
-        getMyClasses()
+        getMyClasses(),
+        getTeacherExams()
       ]);
       setDashboard(dash);
       setPlans(Array.isArray(planList) ? planList : []);
       setMyClasses(Array.isArray(classList) ? classList : []);
+      
+      // Load exams from backend
+      if (examsData) {
+        setDraftExams(Array.isArray(examsData.draftExams) ? examsData.draftExams : []);
+        setPublishedExams(Array.isArray(examsData.publishedExams) ? examsData.publishedExams : []);
+      }
       
       const deptHeadsList = await getDepartmentHeads();
       setDeptHeads(Array.isArray(deptHeadsList) ? deptHeadsList : []);
@@ -171,6 +205,118 @@ export const TeacherPortal = () => {
   const pendingPlans = plans.filter(p => p.status === 'Pending').length;
   const isDean = dashboard?.teacherInfo?.is_dean === true;
 
+  // Exam Handlers
+  const handlePublishExam = async (examId: string) => {
+    const exam = draftExams.find(e => e.id === examId);
+    if (!exam) return;
+    
+    if (!exam.selectedClass || !exam.selectedSection) {
+      setToast({ show: true, type: 'error', message: 'Please select class and section before publishing' });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      // Update exam with class and section info before publishing
+      if (exam.selectedClass !== exam.class_id) {
+        await updateTeacherExam(examId, {
+          ...exam,
+          classId: exam.selectedClass
+        });
+      }
+      
+      await publishTeacherExam(examId);
+      showToast('Exam published successfully!', 'success');
+      
+      // Refresh exams from backend
+      const examsData = await getTeacherExams();
+      setDraftExams(Array.isArray(examsData.draftExams) ? examsData.draftExams : []);
+      setPublishedExams(Array.isArray(examsData.publishedExams) ? examsData.publishedExams : []);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || 'Failed to publish exam', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteDraftExam = async (examId: string) => {
+    try {
+      setSubmitting(true);
+      await deleteTeacherExam(examId);
+      showToast('Exam deleted', 'success');
+      
+      // Refresh exams from backend
+      const examsData = await getTeacherExams();
+      setDraftExams(Array.isArray(examsData.draftExams) ? examsData.draftExams : []);
+    } catch (err: any) {
+      showToast(err.response?.data?.error || 'Failed to delete exam', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditDraftExam = (exam: any) => {
+    setEditingExam(exam);
+    setExamForm({
+      title: exam.title || '',
+      examType: exam.exam_type || exam.examType || 'Mid Exam',
+      totalMarks: exam.total_marks || exam.totalMarks || 100,
+      duration: exam.duration_minutes || exam.duration || 60,
+      instructions: exam.instructions || '',
+      selectedClass: exam.class_id || exam.selectedClass || '',
+      selectedSection: exam.selected_section || exam.selectedSection || '',
+      questions: exam.questions || []
+    });
+    setIsExamModalOpen(true);
+  };
+
+  const handleSaveExamChanges = async () => {
+    if (!examForm.title.trim()) { setToast({ show: true, type: 'error', message: 'Please enter exam title' }); return; }
+    if (!examForm.selectedClass) { setToast({ show: true, type: 'error', message: 'Please select a class' }); return; }
+    
+    try {
+      setSubmitting(true);
+      if (editingExam) {
+        // Update existing draft exam
+        await updateTeacherExam(editingExam.id, {
+          title: examForm.title,
+          examType: examForm.examType,
+          totalMarks: examForm.totalMarks,
+          duration: examForm.duration,
+          instructions: examForm.instructions,
+          selectedSection: examForm.selectedSection,
+          questions: examForm.questions
+        });
+        showToast('Exam updated!', 'success');
+      } else {
+        // Create new exam
+        await saveTeacherExam({
+          classId: examForm.selectedClass,
+          title: examForm.title,
+          examType: examForm.examType,
+          totalMarks: examForm.totalMarks,
+          duration: examForm.duration,
+          instructions: examForm.instructions,
+          selectedSection: examForm.selectedSection,
+          questions: examForm.questions
+        });
+        showToast('Exam saved!', 'success');
+      }
+      
+      // Refresh exams from backend
+      const examsData = await getTeacherExams();
+      setDraftExams(Array.isArray(examsData.draftExams) ? examsData.draftExams : []);
+      setPublishedExams(Array.isArray(examsData.publishedExams) ? examsData.publishedExams : []);
+      
+      setIsExamModalOpen(false);
+      setEditingExam(null);
+    } catch (err: any) {
+      showToast(err.response?.data?.error?.message || 'Failed to save exam', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -182,10 +328,11 @@ export const TeacherPortal = () => {
   return (
     <div className="space-y-8">
       {/* Tabs */}
-      <div className="flex gap-3 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl w-fit border border-slate-200/50 dark:border-slate-700/50">
+      <div className="flex gap-3 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl w-fit border border-slate-200/50 dark:border-slate-700/50 flex-wrap">
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'plans', label: 'Weekly Plans' },
+          { id: 'exams', label: 'Exams' },
           ...(isDean ? [{ id: 'dept-tasks', label: 'Department Tasks' }] : []),
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
@@ -334,7 +481,80 @@ export const TeacherPortal = () => {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'exams' ? (
+        /* Exams Tab */
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Official Examinations</h2>
+                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Create, manage, and publish exams for your classes</p>
+              </div>
+              <button onClick={() => { setEditingExam(null); setExamForm({ title: '', examType: 'Mid Exam', totalMarks: 100, duration: 60, instructions: '', selectedClass: '', selectedSection: '', questions: [] }); setIsExamModalOpen(true); }}
+                className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
+                <Plus size={18} /> Create New Exam
+              </button>
+            </div>
+
+            {/* Exams Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Draft Exams */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-6 rounded-2xl border border-amber-200 dark:border-amber-800">
+                <h3 className="text-lg font-black text-amber-900 dark:text-amber-300 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <FileText size={20} /> Draft Exams
+                </h3>
+                <div className="space-y-3">
+                  {draftExams.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-8">No draft exams yet. Create one to get started!</p>
+                  ) : (
+                    draftExams.map((exam: any) => (
+                      <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-amber-200 dark:border-amber-700 hover:shadow-md transition-all">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">{exam.title}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{exam.totalMarks} marks • {exam.duration} min</p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-1">DRAFT</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleEditDraftExam(exam)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">Edit</button>
+                            <button onClick={() => handlePublishExam(exam.id)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors">Publish</button>
+                            <button onClick={() => handleDeleteDraftExam(exam.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors">Delete</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Published Exams */}
+              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 p-6 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+                <h3 className="text-lg font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wide mb-4 flex items-center gap-2">
+                  <CheckCircle2 size={20} /> Published Exams
+                </h3>
+                <div className="space-y-3">
+                  {publishedExams.length === 0 ? (
+                    <p className="text-sm text-slate-500 text-center py-8">No published exams yet.</p>
+                  ) : (
+                    publishedExams.map((exam: any) => (
+                      <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-emerald-200 dark:border-emerald-700 hover:shadow-md transition-all">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">{exam.title}</h4>
+                            <p className="text-xs text-slate-500 mt-1">Class: {exam.className} • Section: {exam.section}</p>
+                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1">PUBLISHED</p>
+                          </div>
+                          <button className="px-3 py-1.5 bg-slate-600 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">View Results</button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'dept-tasks' ? (
         /* Department Tasks Tab */
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
@@ -371,93 +591,127 @@ export const TeacherPortal = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[900px]">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                    {['Teacher', 'Subject', 'Date', 'Topic / Content', 'Objectives', 'Status', 'Rating', 'Feedback', 'Actions'].map(h => (
-                      <th key={h} className="px-4 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredDeptPlans.length === 0 ? (
-                    <tr><td colSpan={9} className="px-6 py-12 text-center text-slate-500">No plans matching the search/filter criteria.</td></tr>
-                  ) : (
-                    filteredDeptPlans.map((plan: any) => (
-                      <tr key={plan.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/5 transition-colors">
-                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.teacher_name || plan.teacherName}</td>
-                        <td className="px-4 py-4 text-xs font-semibold text-blue-600 dark:text-blue-400">{plan.subject || '—'}</td>
-                        <td className="px-4 py-4 text-xs font-bold text-slate-800 dark:text-slate-200">{plan.date?.slice(0, 10)}</td>
-                        <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate" title={plan.content}>{plan.content}</td>
-                        <td className="px-4 py-4 text-xs text-slate-600 dark:text-slate-400 max-w-[150px] truncate" title={plan.objectives}>{plan.objectives}</td>
-                        <td className="px-4 py-4">
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                            plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
-                              'bg-amber-100 text-amber-600'
-                            }`}>{plan.status}</span>
-                        </td>
-                        {/* Star Rating */}
-                        <td className="px-4 py-4">
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <button
-                                key={star}
-                                type="button"
-                                title={`Rate ${star} out of 5`}
-                                onClick={() =>
-                                  setDeptPlans(prev =>
-                                    prev.map(p => p.id === plan.id ? { ...p, rating: star } : p)
-                                  )
-                                }
-                                className="focus:outline-none transition-transform hover:scale-125"
-                              >
-                                <Star
-                                  size={16}
-                                  className={star <= (plan.dean_rating || plan.deanRating || plan.rating || 0)
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-300 dark:text-slate-600'}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-xs text-slate-500 max-w-[150px] truncate" title={plan.dean_feedback || plan.deanFeedback || plan.feedback || '—'}>
-                          {plan.dean_feedback || plan.deanFeedback || plan.feedback || <span className="text-slate-400">—</span>}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex gap-2">
-                            {plan.status === 'Pending' && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() => handleApproveDeptPlan(plan.id)}
-                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setReviewingPlanId(plan.id);
-                                    setReviewFeedback('');
-                                  }}
-                                  className="px-2.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors"
-                                >
-                                  Revision
-                                </button>
-                              </>
-                            )}
-                            {plan.status !== 'Pending' && (
-                              <span className="text-xs text-slate-400 font-medium">Reviewed</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDeptPlans.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <p className="text-slate-500 font-bold">No plans matching the search/filter criteria.</p>
+                </div>
+              ) : (
+                filteredDeptPlans.map((plan: any) => (
+                  <div
+                    key={plan.id}
+                    className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg transition-all p-6 space-y-4 group cursor-pointer"
+                  >
+                    {/* Header */}
+                    <div className="border-b border-slate-100 dark:border-slate-700 pb-3">
+                      <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight">
+                        {plan.teacher_name || plan.teacherName}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-bold uppercase mt-1">{plan.subject || '—'}</p>
+                    </div>
+
+                    {/* Plan Details */}
+                    <div className="space-y-2 text-xs">
+                      <div>
+                        <label className="font-bold text-slate-600 dark:text-slate-400">Date</label>
+                        <p className="text-slate-800 dark:text-slate-200">{plan.date?.slice(0, 10)}</p>
+                      </div>
+                      <div>
+                        <label className="font-bold text-slate-600 dark:text-slate-400">Topic/Content</label>
+                        <p className="text-slate-800 dark:text-slate-200 line-clamp-2">{plan.content}</p>
+                      </div>
+                      <div>
+                        <label className="font-bold text-slate-600 dark:text-slate-400">Objectives</label>
+                        <p className="text-slate-800 dark:text-slate-200 line-clamp-2">{plan.objectives}</p>
+                      </div>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <span
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                          plan.status === 'Approved'
+                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                            : plan.status === 'Revision Required'
+                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
+                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                        }`}
+                      >
+                        {plan.status}
+                      </span>
+                    </div>
+
+                    {/* Rating Section */}
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
+                      <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-2">Rate This Plan</label>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            type="button"
+                            title={`Rate ${star} out of 5`}
+                            onClick={() =>
+                              setDeptPlans(prev =>
+                                prev.map(p => p.id === plan.id ? { ...p, rating: star } : p)
+                              )
+                            }
+                            className="focus:outline-none transition-transform hover:scale-125"
+                          >
+                            <Star
+                              size={18}
+                              className={
+                                star <= (plan.dean_rating || plan.deanRating || plan.rating || 0)
+                                  ? 'text-amber-400 fill-amber-400'
+                                  : 'text-slate-300 dark:text-slate-600'
+                              }
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Feedback */}
+                    {(plan.dean_feedback || plan.deanFeedback || plan.feedback) && (
+                      <div className="bg-blue-50 dark:bg-blue-900/10 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Feedback</p>
+                        <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                          {plan.dean_feedback || plan.deanFeedback || plan.feedback}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      {plan.status === 'Pending' && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleApproveDeptPlan(plan.id)}
+                            className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setReviewingPlanId(plan.id);
+                              setReviewFeedback('');
+                            }}
+                            className="flex-1 px-3 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-xs font-bold transition-colors"
+                          >
+                            ⟲ Revise
+                          </button>
+                        </>
+                      )}
+                      {plan.status !== 'Pending' && (
+                        <div className="w-full text-center">
+                          <span className="text-xs text-slate-400 font-medium">✓ Already Reviewed</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -492,7 +746,7 @@ export const TeacherPortal = () => {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {/* Plan Modal */}
       {isPlanModalOpen && (
@@ -618,6 +872,107 @@ export const TeacherPortal = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Exam Modal */}
+      {isExamModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-40 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl my-8 border border-slate-100 dark:border-slate-800">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-t-2xl flex justify-between items-center z-10">
+              <h3 className="text-xl font-black text-white uppercase tracking-wide">{editingExam ? '✏️ Edit Exam' : '📝 Create New Exam'}</h3>
+              <button onClick={() => { setIsExamModalOpen(false); setEditingExam(null); }} className="text-white hover:bg-white/20 p-1 rounded">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+              {/* Exam Title */}
+              <div>
+                <label htmlFor="examTitle" className="text-xs font-bold text-slate-500 uppercase">Exam Title</label>
+                <input id="examTitle" type="text" placeholder="e.g., Mid Exam - Mathematics" 
+                  value={examForm.title} onChange={e => setExamForm({ ...examForm, title: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+
+              {/* Exam Type & Total Marks & Duration */}
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label htmlFor="examType" className="text-xs font-bold text-slate-500 uppercase">Type</label>
+                  <select id="examType" value={examForm.examType} onChange={e => setExamForm({ ...examForm, examType: e.target.value })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <option>Mid Exam</option>
+                    <option>Final Exam</option>
+                    <option>Quiz</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="totalMarks" className="text-xs font-bold text-slate-500 uppercase">Total Marks</label>
+                  <input id="totalMarks" type="number" min="10" max="1000" 
+                    value={examForm.totalMarks} onChange={e => setExamForm({ ...examForm, totalMarks: parseInt(e.target.value) })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label htmlFor="duration" className="text-xs font-bold text-slate-500 uppercase">Duration (min)</label>
+                  <input id="duration" type="number" min="15" max="600" 
+                    value={examForm.duration} onChange={e => setExamForm({ ...examForm, duration: parseInt(e.target.value) })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+
+              {/* Class & Section */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="examClass" className="text-xs font-bold text-slate-500 uppercase">Class</label>
+                  <select id="examClass" value={examForm.selectedClass} onChange={e => { 
+                    const selected = myClasses.find(c => c.id === e.target.value);
+                    setExamForm({ ...examForm, selectedClass: e.target.value, selectedSection: '' }); 
+                  }}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Select Class</option>
+                    {myClasses.map(c => (
+                      <option key={c.id} value={c.id}>{c.name || c.class_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="examSection" className="text-xs font-bold text-slate-500 uppercase">Section</label>
+                  <input id="examSection" type="text" placeholder="e.g., A, B, C" 
+                    value={examForm.selectedSection} onChange={e => setExamForm({ ...examForm, selectedSection: e.target.value })}
+                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div>
+                <label htmlFor="examInstructions" className="text-xs font-bold text-slate-500 uppercase">Instructions for Students</label>
+                <textarea id="examInstructions" rows={3} placeholder="e.g., Answer all questions. No calculators allowed. Duration: 1 hour" 
+                  value={examForm.instructions} onChange={e => setExamForm({ ...examForm, instructions: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+
+              {/* Questions Builder - Simple version */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Questions Preview</label>
+                <p className="text-xs text-slate-500 mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  {examForm.questions.length === 0 ? 'No questions added yet. This feature will be available in the full version.' : `${examForm.questions.length} questions configured`}
+                </p>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-slate-50 dark:bg-slate-800 p-6 rounded-b-2xl flex gap-3 border-t border-slate-100 dark:border-slate-700">
+              <button onClick={() => { setIsExamModalOpen(false); setEditingExam(null); }}
+                className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleSaveExamChanges} disabled={submitting}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                {editingExam ? 'Update Exam' : 'Save Exam'}
+              </button>
+            </div>
           </div>
         </div>
       )}
