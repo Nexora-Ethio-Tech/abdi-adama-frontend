@@ -41,10 +41,11 @@ export interface FeeReduction {
   fee_status: 'standard' | 'reduced';
   fee_approval_status: 'none' | 'pending' | 'approved' | 'rejected';
   fee_notes: string | null;
+  requested_aid_amount?: number | null;
 }
 
 export interface ApproveFeeReductionRequest {
-  status: 'Approved' | 'Rejected' | 'Pending';
+  status: 'approved' | 'rejected' | 'pending';
 }
 
 export interface FinancialReport {
@@ -125,6 +126,7 @@ const auditorService = {
       monthly_fee: parseFloat(s.monthly_fee) || 0,
       bus_fee: parseFloat(s.bus_fee) || 0,
       penalty_fee: parseFloat(s.penalty_fee) || 0,
+      requested_aid_amount: s.requested_aid_amount != null ? parseFloat(s.requested_aid_amount) : null,
     }));
   },
 

@@ -195,7 +195,7 @@ export const AuditorFinance = () => {
     }
   };
 
-  const handleApprove = async (id: string, status: 'Approved' | 'Rejected') => {
+  const handleApprove = async (id: string, status: 'approved' | 'rejected') => {
     try {
       await auditorService.updateFeeReductionStatus(id, { status });
       setSuccess(`Fee reduction ${status.toLowerCase()} successfully!`);
@@ -802,6 +802,11 @@ export const AuditorFinance = () => {
                             </span>
                           </div>
                           <p className="text-xs text-slate-450 dark:text-slate-400 mt-1 font-medium">{reduction.digital_id} • {reduction.email}</p>
+                          {reduction.requested_aid_amount != null && reduction.requested_aid_amount > 0 && (
+                            <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mt-1">
+                              Requested aid: {Number(reduction.requested_aid_amount).toLocaleString()} ETB
+                            </p>
+                          )}
                           {reduction.fee_notes && (
                             <p className="text-xs text-slate-600 dark:text-slate-350 mt-1.5 italic bg-slate-55/60 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
                               "{reduction.fee_notes}"
@@ -841,14 +846,14 @@ export const AuditorFinance = () => {
                             <button
                               type="button"
                               title="Reject fee reduction request"
-                              onClick={() => handleApprove(reduction.id, 'Rejected')}
+                              onClick={() => handleApprove(reduction.id, 'rejected')}
                               className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl border border-rose-100 dark:border-rose-900/30 transition-all"
                             >
                               <XCircle size={18} />
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleApprove(reduction.id, 'Approved')}
+                              onClick={() => handleApprove(reduction.id, 'approved')}
                               className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/10"
                             >
                               Approve
