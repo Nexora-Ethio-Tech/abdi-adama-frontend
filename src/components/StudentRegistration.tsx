@@ -168,11 +168,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     fee_status: 'standard' as 'standard' | 'reduced',
     fee_notes: ''
   });
-  const [showClassModal, setShowClassModal] = useState(false);
-  const [selectedAppForClass, setSelectedAppForClass] = useState<string | null>(null);
-  const [availableClasses, setAvailableClasses] = useState<any[]>([]);
-  const [selectedClass, setSelectedClass] = useState<string | null>(null);
-  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [selectedAppForGrade, setSelectedAppForGrade] = useState<string | null>(null);
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAdminView) {
@@ -527,49 +525,36 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     }
   };
 
-  const handlePass = async (appId: string) => {
-    try {
-      // First, load available classes
-      setLoadingClasses(true);
-      const { classService } = await import('../services/classService');
-      const classes = await classService.getAllClasses();
-      setAvailableClasses(Array.isArray(classes) ? classes : classes.data || []);
+  const gradeOptions = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
 
-      // Show class selection modal
-      setSelectedAppForClass(appId);
-      setShowClassModal(true);
-      setLoadingClasses(false);
-    } catch (err: any) {
-      console.error(err);
-      setSubmitError(err.message || 'Failed to load classes');
-      setTimeout(() => setSubmitError(null), 5000);
-      setLoadingClasses(false);
-    }
+  const handlePass = (appId: string) => {
+    const app = pendingApps.find(a => a.id === appId);
+    setSelectedAppForGrade(appId);
+    setSelectedGrade(app?.lastGrade || gradeOptions[0]);
+    setShowGradeModal(true);
   };
 
-  const handleConfirmClassAssignment = async () => {
-    if (!selectedAppForClass || !selectedClass) {
-      setSubmitError('Please select a class');
+  const handleConfirmGradeAssignment = async () => {
+    if (!selectedAppForGrade || !selectedGrade) {
+      setSubmitError('Please select a grade');
       setTimeout(() => setSubmitError(null), 5000);
       return;
     }
 
     try {
-      // Update pending application status to awaiting-payment
-      await updateApplicationStatus(selectedAppForClass, {
-        status: 'awaiting-payment'
+      await updateApplicationStatus(selectedAppForGrade, {
+        status: 'awaiting-payment',
+        gradeApplying: selectedGrade
       });
 
-      const app = pendingApps.find(a => a.id === selectedAppForClass);
-      setPendingApps(prev => prev.map(a => a.id === selectedAppForClass ? { ...a, status: 'awaiting-payment' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} assigned to class and forwarded to finance.`);
-      if (app) showEmailToast(app.email, 'Class Assigned: Proceed to Finance');
+      const app = pendingApps.find(a => a.id === selectedAppForGrade);
+      setPendingApps(prev => prev.map(a => a.id === selectedAppForGrade ? { ...a, status: 'awaiting-payment' as AppStatus, lastGrade: selectedGrade } : a));
+      setSuccessMessage(`${app?.name} forwarded to finance for Grade ${selectedGrade}.`);
+      if (app) showEmailToast(app.email, `Forwarded to Finance for Grade ${selectedGrade}`);
 
-      // Close modal
-      setShowClassModal(false);
-      setSelectedAppForClass(null);
-      setSelectedClass(null);
-
+      setShowGradeModal(false);
+      setSelectedAppForGrade(null);
+      setSelectedGrade(null);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
       console.error(err);
@@ -763,24 +748,24 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <div className="grid grid-cols-2 gap-3 pt-4">
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Exam Date</label>
-                        <input type="date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="date" title="Exam date" aria-label="Exam date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</label>
-                        <input type="time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                        <input type="time" title="Exam time" aria-label="Exam time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Location</label>
-                      <input type="text" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      <input type="text" title="Exam location" aria-label="Exam location" placeholder="Enter exam location" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subjects</label>
-                      <input type="text" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
+                      <input type="text" title="Exam subjects" aria-label="Exam subjects" placeholder="Enter subjects" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instructions for Students</label>
-                      <textarea rows={2} value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
+                      <textarea rows={2} title="Exam instructions" aria-label="Exam instructions" placeholder="Enter instructions for students" value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
                     </div>
                     <p className="text-[10px] text-amber-600 font-medium">💡 These details are sent to every applicant you assign to "Pass After Exam".</p>
                   </div>
@@ -955,7 +940,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
-                    <input required name="dob" type="date" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
+                    <input required name="dob" type="date" title="Date of Birth" aria-label="Date of Birth" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
                       ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                       : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                       }`} />
@@ -963,7 +948,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Gender <span className="text-rose-500">*</span></label>
-                    <select name="gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
+                    <select name="gender" title="Gender" aria-label="Gender" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.gender
                       ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                       : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                       }`}>
@@ -985,7 +970,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Blood Group</label>
-                      <select name="bloodGroup" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <select name="bloodGroup" title="Blood Group" aria-label="Blood Group" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">Select Blood Group</option>
                         <option>O+</option>
                         <option>O-</option>
@@ -1093,6 +1078,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <input
                       type="file"
                       name="transcript"
+                      title="Upload student transcript"
+                      aria-label="Upload student transcript"
                       accept=".pdf,.jpg,.jpeg,.png"
                       onChange={handleFileUpload}
                       className="absolute inset-0 opacity-0 cursor-pointer"
@@ -1219,7 +1206,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase">Promote To Grade</label>
-                      <select className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <select title="Promote To Grade" aria-label="Promote To Grade" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500">
                         <option>Grade 9</option>
                         <option>Grade 10</option>
                         <option>Grade 11</option>
@@ -1284,6 +1271,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
               <button
                 onClick={() => setViewingTranscript(null)}
+                title="Close transcript verification modal"
+                aria-label="Close transcript verification modal"
                 className="p-3 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
               >
                 <X size={24} />
@@ -1403,70 +1392,50 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         </div>
       )}
       {/* Fee Configuration Modal */}
-      {showClassModal && selectedAppForClass && (
+      {showGradeModal && selectedAppForGrade && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-100 dark:border-slate-800 animate-in zoom-in-95 duration-200">
             <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-              <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Assign Class</h3>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select the class for this student</p>
+              <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight">Assign Grade</h3>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Select the grade to forward this applicant to finance.</p>
             </div>
             <div className="p-8 space-y-6">
-              {loadingClasses ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grade</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {gradeOptions.map((grade) => (
+                    <button
+                      key={grade}
+                      type="button"
+                      onClick={() => setSelectedGrade(grade)}
+                      className={`py-4 rounded-2xl border-2 text-sm font-black transition-all ${selectedGrade === grade
+                        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                        : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
+                        }`}
+                    >
+                      Grade {grade}
+                    </button>
+                  ))}
                 </div>
-              ) : availableClasses.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-slate-500">No classes available</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Classes</label>
-                  <div className="max-h-96 overflow-y-auto space-y-2">
-                    {availableClasses.map((cls: any) => (
-                      <div
-                        key={cls.id}
-                        onClick={() => setSelectedClass(cls.id)}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedClass === cls.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:border-blue-300'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-white">{cls.name || cls.class_name}</p>
-                            <p className="text-xs text-slate-500">{cls.section || 'No section'}</p>
-                          </div>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${selectedClass === cls.id
-                            ? 'border-blue-500 bg-blue-500'
-                            : 'border-slate-300 dark:border-slate-600'
-                            }`}>
-                            {selectedClass === cls.id && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
             <div className="p-8 bg-slate-50/50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
               <button
                 onClick={() => {
-                  setShowClassModal(false);
-                  setSelectedAppForClass(null);
-                  setSelectedClass(null);
+                  setShowGradeModal(false);
+                  setSelectedAppForGrade(null);
+                  setSelectedGrade(null);
                 }}
                 className="px-6 py-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-700"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirmClassAssignment}
-                disabled={!selectedClass || loadingClasses}
+                onClick={handleConfirmGradeAssignment}
+                disabled={!selectedGrade}
                 className="bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-700 shadow-xl shadow-blue-500/20 active:scale-95"
               >
-                Assign & Forward
+                Forward to Finance
               </button>
             </div>
           </div>
@@ -1486,6 +1455,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Tuition (ETB)</label>
                   <input
                     type="number"
+                    title="Monthly tuition in ETB"
+                    aria-label="Monthly tuition in ETB"
+                    placeholder="Enter monthly tuition"
                     value={customFees.monthly_fee}
                     onChange={(e) => setCustomFees({ ...customFees, monthly_fee: Number(e.target.value) })}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
@@ -1495,6 +1467,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Transport Fee (ETB)</label>
                   <input
                     type="number"
+                    title="Transport fee in ETB"
+                    aria-label="Transport fee in ETB"
+                    placeholder="Enter transport fee"
                     value={customFees.bus_fee}
                     onChange={(e) => setCustomFees({ ...customFees, bus_fee: Number(e.target.value) })}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-blue-500/10"
@@ -1504,6 +1479,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fee Status</label>
                 <select
+                  title="Fee status"
+                  aria-label="Fee status"
                   value={customFees.fee_status}
                   onChange={(e) => setCustomFees({ ...customFees, fee_status: e.target.value as any })}
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none"

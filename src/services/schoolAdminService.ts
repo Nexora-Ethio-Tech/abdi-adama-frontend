@@ -110,6 +110,7 @@ export interface Application {
 
 export interface UpdateApplicationStatusData {
   status: string;
+  gradeApplying?: string;
 }
 
 // Financial Policy Interface

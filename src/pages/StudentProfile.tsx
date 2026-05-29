@@ -36,7 +36,7 @@ export const StudentProfile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedBio, setEditedBio] = useState('');
   const [selectedHistoryYear, setSelectedHistoryYear] = useState('all');
-  
+
   // Section assignment state
   const [showSectionModal, setShowSectionModal] = useState(false);
   const [availableSections, setAvailableSections] = useState<sectionService.SectionInfo[]>([]);
@@ -138,9 +138,8 @@ export const StudentProfile = () => {
             <p className="text-slate-500 font-medium mb-6">Grade {student.grade} Student</p>
 
             <div className="flex justify-center gap-2">
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                student.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-              }`}>
+              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${student.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                }`}>
                 {student.status}
               </span>
               <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -299,9 +298,8 @@ export const StudentProfile = () => {
                       setIsEditing(true);
                     }
                   }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                    isEditing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${isEditing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white'
+                    }`}
                 >
                   {isEditing ? <Save size={14} /> : <Edit2 size={14} />}
                   {isEditing ? 'Save Bio' : 'Edit Bio'}
@@ -324,11 +322,10 @@ export const StudentProfile = () => {
           </div>
           {/* Action Header */}
           <div className="flex flex-wrap items-center justify-between gap-4 px-4 sm:px-0">
-            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${
-              student.riskLevel === 'High' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-              student.riskLevel === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-700' :
-              'bg-emerald-50 border-emerald-100 text-emerald-700'
-            }`}>
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${student.riskLevel === 'High' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                student.riskLevel === 'Medium' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                  'bg-emerald-50 border-emerald-100 text-emerald-700'
+              }`}>
               <AlertTriangle size={20} />
               <div>
                 <p className="text-[10px] font-bold uppercase opacity-70">AI Academic Health Monitor</p>
@@ -380,51 +377,54 @@ export const StudentProfile = () => {
                 Academic History
               </h4>
               <div className="flex items-center gap-2">
-                 <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Filter Year:</span>
-                 <select
-                   value={selectedHistoryYear}
-                   onChange={(e) => setSelectedHistoryYear(e.target.value)}
-                   className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                 >
-                   <option value="all">All Academic Years</option>
-                   {Array.from(new Set((student.academicHistory || []).map((h: any) => h.year))).map((y: any) => (
-                      <option key={y} value={y}>EC {y}</option>
-                   ))}
-                 </select>
+                <label htmlFor="history-filter-year" className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">Filter Year:</label>
+                <select
+                  id="history-filter-year"
+                  title="Filter academic history year"
+                  aria-label="Filter academic history year"
+                  value={selectedHistoryYear}
+                  onChange={(e) => setSelectedHistoryYear(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Academic Years</option>
+                  {Array.from(new Set((student.academicHistory || []).map((h: any) => h.year))).map((y: any) => (
+                    <option key={y} value={y}>EC {y}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
-               {(student.academicHistory || [])
-                 .filter((h: any) => selectedHistoryYear === 'all' || h.year === selectedHistoryYear)
-                 .map((record: any, i: number) => (
+              {(student.academicHistory || [])
+                .filter((h: any) => selectedHistoryYear === 'all' || h.year === selectedHistoryYear)
+                .map((record: any, i: number) => (
                   <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:bg-white hover:shadow-md transition-all group">
-                     <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg shadow-blue-100">
-                           {record.grade}
-                        </div>
-                        <div>
-                           <p className="text-sm font-bold text-slate-800 dark:text-white">Grade {record.grade}</p>
-                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Academic Year EC {record.year}</p>
-                        </div>
-                     </div>
-                     <div className="flex items-center gap-8">
-                        <div className="text-center">
-                           <p className="text-[9px] font-bold text-slate-400 uppercase">Avg Score</p>
-                           <p className="text-sm font-black text-blue-600">{record.average}</p>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-[9px] font-bold text-slate-400 uppercase">Rank</p>
-                           <p className="text-sm font-black text-slate-800 dark:text-white">{record.rank}</p>
-                        </div>
-                     </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black text-xs shadow-lg shadow-blue-100">
+                        {record.grade}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-800 dark:text-white">Grade {record.grade}</p>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Academic Year EC {record.year}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-8">
+                      <div className="text-center">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Avg Score</p>
+                        <p className="text-sm font-black text-blue-600">{record.average}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Rank</p>
+                        <p className="text-sm font-black text-slate-800 dark:text-white">{record.rank}</p>
+                      </div>
+                    </div>
                   </div>
-               ))}
-               {(!student.academicHistory || student.academicHistory.length === 0) && (
-                  <div className="py-12 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
-                    No historical records available for this student.
-                  </div>
-               )}
+                ))}
+              {(!student.academicHistory || student.academicHistory.length === 0) && (
+                <div className="py-12 text-center text-slate-400 text-sm italic border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-3xl">
+                  No historical records available for this student.
+                </div>
+              )}
             </div>
           </div>
 
@@ -521,10 +521,13 @@ export const StudentProfile = () => {
               ) : (
                 <>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                    <label htmlFor="profile-section-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
                       Select Section
                     </label>
                     <select
+                      id="profile-section-select"
+                      title="Select Section"
+                      aria-label="Select Section"
                       value={selectedSection}
                       onChange={(e) => setSelectedSection(e.target.value)}
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -586,11 +589,14 @@ export const StudentProfile = () => {
             <div className="sticky top-0 bg-white border-b border-slate-100 dark:border-slate-800 px-8 py-4 flex items-center justify-between z-10">
               <h3 className="text-xl font-bold text-slate-800 dark:text-white">Academic Transcript</h3>
               <div className="flex items-center gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold">
+                <button type="button" title="Print transcript" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-bold">
                   <Printer size={18} />
                   Print Now
                 </button>
                 <button
+                  type="button"
+                  title="Close transcript modal"
+                  aria-label="Close transcript modal"
                   onClick={() => setShowTranscript(false)}
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                 >
@@ -649,7 +655,7 @@ export const StudentProfile = () => {
                       <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase">Subject</th>
                       {gradingMethods.map(m => (
                         <th key={m.id} className="py-3 px-2 text-[9px] font-black text-slate-400 uppercase text-center">
-                          {m.label}<br/>({m.maxWeight})
+                          {m.label}<br />({m.maxWeight})
                         </th>
                       ))}
                       <th className="py-3 px-4 text-xs font-bold text-slate-500 uppercase text-center">Total</th>
@@ -700,7 +706,7 @@ export const StudentProfile = () => {
                   <p className="text-sm font-bold text-slate-800">School Registrar</p>
                   <div className="w-24 h-24 border-4 border-double border-blue-600/20 rounded-full flex items-center justify-center mx-auto opacity-50">
                     <div className="text-[10px] font-black text-blue-600 uppercase text-center rotate-12">
-                      OFFICIAL<br/>SEAL
+                      OFFICIAL<br />SEAL
                     </div>
                   </div>
                 </div>
@@ -713,21 +719,19 @@ export const StudentProfile = () => {
       {/* Toast */}
       {toast.show && (
         <div className="fixed bottom-4 right-4 z-[200] animate-in slide-in-from-bottom-5 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${
-            toast.type === 'success'
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl border ${toast.type === 'success'
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
               : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-          }`}>
+            }`}>
             {toast.type === 'success' ? (
               <CheckCircle2 className="text-green-600 dark:text-green-400" size={20} />
             ) : (
               <XCircle className="text-red-600 dark:text-red-400" size={20} />
             )}
-            <p className={`text-sm font-bold ${
-              toast.type === 'success'
+            <p className={`text-sm font-bold ${toast.type === 'success'
                 ? 'text-green-800 dark:text-green-200'
                 : 'text-red-800 dark:text-red-200'
-            }`}>
+              }`}>
               {toast.message}
             </p>
           </div>

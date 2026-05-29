@@ -95,6 +95,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/' },
           { icon: BookOpen, label: 'Classes', path: '/classes' },
+          { icon: Users, label: 'Student Section Assignment', path: '/student-section-assignment' },
           { icon: Users, label: t('nav.students'), path: '/students' },
           { icon: Users, label: 'Staff Management', path: '/staff' },
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
@@ -194,13 +195,13 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const checkActive = (itemPath: string) => {
     if (isExamLockedDown) return false;
     const currentFull = location.pathname + location.search;
-    
+
     if (role === 'parent') {
       const itemTab = new URLSearchParams(itemPath.split('?')[1] || '').get('tab') || 'dashboard';
       const currentTab = new URLSearchParams(location.search).get('tab') || 'dashboard';
       return itemTab === currentTab;
     }
-    
+
     if (itemPath === '/') {
       return location.pathname === '/' || location.pathname === getDashboardRoute(role);
     }
@@ -238,7 +239,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           </div>
         </div>
         <button
+          type="button"
           onClick={onClose}
+          aria-label={t('sidebar.closeMenu') || 'Close sidebar'}
+          title={t('sidebar.closeMenu') || 'Close sidebar'}
           className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg lg:hidden text-slate-500 dark:text-white"
         >
           <X size={20} />

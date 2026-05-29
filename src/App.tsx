@@ -62,6 +62,7 @@ const LoanManagement = lazy(() => import('./pages/LoanManagement'));
 const ChatbotManagement = lazy(() => import('./pages/ChatbotManagement'));
 const EmployeeProfiles = lazy(() => import('./pages/EmployeeProfiles'));
 const MyFinance = lazy(() => import('./pages/MyFinance'));
+const StudentSectionAssignmentPage = lazy(() => import('./pages/StudentSectionAssignmentPage').then((m) => ({ default: m.StudentSectionAssignmentPage })));
 
 const PageLoader = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -219,6 +220,12 @@ function App() {
               <Route path="classes" element={
                 <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
                   <Classes />
+                </ProtectedRoute>
+              } />
+
+              <Route path="student-section-assignment" element={
+                <ProtectedRoute allowedRoles={['school-admin', 'super-admin']}>
+                  <StudentSectionAssignmentPage />
                 </ProtectedRoute>
               } />
 
