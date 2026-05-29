@@ -11,7 +11,6 @@ interface AssignmentResult {
 }
 
 export const StudentSectionAssignment = () => {
-  const { branch_id } = useUser();
 
   // Auto-distribute mode state
   const [selectedGrade, setSelectedGrade] = useState('');

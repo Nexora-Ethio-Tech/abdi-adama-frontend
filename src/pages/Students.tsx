@@ -1,4 +1,4 @@
-import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, Repeat2 } from 'lucide-react';
+import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
@@ -56,8 +56,6 @@ export const Students = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showAssignSectionModal, setShowAssignSectionModal] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke'; student: any }>({ show: false, action: 'approve', student: null });
-  const [processing, setProcessing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ show: boolean; student: any }>({ show: false, student: null });
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [availableSectionsForSingle, setAvailableSectionsForSingle] = useState<sectionService.SectionInfo[]>([]);
@@ -78,12 +76,6 @@ export const Students = () => {
   const [selectedBulkSectionIds, setSelectedBulkSectionIds] = useState<Set<string>>(new Set());
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [loadingBulkSections, setLoadingBulkSections] = useState(false);
-
-  // Swap sections state
-  const [showSwapModal, setShowSwapModal] = useState(false);
-  const [swapStudentA, setSwapStudentA] = useState<any>(null);
-  const [swapStudentBId, setSwapStudentBId] = useState('');
-  const [swappingStudents, setSwappingStudents] = useState(false);
 
   const handlePhoneInput = (value: string) => {
     // Remove any non-digit characters
@@ -313,24 +305,6 @@ export const Students = () => {
     }
   };
 
-  const handleStatusAction = async () => {
-    if (!confirmAction.student) return;
-    setProcessing(true);
-    try {
-      if (confirmAction.action === 'approve') {
-        await approveTeacher(confirmAction.student.userId);
-      } else {
-        await revokeTeacher(confirmAction.student.userId);
-      }
-      showToast(`Student ${confirmAction.action === 'approve' ? 'approved' : 'revoked'} successfully!`, 'success');
-      setConfirmAction({ show: false, action: 'approve', student: null });
-      fetchStudents();
-    } catch (err: any) {
-      showToast(err.response?.data?.error?.message || 'Action failed', 'error');
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -681,19 +655,6 @@ export const Students = () => {
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setSwapStudentA(student);
-                                setSwapStudentBId('');
-                                setShowSwapModal(true);
-                              }}
-                              className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 rounded-lg transition-colors"
-                              title="Swap Section"
-                              aria-label="Swap section with another student"
-                            >
-                              <Repeat2 size={16} />
-                            </button>
-                            <button
-                              type="button"
                               onClick={() => openEditModal(student)}
                               className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 rounded-lg transition-colors"
                               title="Edit student"
@@ -701,28 +662,6 @@ export const Students = () => {
                             >
                               <Edit2 size={16} />
                             </button>
-                            {student.status === 'Pending' && (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmAction({ show: true, action: 'approve', student })}
-                                className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 rounded-lg transition-colors"
-                                title="Approve"
-                                aria-label="Approve student"
-                              >
-                                <Check size={16} />
-                              </button>
-                            )}
-                            {student.status === 'Approved' && (
-                              <button
-                                type="button"
-                                onClick={() => setConfirmAction({ show: true, action: 'revoke', student })}
-                                className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 rounded-lg transition-colors"
-                                title="Revoke"
-                                aria-label="Revoke student"
-                              >
-                                <XCircle size={16} />
-                              </button>
-                            )}
                             <button
                               type="button"
                               onClick={() => setConfirmDelete({ show: true, student })}
@@ -978,42 +917,6 @@ export const Students = () => {
         </div>
       )}
 
-      {/* Approve/Revoke Confirmation Modal */}
-      {confirmAction.show && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">
-                Confirm {confirmAction.action === 'approve' ? 'Approval' : 'Revocation'}
-              </h3>
-            </div>
-            <div className="p-6">
-              <p className="text-slate-600 dark:text-slate-400">
-                Are you sure you want to {confirmAction.action} <strong>{confirmAction.student?.firstName} {confirmAction.student?.lastName}</strong>?
-              </p>
-            </div>
-            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmAction({ show: false, action: 'approve', student: null })}
-                className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm hover:bg-slate-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleStatusAction}
-                className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm text-white ${confirmAction.action === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-orange-600 hover:bg-orange-700'
-                  } disabled:opacity-50`}
-                disabled={processing}
-              >
-                {processing ? 'Processing...' : confirmAction.action === 'approve' ? 'Approve' : 'Revoke'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {confirmDelete.show && (
@@ -1185,99 +1088,6 @@ export const Students = () => {
         </div>
       )}
 
-      {/* Swap Sections Modal */}
-      {showSwapModal && swapStudentA && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 text-purple-600 rounded-lg"><Repeat2 size={20} /></div>
-                <div>
-                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Swap Section</h3>
-                  <p className="text-xs text-slate-500">{swapStudentA.firstName} {swapStudentA.lastName}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSwapModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-                title="Close swap modal"
-                aria-label="Close swap modal"
-              ><X size={20} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Select another student to swap sections with {swapStudentA.firstName}.
-              </p>
-              <div>
-                <label htmlFor="swap-student" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
-                  Select Student to Swap With
-                </label>
-                <select
-                  id="swap-student"
-                  value={swapStudentBId}
-                  onChange={(e) => setSwapStudentBId(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-purple-500/50 outline-none"
-                >
-                  <option value="">-- Select a student --</option>
-                  {filtered
-                    .filter(s => s.id !== swapStudentA.id && s.grade === swapStudentA.grade)
-                    .map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.firstName} {s.lastName} (Section {getSectionNumber(s.section)})
-                      </option>
-                    ))}
-                </select>
-              </div>
-              {filtered.filter(s => s.id !== swapStudentA.id && s.grade === swapStudentA.grade).length === 0 && (
-                <p className="text-xs text-orange-600 dark:text-orange-400">No other students in the same grade to swap with.</p>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSwapModal(false)}
-                  disabled={swappingStudents}
-                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!swapStudentBId) {
-                      showToast('Please select a student to swap with', 'error');
-                      return;
-                    }
-                    setSwappingStudents(true);
-                    try {
-                      const result = await sectionService.swapStudentSections(
-                        swapStudentA.userId || swapStudentA.id,
-                        swapStudentBId,
-                        user?.id
-                      );
-                      if (result.success) {
-                        showToast('Students swapped successfully', 'success');
-                        setShowSwapModal(false);
-                        fetchStudents();
-                      } else {
-                        showToast(result.message || 'Swap failed', 'error');
-                      }
-                    } catch (err: any) {
-                      showToast(err.response?.data?.error || err.message || 'Failed to swap sections', 'error');
-                    } finally {
-                      setSwappingStudents(false);
-                    }
-                  }}
-                  disabled={!swapStudentBId || swappingStudents}
-                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-bold disabled:cursor-not-allowed"
-                >
-                  {swappingStudents ? 'Swapping...' : 'Swap Sections'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Toast */}
       {toast.show && (
