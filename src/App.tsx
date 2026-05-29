@@ -11,7 +11,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default:
 const Students = lazy(() => import('./pages/Students').then((m) => ({ default: m.Students })));
 const Teachers = lazy(() => import('./pages/Teachers').then((m) => ({ default: m.Teachers })));
 const Staff = lazy(() => import('./pages/Staff').then((m) => ({ default: m.Staff })));
-const Finance = lazy(() => import('./pages/Finance').then((m) => ({ default: m.Finance })));
+const FinanceRoute = lazy(() => import('./pages/FinanceRoute').then((m) => ({ default: m.FinanceRoute })));
+const AuditorFinance = lazy(() => import('./pages/AuditorFinance').then((m) => ({ default: m.AuditorFinance })));
 const Branches = lazy(() => import('./pages/Branches').then((m) => ({ default: m.Branches })));
 const StudentProfile = lazy(() => import('./pages/StudentProfile').then((m) => ({ default: m.StudentProfile })));
 const Analytics = lazy(() => import('./pages/Analytics').then((m) => ({ default: m.Analytics })));
@@ -164,7 +165,7 @@ function App() {
               <Route path="dashboard/librarian" element={<ProtectedRoute allowedRoles={['librarian']}><Library /></ProtectedRoute>} />
               <Route path="dashboard/clinic-admin" element={<ProtectedRoute allowedRoles={['clinic-admin']}><Clinic /></ProtectedRoute>} />
               <Route path="auditor-dashboard" element={<ProtectedRoute allowedRoles={['auditor']}><AuditorDashboard /></ProtectedRoute>} />
-              <Route path="auditor-finance" element={<ProtectedRoute allowedRoles={['auditor']}><AuditorDashboard /></ProtectedRoute>} />
+              <Route path="auditor-finance" element={<Navigate to="/finance?tab=audit" replace />} />
 
               {/* Role specific routes */}
               <Route path="branches" element={
@@ -409,12 +410,15 @@ function App() {
 
               <Route path="special-students" element={
                 <ProtectedRoute allowedRoles={['auditor', 'finance-clerk', 'super-admin']}>
-                  <AuditorDashboard />
+                  <AuditorFinance />
                 </ProtectedRoute>
               } />
 
-
-              <Route path="finance" element={<Finance />} />
+              <Route path="finance" element={
+                <ProtectedRoute allowedRoles={['auditor', 'super-admin']}>
+                  <FinanceRoute />
+                </ProtectedRoute>
+              } />
               <Route path="exams" element={
                 <ProtectedRoute allowedRoles={['teacher', 'school-admin', 'vice-principal', 'student', 'parent']}>
                   <Exams />
