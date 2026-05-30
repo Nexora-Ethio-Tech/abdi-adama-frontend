@@ -196,7 +196,7 @@ export const LoanManagement = () => {
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Employee Loan Management</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm">Issue and review internal company loans for company employees. Deductions are processed automatically via payroll cycles.</p>
         </div>
-        {(role === 'finance-clerk' || role === 'super-admin') && (
+        {role === 'finance-clerk' && (
           <button
             onClick={() => setIsModalOpen(true)}
             className="bg-slate-900 dark:bg-blue-600 text-white font-black text-sm uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"

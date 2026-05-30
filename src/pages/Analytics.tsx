@@ -221,26 +221,6 @@ export const Analytics = () => {
             <div className={`flex-1 h-2.5 rounded-full ${(overview?.staffAttendance || 0) >= 90 ? 'bg-emerald-400' : (overview?.staffAttendance || 0) >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
           </div>
         </div>
-
-        {/* Enrollment */}
-        <div className="bg-blue-50 dark:bg-blue-900/10 border-2 border-blue-200 dark:border-blue-900/30 rounded-[2.5rem] p-8 transition-all hover:shadow-xl group">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-blue-700 dark:text-blue-400">Tracking</span>
-            </div>
-            <Building2 size={24} className="text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
-          </div>
-          <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Enrollment</p>
-          <h3 className="text-4xl font-black text-slate-800 dark:text-white">{(overview?.currentStudents || 0).toLocaleString()}</h3>
-          <div className="mt-6 flex items-center gap-3">
-            <div className={`flex items-center gap-1.5 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider ${(overview?.enrollmentGrowth || 0) >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'}`}>
-              <TrendingUp size={12} />
-              {(overview?.enrollmentGrowth || 0) >= 0 ? '+' : ''}{overview?.enrollmentGrowth || 0}%
-            </div>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold tracking-tight">vs last month ({overview?.lastMonthStudents || 0})</span>
-          </div>
-        </div>
       </div>
 
       {/* Key Takeaways */}
