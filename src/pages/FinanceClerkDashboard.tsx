@@ -546,11 +546,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const assignedTransportCount = transportStudents.filter(student => student.route_id).length;
   const selectedTransportPolicy = transportStudent
     ? transportPolicies.find((item) => {
-        // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
-        const policyGradeNum = item.grade_level?.replace(/\D/g, '');
-        const studentGradeNum = transportStudent.grade?.replace(/\D/g, '');
-        return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
-      }) || transportPolicies.find((item) => !item.grade_level) || null
+      // Normalize grade comparison: extract number from "Grade 5" format and compare with "5"
+      const policyGradeNum = item.grade_level?.replace(/\D/g, '');
+      const studentGradeNum = transportStudent.grade?.replace(/\D/g, '');
+      return policyGradeNum && studentGradeNum && policyGradeNum === studentGradeNum;
+    }) || transportPolicies.find((item) => !item.grade_level) || null
     : null;
   const headerTitleMap = {
     all: 'Collections',
