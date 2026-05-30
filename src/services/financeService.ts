@@ -302,6 +302,11 @@ const financeClerkService = {
     const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
   },
+  // 9b. Return an application to School Admin with a reason
+  removeApplication: async (applicationId: string, data: { reason: string }) => {
+    const response = await api.patch(`/finance-clerk/applications/${applicationId}/remove`, data);
+    return response.data.data;
+  },
 
   // 10. Get all audit logs
   getAllAuditLogs: async (params?: Record<string, any>) => {

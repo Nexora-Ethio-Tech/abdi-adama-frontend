@@ -35,6 +35,9 @@ export const FinanceClerkRegistration = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<PendingApplication | null>(null);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeReason, setRemoveReason] = useState('');
+  const [removeOtherReason, setRemoveOtherReason] = useState('');
   const [approvalData, setApprovalData] = useState({ amount: 0, reference: '' });
   const [feeSource, setFeeSource] = useState<string>('unknown');
   const [feeLoadError, setFeeLoadError] = useState<string | null>(null);
@@ -287,6 +290,14 @@ export const FinanceClerkRegistration = () => {
                 </button>
 
                 <button
+                  onClick={() => { setSelectedApp(app); setShowRemoveModal(true); setRemoveReason('duplicate'); setRemoveOtherReason(''); }}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-sm transition-all active:scale-95"
+                >
+                  <X size={16} />
+                  Remove
+                </button>
+
+                <button
                   onClick={() => handleDownloadTranscript(app)}
                   className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm transition-all"
                 >
@@ -387,6 +398,70 @@ export const FinanceClerkRegistration = () => {
                     Approve Payment
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Modal */}
+      {showRemoveModal && selectedApp && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">Return Application to School Admin</h2>
+            <p className="text-sm text-slate-600 mb-4">Please select the reason for returning this application. The School Admin will see this reason.</p>
+
+            <div className="space-y-3 mb-4">
+              <label className={`flex items-center gap-3 px-4 py-2 border rounded-lg ${removeReason === 'duplicate' ? 'border-rose-600 bg-rose-50' : 'border-slate-200'}`}>
+                <input type="radio" name="removeReason" checked={removeReason === 'duplicate'} onChange={() => setRemoveReason('duplicate')} />
+                <span className="font-semibold">Duplicate application</span>
+              </label>
+              <label className={`flex items-center gap-3 px-4 py-2 border rounded-lg ${removeReason === 'incorrect' ? 'border-rose-600 bg-rose-50' : 'border-slate-200'}`}>
+                <input type="radio" name="removeReason" checked={removeReason === 'incorrect'} onChange={() => setRemoveReason('incorrect')} />
+                <span className="font-semibold">Incorrect information</span>
+              </label>
+              <label className={`flex items-center gap-3 px-4 py-2 border rounded-lg ${removeReason === 'already_registered' ? 'border-rose-600 bg-rose-50' : 'border-slate-200'}`}>
+                <input type="radio" name="removeReason" checked={removeReason === 'already_registered'} onChange={() => setRemoveReason('already_registered')} />
+                <span className="font-semibold">Already registered</span>
+              </label>
+              <label className={`flex items-center gap-3 px-4 py-2 border rounded-lg ${removeReason === 'other' ? 'border-rose-600 bg-rose-50' : 'border-slate-200'}`}>
+                <input type="radio" name="removeReason" checked={removeReason === 'other'} onChange={() => setRemoveReason('other')} />
+                <span className="font-semibold">Other</span>
+              </label>
+
+              {removeReason === 'other' && (
+                <textarea
+                  value={removeOtherReason}
+                  onChange={(e) => setRemoveOtherReason(e.target.value)}
+                  placeholder="Explain reason"
+                  className="w-full px-3 py-2 border rounded-lg"
+                />
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setShowRemoveModal(false); setSelectedApp(null); }} className="flex-1 px-4 py-2 bg-slate-200 rounded-lg font-bold">Cancel</button>
+              <button
+                onClick={async () => {
+                  if (!selectedApp) return;
+                  const reasonText = removeReason === 'other' ? (removeOtherReason || 'Other') : removeReason;
+                  try {
+                    setLoading(true);
+                    await financeClerkService.removeApplication(selectedApp.id, { reason: reasonText });
+                    setPendingApplications(prev => prev.filter(a => a.id !== selectedApp.id));
+                    setShowRemoveModal(false);
+                    setSelectedApp(null);
+                    setSuccessMessage('Application returned to School Admin');
+                    setTimeout(() => setSuccessMessage(null), 4000);
+                  } catch (err: any) {
+                    setError(err.message || 'Failed to return application');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className="flex-1 px-4 py-2 bg-rose-600 text-white rounded-lg font-bold"
+              >
+                Return Application
               </button>
             </div>
           </div>

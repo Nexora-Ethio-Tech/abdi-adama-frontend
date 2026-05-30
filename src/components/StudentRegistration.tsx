@@ -40,6 +40,7 @@ interface PendingApp {
   transcriptFileName: string;
   transcriptFileSize: number | null;
   examDetails?: { date: string; time: string; location: string; subjects: string; notes: string };
+  removalReason?: string | null;
 }
 
 const displayValue = (value?: string | null) => {
@@ -69,6 +70,7 @@ const mapApiApplicationToPendingApp = (app: any): PendingApp => ({
   notes: app.notes || '',
   transcriptFileName: app.transcript_file_name || '',
   transcriptFileSize: app.transcript_file_size != null ? Number(app.transcript_file_size) : null,
+  removalReason: app.finance_removal_reason || null,
 });
 
 interface StudentRegistrationProps {
@@ -835,6 +837,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       <div>
                         <h4 className="text-lg font-black text-slate-800 dark:text-white">{app.name}</h4>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Grade {app.lastGrade} • {app.date} • {app.email}</p>
+                        {app.removalReason && (
+                          <p className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-2">Returned to School Admin: {app.removalReason}</p>
+                        )}
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
