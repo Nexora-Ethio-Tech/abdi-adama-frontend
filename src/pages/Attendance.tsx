@@ -287,7 +287,7 @@ export const Attendance = () => {
             <button type="button" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold text-sm">
               Attendance Reports
             </button>
-            <button 
+            <button
               type="button"
               onClick={async () => {
                 try {
@@ -434,11 +434,10 @@ export const Attendance = () => {
                           <button
                             type="button"
                             onClick={() => toggleStatus(student.id, 'present')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'present'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'present'
                                 ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'
-                            }`}
+                              }`}
                             title="Present"
                             aria-label="Mark present"
                           >
@@ -447,11 +446,10 @@ export const Attendance = () => {
                           <button
                             type="button"
                             onClick={() => toggleStatus(student.id, 'absent')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'absent'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'absent'
                                 ? 'bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-rose-500 hover:text-rose-500'
-                            }`}
+                              }`}
                             title="Absent"
                             aria-label="Mark absent"
                           >
@@ -460,11 +458,10 @@ export const Attendance = () => {
                           <button
                             type="button"
                             onClick={() => toggleStatus(student.id, 'late')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'late'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'late'
                                 ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-500'
-                            }`}
+                              }`}
                             title="Late"
                             aria-label="Mark late"
                           >

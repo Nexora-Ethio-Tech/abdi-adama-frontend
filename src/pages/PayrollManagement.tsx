@@ -67,12 +67,12 @@ export const PayrollManagement = () => {
       const activeProfiles = await payrollService.getAllProfiles({
         branchId: selectedBranchId || undefined
       });
-      
+
       const eligible = activeProfiles.filter(p => p.profile_id !== null && p.basic_salary > 0);
       if (eligible.length === 0) {
         throw new Error('No employees with active salary profiles found in selected branch.');
       }
-      
+
       setEmployeesForOt(eligible);
       // Initialize map with 0
       const initialMap: { [id: string]: number } = {};
@@ -140,7 +140,7 @@ export const PayrollManagement = () => {
     try {
       await payrollService.finalizePayroll(runId);
       setSuccessMsg('Payroll run has been successfully finalized! All employee payslips are now live.');
-      
+
       // Reload details
       const data = await payrollService.getPayrollRun(runId);
       setRunDetail(data);
@@ -408,11 +408,10 @@ export const PayrollManagement = () => {
                       {Number(r.total_net).toLocaleString()} ETB
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${
-                        r.status === 'draft'
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${r.status === 'draft'
                           ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
                           : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
-                      }`}>
+                        }`}>
                         {r.status}
                       </span>
                     </td>
@@ -539,15 +538,15 @@ export const PayrollManagement = () => {
                   </div>
 
                   <div className="flex gap-2 shrink-0">
-                    <input 
-                      type="text" 
-                      placeholder="Search employee..." 
+                    <input
+                      type="text"
+                      placeholder="Search employee..."
                       aria-label="Search employee"
                       className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={otSearchFilter}
                       onChange={(e) => setOtSearchFilter(e.target.value)}
                     />
-                    <select 
+                    <select
                       aria-label="Filter employees by role"
                       className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={otRoleFilter}
@@ -565,26 +564,26 @@ export const PayrollManagement = () => {
                       .filter(e => !otRoleFilter || e.role === otRoleFilter)
                       .filter(e => !otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))
                       .map((e) => (
-                      <div key={e.user_id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                        <div>
-                          <p className="font-bold text-slate-850 dark:text-white text-xs">{e.name}</p>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{e.role}</span>
+                        <div key={e.user_id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                          <div>
+                            <p className="font-bold text-slate-850 dark:text-white text-xs">{e.name}</p>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{e.role}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              className="w-16 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="Hrs"
+                              min="0"
+                              value={overtimeHoursMap[e.user_id] || ''}
+                              onChange={(evt) => setOvertimeHoursMap({
+                                ...overtimeHoursMap,
+                                [e.user_id]: Number(evt.target.value)
+                              })}
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            className="w-16 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:ring-2 focus:ring-blue-500 transition-all"
-                            placeholder="Hrs"
-                            min="0"
-                            value={overtimeHoursMap[e.user_id] || ''}
-                            onChange={(evt) => setOvertimeHoursMap({
-                              ...overtimeHoursMap,
-                              [e.user_id]: Number(evt.target.value)
-                            })}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                     {employeesForOt.filter(e => (!otRoleFilter || e.role === otRoleFilter) && (!otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))).length === 0 && (
                       <p className="text-center text-xs text-slate-400 py-4">No employees match your search.</p>
                     )}
@@ -599,7 +598,7 @@ export const PayrollManagement = () => {
                     </h4>
                     <div className="space-y-2">
                       {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).map(e => (
-                        <div key={'added-'+e.user_id} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                        <div key={'added-' + e.user_id} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{e.name}</span>
                           <span className="text-xs font-black text-blue-600 dark:text-blue-400">+{overtimeHoursMap[e.user_id]} hrs</span>
                         </div>
@@ -607,7 +606,7 @@ export const PayrollManagement = () => {
                       {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50 py-4">
                           <Award size={24} className="mb-2" />
-                          <p className="text-[10px] font-bold text-center">No overtime entries added yet.<br/>Type hours above to add.</p>
+                          <p className="text-[10px] font-bold text-center">No overtime entries added yet.<br />Type hours above to add.</p>
                         </div>
                       )}
                     </div>

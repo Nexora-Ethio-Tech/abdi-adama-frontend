@@ -749,9 +749,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
-                        app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
-                          app.status === 'declined' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
-                            'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
+                      app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
+                        app.status === 'declined' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
+                          'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                       }`}>
                       {app.status.replace('-', ' ')}
                     </span>
@@ -898,7 +898,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       maxLength={16}
                       placeholder="16-digit number (e.g. 1234567890123456)"
                       onKeyDown={(e) => {
-                        if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                        if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
                           e.preventDefault();
                         }
                       }}
@@ -1007,7 +1007,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                           e.target.value = e.target.value.replace(/[^\d]/g, '').slice(0, 9);
                         }}
                         onKeyDown={(e) => {
-                          if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                          if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
                             e.preventDefault();
                           }
                         }}
@@ -1056,7 +1056,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       inputMode="numeric"
                       placeholder="e.g. 9"
                       onKeyDown={(e) => {
-                        if (!/^\d$/.test(e.key) && !['Backspace','Delete','ArrowLeft','ArrowRight','Tab'].includes(e.key)) {
+                        if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
                           e.preventDefault();
                         }
                       }}

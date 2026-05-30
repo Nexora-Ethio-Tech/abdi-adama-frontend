@@ -47,7 +47,7 @@ export const LandingPage = () => {
   const rotateX = useTransform(scrollY, [0, 1000], [0, 45]);
   const rotateY = useTransform(scrollY, [0, 1000], [0, 25]);
   const scale = useTransform(scrollY, [0, 300], [1, 0.9]);
-  
+
   const springConfig = { stiffness: 100, damping: 30, restDelta: 0.001 };
   const smoothY1 = useSpring(y1, springConfig);
   const smoothY2 = useSpring(y2, springConfig);
@@ -85,7 +85,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-1 shadow-xl border border-slate-100 dark:border-slate-800">
-             <StudentRegistration isAdminView={false} />
+            <StudentRegistration isAdminView={false} />
           </div>
         </div>
       </div>
@@ -113,7 +113,7 @@ export const LandingPage = () => {
               <span className="text-xs font-black text-school-primary uppercase tracking-widest">School</span>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-6">
             <div className="hidden lg:flex items-center gap-8">
               {['home', 'about', 'programs', 'school-life', 'branches'].map((item) => (
@@ -133,7 +133,7 @@ export const LandingPage = () => {
               <option value="am">AM</option>
               <option value="om">OM</option>
             </select>
-            <button 
+            <button
               onClick={() => navigate('/login')}
               className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg"
             >
@@ -148,35 +148,35 @@ export const LandingPage = () => {
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_top_right,_rgba(59,130,246,0.1),_transparent_50%)]" />
           <div className="absolute bottom-0 left-0 w-1/2 h-full bg-[radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.1),_transparent_50%)]" />
-          
+
           {/* Floating 3D Elements */}
-          <motion.div 
+          <motion.div
             style={{ y: smoothY1, rotateX: smoothRotateX, rotateY: smoothRotateY }}
             className="absolute top-[15%] left-[5%] w-32 h-32 bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-3xl rounded-[2rem] border border-white/20 shadow-2xl flex items-center justify-center preserve-3d"
           >
             <BookOpen size={40} className="text-blue-500/30" />
           </motion.div>
 
-          <motion.div 
+          <motion.div
             style={{ y: smoothY2, rotateX: smoothRotateY, rotateY: smoothRotateX }}
             className="absolute top-[60%] right-[10%] w-48 h-48 bg-gradient-to-tr from-emerald-500/10 to-blue-500/10 backdrop-blur-3xl rounded-full border border-white/20 shadow-2xl flex items-center justify-center preserve-3d"
           >
             <GraduationCap size={60} className="text-emerald-500/30" />
           </motion.div>
 
-          <motion.div 
+          <motion.div
             style={{ y: smoothY1, rotateZ: smoothRotateX }}
             className="absolute top-[40%] left-[80%] w-24 h-24 bg-rose-500/10 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-xl flex items-center justify-center rotate-12 preserve-3d"
           >
             <Music2 size={30} className="text-rose-500/30" />
           </motion.div>
 
-          <motion.div 
-            animate={{ 
+          <motion.div
+            animate={{
               y: [0, -20, 0],
               rotate: [0, 10, 0]
             }}
-            transition={{ 
+            transition={{
               duration: 10,
               repeat: Infinity,
               ease: "easeInOut"
@@ -216,11 +216,10 @@ export const LandingPage = () => {
                 <button
                   onClick={() => registrationOpen && setShowAdmission(true)}
                   disabled={!registrationOpen}
-                  className={`px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all flex items-center gap-3 group shine ${
-                    registrationOpen 
-                    ? 'bg-school-primary hover:bg-school-primary/90 text-white shadow-2xl shadow-school-primary/30' 
-                    : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-400'
-                  }`}
+                  className={`px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all flex items-center gap-3 group shine ${registrationOpen
+                      ? 'bg-school-primary hover:bg-school-primary/90 text-white shadow-2xl shadow-school-primary/30'
+                      : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-400'
+                    }`}
                 >
                   {registrationOpen ? t('landing.applyBtn') : 'Admission Closed'}
                   {registrationOpen && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
@@ -236,7 +235,7 @@ export const LandingPage = () => {
               </div>
             </div>
 
-            <motion.div 
+            <motion.div
               style={{ rotateX: smoothRotateX, rotateY: smoothRotateY, scale }}
               className="relative hidden lg:block perspective-1000"
             >
@@ -245,7 +244,7 @@ export const LandingPage = () => {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
                 <div className="absolute bottom-10 left-10 right-10 text-white">
                   <div className="flex items-center gap-2 mb-2">
-                    {[1,2,3,4,5].map(i => <Star key={i} size={14} className="fill-amber-400 text-amber-400" />)}
+                    {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="fill-amber-400 text-amber-400" />)}
                   </div>
                   <p className="text-lg font-bold leading-tight">"Abdi Adama School gave me the chance to discover my potential."</p>
                   <p className="text-xs font-black uppercase tracking-widest text-school-primary mt-2">— Firdos Musa, Top Scorer</p>
@@ -263,8 +262,8 @@ export const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat, i) => (
-              <motion.div 
-                key={i} 
+              <motion.div
+                key={i}
                 initial={{ opacity: 0, y: 50, rotateX: -45 }}
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
@@ -286,7 +285,7 @@ export const LandingPage = () => {
       <section id="about" className="py-24 bg-slate-50 dark:bg-slate-900/50 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: -100, rotateY: 30 }}
               whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
               viewport={{ once: true }}
@@ -297,9 +296,9 @@ export const LandingPage = () => {
                 <span className="section-subtitle">{t('landing.founder.subtitle')}</span>
                 <h2 className="section-title">{t('landing.founder.title')}</h2>
               </div>
-              
+
               <div className="space-y-8">
-                <motion.div 
+                <motion.div
                   whileHover={{ rotateY: -5, rotateX: 5 }}
                   className="relative p-8 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl preserve-3d transition-all duration-500"
                 >
@@ -319,14 +318,14 @@ export const LandingPage = () => {
                 </motion.div>
 
                 <div className="p-8 bg-white/50 dark:bg-slate-900/30 rounded-3xl border border-slate-100 dark:border-slate-800 backdrop-blur-sm">
-                   <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                     {t('landing.founder.vision')}
-                   </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {t('landing.founder.vision')}
+                  </p>
                 </div>
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.8, rotateY: -30 }}
               whileInView={{ opacity: 1, scale: 1, rotateY: 0 }}
               viewport={{ once: true }}
@@ -344,11 +343,11 @@ export const LandingPage = () => {
               </div>
               <div className="space-y-4">
                 <div className="bg-school-secondary p-8 rounded-3xl text-white shadow-2xl transform hover:-translate-y-2 transition-all">
-                   <Heart className="mb-4 text-white/80" size={32} />
-                   <p className="text-lg font-bold leading-tight">{t('landing.nurturingMinds')}</p>
+                  <Heart className="mb-4 text-white/80" size={32} />
+                  <p className="text-lg font-bold leading-tight">{t('landing.nurturingMinds')}</p>
                 </div>
                 <div className="h-64 rounded-3xl overflow-hidden shadow-2xl border-2 border-white dark:border-slate-800 group">
-                   <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" alt="Campus Life" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" alt="Campus Life" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                 </div>
               </div>
             </motion.div>
@@ -359,7 +358,7 @@ export const LandingPage = () => {
       {/* Programs Section */}
       <section id="programs" className="py-24 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -375,8 +374,8 @@ export const LandingPage = () => {
               { level: t('landing.programs.elementaryLevel'), title: t('landing.programs.elementary'), desc: t('landing.programs.elementaryDesc') },
               { level: t('landing.programs.highSchoolLevel'), title: t('landing.programs.highSchool'), desc: t('landing.programs.highSchoolDesc') }
             ].map((prog, i) => (
-              <motion.div 
-                key={i} 
+              <motion.div
+                key={i}
                 initial={{ opacity: 0, z: -100, rotateY: 45, y: 50 }}
                 whileInView={{ opacity: 1, z: 0, rotateY: 0, y: 0 }}
                 viewport={{ once: true }}
@@ -390,12 +389,11 @@ export const LandingPage = () => {
                 <span className="text-[10px] font-black text-school-primary uppercase tracking-[0.2em] mb-4 px-4 py-1.5 bg-school-primary/10 rounded-full">{prog.level}</span>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">{prog.title}</h3>
                 <p className="text-slate-500 dark:text-slate-400 leading-relaxed text-sm mb-8">{prog.desc}</p>
-                <button 
-                  onClick={() => registrationOpen && setShowAdmission(true)} 
+                <button
+                  onClick={() => registrationOpen && setShowAdmission(true)}
                   disabled={!registrationOpen}
-                  className={`mt-auto flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors group/btn ${
-                    registrationOpen ? 'text-slate-900 dark:text-white hover:text-school-primary' : 'text-slate-400'
-                  }`}
+                  className={`mt-auto flex items-center gap-2 text-xs font-black uppercase tracking-widest transition-colors group/btn ${registrationOpen ? 'text-slate-900 dark:text-white hover:text-school-primary' : 'text-slate-400'
+                    }`}
                 >
                   {registrationOpen ? t('landing.programs.explore') : 'Closed'}
                   {registrationOpen && <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />}
@@ -425,10 +423,10 @@ export const LandingPage = () => {
                 <h2 className="section-title">{t('landing.updates.title')}</h2>
               </div>
               <div className="hidden sm:flex gap-2">
-                <button type="button" aria-label="Scroll updates left" onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:-420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-school-primary hover:border-school-primary transition-colors">
+                <button type="button" aria-label="Scroll updates left" onClick={() => { const el = document.querySelector('.updates-scroll'); if (el) el.scrollBy({ left: -420, behavior: 'smooth' }); }} className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-school-primary hover:border-school-primary transition-colors">
                   <ArrowLeft size={20} />
                 </button>
-                <button type="button" aria-label="Scroll updates right" onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full bg-school-primary text-white flex items-center justify-center shadow-lg hover:bg-school-primary/90 transition-colors">
+                <button type="button" aria-label="Scroll updates right" onClick={() => { const el = document.querySelector('.updates-scroll'); if (el) el.scrollBy({ left: 420, behavior: 'smooth' }); }} className="w-10 h-10 rounded-full bg-school-primary text-white flex items-center justify-center shadow-lg hover:bg-school-primary/90 transition-colors">
                   <ArrowRight size={20} />
                 </button>
               </div>
@@ -475,32 +473,32 @@ export const LandingPage = () => {
           <div className="space-y-16">
             {/* Header Text */}
             <div className="max-w-3xl">
-               <div className="inline-flex items-center gap-3 px-4 py-2 bg-school-primary/10 rounded-full text-school-primary mb-6">
-                  <Video size={18} />
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('landing.media.introVideo')}</span>
-                </div>
-                <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-6">
-                  {t('landing.media.introTitle')} meets <span className="text-gradient">{t('landing.media.introHighlight')}</span>
-                </h3>
-                <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-                  {t('landing.media.introDesc1')}
-                </p>
+              <div className="inline-flex items-center gap-3 px-4 py-2 bg-school-primary/10 rounded-full text-school-primary mb-6">
+                <Video size={18} />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('landing.media.introVideo')}</span>
+              </div>
+              <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-6">
+                {t('landing.media.introTitle')} meets <span className="text-gradient">{t('landing.media.introHighlight')}</span>
+              </h3>
+              <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                {t('landing.media.introDesc1')}
+              </p>
             </div>
 
             {/* Videos Grid */}
             <div className="grid lg:grid-cols-2 gap-12">
               {/* Culture Day Video (YouTube) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 className="group relative rounded-[3rem] overflow-hidden bg-slate-900 aspect-video shadow-2xl border-8 border-white dark:border-slate-800 perspective-1000"
               >
-                <iframe 
+                <iframe
                   className="w-full h-full opacity-90 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
-                  src="https://www.youtube.com/embed/DMtKs79RUmA" 
+                  src="https://www.youtube.com/embed/DMtKs79RUmA"
                   title="Abdi Adama Culture Day"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 ></iframe>
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent opacity-40 pointer-events-none" />
@@ -513,18 +511,18 @@ export const LandingPage = () => {
               </motion.div>
 
               {/* School Intro Video (Google Drive) */}
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.2 }}
                 className="group relative rounded-[3rem] overflow-hidden bg-slate-900 aspect-video shadow-2xl border-8 border-white dark:border-slate-800 perspective-1000"
               >
-                <iframe 
+                <iframe
                   className="w-full h-full opacity-90 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105"
-                  src="https://drive.google.com/file/d/1dGwyS7pClTRLflLSDkj8a332nTsS8lNw/preview" 
+                  src="https://drive.google.com/file/d/1dGwyS7pClTRLflLSDkj8a332nTsS8lNw/preview"
                   title="Abdi Adama Intro"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                 ></iframe>
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent opacity-40 pointer-events-none" />
@@ -555,8 +553,8 @@ export const LandingPage = () => {
               { name: t('landing.branches.village180'), location: t('landing.branches.adama'), desc: t('landing.branches.village180Desc') },
               { name: t('landing.branches.awash'), location: t('landing.branches.awash'), desc: t('landing.branches.awashDesc') }
             ].map((branch, i) => (
-              <motion.div 
-                key={i} 
+              <motion.div
+                key={i}
                 initial={{ opacity: 0, y: 50, rotateX: -30 }}
                 whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
                 viewport={{ once: true }}
@@ -579,7 +577,7 @@ export const LandingPage = () => {
 
       {/* CTA Section */}
       <section className="py-24 relative overflow-hidden perspective-1000">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 100, rotateX: 45 }}
           whileInView={{ opacity: 1, y: 0, rotateX: 0 }}
           viewport={{ once: true }}
@@ -593,29 +591,28 @@ export const LandingPage = () => {
             {t('landing.cta.desc')}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-             <motion.button
-               whileHover={registrationOpen ? { scale: 1.05, y: -5 } : {}}
-               whileTap={registrationOpen ? { scale: 0.95 } : {}}
-               onClick={() => registrationOpen && setShowAdmission(true)}
-               disabled={!registrationOpen}
-               className={`px-12 py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center gap-4 transition-all ${
-                 registrationOpen 
-                 ? 'bg-school-primary text-white shadow-2xl shadow-school-primary/40 hover:bg-school-primary/90 shine' 
-                 : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed grayscale'
-               }`}
-             >
-               {registrationOpen ? t('landing.cta.startAdmission') : 'Admission Closed'}
-               {registrationOpen ? <CheckCircle2 size={24} /> : <Lock size={20} />}
-             </motion.button>
+            <motion.button
+              whileHover={registrationOpen ? { scale: 1.05, y: -5 } : {}}
+              whileTap={registrationOpen ? { scale: 0.95 } : {}}
+              onClick={() => registrationOpen && setShowAdmission(true)}
+              disabled={!registrationOpen}
+              className={`px-12 py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center gap-4 transition-all ${registrationOpen
+                  ? 'bg-school-primary text-white shadow-2xl shadow-school-primary/40 hover:bg-school-primary/90 shine'
+                  : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed grayscale'
+                }`}
+            >
+              {registrationOpen ? t('landing.cta.startAdmission') : 'Admission Closed'}
+              {registrationOpen ? <CheckCircle2 size={24} /> : <Lock size={20} />}
+            </motion.button>
 
-             <motion.button
-               whileHover={{ scale: 1.05, y: -5 }}
-               whileTap={{ scale: 0.95 }}
-               onClick={() => navigate('/login')}
-               className="px-12 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all border-4 border-slate-900/5 dark:border-white/5"
-             >
-               {t('landing.cta.parentLogin')}
-             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/login')}
+              className="px-12 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all border-4 border-slate-900/5 dark:border-white/5"
+            >
+              {t('landing.cta.parentLogin')}
+            </motion.button>
           </div>
         </motion.div>
         <div className="absolute top-1/2 left-0 w-[500px] h-[500px] bg-school-primary/10 blur-[150px] -translate-y-1/2" />
@@ -667,7 +664,7 @@ export const LandingPage = () => {
 
             <div>
               <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white mb-6">{t('landing.footer.staffAccess')}</h4>
-              <button 
+              <button
                 onClick={() => navigate('/login')}
                 className="flex items-center gap-3 px-6 py-3 bg-slate-50 dark:bg-slate-900 text-slate-400 hover:text-school-primary rounded-xl text-[10px] font-black uppercase tracking-widest border border-transparent hover:border-school-primary/20 transition-all w-full"
               >
