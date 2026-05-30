@@ -28,6 +28,7 @@ import {
   AlertCircle,
   MessageSquare,
   ChevronDown,
+  Film,
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -113,7 +114,15 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         }
 
         baseItems.push(
-          { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
+          {
+            icon: Film,
+            label: 'Media',
+            path: '/website-posts',
+            children: [
+              { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
+              { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
+            ],
+          },
           {
             icon: DollarSign,
             label: 'Financial Tools',
@@ -124,7 +133,6 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
             ],
           },
-          { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
         return baseItems;
@@ -314,9 +322,9 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
                         : "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                   )}
                 >
-                  <item.icon size={20} className={cn("text-slate-400 dark:text-slate-500", isActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "")}/>
+                  <item.icon size={20} className={cn("text-slate-400 dark:text-slate-500", isActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "")} />
                   <span className="font-bold text-sm tracking-wide flex-1 text-left">{item.label}</span>
-                  <ChevronDown size={18} className={cn("transition-transform", isExpanded ? "rotate-180" : "")}/>
+                  <ChevronDown size={18} className={cn("transition-transform", isExpanded ? "rotate-180" : "")} />
                 </button>
                 {isExpanded && (
                   <div className="space-y-1 pl-12">
