@@ -121,6 +121,7 @@ export const LandingPage = () => {
               ))}
             </div>
             <select
+              aria-label="Select language"
               value={i18n.language}
               onChange={(e) => {
                 i18n.changeLanguage(e.target.value);
@@ -424,10 +425,10 @@ export const LandingPage = () => {
                 <h2 className="section-title">{t('landing.updates.title')}</h2>
               </div>
               <div className="hidden sm:flex gap-2">
-                <button onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:-420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-school-primary hover:border-school-primary transition-colors">
+                <button type="button" aria-label="Scroll updates left" onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:-420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-school-primary hover:border-school-primary transition-colors">
                   <ArrowLeft size={20} />
                 </button>
-                <button onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full bg-school-primary text-white flex items-center justify-center shadow-lg hover:bg-school-primary/90 transition-colors">
+                <button type="button" aria-label="Scroll updates right" onClick={() => { const el = document.querySelector('.updates-scroll'); if(el) el.scrollBy({left:420,behavior:'smooth'}); }} className="w-10 h-10 rounded-full bg-school-primary text-white flex items-center justify-center shadow-lg hover:bg-school-primary/90 transition-colors">
                   <ArrowRight size={20} />
                 </button>
               </div>
@@ -441,7 +442,7 @@ export const LandingPage = () => {
                   {post.type === 'image' ? (
                     <img src={post.mediaUrl} alt="Update" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   ) : (
-                    <iframe src={post.mediaUrl} className="w-full h-full pointer-events-none" />
+                    <iframe src={post.mediaUrl} title="Update media" className="w-full h-full pointer-events-none" />
                   )}
                   <div className="absolute top-4 left-4">
                     <span className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-black uppercase tracking-widest rounded-full text-school-primary shadow-sm">

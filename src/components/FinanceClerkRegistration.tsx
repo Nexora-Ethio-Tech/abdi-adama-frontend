@@ -26,6 +26,7 @@ interface PendingApplication {
 
 interface ApprovalPayload {
   reference?: string;
+  parentDigitalId?: string;
 }
 
 export const FinanceClerkRegistration = () => {
@@ -38,7 +39,7 @@ export const FinanceClerkRegistration = () => {
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [removeReason, setRemoveReason] = useState('');
   const [removeOtherReason, setRemoveOtherReason] = useState('');
-  const [approvalData, setApprovalData] = useState({ amount: 0, reference: '' });
+  const [approvalData, setApprovalData] = useState({ amount: 0, reference: '', parentDigitalId: '' });
   const [feeSource, setFeeSource] = useState<string>('unknown');
   const [feeLoadError, setFeeLoadError] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
@@ -121,7 +122,7 @@ export const FinanceClerkRegistration = () => {
 
   const handleApproveClick = async (app: PendingApplication) => {
     setSelectedApp(app);
-    setApprovalData({ amount: 0, reference: '' });
+    setApprovalData({ amount: 0, reference: '', parentDigitalId: '' });
     setShowApprovalForm(true);
     await loadRegistrationFee(app.grade_applying);
   };
@@ -135,6 +136,7 @@ export const FinanceClerkRegistration = () => {
 
       const payload: ApprovalPayload = {
         reference: approvalData.reference || undefined,
+        parentDigitalId: approvalData.parentDigitalId || undefined,
       };
 
       const result = await financeClerkService.approveApplication(selectedApp.id, payload);
@@ -143,14 +145,11 @@ export const FinanceClerkRegistration = () => {
       setShowCredentials(true);
       setSuccessMessage(`✅ Payment approved! Student ID: ${result.student?.user?.digital_id || result.application?.student_id_generated || 'Generated'}`);
 
-      // Remove from pending list
-      setPendingApplications(prev =>
-        prev.filter(app => app.id !== selectedApp.id)
-      );
+      setPendingApplications(prev => prev.filter(app => app.id !== selectedApp.id));
 
       // Reset form
       setShowApprovalForm(false);
-      setApprovalData({ amount: 0, reference: '' });
+      setApprovalData({ amount: 0, reference: '', parentDigitalId: '' });
       setSelectedApp(null);
 
       // Clear success message after 5 seconds
@@ -351,6 +350,24 @@ export const FinanceClerkRegistration = () => {
                     {feeLoadError}
                   </p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Parent ID (optional)
+                </label>
+                <input
+                  type="text"
+                  value={approvalData.parentDigitalId}
+                  onChange={(e) =>
+                    setApprovalData({ ...approvalData, parentDigitalId: e.target.value.trim() })
+                  }
+                  placeholder="Enter existing Parent ID if available"
+                  className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  If the student has a sibling already registered, enter the parent's existing digital ID here so the student links to the same account instead of creating a new one.
+                </p>
               </div>
 
               <div>

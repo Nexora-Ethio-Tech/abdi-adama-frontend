@@ -298,7 +298,7 @@ const financeClerkService = {
   },
 
   // 9. Approve a pending application (finalize registration)
-  approveApplication: async (applicationId: string, data: { amount?: number; reference?: string }) => {
+  approveApplication: async (applicationId: string, data: { amount?: number; reference?: string; parentDigitalId?: string }) => {
     const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
   },

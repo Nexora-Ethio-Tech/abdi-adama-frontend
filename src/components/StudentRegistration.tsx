@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, Clock, MapPin, BookOpen, Shield, AlertTriangle } from 'lucide-react';
+import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, MapPin, Shield, AlertTriangle } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,8 +14,8 @@ import {
 import api from '../services/api';
 
 type RegistrationTab = 'new' | 'existing';
-type PipelineFilter = 'pending' | 'exam-queue' | 'awaiting-finance' | 'completed';
-type AppStatus = 'pending' | 'declined' | 'approved' | 'exam-pending' | 'exam-passed' | 'exam-failed' | 'awaiting-payment' | 'payment-confirmed';
+type PipelineFilter = 'pending' | 'awaiting-finance' | 'completed';
+type AppStatus = 'pending' | 'declined' | 'approved' | 'awaiting-payment' | 'payment-confirmed';
 
 interface PendingApp {
   id: string;
@@ -39,7 +39,7 @@ interface PendingApp {
   notes: string;
   transcriptFileName: string;
   transcriptFileSize: number | null;
-  examDetails?: { date: string; time: string; location: string; subjects: string; notes: string };
+
   removalReason?: string | null;
 }
 
@@ -181,7 +181,7 @@ const initialPendingApplications: PendingApp[] = [];
 export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role } = useUser();
+  const { role, registrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -202,18 +202,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
   const [selectedAcademicYear, setSelectedAcademicYear] = useState('2024/2025');
   const [selectedSemester, setSelectedSemester] = useState('Semester 2');
-  const [registrationOpen, setRegistrationOpen] = useState(true);
-  const [showExamConfig, setShowExamConfig] = useState(false);
   const [emailToast, setEmailToast] = useState<string | null>(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [selectedAppForFee, setSelectedAppForFee] = useState<PendingApp | null>(null);
-  const [examConfig, setExamConfig] = useState({
-    date: '',
-    time: '',
-    location: '',
-    subjects: 'Mathematics, English, General Knowledge',
-    notes: ''
-  });
   const [customFees, setCustomFees] = useState({
     monthly_fee: 4500,
     bus_fee: 1500,
@@ -365,7 +356,11 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
     setValidationErrors({});
 
-    e.preventDefault();
+    if (!registrationOpen) {
+      setSubmitError('Registration is closed. New applications cannot be submitted at this time.');
+      return;
+    }
+
     try {
       const formData = new FormData(e.currentTarget);
       const name = formData.get('name') as string;
@@ -591,41 +586,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     }
   };
 
-  const handlePassAfterExam = async (appId: string) => {
-    try {
-      await updateApplicationStatus(appId, { status: 'exam-pending' });
-      const app = pendingApps.find(a => a.id === appId);
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-pending' as AppStatus, examDetails: { ...examConfig } } : a));
-      setSuccessMessage(`${app?.name} added to exam queue.`);
-      if (app) showPhoneNotice(app.phone, 'Entrance exam scheduled — share details by phone');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
-      console.error(err);
-      setSubmitError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setSubmitError(null), 5000);
-    }
-  };
 
-  const handleExamResult = async (appId: string, passed: boolean) => {
-    if (passed) {
-      // Same grade-selection step as Pass (direct) before forwarding to finance
-      handlePass(appId);
-      return;
-    }
-
-    try {
-      await updateApplicationStatus(appId, { status: 'exam-failed' });
-      const app = pendingApps.find(a => a.id === appId);
-      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-failed' as AppStatus } : a));
-      setSuccessMessage(`${app?.name} did not pass the exam.`);
-      if (app) showPhoneNotice(app.phone, 'Exam not passed — notify family by phone');
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
-      console.error(err);
-      setSubmitError(err.response?.data?.error?.message || err.message);
-      setTimeout(() => setSubmitError(null), 5000);
-    }
-  };
 
   const handlePaymentResult = async (appId: string, paid: boolean, fees?: typeof customFees) => {
     try {
@@ -662,17 +623,15 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
   const filteredPipelineApps = pendingApps.filter(app => {
     if (pipelineFilter === 'pending') return app.status === 'pending';
-    if (pipelineFilter === 'exam-queue') return app.status === 'exam-pending';
     if (pipelineFilter === 'awaiting-finance') return app.status === 'awaiting-payment';
-    if (pipelineFilter === 'completed') return ['declined', 'exam-failed', 'registered'].includes(app.status);
+    if (pipelineFilter === 'completed') return ['declined', 'registered'].includes(app.status);
     return false;
   });
 
   const pipelineCounts = {
     pending: pendingApps.filter(a => a.status === 'pending').length,
-    'exam-queue': pendingApps.filter(a => a.status === 'exam-pending').length,
     'awaiting-finance': pendingApps.filter(a => a.status === 'awaiting-payment').length,
-    completed: pendingApps.filter(a => ['declined', 'exam-failed', 'registered'].includes(a.status)).length,
+    completed: pendingApps.filter(a => ['declined', 'registered'].includes(a.status)).length,
   };
 
   return (
@@ -726,11 +685,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           <div className="space-y-5">
             {/* Registration Window Toggle */}
             {!isFinance && (
-              <div
-                onClick={() => setRegistrationOpen(!registrationOpen)}
-                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'
-                  }`}
-              >
+              <div className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl text-white ${registrationOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                     <Shield size={18} />
@@ -750,61 +705,12 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
             )}
 
-            {/* Global Exam Configuration */}
-            {!isFinance && (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-800/30 overflow-hidden">
-                <button
-                  onClick={() => setShowExamConfig(!showExamConfig)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-amber-50/50 dark:hover:bg-amber-900/5 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
-                      <BookOpen size={18} />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">Entrance Exam Configuration</p>
-                      <p className="text-[10px] text-amber-600/70 font-medium">
-                        {examConfig.date ? `${examConfig.date} at ${examConfig.time} — ${examConfig.location}` : 'Not configured yet'}
-                      </p>
-                    </div>
-                  </div>
-                  <Clock size={16} className={`text-amber-400 transition-transform ${showExamConfig ? 'rotate-180' : ''}`} />
-                </button>
-                {showExamConfig && (
-                  <div className="p-4 pt-0 space-y-4 border-t border-amber-100 dark:border-amber-800/30">
-                    <div className="grid grid-cols-2 gap-3 pt-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Exam Date</label>
-                        <input type="date" title="Exam date" aria-label="Exam date" value={examConfig.date} onChange={e => setExamConfig({ ...examConfig, date: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time</label>
-                        <input type="time" title="Exam time" aria-label="Exam time" value={examConfig.time} onChange={e => setExamConfig({ ...examConfig, time: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Location</label>
-                      <input type="text" title="Exam location" aria-label="Exam location" placeholder="Enter exam location" value={examConfig.location} onChange={e => setExamConfig({ ...examConfig, location: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subjects</label>
-                      <input type="text" title="Exam subjects" aria-label="Exam subjects" placeholder="Enter subjects" value={examConfig.subjects} onChange={e => setExamConfig({ ...examConfig, subjects: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500" />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Instructions for Students</label>
-                      <textarea rows={2} title="Exam instructions" aria-label="Exam instructions" placeholder="Enter instructions for students" value={examConfig.notes} onChange={e => setExamConfig({ ...examConfig, notes: e.target.value })} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 resize-none" />
-                    </div>
-                    <p className="text-[10px] text-amber-600 font-medium">💡 These details are sent to every applicant you assign to "Pass After Exam".</p>
-                  </div>
-                )}
-              </div>
-            )}
+
 
             {/* Pipeline Filter Tabs */}
             <div className="flex flex-wrap gap-3">
               {([
                 { key: 'pending' as PipelineFilter, label: 'Pending', color: 'blue' },
-                { key: 'exam-queue' as PipelineFilter, label: 'Exam Queue', color: 'amber' },
                 { key: 'awaiting-finance' as PipelineFilter, label: 'Awaiting Finance', color: 'purple' },
                 { key: 'completed' as PipelineFilter, label: 'Completed', color: 'slate' },
               ]).filter(tab => !isFinance || tab.key === 'awaiting-finance' || tab.key === 'completed').map(tab => (
@@ -843,9 +749,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
-                      app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
                         app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
-                          app.status === 'declined' || app.status === 'exam-failed' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
+                          app.status === 'declined' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
                             'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                       }`}>
                       {app.status.replace('-', ' ')}
@@ -892,18 +797,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     )}
                   </div>
 
-                  {/* Exam Details (if exam-pending) */}
-                  {app.status === 'exam-pending' && app.examDetails && (
-                    <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/30 rounded-xl">
-                      <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2"><Clock size={12} /> Exam Scheduled</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        <div><span className="text-[10px] text-amber-500 font-bold">Date:</span> <span className="font-bold text-amber-800 dark:text-amber-200">{app.examDetails.date}</span></div>
-                        <div><span className="text-[10px] text-amber-500 font-bold">Time:</span> <span className="font-bold text-amber-800 dark:text-amber-200">{app.examDetails.time}</span></div>
-                        <div><span className="text-[10px] text-amber-500 font-bold">Location:</span> <span className="font-bold text-amber-800 dark:text-amber-200">{app.examDetails.location}</span></div>
-                        <div><span className="text-[10px] text-amber-500 font-bold">Subjects:</span> <span className="font-bold text-amber-800 dark:text-amber-200">{app.examDetails.subjects}</span></div>
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Action Buttons per Status */}
                   <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
@@ -920,13 +814,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       <>
                         <button onClick={() => handleDecline(app.id)} className="px-5 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><X size={16} /> Decline</button>
                         <button onClick={() => handlePass(app.id)} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass</button>
-                        <button onClick={() => handlePassAfterExam(app.id)} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95"><BookOpen size={16} /> Pass After Exam</button>
-                      </>
-                    )}
-                    {app.status === 'exam-pending' && (
-                      <>
-                        <button onClick={() => handleExamResult(app.id, true)} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><Check size={14} /> Pass</button>
-                        <button onClick={() => handleExamResult(app.id, false)} className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"><X size={14} /> Exam Failed</button>
                       </>
                     )}
                     {app.status === 'awaiting-payment' && (
@@ -942,7 +829,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         <span className="text-xs font-bold text-purple-600 flex items-center gap-1.5"><MapPin size={14} /> Waiting for finance clerk to confirm payment</span>
                       )
                     )}
-                    {(app.status === 'declined' || app.status === 'exam-failed') && (
+                    {app.status === 'declined' && (
                       <span className="text-xs font-bold text-rose-500">Application closed</span>
                     )}
                     {app.status === 'payment-confirmed' && (
@@ -1494,13 +1381,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     <CheckCircle size={18} />
                     Pass — Accept
                   </button>
-                  <button
-                    onClick={() => { handlePassAfterExam(viewingTranscript.id); setViewingTranscript(null); }}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-amber-100 dark:shadow-none transition-all flex items-center justify-center gap-2"
-                  >
-                    <BookOpen size={18} />
-                    Pass After Exam
-                  </button>
+
                   <button
                     onClick={() => { handleDecline(viewingTranscript.id); setViewingTranscript(null); }}
                     className="w-full bg-white dark:bg-slate-900 border-2 border-rose-100 dark:border-rose-900/30 text-rose-600 py-4 rounded-2xl font-black text-sm hover:bg-rose-50 transition-all flex items-center justify-center gap-2"
