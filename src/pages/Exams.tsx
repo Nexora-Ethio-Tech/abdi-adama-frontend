@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
-import { getAvailableExams, createExam } from '../services/examService';
+import { getAvailableExams, createExam, getTeacherExams, saveTeacherExam, getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams } from '../services/examService';
 import type { Exam, ExamCategory } from '../data/examData';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
@@ -33,6 +33,8 @@ const Exams = () => {
   const navigate = useNavigate();
   const { examControls, ensureExamControl, examinerTeacherIds } = useStore();
   const [exams, setExams] = useState<Exam[]>([]);
+  const [draftExams, setDraftExams] = useState<any[]>([]);
+  const [publishedExams, setPublishedExams] = useState<any[]>([]);
   const [loadingExams, setLoadingExams] = useState(false);
   const [examError, setExamError] = useState('');
   const [adminAuthModal, setAdminAuthModal] = useState<string | null>(null);
@@ -55,6 +57,11 @@ const Exams = () => {
     try {
       const examsData = await getAvailableExams();
       setExams(examsData);
+      if (isTeacher) {
+        const teacherData = await getTeacherExams();
+        setDraftExams(Array.isArray(teacherData.draftExams) ? teacherData.draftExams : []);
+        setPublishedExams(Array.isArray(teacherData.publishedExams) ? teacherData.publishedExams : []);
+      }
     } catch (error: any) {
       console.error('Failed to load exams:', error);
       setExamError(error?.message || 'Unable to load exams.');
@@ -95,6 +102,12 @@ const Exams = () => {
       onCancel={() => setShowCreateForm(false)}
       onSave={(newExam) => {
         setExams([...exams, newExam]);
+        // refresh teacher lists
+        (async () => {
+          const teacherData = await getTeacherExams();
+          setDraftExams(Array.isArray(teacherData.draftExams) ? teacherData.draftExams : []);
+          setPublishedExams(Array.isArray(teacherData.publishedExams) ? teacherData.publishedExams : []);
+        })();
         setShowCreateForm(false);
       }}
     />;
@@ -545,6 +558,7 @@ interface FlexibleQuestion {
 }
 
 const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', onCancel: () => void, onSave: (exam: Exam) => void }) => {
+  const { role } = useUser();
   const [examData, setExamData] = useState<Partial<Exam>>({
     title: '',
     category: 'Mid-term',
@@ -552,6 +566,29 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
     courseName: '',
     questions: []
   });
+  const [totalMarks, setTotalMarks] = useState<number>(100);
+  const [instructions, setInstructions] = useState<string>('');
+  const [subjectId, setSubjectId] = useState<string>('');
+  const [gradeId, setGradeId] = useState<string>('');
+  const [gradesForExam, setGradesForExam] = useState<any[]>([]);
+  const [coursesForGrade, setCoursesForGrade] = useState<any[]>([]);
+  const [teacherCourses, setTeacherCourses] = useState<any[]>([]);
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [examPassword, setExamPassword] = useState<string>('');
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [passwordRequired, setPasswordRequired] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (role === 'teacher') {
+      (async () => {
+        const g = await getGradesForExams();
+        setGradesForExam(Array.isArray(g) ? g : []);
+        const t = await getTeacherCoursesForExams();
+        setTeacherCourses(Array.isArray(t) ? t : []);
+        setCoursesForGrade(Array.isArray(t) ? t : []);
+      })();
+    }
+  }, [role]);
 
   const [assignmentDetails, setAssignmentDetails] = useState({
     description: '',
@@ -666,31 +703,62 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
       }));
 
     try {
-      const createdExam = await createExam({
-        title: examData.title || `Untitled ${type}`,
-        courseId: null,
-        courseName: examData.courseName || 'General Course',
-        category: examData.category as ExamCategory,
-        durationMinutes: examData.durationMinutes || 60,
-        questions: examQuestions
-      });
-
-      onSave({
-        id: createdExam.id,
-        title: createdExam.title,
-        courseId: createdExam.courseId,
-        courseName: createdExam.courseName,
-        teacherId: createdExam.teacherId,
-        teacherName: createdExam.teacherName,
-        category: createdExam.category,
-        durationMinutes: createdExam.durationMinutes,
-        questions: createdExam.questions || examQuestions,
-        status: createdExam.status || 'available',
-        isLocked: createdExam.isLocked,
-        lockPassword: createdExam.lockPassword,
-        isHidden: createdExam.isHidden,
-        principalSetPassword: createdExam.principalSetPassword
-      } as Exam);
+      if (role === 'teacher') {
+        const created = await saveTeacherExam({
+          classId: '',
+          title: examData.title || `Untitled ${type}`,
+          examType: examData.category || 'Mid-term',
+          totalMarks: Number(totalMarks || 100),
+          duration: Number(examData.durationMinutes || 60),
+          instructions: String(instructions || ''),
+          selectedSection,
+          gradeId,
+          subjectId: subjectId || undefined,
+          examPassword: examPassword || undefined,
+          isLocked,
+          passwordRequired,
+          questions: examQuestions
+        });
+        onSave({
+          id: created.id,
+          title: created.title,
+          courseId: created.courseId,
+          courseName: created.courseName,
+          teacherId: created.teacherId,
+          teacherName: created.teacherName,
+          category: created.category || (examData.category as ExamCategory),
+          durationMinutes: created.duration || Number(examData.durationMinutes || 60),
+          questions: created.questions || examQuestions,
+          status: created.status || 'available',
+          isLocked: created.is_locked || created.isLocked,
+          isHidden: created.is_hidden || created.isHidden
+        } as Exam);
+      } else {
+        const createdExam = await createExam({
+          title: examData.title || `Untitled ${type}`,
+          courseId: null,
+          courseName: examData.courseName || 'General Course',
+          category: examData.category as ExamCategory,
+          durationMinutes: examData.durationMinutes || 60,
+          questions: examQuestions
+        });
+        onSave({
+          id: createdExam.id,
+          title: createdExam.title,
+          courseId: createdExam.courseId,
+          courseName: createdExam.courseName,
+          teacherId: createdExam.teacherId,
+          teacherName: createdExam.teacherName,
+          category: createdExam.category,
+          durationMinutes: createdExam.durationMinutes,
+          questions: createdExam.questions || examQuestions,
+          status: createdExam.status || 'available',
+          isLocked: createdExam.isLocked,
+          lockPassword: createdExam.lockPassword,
+          isHidden: createdExam.isHidden,
+          principalSetPassword: createdExam.principalSetPassword
+        } as Exam);
+      }
     } catch (error: any) {
       console.error('Exam creation failed:', error);
       alert(error?.message || 'Could not create exam.');
@@ -720,6 +788,15 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
       {/* Basic Settings */}
       <div className="bg-white dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {role === 'teacher' && (
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Grade</label>
+                <select className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" value={gradeId} onChange={e => { const val = e.target.value; setGradeId(val); if (teacherCourses && teacherCourses.length) { setCoursesForGrade(teacherCourses.filter(c => String(c.grade_id || c.gradeId || c.grade) === String(val))); } else { (async () => { const courses = await getCoursesByGradeForExams(val); setCoursesForGrade(Array.isArray(courses) ? courses : []); })(); } }}>
+                  <option value="">Select Grade</option>
+                  {gradesForExam.map(g => <option key={g.id} value={g.id}>{g.name || g.grade_name || g.title}</option>)}
+                </select>
+              </div>
+            )}
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Exam Title</label>
             <input
@@ -730,16 +807,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               onChange={e => setExamData({ ...examData, title: e.target.value })}
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Course Name</label>
-            <input
-              type="text"
-              placeholder="e.g. Mathematics"
-              className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white"
-              value={examData.courseName}
-              onChange={e => setExamData({ ...examData, courseName: e.target.value })}
-            />
-          </div>
+          {/* Course Name removed — subject dropdown used instead */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Category</label>
             <select
@@ -760,6 +828,25 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
               onChange={e => setExamData({ ...examData, durationMinutes: parseInt(e.target.value) })}
             />
           </div>
+          {role === 'teacher' && (
+            <>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Total Marks</label>
+                <input type="number" className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" value={totalMarks} onChange={e => setTotalMarks(Number(e.target.value || 0))} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Course / Subject</label>
+                <select className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" value={subjectId} onChange={e => setSubjectId(e.target.value)}>
+                  <option value="">Select Subject</option>
+                  {coursesForGrade.map(c => <option key={c.id} value={c.id}>{c.name || c.title || c.course_name}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1 col-span-full">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Instructions for Students</label>
+                <textarea rows={3} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Instructions for students..." />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
