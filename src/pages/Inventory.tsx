@@ -3,13 +3,15 @@ import { Package, Search, Filter, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import { useStore } from '../context/useStore';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { getAssets, type Asset } from '../services/asset.service';
 import { branchService, type Branch } from '../services/branchService';
 
 export const Inventory = () => {
   const navigate = useNavigate();
-  const { role } = useUser();
+  const { role, selectedBranch } = useUser();
+  const { selectedBranchId } = useStore();
   // Finance Clerk, Super Admin, and School Admin can view inventory data
   const allowedRoles = ['finance-clerk', 'super-admin', 'school-admin'];
   const [items, setItems] = useState<Asset[]>([]);
@@ -30,7 +32,7 @@ export const Inventory = () => {
         setError(null);
 
         const [assetsData, branchResponse] = await Promise.all([
-          getAssets(),
+          getAssets(selectedBranchId ?? undefined),
           branchService.getAllBranches().catch(() => ({ data: [] }))
         ]);
 
@@ -49,7 +51,7 @@ export const Inventory = () => {
     };
 
     loadData();
-  }, []);
+  }, [role, selectedBranchId]);
 
   const branchNameById = useMemo(() => {
     return new Map(branches.map((branch) => [branch.id, branch.name]));
@@ -96,7 +98,9 @@ export const Inventory = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Inventory & Assets</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Live inventory data across all branches.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            Live inventory data {selectedBranch ? `for ${selectedBranch.name}` : 'across all branches'}.
+          </p>
         </div>
       </div>
 
