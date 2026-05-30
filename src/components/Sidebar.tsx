@@ -28,6 +28,7 @@ import {
   AlertCircle,
   MessageSquare,
   ChevronDown,
+  Film,
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -113,7 +114,15 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
         }
 
         baseItems.push(
-          { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
+          {
+            icon: Film,
+            label: 'Media',
+            path: '/website-posts',
+            children: [
+              { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
+              { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
+            ],
+          },
           {
             icon: DollarSign,
             label: 'Financial Tools',
@@ -124,7 +133,6 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
             ],
           },
-          { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
         return baseItems;
