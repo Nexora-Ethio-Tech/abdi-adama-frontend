@@ -28,6 +28,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [overdueStudents, setOverdueStudents] = useState<any[]>([]);
   const [staffProfiles, setStaffProfiles] = useState<EmployeePayrollProfile[]>([]);
   const [financeSettings, setFinanceSettings] = useState<any[]>([]);
+  const [pendingApplicationsCount, setPendingApplicationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -135,11 +136,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     try {
       setLoading(true);
       setError(null);
-      const [dashboardData, studentsData, overdueData, staffData] = await Promise.all([
+      const [dashboardData, studentsData, overdueData, staffData, pendingApplications] = await Promise.all([
         financeClerkService.getDashboard(),
         financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined }),
         financeClerkService.getOverduePayments(),
-        payrollService.getAllProfiles().catch(() => [])
+        payrollService.getAllProfiles().catch(() => []),
+        financeClerkService.getPendingApplications({ status: 'awaiting-payment' }),
       ]);
       const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
@@ -150,6 +152,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setStudents(studentsData);
       setOverdueStudents(overdueData);
       setStaffProfiles(staffData);
+      setPendingApplicationsCount(Array.isArray(pendingApplications) ? pendingApplications.length : 0);
       setTransportStudents(transportStudentsData);
       setTransportDrivers(transportDriversData);
       setTransportPolicies(transportPoliciesData);
@@ -528,7 +531,6 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   });
   const paginatedTransportStudents = filteredTransportStudents.slice((transportPage - 1) * transportPerPage, transportPage * transportPerPage);
   const totalTransportPages = Math.max(1, Math.ceil(filteredTransportStudents.length / transportPerPage));
-  const requestedAidCount = students.filter(s => ['pending', 'approved', 'rejected'].includes(s.fee_approval_status)).length;
   const pendingCount = students.filter(s => s.fee_approval_status === 'pending').length;
   const eligibleAidStudents = students.filter(s => s.fee_approval_status === 'none');
   const filteredEligibleStudents = eligibleAidStudents.filter(student => {
@@ -604,15 +606,15 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       },
       {
         title: 'Request Aid',
-        value: requestedAidCount.toString(),
-        subtitle: 'Aid requests in progress',
+        value: pendingCount.toString(),
+        subtitle: 'Pending aid requests',
         color: 'from-purple-600 to-purple-500',
         action: () => navigate('/finance-dashboard?tab=aid-requests')
       },
       {
         title: 'Registrations',
-        value: dashboard?.pendingApprovals?.toString() || '0',
-        subtitle: 'Fee reduction approvals',
+        value: pendingApplicationsCount.toString(),
+        subtitle: 'Pending registration applications',
         color: 'from-blue-600 to-blue-500',
         action: () => navigate('/finance-dashboard?tab=registrations')
       },
