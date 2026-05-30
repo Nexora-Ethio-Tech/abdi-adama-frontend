@@ -433,43 +433,6 @@ export const Dashboard = () => {
             </div>
           </div>
 
-          {/* Performance Snapshot with Traffic Lights */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6 space-y-5">
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.healthCheck')}</h3>
-            {[
-              { label: 'Finance', value: 'On Track', status: 'green' },
-              { label: 'Attendance', value: '93.8%', status: 'green' },
-              { label: 'Facilities', value: 'All Green', status: 'green' },
-              { label: 'Exams', value: '3 Locked', status: 'yellow' },
-              { label: 'Compliance', value: '2 Risks', status: 'yellow' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.label}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-500">{item.value}</span>
-                  <div className={`w-3 h-3 rounded-full ${item.status === 'green' ? 'bg-emerald-500' : item.status === 'yellow' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-                </div>
-              </div>
-            ))}
-
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Switch Branch</h4>
-              <div className="space-y-2">
-                {branches.map((branch) => (
-                  <button
-                    key={branch.id}
-                    onClick={() => {
-                      setSelectedBranchId(branch.id);
-                      setSelectedBranch(branch);
-                    }}
-                    className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all ${branch.id === selectedBranch.id ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-50 dark:bg-slate-800/50 text-slate-600 border border-transparent hover:border-slate-200'}`}
-                  >
-                    {branch.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     );
