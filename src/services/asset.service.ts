@@ -34,6 +34,7 @@ export const updateAsset = async (id: string, asset: {
   amount?: number;
   value?: number;
   branch_id?: string;
+  reason?: string;
 }): Promise<Asset> => {
   const resp = await api.patch(`/finance-clerk/assets/${id}`, asset);
   return resp.data;

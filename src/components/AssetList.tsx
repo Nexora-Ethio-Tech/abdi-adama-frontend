@@ -1,14 +1,27 @@
 import { useState, useEffect } from 'react';
-import { getAssets, createAsset, type Asset } from '../services/asset.service';
+import { getAssets, createAsset, updateAsset, type Asset } from '../services/asset.service';
 import { useStore } from '../context/useStore';
 import { useUser } from '../context/UserContext';
-import { X, Plus, MapPin, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Plus, MapPin, Sparkles, AlertCircle, Edit3, MinusCircle } from 'lucide-react';
+
+const initialFormState = {
+  name: '',
+  description: '',
+  amount: '1',
+  value: '',
+  branch_id: '',
+  reason: ''
+};
 
 const AssetList = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', amount: '1', value: '', branch_id: '' });
+  const [showReduceModal, setShowReduceModal] = useState(false);
+  const [form, setForm] = useState(initialFormState);
+  const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
+  const [reduceAmount, setReduceAmount] = useState('1');
+  const [reduceReason, setReduceReason] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { selectedBranchId } = useStore();
   const { selectedBranch, user } = useUser();
@@ -42,21 +55,87 @@ const AssetList = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const openEditModal = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setForm({
+      name: asset.name,
+      description: asset.description || '',
+      amount: asset.amount.toString(),
+      value: asset.value.toString(),
+      branch_id: asset.branch_id,
+      reason: ''
+    });
+    setError(null);
+    setShowModal(true);
+  };
+
+  const openReduceModal = (asset: Asset) => {
+    setSelectedAsset(asset);
+    setReduceAmount('1');
+    setReduceReason('');
+    setError(null);
+    setShowReduceModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createAsset({
-        name: form.name,
-        description: form.description || undefined,
-        amount: parseInt(form.amount, 10),
-        value: parseFloat(form.value),
-        branch_id: form.branch_id
-      });
+      if (selectedAsset) {
+        await updateAsset(selectedAsset.id, {
+          name: form.name,
+          description: form.description || undefined,
+          amount: parseInt(form.amount, 10),
+          value: parseFloat(form.value),
+          branch_id: form.branch_id,
+          reason: form.reason || `Manual edit by ${user?.name || 'finance clerk'}`
+        });
+      } else {
+        await createAsset({
+          name: form.name,
+          description: form.description || undefined,
+          amount: parseInt(form.amount, 10),
+          value: parseFloat(form.value),
+          branch_id: form.branch_id
+        });
+      }
       setShowModal(false);
-      setForm({ name: '', description: '', amount: '1', value: '', branch_id: currentBranchId });
+      setSelectedAsset(null);
+      setForm({ ...initialFormState, branch_id: currentBranchId });
       fetchAssets(currentBranchId);
     } catch (e: any) {
-      setError(e.message || 'Failed to create asset');
+      setError(e.message || 'Failed to save asset');
+    }
+  };
+
+  const handleReduceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAsset) return;
+
+    const amountToReduce = parseInt(reduceAmount, 10);
+    if (amountToReduce <= 0) {
+      setError('Please enter a positive quantity to reduce.');
+      return;
+    }
+
+    const newAmount = selectedAsset.amount - amountToReduce;
+    if (newAmount < 0) {
+      setError('Cannot reduce more than the current quantity.');
+      return;
+    }
+
+    try {
+      await updateAsset(selectedAsset.id, {
+        amount: newAmount,
+        reason: reduceReason || `Quantity reduced by ${amountToReduce}`
+      });
+      setShowReduceModal(false);
+      setSelectedAsset(null);
+      setReduceAmount('1');
+      setReduceReason('');
+      setError(null);
+      fetchAssets(currentBranchId);
+    } catch (e: any) {
+      setError(e.message || 'Failed to reduce asset quantity');
     }
   };
 
@@ -86,7 +165,12 @@ const AssetList = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowModal(true)}
+              onClick={() => {
+                setSelectedAsset(null);
+                setForm({ ...initialFormState, branch_id: currentBranchId });
+                setError(null);
+                setShowModal(true);
+              }}
               disabled={!currentBranchId}
               className="flex items-center gap-2 px-5 py-3 bg-white text-slate-900 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -120,6 +204,7 @@ const AssetList = () => {
                 <th className="px-4 py-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Amount</th>
                 <th className="px-4 py-2 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Value</th>
                 <th className="px-4 py-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Created</th>
+                <th className="px-4 py-2 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -139,6 +224,24 @@ const AssetList = () => {
                   </td>
                   <td className="px-4 py-4 text-center text-xs text-slate-400 rounded-r-[1.25rem]">
                     {new Date(a.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    <div className="inline-flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(a)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-black uppercase tracking-[0.25em] text-slate-700 transition hover:bg-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        <Edit3 className="w-4 h-4" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openReduceModal(a)}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black uppercase tracking-[0.25em] text-rose-700 transition hover:bg-rose-100 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200 dark:hover:bg-rose-800"
+                      >
+                        <MinusCircle className="w-4 h-4" /> Deduct
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -161,12 +264,12 @@ const AssetList = () => {
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 text-white">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-100">Inventory</p>
-                <h3 className="mt-1 text-2xl font-black tracking-tight">Add Inventory Item</h3>
-                <p className="mt-1 text-sm text-emerald-50/90">Record an asset for {currentBranchName}.</p>
-              </div>
+                <h3 className="mt-1 text-2xl font-black tracking-tight">{selectedAsset ? 'Edit Inventory Item' : 'Add Inventory Item'}</h3>
+                <p className="mt-1 text-sm text-emerald-50/90">
+                  {selectedAsset ? `Update the asset details for ${currentBranchName}.` : `Record an asset for ${currentBranchName}.`}
+                </p>              </div>
               <button onClick={() => setShowModal(false)} className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20">
-                <X className="w-5 h-5" />
-              </button>
+                <X className="w-5 h-5" />              </button>
             </div>
 
             <div className="p-6 md:p-8">
@@ -207,7 +310,7 @@ const AssetList = () => {
                     <input
                       name="amount"
                       type="number"
-                      min="1"
+                      min={selectedAsset ? '0' : '1'}
                       step="1"
                       value={form.amount}
                       onChange={handleChange}
@@ -229,6 +332,19 @@ const AssetList = () => {
                       className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                     />
                   </div>
+                  {selectedAsset && (
+                    <div className="md:col-span-2">
+                      <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">Reason / Note</label>
+                      <textarea
+                        name="reason"
+                        value={(form as any).reason || ''}
+                        onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                        rows={3}
+                        placeholder="Why was this item updated?"
+                        className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">Branch</label>
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -253,6 +369,89 @@ const AssetList = () => {
                     className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400"
                   >
                     Save Item
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showReduceModal && selectedAsset && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm p-4 md:items-center">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-black/5">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-5 text-white">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-100">Inventory Adjustment</p>
+                <h3 className="mt-1 text-2xl font-black tracking-tight">Reduce Quantity</h3>
+                <p className="mt-1 text-sm text-rose-50/90">Record lost, broken, or removed items for {selectedAsset.name}.</p>
+              </div>
+              <button onClick={() => setShowReduceModal(false)} className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 md:p-8">
+              {error && (
+                <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleReduceSubmit} className="space-y-5">
+                <div>
+                  <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">Current Quantity</label>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                    {selectedAsset.amount}
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">Reduce by</label>
+                    <input
+                      name="reduceAmount"
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={reduceAmount}
+                      onChange={(e) => setReduceAmount(e.target.value)}
+                      required
+                      placeholder="1"
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">New Quantity</label>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+                      {Math.max(0, selectedAsset.amount - parseInt(reduceAmount || '0', 10))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-2 block text-xs font-black uppercase tracking-[0.25em] text-slate-500">Reason</label>
+                  <textarea
+                    name="reduceReason"
+                    value={reduceReason}
+                    onChange={(e) => setReduceReason(e.target.value)}
+                    rows={4}
+                    required
+                    placeholder="Explain why these items were lost, damaged, or removed"
+                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-rose-500 focus:bg-white focus:ring-4 focus:ring-rose-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowReduceModal(false)}
+                    className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black uppercase tracking-widest text-slate-600 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-2xl bg-rose-600 px-5 py-3 text-sm font-black uppercase tracking-widest text-white transition hover:bg-rose-700"
+                  >
+                    Save Reduction
                   </button>
                 </div>
               </form>
