@@ -1,72 +1,79 @@
-
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { reportViolation, terminateExam } from '../../../services/examService';
 
 interface AntiCheatOptions {
-  onViolation: (type: string) => void;
-  maxWarnings: number;
-  autoSubmit: () => void;
+  examId: string;
+  enabled: boolean;
+  onWarning: (count: number, type: string) => void;
+  onTerminate: () => void;
 }
 
-export const useAntiCheat = ({ onViolation, maxWarnings, autoSubmit }: AntiCheatOptions) => {
+export const useAntiCheat = ({ examId, enabled, onWarning, onTerminate }: AntiCheatOptions) => {
   const [warningCount, setWarningCount] = useState(0);
-  const lastViolationTimeRef = useRef(0);
+  const lastViolationRef = useRef(0);
+  const terminatedRef = useRef(false);
 
-  const handleViolation = useCallback((type: string) => {
+  const handleViolation = useCallback(async (type: string) => {
+    if (!enabled || terminatedRef.current) return;
+
     const now = Date.now();
-    // Consolidate violations that happen within 1.5 seconds (e.g., blur + visibilitychange)
-    if (now - lastViolationTimeRef.current < 1500) return;
+    // Debounce: ignore violations within 2s of each other
+    if (now - lastViolationRef.current < 2000) return;
+    lastViolationRef.current = now;
 
-    lastViolationTimeRef.current = now;
-    setWarningCount((prev) => {
-      const newCount = prev + 1;
-      onViolation(type);
-      if (newCount >= maxWarnings) {
-        autoSubmit();
+    try {
+      // Report to backend – backend is source of truth for count
+      const serverCount = await reportViolation(examId);
+
+      setWarningCount(serverCount);
+
+      if (serverCount >= 3) {
+        terminatedRef.current = true;
+        try { await terminateExam(examId, 'violation_limit'); } catch { /* best effort */ }
+        onTerminate();
+      } else {
+        onWarning(serverCount, type);
       }
-      return newCount;
-    });
-  }, [onViolation, maxWarnings, autoSubmit]);
+    } catch {
+      // Fallback: local tracking
+      setWarningCount(prev => {
+        const next = prev + 1;
+        if (next >= 3) {
+          terminatedRef.current = true;
+          terminateExam(examId, 'violation_limit').catch(() => {});
+          onTerminate();
+        } else {
+          onWarning(next, type);
+        }
+        return next;
+      });
+    }
+  }, [examId, enabled, onWarning, onTerminate]);
 
   useEffect(() => {
-    // 1. Fullscreen enforcement
+    if (!enabled) return;
+
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        handleViolation('fullscreen-exit');
-      }
+      if (!document.fullscreenElement) handleViolation('Fullscreen Exit');
     };
-
-    // 2. Visibility / Tab change detection
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        handleViolation('tab-switch');
-      }
+      if (document.hidden) handleViolation('Tab Switch');
     };
-
     const handleBlur = () => {
-      handleViolation('window-blur');
+      handleViolation('Window Blur');
     };
-
-    // 3. Keyboard lock
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Block Ctrl+C, Ctrl+V, Ctrl+P, PrintScreen
-      // Also Cmd on Mac
       const isCmdOrCtrl = e.ctrlKey || e.metaKey;
-
       if (isCmdOrCtrl && (e.key === 'c' || e.key === 'v' || e.key === 'p')) {
         e.preventDefault();
-        handleViolation('restricted-key');
+        handleViolation('Restricted Key');
       }
-
       if (e.key === 'PrintScreen') {
         e.preventDefault();
-        handleViolation('print-screen');
+        handleViolation('Print Screen');
       }
     };
-
-    // 4. Context Menu (Right Click)
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
+    const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -81,15 +88,19 @@ export const useAntiCheat = ({ onViolation, maxWarnings, autoSubmit }: AntiCheat
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [handleViolation]);
+  }, [enabled, handleViolation]);
 
   const requestFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch((err) => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
+      document.documentElement.requestFullscreen().catch(() => {});
     }
   }, []);
 
-  return { warningCount, requestFullscreen };
+  const exitFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  return { warningCount, requestFullscreen, exitFullscreen };
 };

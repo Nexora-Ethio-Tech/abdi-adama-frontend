@@ -1,290 +1,472 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Send, AlertTriangle, ShieldCheck, Lock } from 'lucide-react';
-import { ExamTimer } from './components/ExamTimer';
+import { AlertTriangle, ShieldCheck, Lock, StopCircle, Send, CheckCircle2, KeyRound, XCircle } from 'lucide-react';
+import { ExamProgress } from './components/ExamProgress';
 import { QuestionCard } from './components/QuestionCard';
-import { QuestionPalette } from './components/QuestionPalette';
 import { SubmitOverlay } from './components/SubmitOverlay';
 import { useAntiCheat } from './hooks/useAntiCheat';
-import { getExamById, saveExamAnswer, submitExam, verifyExamPassword } from '../../services/examService';
+import {
+  getExamById, startExamSession, saveExamAnswer,
+  submitExam, verifyExamPassword, validateResetPin, terminateExam,
+} from '../../services/examService';
 import type { ExamDetail } from '../../services/examService';
+
+type ScreenState = 'loading' | 'error' | 'pre-start' | 'password' | 'active' | 'terminated' | 'submitted';
 
 export const ExamSession: React.FC = () => {
   const { examId } = useParams<{ examId: string }>();
   const navigate = useNavigate();
 
-  // --- State ---
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [flaggedQuestions, setFlaggedQuestions] = useState<Set<string>>(new Set());
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [submitStatus, setSubmitStatus] = useState<'submitting' | 'success' | 'error' | null>(null);
-  const [examStartedAt, setExamStartedAt] = useState<string>('');
-  const [examEndTime, setExamEndTime] = useState<number>(0);
-  const [violations, setViolations] = useState<string[]>([]);
-  const [showWarningModal, setShowWarningModal] = useState(false);
-  const [lastViolationType, setLastViolationType] = useState<string>('');
-  const [hasStarted, setHasStarted] = useState(false);
-  const [reentryPassword, setReentryPassword] = useState('');
-  const [showReentryModal, setShowReentryModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
+  const [screen, setScreen] = useState<ScreenState>('loading');
   const [examDetail, setExamDetail] = useState<ExamDetail | null>(null);
-  const [loadingExam, setLoadingExam] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [examEndTime, setExamEndTime] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [variationCode, setVariationCode] = useState('');
 
-  // --- Persistence ---
+  // Warning modal
+  const [warningCount, setWarningCount] = useState(0);
+  const [showWarning, setShowWarning] = useState(false);
+  const [warningType, setWarningType] = useState('');
+
+  // Submit overlay
+  const [submitStatus, setSubmitStatus] = useState<'submitting' | 'success' | 'error' | null>(null);
+  const [finalScore, setFinalScore] = useState<{ score: number; total: number; pct: number } | null>(null);
+
+  // Password
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+
+  // Reset PIN (after termination)
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pinLoading, setPinLoading] = useState(false);
+
+  // Stop confirm
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
+
+  const submittingRef = useRef(false);
   const STORAGE_KEY = `exam_session_${examId}`;
 
+  // ── Load exam ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!examId) return;
-
-    const fetchExam = async () => {
-      setLoadingExam(true);
-      setLoadError('');
-
+    (async () => {
       try {
         const data = await getExamById(examId);
         setExamDetail(data);
+        setVariationCode(data.variationCode || '');
         setAnswers(data.savedAnswers || {});
-        setExamStartedAt(data.session.startTime || new Date().toISOString());
-        setExamEndTime(data.session.endTime || Date.now() + data.exam.durationMinutes * 60 * 1000);
-        setHasStarted(false);
-        if (data.session.status === 'submitted') {
-          setSubmitStatus('success');
-        }
-      } catch (error: any) {
-        console.error('Failed to load exam:', error);
-        setLoadError(error?.message || 'Unable to load exam.');
-      } finally {
-        setLoadingExam(false);
-      }
-    };
 
-    fetchExam();
+        const dur = Number(data.exam.durationMinutes) * 60 * 1000;
+        const end = data.session.endTime || (Date.now() + dur);
+        setExamEndTime(end);
+
+        // Restore from localStorage if available
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          try {
+            const p = JSON.parse(saved);
+            setAnswers(p.answers || data.savedAnswers || {});
+            if (p.endTime) setExamEndTime(p.endTime);
+          } catch { /* ignore */ }
+        }
+
+        if (data.session.status === 'submitted') {
+          setScreen('submitted');
+        } else if (data.session.status === 'terminated') {
+          setScreen('terminated');
+        } else if (data.session.status === 'active') {
+          // Resume active session
+          setSessionId(data.session.id);
+          setScreen('active');
+        } else {
+          setScreen('pre-start');
+        }
+      } catch (err: any) {
+        setLoadError(err?.message || 'Unable to load exam.');
+        setScreen('error');
+      }
+    })();
   }, [examId]);
 
+  // ── Persist answers locally ────────────────────────────────────────────────
   useEffect(() => {
-    if (!examId) return;
-
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setAnswers(parsed.savedAnswers || {});
-        setFlaggedQuestions(new Set(parsed.savedFlagged || []));
-        setCurrentQuestionIndex(parsed.savedIndex || 0);
-        setExamStartedAt(parsed.savedStartTime || examStartedAt);
-        setExamEndTime(parsed.savedEndTime || examEndTime);
-        setViolations(parsed.savedViolations || []);
-      } catch {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+    if (screen === 'active' && examEndTime > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ answers, endTime: examEndTime }));
     }
-  }, [STORAGE_KEY, examId, examStartedAt, examEndTime]);
+  }, [answers, examEndTime, screen, STORAGE_KEY]);
 
+  // ── Warn before unload ────────────────────────────────────────────────────
   useEffect(() => {
-    if (examEndTime > 0) {
-      const dataToSave = JSON.stringify({
-        savedAnswers: answers,
-        savedIndex: currentQuestionIndex,
-        savedStartTime: examStartedAt,
-        savedEndTime: examEndTime,
-        savedViolations: violations,
-        savedFlagged: Array.from(flaggedQuestions)
-      });
-      localStorage.setItem(STORAGE_KEY, dataToSave);
-    }
-  }, [STORAGE_KEY, answers, currentQuestionIndex, examStartedAt, examEndTime, violations, flaggedQuestions]);
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (hasStarted && submitStatus !== 'success') {
-        e.preventDefault();
-        e.returnValue = '';
-      }
+    const handler = (e: BeforeUnloadEvent) => {
+      if (screen === 'active') { e.preventDefault(); e.returnValue = ''; }
     };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [screen]);
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [hasStarted, submitStatus]);
-
-  // --- Handlers ---
-  const handleViolation = useCallback((type: string) => {
-    setViolations(prev => [...prev, type]);
-    setLastViolationType(type);
-    if (type === 'Visibility Change' || type === 'Window Blur') {
-      setShowReentryModal(true);
-    } else {
-      setShowWarningModal(true);
-    }
-  }, []);
-
-  const handleSubmit = useCallback(async (auto = false) => {
-    if (!examId || isSubmitting || submitStatus === 'success') return;
-
-    setIsSubmitting(true);
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  const handleSubmit = useCallback(async () => {
+    if (!examId || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitStatus('submitting');
-
     try {
-      await submitExam(examId, auto);
+      const result = await submitExam(examId);
       localStorage.removeItem(STORAGE_KEY);
+      setFinalScore({
+        score: result.score,
+        total: result.total_marks,
+        pct: Math.round(result.percentage),
+      });
       setSubmitStatus('success');
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-    } catch (error) {
-      console.error('Submission failed:', error);
+      setScreen('submitted');
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch {
       setSubmitStatus('error');
-    } finally {
-      setIsSubmitting(false);
+      submittingRef.current = false;
     }
-  }, [examId, isSubmitting, submitStatus, STORAGE_KEY]);
+  }, [examId, STORAGE_KEY]);
 
-  const { requestFullscreen } = useAntiCheat({
-    onViolation: isSubmitting || submitStatus === 'success' || showReentryModal ? () => { } : handleViolation,
-    maxWarnings: 3,
-    autoSubmit: () => handleSubmit(true)
-  });
+  const handleTimeUp = useCallback(() => { handleSubmit(); }, [handleSubmit]);
 
-  const handleSelectOption = async (optionId: string) => {
-    if (!examId || !examDetail) return;
-    const questionId = examDetail.questions[currentQuestionIndex]?.id;
-    if (!questionId) return;
-
+  const handleSelectOption = useCallback(async (questionId: string, optionId: string) => {
+    if (!examId) return;
     setAnswers(prev => ({ ...prev, [questionId]: optionId }));
     try {
-      await saveExamAnswer(examId, questionId, optionId);
-    } catch (error) {
-      console.error('Failed to save answer:', error);
+      await saveExamAnswer(examId, questionId, optionId, sessionId || undefined);
+    } catch { /* best-effort */ }
+  }, [examId, sessionId]);
+
+  const handleStop = useCallback(async () => {
+    if (!examId || submittingRef.current) return;
+    submittingRef.current = true;
+    setShowStopConfirm(false);
+    setSubmitStatus('submitting');
+    try {
+      await terminateExam(examId, 'manual_stop');
+      localStorage.removeItem(STORAGE_KEY);
+      setSubmitStatus('success');
+      setScreen('submitted');
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    } catch {
+      setSubmitStatus('error');
+      submittingRef.current = false;
     }
-  };
+  }, [examId, STORAGE_KEY]);
 
-  const handleToggleFlag = (questionId: string) => {
-    setFlaggedQuestions(prev => {
-      const next = new Set(prev);
-      if (next.has(questionId)) {
-        next.delete(questionId);
+  // Anti-cheat callbacks
+  const onWarning = useCallback((count: number, type: string) => {
+    setWarningCount(count);
+    setWarningType(type);
+    setShowWarning(true);
+  }, []);
+
+  const onTerminate = useCallback(() => {
+    setScreen('terminated');
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }, []);
+
+  const { requestFullscreen, exitFullscreen } = useAntiCheat({
+    examId: examId || '',
+    enabled: screen === 'active',
+    onWarning,
+    onTerminate,
+  });
+
+  // ── Start exam ─────────────────────────────────────────────────────────────
+  const handleStart = useCallback(async () => {
+    if (!examId) return;
+    try {
+      const session = await startExamSession(examId);
+      setSessionId(session?.id || null);
+      const dur = Number(examDetail?.exam.durationMinutes || 60) * 60 * 1000;
+      const end = session?.session_start
+        ? new Date(session.session_start).getTime() + dur
+        : Date.now() + dur;
+      setExamEndTime(end);
+      setScreen('active');
+      requestFullscreen();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to start exam.');
+    }
+  }, [examId, examDetail, requestFullscreen]);
+
+  const handlePasswordSubmit = useCallback(async () => {
+    if (!examId || !passwordInput.trim()) return;
+    setPasswordError('');
+    try {
+      const result = await verifyExamPassword(examId, passwordInput.trim());
+      setSessionId(result?.session?.id || null);
+      const dur = Number(examDetail?.exam.durationMinutes || 60) * 60 * 1000;
+      setExamEndTime(Date.now() + dur);
+      setPasswordInput('');
+      setScreen('active');
+      requestFullscreen();
+    } catch {
+      setPasswordError('Incorrect password. Please try again.');
+    }
+  }, [examId, passwordInput, examDetail, requestFullscreen]);
+
+  const handlePinSubmit = useCallback(async () => {
+    if (!examId || !pinInput.trim()) return;
+    setPinError('');
+    setPinLoading(true);
+    try {
+      const ok = await validateResetPin(examId, pinInput.trim());
+      if (ok) {
+        setPinInput('');
+        // Reload exam detail to get refreshed session
+        const data = await getExamById(examId);
+        setExamDetail(data);
+        setAnswers(data.savedAnswers || {});
+        const dur = Number(data.exam.durationMinutes) * 60 * 1000;
+        setExamEndTime(Date.now() + dur);
+        setScreen('active');
+        requestFullscreen();
       } else {
-        next.add(questionId);
+        setPinError('Invalid or expired PIN. Ask your teacher for a new one.');
       }
-      return next;
-    });
-  };
+    } catch {
+      setPinError('Invalid PIN.');
+    } finally {
+      setPinLoading(false);
+    }
+  }, [examId, pinInput, requestFullscreen]);
 
-  const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
-  const handleNext = () => setCurrentQuestionIndex(prev => Math.min((examDetail?.questions.length ?? 1) - 1, prev + 1));
+  const questions = useMemo(() => examDetail?.questions || [], [examDetail]);
+  const answeredCount = useMemo(
+    () => questions.filter(q => answers[q.id] !== undefined).length,
+    [questions, answers]
+  );
 
-  const questionIds = useMemo(() => examDetail?.questions.map(q => q.id) || [], [examDetail]);
+  // ── Screens ────────────────────────────────────────────────────────────────
 
-  if (!hasStarted) {
+  if (screen === 'loading') {
     return (
-      <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-900">
-        <div className="max-w-md w-full mx-4 text-center">
-          <div className="w-20 h-20 bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck size={40} />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-4">{examDetail?.exam.title}</h2>
-          <div className="bg-slate-800 rounded-xl p-6 text-left mb-8 space-y-4">
-            <h3 className="text-slate-300 font-semibold uppercase text-xs tracking-wider">Exam Rules</h3>
-            <ul className="text-slate-400 text-sm space-y-2">
-              <li className="flex gap-2">
-                <span className="text-blue-400">•</span>
-                Do not leave the browser tab or minimize the window.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-400">•</span>
-                The exam will run in full-screen mode.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-400">•</span>
-                Multiple security violations will lead to auto-submission.
-              </li>
-              <li className="flex gap-2">
-                <span className="text-blue-400">•</span>
-                Duration: {examDetail?.exam.durationMinutes} minutes.
-              </li>
-            </ul>
-          </div>
-          <button
-            onClick={() => {
-              // if exam requires password, open password modal; otherwise start
-              if (examDetail?.exam && ((examDetail.exam as any).password_required || (examDetail.exam as any).passwordRequired)) {
-                setShowPasswordModal(true);
-                return;
-              }
-              setHasStarted(true);
-              requestFullscreen();
-            }}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Start Secure Session
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 font-medium">Loading exam...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'error') {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Unable to Load Exam</h2>
+          <p className="text-slate-400 mb-6">{loadError}</p>
+          <button onClick={() => navigate(-1)} className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold">
+            Go Back
           </button>
         </div>
       </div>
     );
   }
 
+  if (screen === 'submitted') {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-800 rounded-3xl p-8 text-center border border-slate-700">
+          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+          </div>
+          <h2 className="text-3xl font-black text-white mb-2">Exam Complete</h2>
+          <p className="text-slate-400 mb-6">Your answers have been saved and graded.</p>
+          {finalScore && (
+            <div className="bg-slate-700/50 rounded-2xl p-6 mb-6">
+              <p className="text-slate-400 text-sm font-medium mb-1">Your Score</p>
+              <p className="text-5xl font-black text-white">{finalScore.pct}<span className="text-2xl text-slate-400">%</span></p>
+              <p className="text-slate-400 text-sm mt-1">{finalScore.score} / {finalScore.total} marks</p>
+              <div className="mt-4 h-3 bg-slate-600 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-1000 ${finalScore.pct >= 50 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                  style={{ width: `${finalScore.pct}%` }}
+                />
+              </div>
+            </div>
+          )}
+          <button
+            onClick={() => { exitFullscreen(); navigate('/exams'); }}
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-colors"
+          >
+            Return to Exams
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'terminated') {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-800 rounded-3xl p-8 text-center border-2 border-red-500/50">
+          <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2">Exam Terminated</h2>
+          <p className="text-slate-400 mb-6 text-sm leading-relaxed">
+            Your exam session was terminated due to security violations. Contact your teacher for a reset PIN to regain access.
+          </p>
+
+          <div className="space-y-3 mb-6">
+            <label className="block text-left text-xs font-black text-slate-400 uppercase tracking-widest">
+              Enter Teacher Reset PIN
+            </label>
+            <input
+              type="text"
+              placeholder="Enter PIN (e.g. 1234)"
+              value={pinInput}
+              onChange={e => setPinInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handlePinSubmit()}
+              className="w-full px-4 py-3 bg-slate-700 border-2 border-slate-600 focus:border-blue-500 rounded-xl text-white text-center font-mono text-lg tracking-widest outline-none transition-colors"
+            />
+            {pinError && <p className="text-red-400 text-sm font-medium">{pinError}</p>}
+            <button
+              onClick={handlePinSubmit}
+              disabled={pinLoading || !pinInput.trim()}
+              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 text-white rounded-xl font-bold transition-colors"
+            >
+              {pinLoading ? 'Verifying...' : 'Unlock with PIN'}
+            </button>
+          </div>
+
+          <button
+            onClick={() => { exitFullscreen(); navigate('/exams'); }}
+            className="text-slate-500 hover:text-slate-300 text-sm font-medium transition-colors"
+          >
+            Return to Exams List
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'pre-start') {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck className="w-10 h-10 text-blue-400" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2">{examDetail?.exam.title}</h2>
+          {variationCode && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-indigo-900/40 text-indigo-400 text-xs font-black uppercase tracking-widest border border-indigo-700/50 mb-4">
+              Version {variationCode}
+            </span>
+          )}
+          <div className="bg-slate-800 rounded-2xl p-6 text-left mb-8 space-y-3 border border-slate-700">
+            <h3 className="text-slate-300 font-black text-xs uppercase tracking-widest mb-4">Exam Rules</h3>
+            {[
+              'Do not switch browser tabs or minimize the window.',
+              'The exam runs in fullscreen mode.',
+              '3 security violations will automatically terminate your exam.',
+              `Duration: ${examDetail?.exam.durationMinutes} minutes.`,
+              'All questions are displayed on one page – scroll to answer.',
+            ].map((rule, i) => (
+              <div key={i} className="flex gap-3 items-start">
+                <span className="text-blue-400 font-black mt-0.5">•</span>
+                <span className="text-slate-400 text-sm">{rule}</span>
+              </div>
+            ))}
+            {examDetail?.exam.instructions && (
+              <div className="pt-3 border-t border-slate-700">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Instructions</p>
+                <p className="text-slate-300 text-sm">{examDetail.exam.instructions}</p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => examDetail?.exam.passwordRequired ? setScreen('password') : handleStart()}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Start Exam
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'password') {
+    return (
+      <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
+        <div className="max-w-sm w-full bg-slate-800 rounded-3xl p-8 text-center border border-slate-700">
+          <KeyRound className="w-12 h-12 text-blue-400 mx-auto mb-4" />
+          <h3 className="text-xl font-black text-white mb-2">Exam Password Required</h3>
+          <p className="text-slate-400 text-sm mb-6">Your teacher has set a password for this exam.</p>
+          <input
+            type="password"
+            placeholder="Enter exam password"
+            value={passwordInput}
+            onChange={e => setPasswordInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()}
+            autoFocus
+            className="w-full px-4 py-3 bg-slate-700 border-2 border-slate-600 focus:border-blue-500 rounded-xl text-white text-center font-mono tracking-widest outline-none transition-colors mb-3"
+          />
+          {passwordError && <p className="text-red-400 text-sm mb-3">{passwordError}</p>}
+          <div className="flex gap-3">
+            <button onClick={() => setScreen('pre-start')} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-bold transition-colors">
+              Back
+            </button>
+            <button onClick={handlePasswordSubmit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors">
+              Verify & Start
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ACTIVE exam ─────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24">
-      {/* Teacher Re-entry Modal */}
-      {showReentryModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900 backdrop-blur-xl p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-8 text-center border-4 border-rose-500 animate-in zoom-in duration-300">
-            <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Lock size={40} />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Warning modal */}
+      {showWarning && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center animate-in zoom-in duration-200">
+            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">LOCKDOWN ACTIVE</h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">
-              You attempted to leave the exam environment. Enter the exam password to resume the session.
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">
+              Security Warning {warningCount}/3
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">
+              Detected: <span className="font-semibold text-slate-800 dark:text-slate-200">{warningType}</span>
             </p>
-            <div className="space-y-4">
-              <input
-                type="password"
-                placeholder="Exam Password"
-                className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-500 transition-all text-center font-bold tracking-widest"
-                value={reentryPassword}
-                onChange={(e) => setReentryPassword(e.target.value)}
-              />
-              <button
-                onClick={async () => {
-                  try {
-                    await verifyExamPassword(examId!, reentryPassword);
-                    setShowReentryModal(false);
-                    setReentryPassword('');
-                    requestFullscreen();
-                  } catch (err) {
-                    alert('Incorrect password');
-                  }
-                }}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-500/20 transition-all"
-              >
-                UNBLOCK SESSION
-              </button>
-            </div>
+            <p className="text-red-500 text-xs font-bold uppercase tracking-wider mb-6">
+              {warningCount === 2 ? '⚠ Next violation will terminate your exam!' : 'Stay on this page to avoid penalties.'}
+            </p>
+            <button
+              onClick={() => { setShowWarning(false); requestFullscreen(); }}
+              className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold hover:opacity-90 transition-opacity"
+            >
+              I Understand – Resume
+            </button>
           </div>
         </div>
       )}
 
-      {showPasswordModal && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full">
-            <h3 className="font-bold text-lg mb-2">Enter Exam Password</h3>
-            <p className="text-sm text-slate-600 mb-4">This exam is password protected. Enter the password to begin.</p>
-            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full p-3 border rounded mb-4" />
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowPasswordModal(false)} className="px-3 py-2 rounded border">Cancel</button>
-              <button onClick={async () => {
-                try {
-                  await verifyExamPassword(examId!, passwordInput);
-                  setShowPasswordModal(false);
-                  setPasswordInput('');
-                  setHasStarted(true);
-                  requestFullscreen();
-                } catch (err) {
-                  alert('Incorrect password');
-                }
-              }} className="px-4 py-2 rounded bg-blue-600 text-white">Verify & Start</button>
+      {/* Stop confirm modal */}
+      {showStopConfirm && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center">
+            <StopCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Stop Exam?</h3>
+            <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+              Your answers so far will be saved and scored. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowStopConfirm(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                Continue Exam
+              </button>
+              <button onClick={handleStop} className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors">
+                Stop & Save
+              </button>
             </div>
           </div>
         </div>
@@ -292,126 +474,67 @@ export const ExamSession: React.FC = () => {
 
       <SubmitOverlay
         status={submitStatus}
-        onRetry={() => handleSubmit()}
-        onClose={() => navigate('/')}
+        onRetry={() => { submittingRef.current = false; handleSubmit(); }}
+        onClose={() => { exitFullscreen(); navigate('/exams'); }}
       />
 
-      {/* Warning Modal */}
-      {showWarningModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle size={32} />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Security Warning</h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">
-              A security violation was detected: <span className="font-semibold text-slate-900 dark:text-slate-200">{lastViolationType}</span>.
-              Multiple violations will result in automatic submission.
-            </p>
-            <p className="text-sm font-medium text-red-600 mb-6 uppercase tracking-wider">
-              Warning {violations.length} of 3
-            </p>
-            <button
-              onClick={() => {
-                setShowWarningModal(false);
-                requestFullscreen();
-              }}
-              className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
-            >
-              I Understand & Resume
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Sticky progress header */}
+      <ExamProgress
+        title={examDetail?.exam.title || ''}
+        variationCode={variationCode}
+        totalQuestions={questions.length}
+        answeredCount={answeredCount}
+        endTime={examEndTime}
+        onTimeUp={handleTimeUp}
+      />
 
-      {/* Exam Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-              {examDetail?.exam.title}
-            </h1>
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Secure Session</span>
-            </div>
+      {/* Questions – all on one scrollable page */}
+      <main className="max-w-3xl mx-auto px-4 pt-24 pb-32 space-y-6">
+        {questions.map((q, idx) => (
+          <QuestionCard
+            key={q.id}
+            question={q}
+            questionNumber={idx + 1}
+            totalQuestions={questions.length}
+            selectedOptionId={answers[q.id]}
+            onSelectOption={(optId) => handleSelectOption(q.id, optId)}
+          />
+        ))}
+        {questions.length === 0 && (
+          <div className="text-center py-20 text-slate-400">
+            <p className="font-medium">No questions found for this exam.</p>
           </div>
-          <ExamTimer endTime={examEndTime} onTimeUp={() => handleSubmit(true)} />
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Question Area */}
-          <div className="lg:col-span-8 space-y-6">
-            <QuestionCard
-              question={examDetail?.questions[currentQuestionIndex]!}
-              selectedOptionId={answers[examDetail?.questions[currentQuestionIndex]?.id || '']}
-              onSelectOption={handleSelectOption}
-              index={currentQuestionIndex}
-              isFlagged={examDetail ? flaggedQuestions.has(examDetail.questions[currentQuestionIndex]?.id || '') : false}
-              onToggleFlag={() => examDetail?.questions[currentQuestionIndex]?.id && handleToggleFlag(examDetail.questions[currentQuestionIndex].id)}
-            />
-          </div>
-
-          {/* Sidebar / Palette */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-24 space-y-6">
-              <QuestionPalette
-                totalQuestions={examDetail?.questions.length ?? 0}
-                currentIndex={currentQuestionIndex}
-                answers={answers}
-                flaggedQuestions={flaggedQuestions}
-                questionIds={questionIds}
-                onSelectIndex={setCurrentQuestionIndex}
-              />
-
-              <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-xl p-4">
-                <div className="flex gap-3">
-                  <AlertTriangle className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={20} />
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    Your progress is automatically saved. Do not refresh or leave this page until you finish the exam.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </main>
 
-      {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-4 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handlePrev}
-              disabled={currentQuestionIndex === 0}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30 transition-colors"
-            >
-              <ChevronLeft size={20} />
-              <span className="hidden sm:inline">Previous</span>
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentQuestionIndex === (examDetail?.questions.length ?? 1) - 1}
-              className="flex items-center gap-2 px-4 py-2 text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg disabled:opacity-30 transition-colors"
-            >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight size={20} />
-            </button>
-          </div>
-
+      {/* Fixed bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-3 z-40">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+          {/* Stop Exam – bottom left */}
           <button
-            onClick={() => handleSubmit()}
-            disabled={isSubmitting}
-            className="flex items-center gap-2 px-8 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all"
+            onClick={() => setShowStopConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-xl font-bold text-sm transition-colors"
           >
-            <Send size={18} />
-            <span>{isSubmitting ? 'Submitting...' : 'Finish Exam'}</span>
+            <StopCircle size={16} />
+            Stop Exam
+          </button>
+
+          {/* Answered progress – center */}
+          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+            {answeredCount} of {questions.length} answered
+          </span>
+
+          {/* Finish – bottom right */}
+          <button
+            onClick={handleSubmit}
+            disabled={submittingRef.current}
+            className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-colors"
+          >
+            <Send size={16} />
+            Finish Exam
           </button>
         </div>
-      </footer>
+      </div>
     </div>
   );
 };

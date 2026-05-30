@@ -1,21 +1,22 @@
 import api from './api';
-import type { Exam, ExamCategory } from '../data/examData';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface ExamQuestion {
   id: string;
   text: string;
   type: string;
   options: { id: string; text: string }[];
-  points: number;
+  points?: number;
 }
 
 export interface ExamSession {
-  id: string;
+  id: string | null;
   status: string;
   startTime: string;
   endTime: number;
+  terminated?: boolean;
+  violationCount?: number;
 }
 
 export interface ExamDetail {
@@ -23,31 +24,51 @@ export interface ExamDetail {
     id: string;
     title: string;
     durationMinutes: number;
-    questionCount: number;
+    totalMarks: number;
+    instructions?: string;
+    teacherName?: string;
+    passwordRequired?: boolean;
   };
   session: ExamSession;
   questions: ExamQuestion[];
   savedAnswers: Record<string, string>;
+  variationCode?: string;
+}
+
+export interface PublishedExam {
+  id: string;
+  title: string;
+  examType: string;
+  durationMinutes: number;
+  teacherName: string;
+  questionCount: number;
+  sessionStatus: 'available' | 'active' | 'submitted' | 'terminated' | null;
+  finalScore: number | null;
+  violated: boolean;
+  violationCount: number;
+  passwordRequired: boolean;
 }
 
 export interface SubmitResult {
-  sessionId: string;
-  status: string;
-  earnedPoints: number;
-  totalPoints: number;
-  scorePercent: number;
-  autoSubmitted: boolean;
+  score: number;
+  total_marks: number;
+  percentage: number;
 }
 
-// ─── API Calls ───────────────────────────────────────────────────────────────
+// ─── Student Exam APIs ────────────────────────────────────────────────────────
 
-export const getAvailableExams = async (): Promise<Exam[]> => {
+export const getAvailableExams = async (): Promise<PublishedExam[]> => {
   const response = await api.get('/student/exams');
   return response.data.data;
 };
 
 export const getExamById = async (examId: string): Promise<ExamDetail> => {
   const response = await api.get(`/student/exams/${examId}`);
+  return response.data.data;
+};
+
+export const startExamSession = async (examId: string): Promise<any> => {
+  const response = await api.post(`/student/exams/${examId}/start`);
   return response.data.data;
 };
 
@@ -60,168 +81,99 @@ export const saveExamAnswer = async (
   await api.post(`/student/exams/${examId}/answer`, { questionId, answer, sessionId });
 };
 
+export const submitExam = async (examId: string): Promise<SubmitResult> => {
+  const response = await api.post(`/student/exams/${examId}/submit`);
+  return response.data.data;
+};
+
 export const verifyExamPassword = async (examId: string, password: string): Promise<any> => {
   const response = await api.post(`/student/exams/${examId}/verify-password`, { password });
   return response.data.data;
 };
 
-export const startExamSession = async (examId: string): Promise<any> => {
-  const response = await api.post(`/student/exams/${examId}/start`);
-  return response.data.data;
+/** Report a browser-switch / fullscreen-exit violation. Returns the new violation count. */
+export const reportViolation = async (examId: string): Promise<number> => {
+  try {
+    const response = await api.post(`/student/exams/${examId}/violation`);
+    return response.data.data?.violationCount || 1;
+  } catch {
+    return 1;
+  }
 };
 
-export const submitExam = async (
-  examId: string,
-  autoSubmitted: boolean = false
-): Promise<SubmitResult> => {
-  const response = await api.post(`/student/exams/${examId}/submit`, { autoSubmitted });
-  return response.data.data;
+/** Terminate exam (3rd strike or manual stop). Score is saved server-side. */
+export const terminateExam = async (examId: string, reason = 'manual_stop'): Promise<void> => {
+  await api.post(`/student/exams/${examId}/terminate`, { reason });
 };
 
-export const createExam = async (examData: {
-  title: string;
-  courseId?: string | null;
-  courseName: string;
-  category: 'Mid-term' | 'Final' | 'Quiz' | 'Assignment';
-  durationMinutes: number;
-  questions?: Array<{
-    id: string;
-    text: string;
-    correctOptionId?: string | null;
-    options?: Array<{ id: string; text: string }>;
-  }>;
-}): Promise<any> => {
-  const response = await api.post('/teacher/exams', examData);
-  return response.data.data;
+/** Validate teacher-issued reset PIN. Returns true if valid (session unblocked). */
+export const validateResetPin = async (examId: string, pin: string): Promise<boolean> => {
+  try {
+    const response = await api.post(`/student/exams/${examId}/reset-pin`, { pin });
+    return response.data.data?.unlocked === true;
+  } catch {
+    return false;
+  }
 };
 
-// ─── Teacher Exam Management APIs ───────────────────────────────────────────
+// ─── Teacher Exam APIs ────────────────────────────────────────────────────────
 
-/**
- * Get all exams for the current teacher (draft and published)
- */
-export const getTeacherExams = async (): Promise<{
-  draftExams: any[];
-  publishedExams: any[];
-}> => {
+export const getTeacherExams = async (): Promise<{ draftExams: any[]; publishedExams: any[] }> => {
   const response = await api.get('/teacher/exams');
   return response.data.data;
 };
 
-/**
- * Get a specific exam by ID
- */
 export const getTeacherExamById = async (examId: string): Promise<any> => {
   const response = await api.get(`/teacher/exams/${examId}`);
   return response.data.data;
 };
 
-/**
- * Create a new exam (draft)
- * POST /api/exams
- */
 export const saveTeacherExam = async (examData: {
-  classId: string;
-  title: string;
-  examType: string;
-  totalMarks: number;
-  duration: number;
-  instructions?: string;
-  selectedSection?: string;
-  gradeId?: string;
-  subjectId?: string;
-  examPassword?: string;
-  isLocked?: boolean;
-  passwordRequired?: boolean;
-  questions?: any[];
+  classId: string; title: string; examType: string; totalMarks: number; duration: number;
+  instructions?: string; selectedSection?: string; gradeId?: string; subjectId?: string;
+  examPassword?: string; isLocked?: boolean; passwordRequired?: boolean; questions?: any[];
 }): Promise<any> => {
   const response = await api.post('/teacher/exams', examData);
   return response.data.data;
 };
 
-/**
- * Update a draft exam
- * PATCH /api/exams/:id
- */
-export const updateTeacherExam = async (
-  examId: string,
-  updateData: {
-    title?: string;
-    examType?: string;
-    totalMarks?: number;
-    duration?: number;
-    instructions?: string;
-    selectedSection?: string;
-    gradeId?: string;
-    subjectId?: string;
-    examPassword?: string;
-    isLocked?: boolean;
-    passwordRequired?: boolean;
-    questions?: any[];
-  }
-): Promise<any> => {
+export const updateTeacherExam = async (examId: string, updateData: any): Promise<any> => {
   const response = await api.patch(`/teacher/exams/${examId}`, updateData);
   return response.data.data;
 };
 
-/**
- * Publish a draft exam
- * POST /api/exams/:id/publish
- */
 export const publishTeacherExam = async (examId: string): Promise<any> => {
   const response = await api.post(`/teacher/exams/${examId}/publish`);
   return response.data.data;
 };
 
-/**
- * Delete a draft exam
- * DELETE /api/exams/:id
- */
 export const deleteTeacherExam = async (examId: string): Promise<any> => {
   const response = await api.delete(`/teacher/exams/${examId}`);
   return response.data.data;
 };
 
-// ─── Grade & Subject Selection APIs ────────────────────────────────────────
+/** Teacher issues a reset PIN to unblock a terminated student session. */
+export const issueResetPin = async (examId: string, studentId: string, pin: string): Promise<any> => {
+  const response = await api.post(`/teacher/exams/${examId}/issue-reset-pin`, { studentId, pin });
+  return response.data.data;
+};
 
-/**
- * Get all available grades
- * GET /api/teacher/exam-grades
- */
+// ─── Grade / Subject Selection APIs ──────────────────────────────────────────
+
 export const getGradesForExams = async (): Promise<any[]> => {
-  try {
-    const response = await api.get('/teacher/exam-grades');
-    return response.data.data || [];
-  } catch (error) {
-    console.error('Error fetching grades:', error);
-    return [];
-  }
+  try { const r = await api.get('/teacher/exam-grades'); return r.data.data || []; } catch { return []; }
 };
 
-/**
- * Get all courses/subjects for a specific grade
- * GET /api/teacher/exam-grades/:gradeId/courses
- */
 export const getCoursesByGradeForExams = async (gradeId: string): Promise<any[]> => {
-  try {
-    const response = await api.get(`/teacher/exam-grades/${gradeId}/courses`);
-    return response.data.data || [];
-  } catch (error) {
-    console.error('Error fetching courses:', error);
-    return [];
-  }
+  try { const r = await api.get(`/teacher/exam-grades/${gradeId}/courses`); return r.data.data || []; } catch { return []; }
 };
 
-/**
- * Get all courses taught by the current teacher
- * GET /api/teacher/exam-courses
- */
 export const getTeacherCoursesForExams = async (): Promise<any[]> => {
-  try {
-    const response = await api.get('/teacher/exam-courses');
-    return response.data.data || [];
-  } catch (error) {
-    console.error('Error fetching teacher courses:', error);
-    return [];
-  }
+  try { const r = await api.get('/teacher/exam-courses'); return r.data.data || []; } catch { return []; }
+};
+
+// Legacy createExam (old exams table)
+export const createExam = async (examData: any): Promise<any> => {
+  const response = await api.post('/teacher/exams', examData);
+  return response.data.data;
 };

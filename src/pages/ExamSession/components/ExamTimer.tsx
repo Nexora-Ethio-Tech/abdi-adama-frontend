@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from 'react';
-import { Clock, EyeOff } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface ExamTimerProps {
   endTime: number;
@@ -9,55 +8,38 @@ interface ExamTimerProps {
 
 export const ExamTimer: React.FC<ExamTimerProps> = ({ endTime, onTimeUp }) => {
   const [timeLeft, setTimeLeft] = useState<number>(Math.max(0, endTime - Date.now()));
-  const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
       const remaining = Math.max(0, endTime - Date.now());
       setTimeLeft(remaining);
-
-      if (remaining <= 0) {
-        clearInterval(interval);
-        onTimeUp();
-      }
+      if (remaining <= 0) { clearInterval(interval); onTimeUp(); }
     }, 1000);
-
     return () => clearInterval(interval);
   }, [endTime, onTimeUp]);
 
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+  const totalSeconds = Math.floor(timeLeft / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (v: number) => v < 10 ? '0' + v : String(v);
+  const formatted = hours > 0
+    ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
+    : `${pad(minutes)}:${pad(seconds)}`;
 
-    return [hours, minutes, seconds]
-      .map(v => v < 10 ? '0' + v : v)
-      .join(':');
-  };
-
-  const isLowTime = timeLeft < 300000; // 5 minutes
+  const isLow = timeLeft < 300000; // 5 min
+  const isCritical = timeLeft < 60000; // 1 min
 
   return (
-    <div className={`fixed top-4 right-4 z-50 transition-all duration-300 ${isVisible ? 'w-48' : 'w-12'}`}>
-      <div className={`flex items-center gap-2 p-3 rounded-lg shadow-lg border ${
-        isLowTime ? 'bg-red-50 border-red-200 text-red-600' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-      }`}>
-        <button
-          onClick={() => setIsVisible(!isVisible)}
-          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded transition-colors"
-          title={isVisible ? "Collapse Timer" : "Expand Timer"}
-        >
-          {isVisible ? <EyeOff size={18} /> : <Clock size={18} />}
-        </button>
-
-        {isVisible && (
-          <div className="flex flex-col">
-            <span className="text-xs font-medium uppercase tracking-wider opacity-70">Time Remaining</span>
-            <span className="text-xl font-mono font-bold leading-none">{formatTime(timeLeft)}</span>
-          </div>
-        )}
-      </div>
+    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono font-black text-sm border transition-colors ${
+      isCritical
+        ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 animate-pulse'
+        : isLow
+          ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400'
+          : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+    }`}>
+      <Clock size={14} />
+      {formatted}
     </div>
   );
 };

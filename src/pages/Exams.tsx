@@ -3,36 +3,81 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import {
-  ClipboardList,
-  Clock,
-  ChevronRight,
-  Plus,
-  BookOpen,
-  User,
-  Filter,
-  Trash2,
-  Save,
-  X,
-  FileText,
-  Upload,
-  AlignLeft,
-  CheckSquare,
-  Layers,
-  Lock,
-  Eye,
-  EyeOff
+  ClipboardList, Clock, ChevronRight, Plus, BookOpen, User, Filter,
+  Trash2, Save, X, FileText, Upload, AlignLeft, CheckSquare, Layers,
+  Lock, Eye, EyeOff, AlertTriangle, CheckCircle2, RefreshCw
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
-import { getAvailableExams, createExam, getTeacherExams, saveTeacherExam, getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams } from '../services/examService';
+import {
+  getAvailableExams, createExam, getTeacherExams, saveTeacherExam,
+  getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams
+} from '../services/examService';
+import type { PublishedExam } from '../services/examService';
 import type { Exam, ExamCategory } from '../data/examData';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
 
+// ─── Student Exam Card (defined before Exams to avoid forward-reference error) ─
+const StudentExamCard = ({ exam, onStart }: { exam: PublishedExam; onStart: () => void }) => {
+  const statusConfig = {
+    available: { label: 'Available', color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800', dot: 'bg-emerald-500' },
+    active: { label: 'In Progress', color: 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800', dot: 'bg-blue-500' },
+    submitted: { label: 'Completed', color: 'text-slate-500 bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700', dot: 'bg-slate-400' },
+    terminated: { label: 'Terminated', color: 'text-red-600 bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800', dot: 'bg-red-500' },
+  };
+  const status = exam.sessionStatus || 'available';
+  const cfg = statusConfig[status as keyof typeof statusConfig] || statusConfig.available;
+  const isTerminated = status === 'terminated';
+  const isSubmitted = status === 'submitted';
+  const isActive = status === 'active';
+  return (
+    <div className={`bg-white dark:bg-slate-900 p-6 rounded-2xl border transition-all duration-300 group hover:shadow-xl hover:shadow-blue-500/5 relative overflow-hidden ${isTerminated ? 'border-red-200 dark:border-red-900' : 'border-slate-100 dark:border-slate-800'}`}>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-indigo-500/5 rounded-bl-[4rem] -mr-6 -mt-6 group-hover:scale-110 transition-transform duration-700" />
+      <div className="flex items-start justify-between mb-4 relative z-10">
+        <div className={`p-2.5 rounded-xl ${isTerminated ? 'bg-red-50 dark:bg-red-900/20 text-red-500' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
+          <ClipboardList size={20} />
+        </div>
+        <span className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full border ${cfg.color}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />{cfg.label}
+        </span>
+      </div>
+      <h3 className="text-lg font-black text-slate-800 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors tracking-tight line-clamp-2">{exam.title}</h3>
+      <p className="text-xs font-bold text-slate-400 mb-4">{exam.examType}</p>
+      <div className="space-y-2 mb-5">
+        {exam.teacherName && <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium"><User size={12} className="text-emerald-500" /> {exam.teacherName}</div>}
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium"><Clock size={12} className="text-amber-500" /> {exam.durationMinutes} min • {exam.questionCount} questions</div>
+        {isSubmitted && exam.finalScore !== null && (
+          <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Score</p>
+            <div className="flex items-center gap-2">
+              <span className={`text-2xl font-black ${Number(exam.finalScore) >= 50 ? 'text-emerald-600' : 'text-red-500'}`}>{exam.finalScore}%</span>
+              <CheckCircle2 size={16} className="text-emerald-500" />
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="pt-4 border-t border-slate-50 dark:border-slate-800">
+        {isSubmitted ? (
+          <span className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider"><CheckCircle2 size={14} className="text-emerald-500" /> Exam Submitted</span>
+        ) : isTerminated ? (
+          <button onClick={onStart} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 hover:bg-red-100 transition-colors"><AlertTriangle size={12} /> Terminated – Enter PIN</button>
+        ) : isActive ? (
+          <button onClick={onStart} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-lg shadow-blue-500/20"><ChevronRight size={14} /> Resume Exam</button>
+        ) : (
+          <button onClick={onStart} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 hover:bg-blue-50 transition-all">Start Exam <ChevronRight size={14} /></button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Exams = () => {
+
   const { role, user } = useUser();
   const navigate = useNavigate();
   const { examControls, ensureExamControl, examinerTeacherIds } = useStore();
   const [exams, setExams] = useState<Exam[]>([]);
+  const [studentExams, setStudentExams] = useState<PublishedExam[]>([]);
   const [draftExams, setDraftExams] = useState<any[]>([]);
   const [publishedExams, setPublishedExams] = useState<any[]>([]);
   const [loadingExams, setLoadingExams] = useState(false);
@@ -55,12 +100,17 @@ const Exams = () => {
     setLoadingExams(true);
     setExamError('');
     try {
-      const examsData = await getAvailableExams();
-      setExams(examsData);
-      if (isTeacher) {
-        const teacherData = await getTeacherExams();
-        setDraftExams(Array.isArray(teacherData.draftExams) ? teacherData.draftExams : []);
-        setPublishedExams(Array.isArray(teacherData.publishedExams) ? teacherData.publishedExams : []);
+      if (isStudent) {
+        const data = await getAvailableExams();
+        setStudentExams(Array.isArray(data) ? data : []);
+      } else {
+        const examsData = await getAvailableExams() as any;
+        setExams(Array.isArray(examsData) ? examsData : []);
+        if (isTeacher) {
+          const teacherData = await getTeacherExams();
+          setDraftExams(Array.isArray(teacherData.draftExams) ? teacherData.draftExams : []);
+          setPublishedExams(Array.isArray(teacherData.publishedExams) ? teacherData.publishedExams : []);
+        }
       }
     } catch (error: any) {
       console.error('Failed to load exams:', error);
@@ -126,6 +176,47 @@ const Exams = () => {
     }
   };
 
+  // ── Student view: rendered separately ─────────────────────────────────────
+  if (isStudent) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-1">
+          <Breadcrumbs />
+          <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-bold uppercase tracking-widest">
+            <ArrowLeft size={14} /> Back
+          </button>
+        </div>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Official Examinations</h1>
+            <p className="text-slate-500 dark:text-slate-400">Access and attempt your scheduled examinations.</p>
+          </div>
+          <button onClick={fetchExams} disabled={loadingExams} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+            <RefreshCw size={14} className={loadingExams ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
+        {examError && <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-bold">{examError}</div>}
+        {loadingExams ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1,2,3].map(i => <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />)}
+          </div>
+        ) : studentExams.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+            <ClipboardList size={48} className="mb-4 opacity-40" />
+            <p className="font-bold text-lg">No exams published yet</p>
+            <p className="text-sm">Check back when your teacher publishes an examination.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {studentExams.map(exam => (
+              <StudentExamCard key={exam.id} exam={exam} onStart={() => navigate(`/exam/${exam.id}`)} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -143,7 +234,6 @@ const Exams = () => {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Official Examinations</h1>
           <p className="text-slate-500 dark:text-slate-400">
             {isTeacher && "Manage official mid-term and final examinations for your courses."}
-            {isStudent && "Access and attempt your scheduled mid-term and final examinations."}
           </p>
         </div>
         {isTeacher && (
@@ -280,7 +370,9 @@ const Exams = () => {
   );
 };
 
+// ─── Teacher/Admin ExamCard ───────────────────────────────────────────────────
 const ExamCard = ({ exam, role, actorId, onStart }: { exam: Exam, role: string | null, actorId: string, onStart: () => void }) => {
+
   const { lockExam, unlockExam, setExamHidden, setPrincipalPassword, examControls, ensureExamControl } = useStore();
   const [lockPassword, setLockPassword] = useState('');
   const [showLockModal, setShowLockModal] = useState(false);

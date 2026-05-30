@@ -84,6 +84,15 @@ export const Layout = () => {
 
   const isExamPage = location.pathname.startsWith('/exam/');
 
+  // During an active exam, show only the exam UI (no sidebar, no header, no chatbot)
+  if (isExamPage) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+        <Outlet />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative overflow-hidden">
       {shouldShowStars && <ShootingStars />}
@@ -105,7 +114,7 @@ export const Layout = () => {
         <main className="p-4 md:p-8 flex-1 w-full">
           <Outlet />
         </main>
-        {!isExamPage && <Chatbot />}
+        <Chatbot />
       </div>
     </div>
   );
