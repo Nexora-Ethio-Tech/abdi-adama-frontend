@@ -53,7 +53,7 @@ const AssetList = () => {
         branch_id: form.branch_id
       });
       setShowModal(false);
-      setForm({ name: '', description: '', amount: '1', value: '', branch_id: '' });
+      setForm({ name: '', description: '', amount: '1', value: '', branch_id: currentBranchId });
       fetchAssets(currentBranchId);
     } catch (e: any) {
       setError(e.message || 'Failed to create asset');
