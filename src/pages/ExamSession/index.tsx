@@ -6,7 +6,7 @@ import { QuestionCard } from './components/QuestionCard';
 import { QuestionPalette } from './components/QuestionPalette';
 import { SubmitOverlay } from './components/SubmitOverlay';
 import { useAntiCheat } from './hooks/useAntiCheat';
-import { getExamById, saveExamAnswer, submitExam } from '../../services/examService';
+import { getExamById, saveExamAnswer, submitExam, verifyExamPassword } from '../../services/examService';
 import type { ExamDetail } from '../../services/examService';
 
 export const ExamSession: React.FC = () => {
@@ -27,6 +27,8 @@ export const ExamSession: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [reentryPassword, setReentryPassword] = useState('');
   const [showReentryModal, setShowReentryModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
   const [examDetail, setExamDetail] = useState<ExamDetail | null>(null);
   const [loadingExam, setLoadingExam] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -206,6 +208,11 @@ export const ExamSession: React.FC = () => {
           </div>
           <button
             onClick={() => {
+              // if exam requires password, open password modal; otherwise start
+              if (examDetail?.exam && ((examDetail.exam as any).password_required || (examDetail.exam as any).passwordRequired)) {
+                setShowPasswordModal(true);
+                return;
+              }
               setHasStarted(true);
               requestFullscreen();
             }}
@@ -229,30 +236,55 @@ export const ExamSession: React.FC = () => {
             </div>
             <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">LOCKDOWN ACTIVE</h3>
             <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">
-              You attempted to leave the exam environment. A teacher must enter their password to resume the session.
+              You attempted to leave the exam environment. Enter the exam password to resume the session.
             </p>
             <div className="space-y-4">
               <input
                 type="password"
-                placeholder="Teacher Password"
+                placeholder="Exam Password"
                 className="w-full px-6 py-4 bg-slate-100 dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl outline-none focus:border-blue-500 transition-all text-center font-bold tracking-widest"
                 value={reentryPassword}
                 onChange={(e) => setReentryPassword(e.target.value)}
               />
               <button
-                onClick={() => {
-                  if (reentryPassword === 'teacher123') { // Mock validation
+                onClick={async () => {
+                  try {
+                    await verifyExamPassword(examId!, reentryPassword);
                     setShowReentryModal(false);
                     setReentryPassword('');
                     requestFullscreen();
-                  } else {
-                    alert('Invalid Teacher Password');
+                  } catch (err) {
+                    alert('Incorrect password');
                   }
                 }}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black text-lg shadow-xl shadow-blue-500/20 transition-all"
               >
                 UNBLOCK SESSION
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 max-w-md w-full">
+            <h3 className="font-bold text-lg mb-2">Enter Exam Password</h3>
+            <p className="text-sm text-slate-600 mb-4">This exam is password protected. Enter the password to begin.</p>
+            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} className="w-full p-3 border rounded mb-4" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowPasswordModal(false)} className="px-3 py-2 rounded border">Cancel</button>
+              <button onClick={async () => {
+                try {
+                  await verifyExamPassword(examId!, passwordInput);
+                  setShowPasswordModal(false);
+                  setPasswordInput('');
+                  setHasStarted(true);
+                  requestFullscreen();
+                } catch (err) {
+                  alert('Incorrect password');
+                }
+              }} className="px-4 py-2 rounded bg-blue-600 text-white">Verify & Start</button>
             </div>
           </div>
         </div>

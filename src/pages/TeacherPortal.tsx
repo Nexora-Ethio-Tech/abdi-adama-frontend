@@ -17,7 +17,10 @@ import {
   saveTeacherExam,
   updateTeacherExam,
   publishTeacherExam,
-  deleteTeacherExam
+  deleteTeacherExam,
+  getGradesForExams,
+  getCoursesByGradeForExams,
+  getTeacherCoursesForExams
 } from '../services/examService';
 
 export const TeacherPortal = () => {
@@ -44,12 +47,19 @@ export const TeacherPortal = () => {
     instructions: '',
     selectedClass: '',
     selectedSection: '',
+    gradeId: '',
+    subjectId: '',
+    examPassword: '',
+    isLocked: false,
+    passwordRequired: false,
     questions: [] as any[],
   });
 
-  // Additional states for dynamic fields
-  const [myClasses, setMyClasses] = useState<any[]>([]);
-  const [deptHeads, setDeptHeads] = useState<any[]>([]);
+  // Grade and Subject selection states
+  const [gradesForExam, setGradesForExam] = useState<any[]>([]);
+  const [coursesForGrade, setCoursesForGrade] = useState<any[]>([]);
+  const [loadingGrades, setLoadingGrades] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(false);
 
   // Department Tasks states
   const [deptSearch, setDeptSearch] = useState('');
@@ -105,9 +115,49 @@ export const TeacherPortal = () => {
   const [planForm, setPlanForm] = useState(emptyPlan);
   const location = useLocation();
 
+  // Classes and department heads
+  const [myClasses, setMyClasses] = useState<any[]>([]);
+  const [deptHeads, setDeptHeads] = useState<any[]>([]);
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  // Load grades for exam creation
+  const loadGradesForExam = async () => {
+    try {
+      setLoadingGrades(true);
+      const grades = await getGradesForExams();
+      setGradesForExam(Array.isArray(grades) ? grades : []);
+    } catch (error) {
+      console.error('Error loading grades:', error);
+    } finally {
+      setLoadingGrades(false);
+    }
+  };
+
+  // Load courses for selected grade
+  const loadCoursesForGrade = async (gradeId: string) => {
+    try {
+      setLoadingCourses(true);
+      const courses = await getCoursesByGradeForExams(gradeId);
+      setCoursesForGrade(Array.isArray(courses) ? courses : []);
+    } catch (error) {
+      console.error('Error loading courses:', error);
+    } finally {
+      setLoadingCourses(false);
+    }
+  };
+
+  // Handle grade selection change
+  const handleGradeChange = (gradeId: string) => {
+    setExamForm({ ...examForm, gradeId, subjectId: '' });
+    if (gradeId) {
+      loadCoursesForGrade(gradeId);
+    } else {
+      setCoursesForGrade([]);
+    }
   };
 
   const fetchAll = async () => {
@@ -143,7 +193,10 @@ export const TeacherPortal = () => {
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { 
+    fetchAll();
+    loadGradesForExam(); 
+  }, []);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
@@ -265,6 +318,11 @@ export const TeacherPortal = () => {
       instructions: exam.instructions || '',
       selectedClass: exam.class_id || exam.selectedClass || '',
       selectedSection: exam.selected_section || exam.selectedSection || '',
+      gradeId: exam.grade_id || exam.gradeId || '',
+      subjectId: exam.subject_id || exam.subjectId || '',
+      examPassword: exam.exam_password || exam.examPassword || '',
+      isLocked: !!(exam.is_locked || exam.isLocked || exam.exam_password || exam.examPassword),
+      passwordRequired: !!(exam.password_required || exam.passwordRequired || exam.exam_password || exam.examPassword),
       questions: exam.questions || []
     });
     setIsExamModalOpen(true);
@@ -272,7 +330,7 @@ export const TeacherPortal = () => {
 
   const handleSaveExamChanges = async () => {
     if (!examForm.title.trim()) { setToast({ show: true, type: 'error', message: 'Please enter exam title' }); return; }
-    if (!examForm.selectedClass) { setToast({ show: true, type: 'error', message: 'Please select a class' }); return; }
+    if (examForm.isLocked && !examForm.examPassword.trim()) { setToast({ show: true, type: 'error', message: 'Please enter exam password' }); return; }
     
     try {
       setSubmitting(true);
@@ -285,6 +343,11 @@ export const TeacherPortal = () => {
           duration: examForm.duration,
           instructions: examForm.instructions,
           selectedSection: examForm.selectedSection,
+          gradeId: examForm.gradeId,
+          subjectId: examForm.subjectId,
+          examPassword: examForm.examPassword,
+          isLocked: examForm.isLocked,
+          passwordRequired: examForm.passwordRequired,
           questions: examForm.questions
         });
         showToast('Exam updated!', 'success');
@@ -298,6 +361,11 @@ export const TeacherPortal = () => {
           duration: examForm.duration,
           instructions: examForm.instructions,
           selectedSection: examForm.selectedSection,
+          gradeId: examForm.gradeId,
+          subjectId: examForm.subjectId,
+          examPassword: examForm.examPassword,
+          isLocked: examForm.isLocked,
+          passwordRequired: examForm.passwordRequired,
           questions: examForm.questions
         });
         showToast('Exam saved!', 'success');
@@ -490,7 +558,7 @@ export const TeacherPortal = () => {
                 <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Official Examinations</h2>
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Create, manage, and publish exams for your classes</p>
               </div>
-              <button onClick={() => { setEditingExam(null); setExamForm({ title: '', examType: 'Mid Exam', totalMarks: 100, duration: 60, instructions: '', selectedClass: '', selectedSection: '', questions: [] }); setIsExamModalOpen(true); }}
+              <button onClick={() => { setEditingExam(null); setExamForm({ title: '', examType: 'Mid Exam', totalMarks: 100, duration: 60, instructions: '', selectedClass: '', selectedSection: '', gradeId: '', subjectId: '', examPassword: '', isLocked: false, passwordRequired: false, questions: [] }); setIsExamModalOpen(true); }}
                 className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
                 <Plus size={18} /> Create New Exam
               </button>
@@ -799,7 +867,7 @@ export const TeacherPortal = () => {
                     required
                     value={planForm.courseId || ''}
                     onChange={e => {
-                      const selected = myClasses.find(c => c.id === e.target.value);
+                      const selected = myClasses.find((c: any) => c.id === e.target.value);
                       setPlanForm({
                         ...planForm,
                         courseId: e.target.value,
@@ -809,7 +877,7 @@ export const TeacherPortal = () => {
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Course</option>
-                    {myClasses.map(c => (
+                    {myClasses.map((c: any) => (
                       <option key={c.id} value={c.id}>{c.name || c.class_name || c.subject} {c.section ? `(${c.section})` : ''}</option>
                     ))}
                   </select>
@@ -824,7 +892,7 @@ export const TeacherPortal = () => {
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Dept Head</option>
-                    {deptHeads.map(dh => (
+                    {deptHeads.map((dh: any) => (
                       <option key={dh.teacher_id} value={dh.teacher_id}>{dh.name} ({dh.department || 'Dean'})</option>
                     ))}
                   </select>
@@ -896,6 +964,46 @@ export const TeacherPortal = () => {
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
               </div>
 
+              {/* Grade & Subject Selection */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 dark:bg-slate-800 rounded-lg border border-blue-200 dark:border-slate-700">
+                <div>
+                  <label htmlFor="examGrade" className="text-xs font-bold text-slate-500 uppercase">Grade Level</label>
+                  {loadingGrades ? (
+                    <div className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-400">Loading...</div>
+                  ) : (
+                    <select id="examGrade" value={examForm.gradeId} onChange={e => handleGradeChange(e.target.value)}
+                      className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                      <option value="">Select Grade</option>
+                      {gradesForExam.map(grade => (
+                        <option key={grade.id} value={grade.id}>{grade.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="examSubject" className="text-xs font-bold text-slate-500 uppercase">Subject/Course</label>
+                  {examForm.gradeId && loadingCourses ? (
+                    <div className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-400">Loading...</div>
+                  ) : examForm.gradeId && coursesForGrade.length > 0 ? (
+                    <div className="mt-1 p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg space-y-2">
+                      {coursesForGrade.map(course => (
+                        <label key={course.id} className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input type="radio" name="examSubject" value={course.id} 
+                            checked={examForm.subjectId === course.id}
+                            onChange={e => setExamForm({ ...examForm, subjectId: e.target.value })}
+                            className="w-4 h-4 text-blue-600 rounded-full" />
+                          <span className="text-slate-700 dark:text-slate-300">{course.name} ({course.code})</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : examForm.gradeId ? (
+                    <div className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-400">No courses available for this grade</div>
+                  ) : (
+                    <div className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-400">Select a grade first</div>
+                  )}
+                </div>
+              </div>
+
               {/* Exam Type & Total Marks & Duration */}
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -927,12 +1035,12 @@ export const TeacherPortal = () => {
                 <div>
                   <label htmlFor="examClass" className="text-xs font-bold text-slate-500 uppercase">Class</label>
                   <select id="examClass" value={examForm.selectedClass} onChange={e => { 
-                    const selected = myClasses.find(c => c.id === e.target.value);
+                    const selected = myClasses.find((c: any) => c.id === e.target.value);
                     setExamForm({ ...examForm, selectedClass: e.target.value, selectedSection: '' }); 
                   }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">Select Class</option>
-                    {myClasses.map(c => (
+                    {myClasses.map((c: any) => (
                       <option key={c.id} value={c.id}>{c.name || c.class_name}</option>
                     ))}
                   </select>
@@ -951,6 +1059,29 @@ export const TeacherPortal = () => {
                 <textarea id="examInstructions" rows={3} placeholder="e.g., Answer all questions. No calculators allowed. Duration: 1 hour" 
                   value={examForm.instructions} onChange={e => setExamForm({ ...examForm, instructions: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              </div>
+
+              {/* Password Protection Section */}
+              <div className="p-4 bg-amber-50 dark:bg-slate-800 rounded-lg border border-amber-200 dark:border-slate-700 space-y-3">
+                <div className="flex items-center gap-3">
+                  <input id="isLocked" type="checkbox" checked={examForm.isLocked} 
+                    onChange={e => setExamForm({ ...examForm, isLocked: e.target.checked, passwordRequired: e.target.checked })}
+                    className="w-4 h-4 text-amber-600 rounded" />
+                  <label htmlFor="isLocked" className="text-xs font-bold text-slate-500 uppercase cursor-pointer flex-1">
+                    🔒 Lock This Exam (Requires Password)
+                  </label>
+                </div>
+                {examForm.isLocked && (
+                  <>
+                    <div>
+                      <label htmlFor="examPassword" className="text-xs font-bold text-slate-500 uppercase">Exam Password</label>
+                      <input id="examPassword" type="password" placeholder="Enter exam password (students will need this)" 
+                        value={examForm.examPassword} onChange={e => setExamForm({ ...examForm, examPassword: e.target.value })}
+                        className="w-full mt-1 px-4 py-2 bg-white dark:bg-slate-700 border border-amber-200 dark:border-slate-600 rounded-lg text-sm outline-none focus:ring-2 focus:ring-amber-500" />
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 italic">ℹ️ Students must enter this password to access the exam. If they leave and return, they'll need to enter it again.</p>
+                  </>
+                )}
               </div>
 
               {/* Questions Builder - Simple version */}

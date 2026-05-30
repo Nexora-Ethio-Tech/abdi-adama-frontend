@@ -54,9 +54,20 @@ export const getExamById = async (examId: string): Promise<ExamDetail> => {
 export const saveExamAnswer = async (
   examId: string,
   questionId: string,
-  answer: string
+  answer: string,
+  sessionId?: string
 ): Promise<void> => {
-  await api.post(`/student/exams/${examId}/answer`, { questionId, answer });
+  await api.post(`/student/exams/${examId}/answer`, { questionId, answer, sessionId });
+};
+
+export const verifyExamPassword = async (examId: string, password: string): Promise<any> => {
+  const response = await api.post(`/student/exams/${examId}/verify-password`, { password });
+  return response.data.data;
+};
+
+export const startExamSession = async (examId: string): Promise<any> => {
+  const response = await api.post(`/student/exams/${examId}/start`);
+  return response.data.data;
 };
 
 export const submitExam = async (
@@ -117,6 +128,11 @@ export const saveTeacherExam = async (examData: {
   duration: number;
   instructions?: string;
   selectedSection?: string;
+  gradeId?: string;
+  subjectId?: string;
+  examPassword?: string;
+  isLocked?: boolean;
+  passwordRequired?: boolean;
   questions?: any[];
 }): Promise<any> => {
   const response = await api.post('/teacher/exams', examData);
@@ -136,6 +152,11 @@ export const updateTeacherExam = async (
     duration?: number;
     instructions?: string;
     selectedSection?: string;
+    gradeId?: string;
+    subjectId?: string;
+    examPassword?: string;
+    isLocked?: boolean;
+    passwordRequired?: boolean;
     questions?: any[];
   }
 ): Promise<any> => {
@@ -159,4 +180,48 @@ export const publishTeacherExam = async (examId: string): Promise<any> => {
 export const deleteTeacherExam = async (examId: string): Promise<any> => {
   const response = await api.delete(`/teacher/exams/${examId}`);
   return response.data.data;
+};
+
+// ─── Grade & Subject Selection APIs ────────────────────────────────────────
+
+/**
+ * Get all available grades
+ * GET /api/teacher/exam-grades
+ */
+export const getGradesForExams = async (): Promise<any[]> => {
+  try {
+    const response = await api.get('/teacher/exam-grades');
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching grades:', error);
+    return [];
+  }
+};
+
+/**
+ * Get all courses/subjects for a specific grade
+ * GET /api/teacher/exam-grades/:gradeId/courses
+ */
+export const getCoursesByGradeForExams = async (gradeId: string): Promise<any[]> => {
+  try {
+    const response = await api.get(`/teacher/exam-grades/${gradeId}/courses`);
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching courses:', error);
+    return [];
+  }
+};
+
+/**
+ * Get all courses taught by the current teacher
+ * GET /api/teacher/exam-courses
+ */
+export const getTeacherCoursesForExams = async (): Promise<any[]> => {
+  try {
+    const response = await api.get('/teacher/exam-courses');
+    return response.data.data || [];
+  } catch (error) {
+    console.error('Error fetching teacher courses:', error);
+    return [];
+  }
 };
