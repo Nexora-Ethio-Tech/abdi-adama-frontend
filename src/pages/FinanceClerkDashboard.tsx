@@ -582,7 +582,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const penaltyRate = financeSettings.find(s => s.key === 'student_late_penalty_rate')?.value || 150;
 
   const today = new Date();
-  const todayDay = today.getDate();
+  const ethToday = getEthiopianDate(today);
+  const todayDay = ethToday?.day || today.getDate();
   const daysToStudentDeadline = studentDeadlineDay - todayDay;
   const daysToStaffDeadline = staffDeadlineDay - todayDay;
 
