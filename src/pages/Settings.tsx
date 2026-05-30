@@ -537,593 +537,534 @@ export const Settings = () => {
             {activeTab === 'General' && (
               <SettingsPanel>
                 <div className="space-y-6">
-                {showSubSection('branding') && (
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-4">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Name (Official)</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {showSubSection('branding') && (
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Name (Official)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              value={schoolName.oromic}
+                              onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, oromic: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              value={schoolName.amharic}
+                              onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, amharic: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
+                            <input
+                              type="text"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              value={schoolName.english}
+                              onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, english: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Motto</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
+                            <input
+                              type="text"
+                              title="School motto in Oromic"
+                              aria-label="School motto in Oromic"
+                              placeholder="Enter Oromic motto"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
+                              value={schoolMotto.oromic}
+                              onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, oromic: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
+                            <input
+                              type="text"
+                              title="School motto in Amharic"
+                              aria-label="School motto in Amharic"
+                              placeholder="Enter Amharic motto"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
+                              value={schoolMotto.amharic}
+                              onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, amharic: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
+                            <input
+                              type="text"
+                              title="School motto in English"
+                              aria-label="School motto in English"
+                              placeholder="Enter English motto"
+                              className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
+                              value={schoolMotto.english}
+                              onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, english: e.target.value })}
+                              disabled={role !== 'super-admin'}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {showSubSection('contact') && (
+                    <>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
                         <input
-                          type="text"
+                          type="email"
+                          value={systemEmail}
+                          onChange={(e) => role === 'super-admin' && setSystemEmail(e.target.value)}
+                          disabled={role !== 'super-admin'}
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          value={schoolName.oromic}
-                          onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, oromic: e.target.value })}
-                          disabled={role !== 'super-admin'}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
                         <input
                           type="text"
+                          value={phone}
+                          onChange={(e) => role === 'super-admin' && setPhone(e.target.value)}
+                          disabled={role !== 'super-admin'}
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          value={schoolName.amharic}
-                          onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, amharic: e.target.value })}
-                          disabled={role !== 'super-admin'}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
-                        <input
-                          type="text"
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
+                        <select
+                          value={selectedAcademicYearId}
+                          onChange={(e) => role === 'super-admin' && setSelectedAcademicYearId(e.target.value)}
+                          disabled={role !== 'super-admin' || academicYears.length === 0}
                           className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          value={schoolName.english}
-                          onChange={(e) => role === 'super-admin' && setSchoolName({ ...schoolName, english: e.target.value })}
-                          disabled={role !== 'super-admin'}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Motto</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
-                        <input
-                          type="text"
-                          title="School motto in Oromic"
-                          aria-label="School motto in Oromic"
-                          placeholder="Enter Oromic motto"
-                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
-                          value={schoolMotto.oromic}
-                          onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, oromic: e.target.value })}
-                          disabled={role !== 'super-admin'}
-                        />
+                        >
+                          <option value="">Select academic year</option>
+                          {academicYears.map((y) => (
+                            <option key={y.id} value={y.id}>
+                              {y.year_name}{y.is_active ? ' (Current)' : ''}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
-                        <input
-                          type="text"
-                          title="School motto in Amharic"
-                          aria-label="School motto in Amharic"
-                          placeholder="Enter Amharic motto"
-                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
-                          value={schoolMotto.amharic}
-                          onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, amharic: e.target.value })}
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
+                        <textarea
+                          rows={3}
+                          value={address}
+                          onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
                           disabled={role !== 'super-admin'}
+                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
-                        <input
-                          type="text"
-                          title="School motto in English"
-                          aria-label="School motto in English"
-                          placeholder="Enter English motto"
-                          className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 italic"
-                          value={schoolMotto.english}
-                          onChange={(e) => role === 'super-admin' && setSchoolMotto({ ...schoolMotto, english: e.target.value })}
-                          disabled={role !== 'super-admin'}
-                        />
-                      </div>
+                    </>
+                  )}
+
+                  {role !== 'super-admin' && (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
+                      <Lock size={14} />
+                      Some global branding settings are restricted to Super Admins.
                     </div>
-                  </div>
-                </div>
-                )}
-
-                {showSubSection('contact') && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
-                    <input
-                      type="email"
-                      value={systemEmail}
-                      onChange={(e) => role === 'super-admin' && setSystemEmail(e.target.value)}
-                      disabled={role !== 'super-admin'}
-                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
-                    <input
-                      type="text"
-                      value={phone}
-                      onChange={(e) => role === 'super-admin' && setPhone(e.target.value)}
-                      disabled={role !== 'super-admin'}
-                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
-                    <select
-                      value={selectedAcademicYearId}
-                      onChange={(e) => role === 'super-admin' && setSelectedAcademicYearId(e.target.value)}
-                      disabled={role !== 'super-admin' || academicYears.length === 0}
-                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select academic year</option>
-                      {academicYears.map((y) => (
-                        <option key={y.id} value={y.id}>
-                          {y.year_name}{y.is_active ? ' (Current)' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
-                  <textarea
-                    rows={3}
-                    value={address}
-                    onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
-                    disabled={role !== 'super-admin'}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                </>
-                )}
-
-                {role === 'super-admin' && showSubSection('controls') && (
-                  <div className="pt-2 space-y-4">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Global System Controls</h4>
-                    <div
-                      onClick={async () => {
-                        const next = !gradesLocked;
-                        setGradesLocked(next);
-                        await persistGlobalToggle('grades_locked', next);
-                      }}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${gradesLocked
-                        ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'
-                        : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                        }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${gradesLocked ? 'bg-rose-500' : 'bg-emerald-500'} text-white`}>
-                          {gradesLocked ? <Lock size={18} /> : <Unlock size={18} />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold uppercase tracking-tight">Grade Entry {gradesLocked ? 'Locked' : 'Open'}</p>
-                          <p className="text-[10px] font-medium opacity-80">
-                            {gradesLocked ? 'Teachers cannot modify marks.' : 'Teachers can submit and edit student marks.'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`w-10 h-5 rounded-full relative transition-colors ${gradesLocked ? 'bg-rose-600' : 'bg-emerald-600'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${gradesLocked ? 'right-0.5' : 'left-0.5'}`} />
-                      </div>
-                    </div>
-
-                    <div
-                      onClick={async () => {
-                        const next = !registrationOpen;
-                        setRegistrationOpen(next);
-                        await persistGlobalToggle('registration_open', next);
-                      }}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${!registrationOpen
-                        ? 'border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400'
-                        : 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
-                        }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${!registrationOpen ? 'bg-rose-500' : 'bg-emerald-500'} text-white`}>
-                          {registrationOpen ? <Unlock size={18} /> : <Lock size={18} />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold uppercase tracking-tight">Public Registration {!registrationOpen ? 'Closed' : 'Open'}</p>
-                          <p className="text-[10px] font-medium opacity-80">
-                            {registrationOpen ? 'New students can apply online.' : 'Online applications are currently disabled.'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className={`w-10 h-5 rounded-full relative transition-colors ${!registrationOpen ? 'bg-rose-600' : 'bg-emerald-600'}`}>
-                        <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${!registrationOpen ? 'right-0.5' : 'left-0.5'}`} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {role !== 'super-admin' && (
-                  <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 text-slate-500 text-[10px] font-bold flex items-center gap-2">
-                    <Lock size={14} />
-                    Some global branding settings are restricted to Super Admins.
-                  </div>
-                )}
+                  )}
                 </div>
               </SettingsPanel>
             )}
 
             {activeTab === 'Security' && (
               <SettingsPanel>
-              <div className="space-y-8">
-                {showSubSection('password') && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
-                      <Shield size={24} />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-slate-800 dark:text-white">Change Password</h4>
-                      <p className="text-xs text-slate-500">Update your password to keep your account secure</p>
-                    </div>
-                  </div>
-
-                  {passwordSuccess && (
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
-                      <CheckCircle className="text-green-600" size={20} />
-                      <p className="text-sm text-green-800 dark:text-green-200 font-medium">Password changed successfully!</p>
-                    </div>
-                  )}
-
-                  {passwordError && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
-                      <AlertCircle className="text-red-600" size={20} />
-                      <p className="text-sm text-red-800 dark:text-red-200 font-medium">{passwordError}</p>
-                    </div>
-                  )}
-
-                  <form
-                    onSubmit={async (e) => {
-                      e.preventDefault();
-                      setPasswordError('');
-                      setPasswordSuccess(false);
-
-                      // Validation
-                      if (passwordForm.newPassword.length < 8) {
-                        setPasswordError('New password must be at least 8 characters long');
-                        return;
-                      }
-                      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-                        setPasswordError('New passwords do not match');
-                        return;
-                      }
-                      if (passwordForm.currentPassword === passwordForm.newPassword) {
-                        setPasswordError('New password must be different from current password');
-                        return;
-                      }
-
-                      setPasswordLoading(true);
-                      try {
-                        await authService.changePassword(
-                          passwordForm.currentPassword,
-                          passwordForm.newPassword
-                        );
-                        setPasswordSuccess(true);
-                        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                        setTimeout(() => setPasswordSuccess(false), 5000);
-                      } catch (err: any) {
-                        setPasswordError(err.response?.data?.error?.message || 'Failed to change password');
-                      } finally {
-                        setPasswordLoading(false);
-                      }
-                    }}
-                    className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800"
-                  >
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
-                      <div className="relative">
-                        <input
-                          type="password"
-                          value={passwordForm.currentPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                          disabled={passwordLoading}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">New Password</label>
-                        <input
-                          type="password"
-                          value={passwordForm.newPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                          minLength={8}
-                          disabled={passwordLoading}
-                        />
+                <div className="space-y-8">
+                  {showSubSection('password') && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
+                          <Shield size={24} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-800 dark:text-white">Change Password</h4>
+                          <p className="text-xs text-slate-500">Update your password to keep your account secure</p>
+                        </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Confirm New Password</label>
-                        <input
-                          type="password"
-                          value={passwordForm.confirmPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                          className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                          required
-                          minLength={8}
-                          disabled={passwordLoading}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password Requirements */}
-                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                      <p className="text-xs font-bold text-blue-800 dark:text-blue-200 mb-2">Password Requirements:</p>
-                      <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
-                        <li className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${passwordForm.newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          At least 8 characters long
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          Contains uppercase letter
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${/[a-z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          Contains lowercase letter
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          Contains number
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${/[^A-Za-z0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
-                          Contains special character
-                        </li>
-                      </ul>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={passwordLoading}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {passwordLoading ? (
-                        <>
-                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Changing Password...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Lock size={18} />
-                          <span>Change Password</span>
-                        </>
+                      {passwordSuccess && (
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
+                          <CheckCircle className="text-green-600" size={20} />
+                          <p className="text-sm text-green-800 dark:text-green-200 font-medium">Password changed successfully!</p>
+                        </div>
                       )}
-                    </button>
-                  </form>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Use strong passwords</p>
-                      <p className="text-xs text-slate-500">Combine letters, numbers, and special characters.</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Change regularly</p>
-                      <p className="text-xs text-slate-500">Update your password every 3–6 months.</p>
-                    </div>
-                  </div>
-                </div>
-                )}
+                      {passwordError && (
+                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center gap-3">
+                          <AlertCircle className="text-red-600" size={20} />
+                          <p className="text-sm text-red-800 dark:text-red-200 font-medium">{passwordError}</p>
+                        </div>
+                      )}
 
-                {role === 'super-admin' && showSubSection('smtp') && (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
-                        <Mail size={24} />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-bold text-slate-800 dark:text-white">SMTP / Email</h4>
-                        <p className="text-xs text-slate-500">Outgoing mail for admissions and notifications</p>
-                      </div>
-                    </div>
-                    {smtpMessage && (
-                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-200">
-                        {smtpMessage}
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Host</label>
-                        <input
-                          value={smtpSettings.smtp_host}
-                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Port</label>
-                        <input
-                          value={smtpSettings.smtp_port}
-                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: e.target.value })}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP User</label>
-                        <input
-                          value={smtpSettings.smtp_user}
-                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">From Address</label>
-                        <input
-                          value={smtpSettings.smtp_from}
-                          onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from: e.target.value })}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1 md:col-span-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
-                        <input
-                          type="password"
-                          value={smtpPass}
-                          onChange={(e) => setSmtpPass(e.target.value)}
-                          className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1 md:col-span-2">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
-                        <div className="flex gap-2">
-                          <input
-                            type="email"
-                            value={smtpTestEmail}
-                            onChange={(e) => setSmtpTestEmail(e.target.value)}
-                            placeholder="you@example.com"
-                            className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleTestSmtp}
-                            disabled={smtpSaving || !smtpTestEmail}
-                            className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold disabled:opacity-50"
-                          >
-                            Send Test
-                          </button>
+                      <form
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          setPasswordError('');
+                          setPasswordSuccess(false);
+
+                          // Validation
+                          if (passwordForm.newPassword.length < 8) {
+                            setPasswordError('New password must be at least 8 characters long');
+                            return;
+                          }
+                          if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                            setPasswordError('New passwords do not match');
+                            return;
+                          }
+                          if (passwordForm.currentPassword === passwordForm.newPassword) {
+                            setPasswordError('New password must be different from current password');
+                            return;
+                          }
+
+                          setPasswordLoading(true);
+                          try {
+                            await authService.changePassword(
+                              passwordForm.currentPassword,
+                              passwordForm.newPassword
+                            );
+                            setPasswordSuccess(true);
+                            setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                            setTimeout(() => setPasswordSuccess(false), 5000);
+                          } catch (err: any) {
+                            setPasswordError(err.response?.data?.error?.message || 'Failed to change password');
+                          } finally {
+                            setPasswordLoading(false);
+                          }
+                        }}
+                        className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800"
+                      >
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
+                          <div className="relative">
+                            <input
+                              type="password"
+                              value={passwordForm.currentPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                              disabled={passwordLoading}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">New Password</label>
+                            <input
+                              type="password"
+                              value={passwordForm.newPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                              minLength={8}
+                              disabled={passwordLoading}
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Confirm New Password</label>
+                            <input
+                              type="password"
+                              value={passwordForm.confirmPassword}
+                              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                              className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                              required
+                              minLength={8}
+                              disabled={passwordLoading}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Password Requirements */}
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                          <p className="text-xs font-bold text-blue-800 dark:text-blue-200 mb-2">Password Requirements:</p>
+                          <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
+                            <li className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${passwordForm.newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              At least 8 characters long
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              Contains uppercase letter
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${/[a-z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              Contains lowercase letter
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              Contains number
+                            </li>
+                            <li className="flex items-center gap-2">
+                              <div className={`w-1.5 h-1.5 rounded-full ${/[^A-Za-z0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              Contains special character
+                            </li>
+                          </ul>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={passwordLoading}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {passwordLoading ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Changing Password...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Lock size={18} />
+                              <span>Change Password</span>
+                            </>
+                          )}
+                        </button>
+                      </form>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Use strong passwords</p>
+                          <p className="text-xs text-slate-500">Combine letters, numbers, and special characters.</p>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Change regularly</p>
+                          <p className="text-xs text-slate-500">Update your password every 3–6 months.</p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+
+                  {role === 'super-admin' && showSubSection('smtp') && (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 rounded-xl">
+                          <Mail size={24} />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-800 dark:text-white">SMTP / Email</h4>
+                          <p className="text-xs text-slate-500">Outgoing mail for admissions and notifications</p>
+                        </div>
+                      </div>
+                      {smtpMessage && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 text-sm text-blue-800 dark:text-blue-200">
+                          {smtpMessage}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Host</label>
+                          <input
+                            value={smtpSettings.smtp_host}
+                            onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Port</label>
+                          <input
+                            value={smtpSettings.smtp_port}
+                            onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: e.target.value })}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP User</label>
+                          <input
+                            value={smtpSettings.smtp_user}
+                            onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-500 uppercase">From Address</label>
+                          <input
+                            value={smtpSettings.smtp_from}
+                            onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from: e.target.value })}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
+                          <input
+                            type="password"
+                            value={smtpPass}
+                            onChange={(e) => setSmtpPass(e.target.value)}
+                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <label className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="email"
+                              value={smtpTestEmail}
+                              onChange={(e) => setSmtpTestEmail(e.target.value)}
+                              placeholder="you@example.com"
+                              className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleTestSmtp}
+                              disabled={smtpSaving || !smtpTestEmail}
+                              className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold disabled:opacity-50"
+                            >
+                              Send Test
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </SettingsPanel>
             )}
 
             {activeTab === 'Financial Policy' && (
               <SettingsPanel>
-              <div className="space-y-6">
-                {financeSuccessMsg && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
-                    {financeSuccessMsg}
-                  </div>
-                )}
-
-                {financeErrorMsg && (
-                  <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
-                    {financeErrorMsg}
-                  </div>
-                )}
-
-                {showSubSection('student-fees') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  {/* Student Registration Fee */}
-                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
-                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
-                      <input
-                        type="number"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        value={studentRegistrationFee}
-                        onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
-                        disabled={role !== 'super-admin'}
-                      />
+                <div className="space-y-6">
+                  {financeSuccessMsg && (
+                    <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                      {financeSuccessMsg}
                     </div>
-                    {role === 'super-admin' && (
-                      <button
-                        onClick={() => handleUpdateFinanceSetting('student_registration_fee', studentRegistrationFee)}
-                        disabled={financeLoading}
-                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Save size={14} />
-                        Save Fee
-                      </button>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Student Payment Penalty */}
-                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
-                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Penalty fee applied automatically to students who miss deadlines.</p>
-                      <input
-                        type="number"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        value={studentLatePenaltyRate}
-                        onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
-                        disabled={role !== 'super-admin'}
-                      />
+                  {financeErrorMsg && (
+                    <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-300 px-4 py-3 rounded-2xl text-xs font-bold uppercase tracking-wider">
+                      {financeErrorMsg}
                     </div>
-                    {role === 'super-admin' && (
-                      <button
-                        onClick={() => handleUpdateFinanceSetting('student_late_penalty_rate', studentLatePenaltyRate)}
-                        disabled={financeLoading}
-                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Save size={14} />
-                        Save Penalty
-                      </button>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Student Fee Deadline */}
-                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Fee Deadline (Day)</label>
-                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which all student fee payments must be settled.</p>
-                      <select
-                        title="Student fee payment deadline"
-                        aria-label="Student fee payment deadline"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        value={studentPaymentDeadline}
-                        onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
-                        disabled={role !== 'super-admin'}
-                      >
-                        {[5, 10, 15, 20, 25, 28, 30].map(day => (
-                          <option key={day} value={day}>Day {day}</option>
-                        ))}
-                      </select>
+                  {showSubSection('student-fees') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {/* Student Registration Fee */}
+                      <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
+                          <input
+                            type="number"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            value={studentRegistrationFee}
+                            onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
+                          />
+                        </div>
+                        {role === 'super-admin' && (
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('student_registration_fee', studentRegistrationFee)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Fee
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Student Payment Penalty */}
+                      <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Penalty fee applied automatically to students who miss deadlines.</p>
+                          <input
+                            type="number"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            value={studentLatePenaltyRate}
+                            onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
+                          />
+                        </div>
+                        {role === 'super-admin' && (
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('student_late_penalty_rate', studentLatePenaltyRate)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Penalty
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Student Fee Deadline */}
+                      <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Fee Deadline (Day)</label>
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which all student fee payments must be settled.</p>
+                          <select
+                            title="Student fee payment deadline"
+                            aria-label="Student fee payment deadline"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            value={studentPaymentDeadline}
+                            onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
+                          >
+                            {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                              <option key={day} value={day}>Day {day}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {role === 'super-admin' && (
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('student_payment_deadline', studentPaymentDeadline)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Deadline
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Staff Salary Deadline */}
+                      <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Staff Salary Deadline (Day)</label>
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which employee salaries must be disbursed.</p>
+                          <select
+                            title="Staff salary deadline"
+                            aria-label="Staff salary deadline"
+                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            value={staffSalaryDeadline}
+                            onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
+                          >
+                            {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                              <option key={day} value={day}>Day {day}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {role === 'super-admin' && (
+                          <button
+                            onClick={() => handleUpdateFinanceSetting('staff_salary_deadline', staffSalaryDeadline)}
+                            disabled={financeLoading}
+                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                          >
+                            <Save size={14} />
+                            Save Deadline
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {role === 'super-admin' && (
-                      <button
-                        onClick={() => handleUpdateFinanceSetting('student_payment_deadline', studentPaymentDeadline)}
-                        disabled={financeLoading}
-                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Save size={14} />
-                        Save Deadline
-                      </button>
-                    )}
-                  </div>
+                  )}
 
-                  {/* Staff Salary Deadline */}
-                  <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Staff Salary Deadline (Day)</label>
-                      <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which employee salaries must be disbursed.</p>
-                      <select
-                        title="Staff salary deadline"
-                        aria-label="Staff salary deadline"
-                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        value={staffSalaryDeadline}
-                        onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
-                        disabled={role !== 'super-admin'}
-                      >
-                        {[5, 10, 15, 20, 25, 28, 30].map(day => (
-                          <option key={day} value={day}>Day {day}</option>
-                        ))}
-                      </select>
-                    </div>
-                    {role === 'super-admin' && (
-                      <button
-                        onClick={() => handleUpdateFinanceSetting('staff_salary_deadline', staffSalaryDeadline)}
-                        disabled={financeLoading}
-                        className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Save size={14} />
-                        Save Deadline
-                      </button>
-                    )}
-                  </div>
-                </div>
-                )}
-
-                {role === 'super-admin' && showSubSection('payroll-loans') && (
+                  {role === 'super-admin' && showSubSection('payroll-loans') && (
                     <div className="space-y-6">
                       <div>
                         <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Payroll & Loans</h4>
@@ -1218,562 +1159,562 @@ export const Settings = () => {
                         </div>
                       </div>
                     </div>
-                )}
+                  )}
 
-                {role === 'super-admin' && showSubSection('audit') && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log</h5>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase">Updates list in real-time</span>
-                        </div>
-                        <div className="overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                          <table className="w-full text-left text-[10px] sm:text-xs min-w-[500px]">
-                            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                              <tr>
-                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Setting</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Old Value</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">New Value</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Changed By</th>
-                                <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Date / Time</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30 text-slate-600 dark:text-slate-300">
-                              {financeAuditLog.length === 0 ? (
-                                <tr>
-                                  <td colSpan={5} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px] tracking-wider">No change activities audited yet.</td>
-                                </tr>
-                              ) : (
-                                financeAuditLog.slice(0, 10).map((log) => (
-                                  <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                                    <td className="px-6 py-3 font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">{log.setting_key.replace(/_/g, ' ')}</td>
-                                    <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value} ETB/Units` : 'N/A'}</td>
-                                    <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value} ETB/Units</td>
-                                    <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
-                                    <td className="px-6 py-3 font-medium text-slate-400">{new Date(log.changed_at).toLocaleString()}</td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                  {role === 'super-admin' && showSubSection('audit') && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log</h5>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">Updates list in real-time</span>
                       </div>
-                )}
-
-                {role === 'super-admin' && showSubSection('fee-structure') && (
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure</h4>
-                      <p className="text-xs text-slate-500 font-medium">Per branch and grade level.</p>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                        <select
-                          value={feeBranchId}
-                          onChange={(e) => setFeeBranchId(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
-                        <select
-                          value={feeGrade}
-                          onChange={(e) => setFeeGrade(e.target.value)}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
-                        <input
-                          type="number"
-                          value={feeMonthly}
-                          onChange={(e) => setFeeMonthly(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
-                        <input
-                          type="number"
-                          value={feeRegistration}
-                          onChange={(e) => setFeeRegistration(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
-                        <input
-                          type="number"
-                          value={feeBus}
-                          onChange={(e) => setFeeBus(Number(e.target.value))}
-                          className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="flex items-end lg:col-span-5">
-                        <button
-                          type="button"
-                          onClick={handleApplyFeeConfig}
-                          disabled={financeLoading || !feeBranchId}
-                          className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none disabled:opacity-50"
-                        >
-                          <Plus size={16} />
-                          <span>Apply Fee Configuration</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="overflow-x-auto -mx-4 sm:mx-0 sm:rounded-[2rem] border-y sm:border border-slate-100 dark:border-slate-800 overflow-hidden">
-                      <table className="w-full text-left text-[10px] sm:text-xs min-w-[600px]">
-                        <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                          <tr>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Grade Level</th>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly</th>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Registration</th>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bus Fee</th>
-                            <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                          {branchGradeFees.length === 0 ? (
+                      <div className="overflow-x-auto rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <table className="w-full text-left text-[10px] sm:text-xs min-w-[500px]">
+                          <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                             <tr>
-                              <td colSpan={6} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px]">
-                                No fee configurations yet. Apply one above.
-                              </td>
-                            </tr>
-                          ) : (
-                            branchGradeFees.map((fee) => (
-                              <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                <td className="px-4 py-3 font-medium">{fee.branch_name}</td>
-                                <td className="px-4 py-3 font-bold text-blue-600">Grade {fee.grade_level}</td>
-                                <td className="px-4 py-3 font-bold">{Number(fee.monthly_fee).toLocaleString()} ETB</td>
-                                <td className="px-4 py-3 font-bold">{Number(fee.registration_fee).toLocaleString()} ETB</td>
-                                <td className="px-4 py-3 font-bold">{Number(fee.bus_fee).toLocaleString()} ETB</td>
-                                <td className="px-4 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteFeeConfig(fee.id)}
-                                    className="text-rose-500 hover:text-rose-700 p-1"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {role === 'super-admin' && showSubSection('profit-targets') && (
-                  <div className="space-y-5">
-                    <div>
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Branch Profit Target</h4>
-                      <p className="text-xs text-slate-500 font-medium">
-                        Set targets per branch using real student fee collections minus staff payroll for the selected period.
-                      </p>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                          <select
-                            value={profitTargetBranchId}
-                            onChange={(e) => setProfitTargetBranchId(e.target.value)}
-                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {branches.map((b) => (
-                              <option key={b.id} value={b.id}>{b.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
-                          <select
-                            value={profitTargetMonth}
-                            onChange={(e) => setProfitTargetMonth(e.target.value)}
-                            className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {ethiopianMonths.map((m) => (
-                              <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {profitSummaryLoading ? (
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider py-6 text-center">Loading branch financials…</p>
-                      ) : profitSummary ? (
-                        <>
-                          <p className="text-[10px] text-slate-500 font-medium">
-                            Period mapped to <strong>{profitSummary.monthName} {profitSummary.gregYear}</strong> (Gregorian) ·{' '}
-                            {profitSummary.student_transaction_count} student payment{profitSummary.student_transaction_count === 1 ? '' : 's'} recorded
-                            {profitSummary.payroll_status
-                              ? ` · Payroll: ${profitSummary.payroll_status}`
-                              : ' · No payroll run for this month yet'}
-                          </p>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-                              <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Student income</p>
-                              <p className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
-                                {profitSummary.student_income.toLocaleString()} ETB
-                              </p>
-                              <p className="text-[10px] text-emerald-600/80 mt-1">Sum of fee collections</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
-                              <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Staff payout</p>
-                              <p className="text-xl font-black text-rose-800 dark:text-rose-300 mt-1">
-                                {profitSummary.staff_payout.toLocaleString()} ETB
-                              </p>
-                              <p className="text-[10px] text-rose-600/80 mt-1">Net pay + employer pension</p>
-                            </div>
-                            <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
-                              <p className="text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Suggested target</p>
-                              <p className="text-xl font-black text-blue-800 dark:text-blue-300 mt-1">
-                                {profitSummary.suggested_target.toLocaleString()} ETB
-                              </p>
-                              <p className="text-[10px] text-blue-600/80 mt-1">Income − staff payout</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-                            <div className="space-y-1">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
-                              <input
-                                type="number"
-                                placeholder={String(Math.round(profitSummary.suggested_target))}
-                                value={profitTargetAmount}
-                                onChange={(e) => setProfitTargetAmount(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
-                                className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
-                              >
-                                Use suggested
-                              </button>
-                              <button
-                                type="button"
-                                onClick={handleSetProfitTarget}
-                                disabled={financeLoading || !profitTargetBranchId}
-                                className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
-                              >
-                                <Save size={14} />
-                                Save target
-                              </button>
-                            </div>
-                          </div>
-
-                          {(() => {
-                            const target = Number(profitTargetAmount) || 0;
-                            const actual = profitSummary.actual_net_profit;
-                            const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
-                            const status = actual >= target ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
-                            const statusColor = actual >= target ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
-                            const barColor = actual >= target ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
-                            const monthLabel = ethiopianMonths.find((m) => m.id === profitTargetMonth);
-
-                            if (target <= 0) return null;
-                            return (
-                              <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                                <div className="flex items-center justify-between gap-4 flex-wrap">
-                                  <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                      {profitSummary.branch_name} · {monthLabel?.ge}
-                                    </p>
-                                    <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
-                                      Actual net {actual.toLocaleString()}{' '}
-                                      <span className="text-sm text-slate-400 font-bold">/ target {target.toLocaleString()} ETB</span>
-                                    </p>
-                                  </div>
-                                  <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
-                                    {status} — {percent}%
-                                  </div>
-                                </div>
-                                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                  <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${percent}%` }} />
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </>
-                      ) : (
-                        <p className="text-xs text-slate-400 py-4">Select a branch to load financial data.</p>
-                      )}
-                    </div>
-
-                    {profitTargets.filter((t) => t.branch_id === profitTargetBranchId).length > 0 && (
-                      <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <table className="w-full text-left text-[10px] min-w-[520px]">
-                          <thead className="bg-slate-50 dark:bg-slate-800/50">
-                            <tr>
-                              <th className="px-4 py-3 font-black uppercase text-slate-400">Month</th>
-                              <th className="px-4 py-3 font-black uppercase text-slate-400">Target</th>
-                              <th className="px-4 py-3 font-black uppercase text-slate-400">Actual net</th>
-                              <th className="px-4 py-3 font-black uppercase text-slate-400">Income</th>
-                              <th className="px-4 py-3 font-black uppercase text-slate-400">Staff</th>
+                              <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Setting</th>
+                              <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Old Value</th>
+                              <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">New Value</th>
+                              <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Changed By</th>
+                              <th className="px-6 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Date / Time</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {profitTargets
-                              .filter((t) => t.branch_id === profitTargetBranchId)
-                              .map((t) => {
-                                const m = ethiopianMonths.find((em) => em.id === String(t.ethiopian_month));
-                                return (
-                                  <tr key={t.id}>
-                                    <td className="px-4 py-2 font-bold">{m?.ge ?? t.ethiopian_month}</td>
-                                    <td className="px-4 py-2">{Number(t.target_amount).toLocaleString()}</td>
-                                    <td className="px-4 py-2">{Number(t.actual_net_profit ?? t.actual_amount ?? 0).toLocaleString()}</td>
-                                    <td className="px-4 py-2 text-emerald-600">{Number(t.student_income ?? 0).toLocaleString()}</td>
-                                    <td className="px-4 py-2 text-rose-600">{Number(t.staff_payout ?? 0).toLocaleString()}</td>
-                                  </tr>
-                                );
-                              })}
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30 text-slate-600 dark:text-slate-300">
+                            {financeAuditLog.length === 0 ? (
+                              <tr>
+                                <td colSpan={5} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px] tracking-wider">No change activities audited yet.</td>
+                              </tr>
+                            ) : (
+                              financeAuditLog.slice(0, 10).map((log) => (
+                                <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                                  <td className="px-6 py-3 font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">{log.setting_key.replace(/_/g, ' ')}</td>
+                                  <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value} ETB/Units` : 'N/A'}</td>
+                                  <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value} ETB/Units</td>
+                                  <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
+                                  <td className="px-6 py-3 font-medium text-slate-400">{new Date(log.changed_at).toLocaleString()}</td>
+                                </tr>
+                              ))
+                            )}
                           </tbody>
                         </table>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+
+                  {role === 'super-admin' && showSubSection('fee-structure') && (
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure</h4>
+                        <p className="text-xs text-slate-500 font-medium">Per branch and grade level.</p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                          <select
+                            value={feeBranchId}
+                            onChange={(e) => setFeeBranchId(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
+                          <select
+                            value={feeGrade}
+                            onChange={(e) => setFeeGrade(e.target.value)}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
+                          <input
+                            type="number"
+                            value={feeMonthly}
+                            onChange={(e) => setFeeMonthly(Number(e.target.value))}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
+                          <input
+                            type="number"
+                            value={feeRegistration}
+                            onChange={(e) => setFeeRegistration(Number(e.target.value))}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
+                          <input
+                            type="number"
+                            value={feeBus}
+                            onChange={(e) => setFeeBus(Number(e.target.value))}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="flex items-end lg:col-span-5">
+                          <button
+                            type="button"
+                            onClick={handleApplyFeeConfig}
+                            disabled={financeLoading || !feeBranchId}
+                            className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none disabled:opacity-50"
+                          >
+                            <Plus size={16} />
+                            <span>Apply Fee Configuration</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto -mx-4 sm:mx-0 sm:rounded-[2rem] border-y sm:border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <table className="w-full text-left text-[10px] sm:text-xs min-w-[600px]">
+                          <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                            <tr>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Grade Level</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Registration</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bus Fee</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                            {branchGradeFees.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px]">
+                                  No fee configurations yet. Apply one above.
+                                </td>
+                              </tr>
+                            ) : (
+                              branchGradeFees.map((fee) => (
+                                <tr key={fee.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                                  <td className="px-4 py-3 font-medium">{fee.branch_name}</td>
+                                  <td className="px-4 py-3 font-bold text-blue-600">Grade {fee.grade_level}</td>
+                                  <td className="px-4 py-3 font-bold">{Number(fee.monthly_fee).toLocaleString()} ETB</td>
+                                  <td className="px-4 py-3 font-bold">{Number(fee.registration_fee).toLocaleString()} ETB</td>
+                                  <td className="px-4 py-3 font-bold">{Number(fee.bus_fee).toLocaleString()} ETB</td>
+                                  <td className="px-4 py-3 text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteFeeConfig(fee.id)}
+                                      className="text-rose-500 hover:text-rose-700 p-1"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {role === 'super-admin' && showSubSection('profit-targets') && (
+                    <div className="space-y-5">
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Branch Profit Target</h4>
+                        <p className="text-xs text-slate-500 font-medium">
+                          Set targets per branch using real student fee collections minus staff payroll for the selected period.
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                            <select
+                              value={profitTargetBranchId}
+                              onChange={(e) => setProfitTargetBranchId(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {branches.map((b) => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
+                            <select
+                              value={profitTargetMonth}
+                              onChange={(e) => setProfitTargetMonth(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {ethiopianMonths.map((m) => (
+                                <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        {profitSummaryLoading ? (
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider py-6 text-center">Loading branch financials…</p>
+                        ) : profitSummary ? (
+                          <>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                              Period mapped to <strong>{profitSummary.monthName} {profitSummary.gregYear}</strong> (Gregorian) ·{' '}
+                              {profitSummary.student_transaction_count} student payment{profitSummary.student_transaction_count === 1 ? '' : 's'} recorded
+                              {profitSummary.payroll_status
+                                ? ` · Payroll: ${profitSummary.payroll_status}`
+                                : ' · No payroll run for this month yet'}
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
+                                <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Student income</p>
+                                <p className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
+                                  {profitSummary.student_income.toLocaleString()} ETB
+                                </p>
+                                <p className="text-[10px] text-emerald-600/80 mt-1">Sum of fee collections</p>
+                              </div>
+                              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
+                                <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Staff payout</p>
+                                <p className="text-xl font-black text-rose-800 dark:text-rose-300 mt-1">
+                                  {profitSummary.staff_payout.toLocaleString()} ETB
+                                </p>
+                                <p className="text-[10px] text-rose-600/80 mt-1">Net pay + employer pension</p>
+                              </div>
+                              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                                <p className="text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Suggested target</p>
+                                <p className="text-xl font-black text-blue-800 dark:text-blue-300 mt-1">
+                                  {profitSummary.suggested_target.toLocaleString()} ETB
+                                </p>
+                                <p className="text-[10px] text-blue-600/80 mt-1">Income − staff payout</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                              <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
+                                <input
+                                  type="number"
+                                  placeholder={String(Math.round(profitSummary.suggested_target))}
+                                  value={profitTargetAmount}
+                                  onChange={(e) => setProfitTargetAmount(e.target.value)}
+                                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
+                                  className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+                                >
+                                  Use suggested
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={handleSetProfitTarget}
+                                  disabled={financeLoading || !profitTargetBranchId}
+                                  className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                                >
+                                  <Save size={14} />
+                                  Save target
+                                </button>
+                              </div>
+                            </div>
+
+                            {(() => {
+                              const target = Number(profitTargetAmount) || 0;
+                              const actual = profitSummary.actual_net_profit;
+                              const percent = target > 0 ? Math.min(Math.round((actual / target) * 100), 100) : 0;
+                              const status = actual >= target ? 'Exceeded' : percent >= 80 ? 'On Track' : percent >= 50 ? 'Behind' : 'Critical';
+                              const statusColor = actual >= target ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : percent >= 80 ? 'text-blue-600 bg-blue-50' : percent >= 50 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
+                              const barColor = actual >= target ? 'bg-emerald-500' : percent >= 80 ? 'bg-blue-500' : percent >= 50 ? 'bg-amber-500' : 'bg-rose-500';
+                              const monthLabel = ethiopianMonths.find((m) => m.id === profitTargetMonth);
+
+                              if (target <= 0) return null;
+                              return (
+                                <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                                    <div>
+                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {profitSummary.branch_name} · {monthLabel?.ge}
+                                      </p>
+                                      <p className="text-lg font-black text-slate-800 dark:text-white mt-1">
+                                        Actual net {actual.toLocaleString()}{' '}
+                                        <span className="text-sm text-slate-400 font-bold">/ target {target.toLocaleString()} ETB</span>
+                                      </p>
+                                    </div>
+                                    <div className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
+                                      {status} — {percent}%
+                                    </div>
+                                  </div>
+                                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${percent}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </>
+                        ) : (
+                          <p className="text-xs text-slate-400 py-4">Select a branch to load financial data.</p>
+                        )}
+                      </div>
+
+                      {profitTargets.filter((t) => t.branch_id === profitTargetBranchId).length > 0 && (
+                        <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                          <table className="w-full text-left text-[10px] min-w-[520px]">
+                            <thead className="bg-slate-50 dark:bg-slate-800/50">
+                              <tr>
+                                <th className="px-4 py-3 font-black uppercase text-slate-400">Month</th>
+                                <th className="px-4 py-3 font-black uppercase text-slate-400">Target</th>
+                                <th className="px-4 py-3 font-black uppercase text-slate-400">Actual net</th>
+                                <th className="px-4 py-3 font-black uppercase text-slate-400">Income</th>
+                                <th className="px-4 py-3 font-black uppercase text-slate-400">Staff</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {profitTargets
+                                .filter((t) => t.branch_id === profitTargetBranchId)
+                                .map((t) => {
+                                  const m = ethiopianMonths.find((em) => em.id === String(t.ethiopian_month));
+                                  return (
+                                    <tr key={t.id}>
+                                      <td className="px-4 py-2 font-bold">{m?.ge ?? t.ethiopian_month}</td>
+                                      <td className="px-4 py-2">{Number(t.target_amount).toLocaleString()}</td>
+                                      <td className="px-4 py-2">{Number(t.actual_net_profit ?? t.actual_amount ?? 0).toLocaleString()}</td>
+                                      <td className="px-4 py-2 text-emerald-600">{Number(t.student_income ?? 0).toLocaleString()}</td>
+                                      <td className="px-4 py-2 text-rose-600">{Number(t.staff_payout ?? 0).toLocaleString()}</td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </SettingsPanel>
             )}
 
             {activeTab === 'Grading System' && (
               <SettingsPanel>
-                      <div className="space-y-8 animate-in fade-in duration-300">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <div>
-                            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
-                          </div>
-                          <select
-                            value={selectedGrade}
-                            onChange={(e) => setSelectedGrade(e.target.value)}
-                            className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
-                          >
-                            {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
-                              <option key={g} value={g}>Grade {g}</option>
-                            ))}
-                          </select>
-                        </div>
+                <div className="space-y-8 animate-in fade-in duration-300">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div>
+                      <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
+                    </div>
+                    <select
+                      value={selectedGrade}
+                      onChange={(e) => setSelectedGrade(e.target.value)}
+                      className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
+                        <option key={g} value={g}>Grade {g}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                        <div className="space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
-                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
-                            <div className="flex flex-wrap items-center gap-3">
-                              <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                                : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
-                                }`}>
-                                Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
-                              </span>
-                              <button
-                                onClick={() => {
-                                  const recommended = [
-                                    { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
-                                    { id: 'test-1', label: 'Test 1', maxWeight: 10 },
-                                    { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
-                                    { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
-                                    { id: 'assignment', label: 'Assignment', maxWeight: 5 },
-                                    { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
-                                  ];
-                                  updateGradeConfig(recommended);
-                                }}
-                                className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
-                              >
-                                Apply Recommended Template
-                              </button>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 gap-3">
-                            {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
-                              <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
-                                <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
-                                  {idx + 1}
-                                </div>
-                                <div className="flex-1">
-                                  <input
-                                    type="text"
-                                    title="Assessment method name"
-                                    aria-label="Assessment method name"
-                                    placeholder="Enter assessment method"
-                                    value={method.label}
-                                    onChange={(e) => {
-                                      const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                      currentMethods[idx].label = e.target.value;
-                                      updateGradeConfig(currentMethods);
-                                    }}
-                                    className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                                    <input
-                                      type="number"
-                                      title="Assessment method weight in points"
-                                      aria-label="Assessment method weight in points"
-                                      placeholder="0"
-                                      value={method.maxWeight}
-                                      onChange={(e) => {
-                                        const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                        currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
-                                        updateGradeConfig(currentMethods);
-                                      }}
-                                      className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
-                                    />
-                                    <span className="text-[10px] font-black text-slate-400">PTS</span>
-                                  </div>
-                                  <button
-                                    title="Delete assessment method"
-                                    aria-label="Delete assessment method"
-                                    onClick={() => {
-                                      const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                      const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
-                                      updateGradeConfig(filtered);
-                                    }}
-                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
-                                  >
-                                    <Trash2 size={18} />
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
-                          <div>
-                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { label: 'Quiz 1', weight: 5 },
-                                { label: 'Test 1', weight: 10 },
-                                { label: 'Mid Exam', weight: 25 },
-                                { label: 'Quiz 2', weight: 5 },
-                                { label: 'Assignment', weight: 5 },
-                                { label: 'Final Exam', weight: 50 },
-                              ].map((preset) => (
-                                <button
-                                  key={preset.label}
-                                  onClick={() => addPresetMethod(preset.label, preset.weight)}
-                                  className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
-                                >
-                                  <Plus size={12} className="text-blue-500" />
-                                  {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div>
-                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
-                            <div className="flex flex-col md:flex-row gap-4">
-                              <input
-                                type="text"
-                                title="Custom assessment method name"
-                                aria-label="Custom assessment method name"
-                                placeholder="e.g. Class Activity, Project"
-                                value={newMethodLabel}
-                                onChange={(e) => setNewMethodLabel(e.target.value)}
-                                className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                              <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
-                                  <input
-                                    type="number"
-                                    title="Assessment weight percentage"
-                                    aria-label="Assessment weight percentage"
-                                    placeholder="0"
-                                    value={newMethodWeight}
-                                    onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
-                                    className="w-12 bg-transparent font-bold text-center outline-none"
-                                  />
-                                  <span className="text-xs font-bold text-slate-400">%</span>
-                                </div>
-                                <button
-                                  title="Add custom assessment method"
-                                  aria-label="Add custom assessment method"
-                                  onClick={() => {
-                                    if (!newMethodLabel) return;
-                                    const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                    currentMethods.push({
-                                      id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
-                                      label: newMethodLabel,
-                                      maxWeight: newMethodWeight
-                                    });
-                                    updateGradeConfig(currentMethods);
-                                    setNewMethodLabel('');
-                                  }}
-                                  className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
-                                >
-                                  <Plus size={20} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
-                          <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
-                            <AlertCircle size={20} className="flex-shrink-0" />
-                            <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
-                          </div>
-                        )}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
+                          }`}>
+                          Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
+                        </span>
+                        <button
+                          onClick={() => {
+                            const recommended = [
+                              { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
+                              { id: 'test-1', label: 'Test 1', maxWeight: 10 },
+                              { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
+                              { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
+                              { id: 'assignment', label: 'Assignment', maxWeight: 5 },
+                              { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
+                            ];
+                            updateGradeConfig(recommended);
+                          }}
+                          className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
+                        >
+                          Apply Recommended Template
+                        </button>
                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                      {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
+                        <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
+                          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              title="Assessment method name"
+                              aria-label="Assessment method name"
+                              placeholder="Enter assessment method"
+                              value={method.label}
+                              onChange={(e) => {
+                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                currentMethods[idx].label = e.target.value;
+                                updateGradeConfig(currentMethods);
+                              }}
+                              className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
+                            />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <input
+                                type="number"
+                                title="Assessment method weight in points"
+                                aria-label="Assessment method weight in points"
+                                placeholder="0"
+                                value={method.maxWeight}
+                                onChange={(e) => {
+                                  const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                  currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
+                                  updateGradeConfig(currentMethods);
+                                }}
+                                className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
+                              />
+                              <span className="text-[10px] font-black text-slate-400">PTS</span>
+                            </div>
+                            <button
+                              title="Delete assessment method"
+                              aria-label="Delete assessment method"
+                              onClick={() => {
+                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                                const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
+                                updateGradeConfig(filtered);
+                              }}
+                              className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
+                    <div>
+                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          { label: 'Quiz 1', weight: 5 },
+                          { label: 'Test 1', weight: 10 },
+                          { label: 'Mid Exam', weight: 25 },
+                          { label: 'Quiz 2', weight: 5 },
+                          { label: 'Assignment', weight: 5 },
+                          { label: 'Final Exam', weight: 50 },
+                        ].map((preset) => (
+                          <button
+                            key={preset.label}
+                            onClick={() => addPresetMethod(preset.label, preset.weight)}
+                            className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
+                          >
+                            <Plus size={12} className="text-blue-500" />
+                            {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <input
+                          type="text"
+                          title="Custom assessment method name"
+                          aria-label="Custom assessment method name"
+                          placeholder="e.g. Class Activity, Project"
+                          value={newMethodLabel}
+                          onChange={(e) => setNewMethodLabel(e.target.value)}
+                          className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
+                            <input
+                              type="number"
+                              title="Assessment weight percentage"
+                              aria-label="Assessment weight percentage"
+                              placeholder="0"
+                              value={newMethodWeight}
+                              onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
+                              className="w-12 bg-transparent font-bold text-center outline-none"
+                            />
+                            <span className="text-xs font-bold text-slate-400">%</span>
+                          </div>
+                          <button
+                            title="Add custom assessment method"
+                            aria-label="Add custom assessment method"
+                            onClick={() => {
+                              if (!newMethodLabel) return;
+                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
+                              currentMethods.push({
+                                id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
+                                label: newMethodLabel,
+                                maxWeight: newMethodWeight
+                              });
+                              updateGradeConfig(currentMethods);
+                              setNewMethodLabel('');
+                            }}
+                            className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
+                    <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
+                      <AlertCircle size={20} className="flex-shrink-0" />
+                      <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
+                    </div>
+                  )}
+                </div>
               </SettingsPanel>
             )}
 
             {activeTab === 'Appearance' && (
               <SettingsPanel>
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          {(['Standard', 'Modern', 'Compact', 'Classic'] as UIStyle[]).map((t) => (
-                            <button
-                              key={t}
-                              onClick={() => setStyle(t)}
-                              className={`p-4 rounded-xl border-2 text-center transition-all ${style === t ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'}`}
-                            >
-                              <p className="font-bold text-sm">{t}</p>
-                            </button>
-                          ))}
-                        </div>
-                        <div
-                          onClick={() => setAutoDarkMode(!autoDarkMode)}
-                          className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                        >
-                          <div>
-                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Automatic Dark Mode</p>
-                            <p className="text-xs text-slate-500">Switch theme based on system preferences.</p>
-                          </div>
-                          <div className={`w-12 h-6 rounded-full relative transition-colors ${autoDarkMode ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
-                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${autoDarkMode ? 'right-1' : 'left-1'}`} />
-                          </div>
-                        </div>
-                      </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {(['Standard', 'Modern', 'Compact', 'Classic'] as UIStyle[]).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setStyle(t)}
+                        className={`p-4 rounded-xl border-2 text-center transition-all ${style === t ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700'}`}
+                      >
+                        <p className="font-bold text-sm">{t}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <div
+                    onClick={() => setAutoDarkMode(!autoDarkMode)}
+                    className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Automatic Dark Mode</p>
+                      <p className="text-xs text-slate-500">Switch theme based on system preferences.</p>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full relative transition-colors ${autoDarkMode ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-700'}`}>
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${autoDarkMode ? 'right-1' : 'left-1'}`} />
+                    </div>
+                  </div>
+                </div>
               </SettingsPanel>
             )}
 
             {activeTab === 'Grading System' && role === 'super-admin' && (
-                      <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-2">
-                        <AlertCircle size={14} />
-                        READ-ONLY: Grading configurations are managed at the School Admin level.
-                      </div>
-                    )}
+              <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 rounded-2xl text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-2">
+                <AlertCircle size={14} />
+                READ-ONLY: Grading configurations are managed at the School Admin level.
+              </div>
+            )}
             <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               {activeTab === 'Grading System' && (
                 <button
@@ -1786,14 +1727,14 @@ export const Settings = () => {
                 </button>
               )}
               {(activeTab === 'General' || (activeTab === 'Security' && role === 'super-admin' && activeSubTab === 'smtp')) && (
-              <button
-                onClick={handleSaveChanges}
-                disabled={generalSaving || smtpSaving}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
-              >
-                <Save size={18} />
-                <span>{generalSaving || smtpSaving ? 'Saving…' : 'Save Changes'}</span>
-              </button>
+                <button
+                  onClick={handleSaveChanges}
+                  disabled={generalSaving || smtpSaving}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-100 dark:shadow-none"
+                >
+                  <Save size={18} />
+                  <span>{generalSaving || smtpSaving ? 'Saving…' : 'Save Changes'}</span>
+                </button>
               )}
             </div>
           </div>

@@ -4,7 +4,6 @@ export const SUPER_ADMIN_SUBTABS: Record<string, SettingsSubTab[]> = {
   General: [
     { id: 'branding', label: 'Branding' },
     { id: 'contact', label: 'Contact' },
-    { id: 'controls', label: 'Controls' },
   ],
   Security: [
     { id: 'password', label: 'Password' },
