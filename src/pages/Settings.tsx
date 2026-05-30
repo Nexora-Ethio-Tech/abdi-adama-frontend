@@ -545,7 +545,7 @@ export const Settings = () => {
                       <div className="space-y-4">
                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Name (Official)</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="space-y-1">
+                          <div className="space-y-1">
                             <label htmlFor="school-name-oromic" className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
                             <input
                               id="school-name-oromic"
