@@ -48,7 +48,7 @@ export const StudentCourses = () => {
     return Number.isFinite(totalScore) ? totalScore : null;
   };
 
-  // Fetch current term courses and grades
+  // Fetch course list for the selected term (dropdown)
   const fetchCourses = async (preserveSelection = false) => {
     try {
       setLoading(true);
@@ -76,6 +76,26 @@ export const StudentCourses = () => {
     }
   };
 
+  // Fetch submitted grades for the selected course from its assigned teacher
+  const fetchSelectedCourseGrades = async (courseId: string) => {
+    try {
+      const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+      const data = await getMyGradesForSemester(semNum, selectedYear, courseId);
+      const detail = data.selected || data.courses?.[0];
+      if (detail) {
+        setSelectedCourse((prev) => (prev?.id === courseId ? { ...prev, ...detail } : prev));
+        setCourses((prev) =>
+          prev.map((c) => (c.id === courseId ? { ...c, ...detail } : c))
+        );
+      }
+      if (data.gradingMethods?.length) {
+        setGradingMethods(data.gradingMethods);
+      }
+    } catch (err: any) {
+      console.error('Failed to refresh course grades:', err);
+    }
+  };
+
   useEffect(() => {
     if (viewMode === 'current') {
       fetchCourses(true);
@@ -84,9 +104,19 @@ export const StudentCourses = () => {
 
   useEffect(() => {
     if (viewMode !== 'current') return;
-    const interval = setInterval(() => fetchCourses(true), 30000);
+    const interval = setInterval(() => {
+      fetchCourses(true);
+      if (selectedCourse?.id) {
+        fetchSelectedCourseGrades(selectedCourse.id);
+      }
+    }, 30000);
     return () => clearInterval(interval);
   }, [viewMode, selectedSemester, selectedYear, selectedCourse?.id]);
+
+  useEffect(() => {
+    if (viewMode !== 'current' || !selectedCourse?.id) return;
+    fetchSelectedCourseGrades(selectedCourse.id);
+  }, [selectedCourse?.id, selectedSemester, selectedYear, viewMode]);
 
   // Sync search input query when selected course changes
   useEffect(() => {
@@ -377,46 +407,11 @@ export const StudentCourses = () => {
                               );
                             })
                           ) : (
-                            <>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                  {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
-                                </td>
-                              </tr>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                  {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
-                                </td>
-                              </tr>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                              </tr>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">30%</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                  {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
-                                </td>
-                              </tr>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                              </tr>
-                              <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
-                                <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">50%</td>
-                                <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                  {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
-                                </td>
-                              </tr>
-                            </>
+                            <tr>
+                              <td colSpan={3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
+                                No grading components configured for this grade level.
+                              </td>
+                            </tr>
                           )}
                           <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
                             <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>

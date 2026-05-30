@@ -9,7 +9,9 @@ import {
   updateAbsenceStatus,
   reviewWeeklyPlan,
   getVPGradeSubmissions,
-  getVPSubmittedGrades
+  getVPSubmittedGrades,
+  getTeacherOfWeekVotes,
+  type TeacherOfWeekVoteSummary,
 } from '../services/vicePrincipalService';
 
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
@@ -28,6 +30,7 @@ export const VicePrincipalDashboard = () => {
   const [absences, setAbsences] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [teacherVotes, setTeacherVotes] = useState<TeacherOfWeekVoteSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
   const [reviewModal, setReviewModal] = useState<{ show: boolean; plan: any }>({ show: false, plan: null });
@@ -46,16 +49,18 @@ export const VicePrincipalDashboard = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, absenceRes, plansRes, submissionsRes] = await Promise.all([
+      const [dash, absenceRes, plansRes, submissionsRes, voteRes] = await Promise.all([
         getVPDashboard(),
         getAbsenceQueue('pending'),
         getWeeklyPlans('Pending'),
-        getVPGradeSubmissions()
+        getVPGradeSubmissions(),
+        getTeacherOfWeekVotes().catch(() => null),
       ]);
       setDashboard(dash);
       setAbsences(absenceRes.data || []);
       setPlans(plansRes.data || []);
       setSubmissions(submissionsRes || []);
+      setTeacherVotes(voteRes);
     } catch (err) {
       console.error('VP Dashboard error:', err);
     } finally {
@@ -170,6 +175,63 @@ export const VicePrincipalDashboard = () => {
             color="bg-purple-600 shadow-lg shadow-purple-600/10" 
           />
         </a>
+      </div>
+
+      {/* Teacher of the Week — student vote results */}
+      <div id="teacher-of-week" className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-xl">
+              <Award size={20} />
+            </div>
+            <div>
+              <h3 className="font-black text-slate-800 dark:text-white">Teacher of the Week — Student Votes</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Week {teacherVotes?.cycleKey || '—'}
+                {teacherVotes?.isOpen ? ' · Voting open (Sat–Wed)' : ' · Voting closed'}
+                {teacherVotes ? ` · ${teacherVotes.totalVotes} vote(s) this week` : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          {!teacherVotes || teacherVotes.teachers.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-6">No teacher vote data for this week yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                    <th className="pb-3 pr-4">Teacher</th>
+                    <th className="pb-3 pr-4">This Week</th>
+                    <th className="pb-3 pr-4">Overall Rating</th>
+                    <th className="pb-3">Total Votes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {teacherVotes.teachers
+                    .filter((t) => t.weekVotes > 0 || t.overallVoteCount > 0)
+                    .slice(0, 12)
+                    .map((t) => (
+                      <tr key={t.teacherId}>
+                        <td className="py-3 pr-4 font-bold text-slate-800 dark:text-slate-100">{t.teacherName}</td>
+                        <td className="py-3 pr-4">
+                          <span className="px-2 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 text-xs font-black">
+                            {t.weekVotes}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 font-bold text-indigo-600">{t.overallRating}</td>
+                        <td className="py-3 text-slate-600 dark:text-slate-400">{t.overallVoteCount}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {teacherVotes.teachers.every((t) => t.weekVotes === 0 && t.overallVoteCount === 0) && (
+                <p className="text-sm text-slate-500 text-center py-4">No votes recorded yet this week.</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main content split */}

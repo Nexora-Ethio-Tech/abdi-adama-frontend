@@ -142,3 +142,23 @@ export const getVPSubmittedGrades = async (courseId: string, submissionType: str
   return response.data.data;
 };
 
+export interface TeacherOfWeekVoteSummary {
+  cycleKey: string;
+  isOpen: boolean;
+  totalVotes: number;
+  teachers: Array<{
+    teacherId: string;
+    teacherName: string;
+    department: string | null;
+    subjects: string[];
+    weekVotes: number;
+    overallRating: number;
+    overallVoteCount: number;
+  }>;
+}
+
+export const getTeacherOfWeekVotes = async (): Promise<TeacherOfWeekVoteSummary> => {
+  const response = await api.get('/vice-principal/teacher-of-week/votes');
+  return response.data.data;
+};
+

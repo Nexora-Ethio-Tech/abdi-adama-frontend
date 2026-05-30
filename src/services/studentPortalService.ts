@@ -1,5 +1,23 @@
 import api from './api';
 
+export interface DashboardAnnouncement {
+  id: string;
+  priority: string;
+  title: string;
+  content: string;
+  timestamp: string;
+  category: string;
+  driverName?: string;
+}
+
+export interface WeeklyScheduleEntry {
+  day: string;
+  timeSlot: string;
+  subject: string;
+  teacher: string;
+  room: string;
+}
+
 // Student Dashboard Interface
 export interface StudentDashboard {
   student: {
@@ -13,32 +31,31 @@ export interface StudentDashboard {
   };
   stats: {
     totalCourses: number;
-    averageGrade: number;
-    attendanceRate: number;
-    upcomingExams: number;
+    averageGrade: number | null;
+    averageGradeDisplay: string;
+    attendanceRate: number | null;
+    currentSemester: number;
+    academicYear: string;
   };
-  recentGrades: Array<{
-    courseId: string;
-    courseName: string;
-    grade: number;
-    date: string;
-  }>;
-  upcomingExams: Array<{
-    id: string;
-    subject: string;
-    date: string;
-    time: string;
-    location: string;
-  }>;
-  announcements?: Array<{
-    id: string;
-    priority: string;
-    title: string;
-    content: string;
-    timestamp: string;
-    category: string;
-    driverName?: string;
-  }>;
+  weeklySchedule: WeeklyScheduleEntry[];
+  schoolAnnouncements: DashboardAnnouncement[];
+  logisticsAnnouncements: DashboardAnnouncement[];
+}
+
+export interface TeacherOfWeekTeacher {
+  id: string;
+  name: string;
+  subjects: string[];
+  department: string | null;
+}
+
+export interface TeacherOfWeekPayload {
+  isOpen: boolean;
+  cycleKey: string;
+  ethiopianWeekStart: string;
+  hasVoted: boolean;
+  votedTeacherId: string | null;
+  teachers: TeacherOfWeekTeacher[];
 }
 
 // Course Interface
@@ -111,6 +128,16 @@ export const getStudentDashboard = async (): Promise<StudentDashboard> => {
   return response.data.data;
 };
 
+export const getTeacherOfWeek = async (): Promise<TeacherOfWeekPayload> => {
+  const response = await api.get('/student/teacher-of-week');
+  return response.data.data;
+};
+
+export const submitTeacherOfWeekVote = async (teacherId: string) => {
+  const response = await api.post('/student/teacher-of-week/vote', { teacherId });
+  return response.data.data;
+};
+
 export const getMyCourses = async (): Promise<StudentCourse[]> => {
   const response = await api.get('/student/courses');
   return response.data.data;
@@ -147,10 +174,15 @@ export const getMyHistory = async (year: string, semester?: number): Promise<any
   return response.data.data;
 };
 
-export const getMyGradesForSemester = async (semester: number, year?: string): Promise<any> => {
+export const getMyGradesForSemester = async (
+  semester: number,
+  year?: string,
+  subjectId?: string
+): Promise<any> => {
   const params = new URLSearchParams();
   params.append('semester', semester.toString());
   if (year) params.append('year', year);
+  if (subjectId) params.append('subject_id', subjectId);
   const response = await api.get(`/student/grades?${params.toString()}`);
   return response.data.data;
 };
