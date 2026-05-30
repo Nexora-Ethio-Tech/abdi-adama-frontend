@@ -686,7 +686,7 @@ export const AuditorFinance = () => {
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{payment.student_name}</p>
-                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">ID: {payment.student_id.slice(0, 8)}</p>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">ID: {payment.student_id?.slice(0, 8) || 'Unknown'}</p>
                           </div>
                         </div>
                       </td>
