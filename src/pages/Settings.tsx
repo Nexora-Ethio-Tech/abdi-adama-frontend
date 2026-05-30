@@ -241,10 +241,13 @@ export const Settings = () => {
     !superAdminSubTabs || activeSubTab === subId;
 
   useEffect(() => {
-    if (role === 'super-admin' && SUPER_ADMIN_SUBTABS[activeTab]) {
+    if (role !== 'super-admin') return;
+    const subTabs = SUPER_ADMIN_SUBTABS[activeTab];
+    if (!subTabs) return;
+    if (!subTabs.some((tab) => tab.id === activeSubTab)) {
       setActiveSubTab(getDefaultSubTab(activeTab));
     }
-  }, [activeTab, role]);
+  }, [activeTab, role, activeSubTab]);
 
   // Load grading configs from backend on mount
   useEffect(() => {
@@ -542,9 +545,10 @@ export const Settings = () => {
                       <div className="space-y-4">
                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Name (Official)</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
+                              <div className="space-y-1">
+                            <label htmlFor="school-name-oromic" className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
                             <input
+                              id="school-name-oromic"
                               type="text"
                               className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                               value={schoolName.oromic}
@@ -553,8 +557,9 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
+                            <label htmlFor="school-name-amharic" className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
                             <input
+                              id="school-name-amharic"
                               type="text"
                               className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                               value={schoolName.amharic}
@@ -563,8 +568,9 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
+                            <label htmlFor="school-name-english" className="text-[9px] font-bold text-slate-400 uppercase">English</label>
                             <input
+                              id="school-name-english"
                               type="text"
                               className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                               value={schoolName.english}
@@ -579,8 +585,9 @@ export const Settings = () => {
                         <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Motto</h4>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
+                            <label htmlFor="school-motto-oromic" className="text-[9px] font-bold text-slate-400 uppercase">Oromic</label>
                             <input
+                              id="school-motto-oromic"
                               type="text"
                               title="School motto in Oromic"
                               aria-label="School motto in Oromic"
@@ -592,8 +599,9 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
+                            <label htmlFor="school-motto-amharic" className="text-[9px] font-bold text-slate-400 uppercase">Amharic</label>
                             <input
+                              id="school-motto-amharic"
                               type="text"
                               title="School motto in Amharic"
                               aria-label="School motto in Amharic"
@@ -605,8 +613,9 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-bold text-slate-400 uppercase">English</label>
+                            <label htmlFor="school-motto-english" className="text-[9px] font-bold text-slate-400 uppercase">English</label>
                             <input
+                              id="school-motto-english"
                               type="text"
                               title="School motto in English"
                               aria-label="School motto in English"
@@ -625,8 +634,9 @@ export const Settings = () => {
                   {showSubSection('contact') && (
                     <>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
+                        <label htmlFor="system-email" className="text-[10px] font-bold text-slate-500 uppercase">System Email</label>
                         <input
+                          id="system-email"
                           type="email"
                           value={systemEmail}
                           onChange={(e) => role === 'super-admin' && setSystemEmail(e.target.value)}
@@ -635,8 +645,9 @@ export const Settings = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
+                        <label htmlFor="phone-number" className="text-[10px] font-bold text-slate-500 uppercase">Phone Number</label>
                         <input
+                          id="phone-number"
                           type="text"
                           value={phone}
                           onChange={(e) => role === 'super-admin' && setPhone(e.target.value)}
@@ -645,8 +656,9 @@ export const Settings = () => {
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
+                        <label htmlFor="academic-year" className="text-[10px] font-bold text-slate-500 uppercase">Academic Year</label>
                         <select
+                          id="academic-year"
                           value={selectedAcademicYearId}
                           onChange={(e) => role === 'super-admin' && setSelectedAcademicYearId(e.target.value)}
                           disabled={role !== 'super-admin' || academicYears.length === 0}
@@ -661,8 +673,9 @@ export const Settings = () => {
                         </select>
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
+                        <label htmlFor="school-address" className="text-[10px] font-bold text-slate-500 uppercase">School Address</label>
                         <textarea
+                          id="school-address"
                           rows={3}
                           value={address}
                           onChange={(e) => role === 'super-admin' && setAddress(e.target.value)}
@@ -750,9 +763,10 @@ export const Settings = () => {
                         className="space-y-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800"
                       >
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
+                          <label htmlFor="current-password" className="text-xs font-bold text-slate-500 uppercase">Current Password</label>
                           <div className="relative">
                             <input
+                              id="current-password"
                               type="password"
                               value={passwordForm.currentPassword}
                               onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
@@ -765,8 +779,9 @@ export const Settings = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">New Password</label>
+                            <label htmlFor="new-password" className="text-xs font-bold text-slate-500 uppercase">New Password</label>
                             <input
+                              id="new-password"
                               type="password"
                               value={passwordForm.newPassword}
                               onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
@@ -778,8 +793,9 @@ export const Settings = () => {
                           </div>
 
                           <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Confirm New Password</label>
+                            <label htmlFor="confirm-password" className="text-xs font-bold text-slate-500 uppercase">Confirm New Password</label>
                             <input
+                              id="confirm-password"
                               type="password"
                               value={passwordForm.confirmPassword}
                               onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
@@ -868,40 +884,45 @@ export const Settings = () => {
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Host</label>
+                          <label htmlFor="smtp-host" className="text-xs font-bold text-slate-500 uppercase">SMTP Host</label>
                           <input
+                            id="smtp-host"
                             value={smtpSettings.smtp_host}
                             onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_host: e.target.value })}
                             className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Port</label>
+                          <label htmlFor="smtp-port" className="text-xs font-bold text-slate-500 uppercase">SMTP Port</label>
                           <input
+                            id="smtp-port"
                             value={smtpSettings.smtp_port}
                             onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_port: e.target.value })}
                             className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP User</label>
+                          <label htmlFor="smtp-user" className="text-xs font-bold text-slate-500 uppercase">SMTP User</label>
                           <input
+                            id="smtp-user"
                             value={smtpSettings.smtp_user}
                             onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_user: e.target.value })}
                             className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-xs font-bold text-slate-500 uppercase">From Address</label>
+                          <label htmlFor="smtp-from" className="text-xs font-bold text-slate-500 uppercase">From Address</label>
                           <input
+                            id="smtp-from"
                             value={smtpSettings.smtp_from}
                             onChange={(e) => setSmtpSettings({ ...smtpSettings, smtp_from: e.target.value })}
                             className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
                           />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
+                          <label htmlFor="smtp-password" className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
                           <input
+                            id="smtp-password"
                             type="password"
                             value={smtpPass}
                             onChange={(e) => setSmtpPass(e.target.value)}
@@ -909,9 +930,10 @@ export const Settings = () => {
                           />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
+                          <label htmlFor="smtp-test-email" className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
                           <div className="flex gap-2">
                             <input
+                              id="smtp-test-email"
                               type="email"
                               value={smtpTestEmail}
                               onChange={(e) => setSmtpTestEmail(e.target.value)}
@@ -955,10 +977,13 @@ export const Settings = () => {
                       {/* Student Registration Fee */}
                       <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                         <div>
-                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
+                          <label htmlFor="student-registration-fee" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
                           <input
+                            id="student-registration-fee"
                             type="number"
+                            title="Student registration fee"
+                            aria-label="Student registration fee"
                             className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                             value={studentRegistrationFee}
                             onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
@@ -980,10 +1005,13 @@ export const Settings = () => {
                       {/* Student Payment Penalty */}
                       <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                         <div>
-                          <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
+                          <label htmlFor="student-late-penalty" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Penalty fee applied automatically to students who miss deadlines.</p>
                           <input
+                            id="student-late-penalty"
                             type="number"
+                            title="Student late penalty"
+                            aria-label="Student late penalty"
                             className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                             value={studentLatePenaltyRate}
                             onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
@@ -1073,10 +1101,13 @@ export const Settings = () => {
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                           <div>
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Daily Penalty Rate (ETB)</label>
+                            <label htmlFor="daily-penalty-rate" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Daily Penalty Rate (ETB)</label>
                             <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Deduction amount from basic salary per day of absenteeism.</p>
                             <input
+                              id="daily-penalty-rate"
                               type="number"
+                              title="Daily penalty rate"
+                              aria-label="Daily penalty rate"
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={dailyPenaltyRate}
                               onChange={(e) => setDailyPenaltyRate(Number(e.target.value))}
@@ -1102,10 +1133,13 @@ export const Settings = () => {
 
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                           <div>
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Max Loan Duration (Months)</label>
+                            <label htmlFor="max-loan-duration" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Max Loan Duration (Months)</label>
                             <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Maximum duration for employee loan repayments (Default to 3).</p>
                             <input
+                              id="max-loan-duration"
                               type="number"
+                              title="Max loan duration"
+                              aria-label="Max loan duration"
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={maxLoanMonths}
                               onChange={(e) => setMaxLoanMonths(Number(e.target.value))}
@@ -1131,10 +1165,13 @@ export const Settings = () => {
 
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                           <div>
-                            <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Loan Deduction Percentage (%)</label>
+                            <label htmlFor="loan-deduction-percentage" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Loan Deduction Percentage (%)</label>
                             <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Percentage cut from basic salary monthly for loan repayment.</p>
                             <input
+                              id="loan-deduction-percentage"
                               type="number"
+                              title="Loan deduction percentage"
+                              aria-label="Loan deduction percentage"
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={loanDeductionPct}
                               onChange={(e) => setLoanDeductionPct(Number(e.target.value))}
@@ -1209,8 +1246,9 @@ export const Settings = () => {
 
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                          <label htmlFor="fee-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
                           <select
+                            id="fee-branch"
                             value={feeBranchId}
                             onChange={(e) => setFeeBranchId(e.target.value)}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1219,8 +1257,9 @@ export const Settings = () => {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
+                          <label htmlFor="fee-grade" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
                           <select
+                            id="fee-grade"
                             value={feeGrade}
                             onChange={(e) => setFeeGrade(e.target.value)}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1229,27 +1268,36 @@ export const Settings = () => {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
+                          <label htmlFor="fee-monthly" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
                           <input
+                            id="fee-monthly"
                             type="number"
+                            title="Monthly fee"
+                            aria-label="Monthly fee"
                             value={feeMonthly}
                             onChange={(e) => setFeeMonthly(Number(e.target.value))}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
+                          <label htmlFor="fee-registration" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
                           <input
+                            id="fee-registration"
                             type="number"
+                            title="Registration fee"
+                            aria-label="Registration fee"
                             value={feeRegistration}
                             onChange={(e) => setFeeRegistration(Number(e.target.value))}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
+                          <label htmlFor="fee-bus" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
                           <input
+                            id="fee-bus"
                             type="number"
+                            title="Bus fee"
+                            aria-label="Bus fee"
                             value={feeBus}
                             onChange={(e) => setFeeBus(Number(e.target.value))}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1300,6 +1348,8 @@ export const Settings = () => {
                                       type="button"
                                       onClick={() => handleDeleteFeeConfig(fee.id)}
                                       className="text-rose-500 hover:text-rose-700 p-1"
+                                      aria-label="Delete fee configuration"
+                                      title="Delete fee configuration"
                                     >
                                       <Trash2 size={14} />
                                     </button>
@@ -1325,8 +1375,9 @@ export const Settings = () => {
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                            <label htmlFor="profit-target-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
                             <select
+                              id="profit-target-branch"
                               value={profitTargetBranchId}
                               onChange={(e) => setProfitTargetBranchId(e.target.value)}
                               className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1337,8 +1388,9 @@ export const Settings = () => {
                             </select>
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
+                            <label htmlFor="profit-target-month" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
                             <select
+                              id="profit-target-month"
                               value={profitTargetMonth}
                               onChange={(e) => setProfitTargetMonth(e.target.value)}
                               className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
@@ -1443,9 +1495,11 @@ export const Settings = () => {
                                       {status} — {percent}%
                                     </div>
                                   </div>
-                                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${percent}%` }} />
-                                  </div>
+                                  <progress
+                                    className={`w-full h-4 rounded-full overflow-hidden appearance-none bg-slate-100 dark:bg-slate-800 ${barColor} progress-bar`}
+                                    value={Math.min(100, Math.max(0, percent))}
+                                    max={100}
+                                  />
                                 </div>
                               );
                             })()}
@@ -1497,10 +1551,13 @@ export const Settings = () => {
                 <div className="space-y-8 animate-in fade-in duration-300">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <div>
-                      <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1">Select Grade Level</h4>
+                      <label htmlFor="grade-level" className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1 block">Select Grade Level</label>
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
                     </div>
                     <select
+                      id="grade-level"
+                      title="Select grade level"
+                      aria-label="Select grade level"
                       value={selectedGrade}
                       onChange={(e) => setSelectedGrade(e.target.value)}
                       className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"

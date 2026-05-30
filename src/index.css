@@ -110,6 +110,26 @@
     @apply bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-800/20 shadow-xl;
   }
 
+  .progress-bar {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .progress-bar::-webkit-progress-bar {
+    background: inherit;
+    border-radius: inherit;
+  }
+
+  .progress-bar::-webkit-progress-value {
+    background-color: currentColor;
+    border-radius: inherit;
+  }
+
+  .progress-bar::-moz-progress-bar {
+    background-color: currentColor;
+    border-radius: inherit;
+  }
+
   .floating {
     animation: floating 3s ease-in-out infinite;
   }
