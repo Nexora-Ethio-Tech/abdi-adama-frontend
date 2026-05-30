@@ -44,6 +44,7 @@ export const Dashboard = () => {
   const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
+  const [branchReportLoading, setBranchReportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -147,11 +148,16 @@ export const Dashboard = () => {
   const isVP = role === 'vice-principal';
   const selectedBranch = selectedBranchId ? branches.find((branch) => branch.id === selectedBranchId) || null : null;
   const [branchReports, setBranchReports] = useState<any[]>([]);
+  const selectedBranchReport = selectedBranch
+    ? branchReports.find((report) => report?.branchId === selectedBranch.id) || null
+    : null;
+  const selectedBranchTeacherCount = selectedBranchReport?.totalTeachers ?? 0;
 
   // Fetch branch reports for Super Admin
   useEffect(() => {
     const fetchBranchReports = async () => {
       if (role === 'super-admin' && branches.length > 0) {
+        setBranchReportLoading(true);
         console.log('🔍 Fetching branch reports for', branches.length, 'branches');
         try {
           const { getBranchReport } = await import('../services/branchService');
@@ -173,6 +179,9 @@ export const Dashboard = () => {
           setBranchReports(validReports);
         } catch (err) {
           console.error('❌ Failed to fetch branch reports:', err);
+          setBranchReports([]);
+        } finally {
+          setBranchReportLoading(false);
         }
       }
     };
@@ -181,27 +190,37 @@ export const Dashboard = () => {
 
   if (role === 'super-admin') {
     // Use ONLY real API data - no fallback
-    const branchHealth = branches.map((branch) => {
-      // Now report is the actual data object, not wrapped in response
-      const report = branchReports.find(r => r?.branchId === branch.id);
-      console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
-      
-      if (!report) {
-        return null; // Skip branches without API data
-      }
-      
-      return {
-        ...branch,
-        students: report.totalStudents,
-        teachers: report.totalTeachers,
-        attendance: report.attendanceRate?.toFixed(1),
-        finance: report.netProfit > 0 ? 'Stable' : 'Attention',
-        risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
-      };
-    }).filter(Boolean); // Remove null entries
+    const branchHealth = branches
+      .map((branch) => {
+        // Now report is the actual data object, not wrapped in response
+        const report = branchReports.find(r => r?.branchId === branch.id);
+        console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
+        
+        if (!report) {
+          return null; // Skip branches without API data
+        }
+        
+        return {
+          ...branch,
+          students: report.totalStudents,
+          teachers: report.totalTeachers,
+          attendance: report.attendanceRate?.toFixed(1),
+          finance: report.netProfit > 0 ? 'Stable' : 'Attention',
+          risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
+        };
+      })
+      .filter((branch): branch is NonNullable<typeof branch> => Boolean(branch)); // Remove null entries
 
 
     if (!selectedBranch) {
+      const monitoredBranches = branchHealth.length || dashboardStats?.totalBranches || branches.length;
+      const teacherCount = dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || 0;
+      const totalStudentsCount = dashboardStats?.totalStudents || 0;
+      const avgAttendance = branchHealth.length > 0
+        ? (branchHealth.reduce((sum: number, branch) => sum + Number(branch.attendance || 0), 0) / branchHealth.length).toFixed(1)
+        : 'N/A';
+      const branchesNeedingAttention = branchHealth.filter((branch) => Number(branch.attendance || 0) < 85 || branch.risk !== 'Normal').length;
+
       return (
         <div className="space-y-8">
           <section className="bg-slate-950 text-white rounded-[2rem] p-6 md:p-8 shadow-2xl shadow-slate-200/30 overflow-hidden relative">
@@ -270,7 +289,35 @@ export const Dashboard = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-6">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Super Admin Snapshot</h3>
+                  <p className="text-sm text-slate-500">A clean, high-level view of all branches and network health.</p>
+                </div>
+                <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{monitoredBranches} branches monitored</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Total Students</p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{totalStudentsCount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Total Teachers</p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{teacherCount.toLocaleString()}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Average Attendance</p>
+                  <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{avgAttendance}%</p>
+                </div>
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Branches Needing Attention</p>
+                  <p className={`text-2xl font-black ${branchesNeedingAttention > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{branchesNeedingAttention}</p>
+                </div>
+              </div>
+            </div>
+
             <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                 <div>
@@ -292,13 +339,19 @@ export const Dashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {branchHealth.length === 0 ? (
+                    {branchReportLoading ? (
                       <tr>
                         <td colSpan={6} className="px-6 py-8 text-center">
                           <div className="flex flex-col items-center gap-2">
                             <div className="w-12 h-12 border-4 border-blue-600/30 border-t-blue-600 rounded-full animate-spin" />
                             <p className="text-sm text-slate-500 mt-2">Loading branch reports...</p>
                           </div>
+                        </td>
+                      </tr>
+                    ) : branchHealth.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center">
+                          <div className="text-sm text-slate-500">No branch reports are available yet. Please refresh or check your branch report configuration.</div>
                         </td>
                       </tr>
                     ) : branchHealth.map((branch) => (
@@ -380,60 +433,27 @@ export const Dashboard = () => {
               <div className="p-2.5 bg-blue-100 text-blue-600 rounded-xl"><Users size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.students')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">318</p>
-            <p className="text-xs text-emerald-600 font-bold mt-1">+2.1% this term</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.totalStudents ?? 0}</p>
+            <p className="text-xs text-emerald-600 font-bold mt-1">Branch-wide student total</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-purple-100 text-purple-600 rounded-xl"><GraduationCap size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.teachers')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">24</p>
-            <p className="text-xs text-slate-500 font-bold mt-1">6 on exam duty</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchTeacherCount}</p>
+            <p className="text-xs text-slate-500 font-bold mt-1">Teaching staff in branch</p>
           </div>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm hover:shadow-md transition-all">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 bg-orange-100 text-orange-600 rounded-xl"><Clock size={20} /></div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.attendance')}</span>
             </div>
-            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">93.8%</p>
-            <p className="text-xs text-emerald-600 font-bold mt-1">+0.7% vs last week</p>
+            <p className="text-3xl font-black text-slate-800 dark:text-slate-100">{selectedBranchReport?.attendance ? `${selectedBranchReport.attendance}%` : 'N/A'}</p>
+            <p className="text-xs text-emerald-600 font-bold mt-1">Branch attendance rate</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Pending Actions */}
-          <div className="xl:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{t('dashboard.pendingActions')}</h3>
-                <p className="text-xs text-slate-500">{t('dashboard.attentionItems')}</p>
-              </div>
-              <span className="px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full text-[10px] font-black">5 {t('dashboard.items')}</span>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {[
-                { label: 'VP attendance queue items', count: '4', color: 'bg-rose-500', action: 'Review' },
-                { label: 'Finance clerk fee exception', count: '1', color: 'bg-amber-500', action: 'Approve' },
-                { label: 'Compliance risks escalated', count: '2', color: 'bg-amber-500', action: 'Inspect' },
-                { label: 'Exam unveil requests', count: '3', color: 'bg-blue-500', action: 'Decide' },
-                { label: 'Bus route update pending', count: '1', color: 'bg-orange-500', action: 'Confirm' },
-              ].map((item) => (
-                <div key={item.label} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${item.color}`} />
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
-                    <span className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded-full">{item.count}</span>
-                  </div>
-                  <button className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    {item.action}
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
       </div>
     );
   }

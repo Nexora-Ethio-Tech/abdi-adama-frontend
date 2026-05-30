@@ -1,5 +1,6 @@
 
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -26,6 +27,7 @@ import {
   Landmark,
   AlertCircle,
   MessageSquare,
+  ChevronDown,
 } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 import { clsx, type ClassValue } from 'clsx';
@@ -49,6 +51,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t, i18n } = useTranslation();
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (label: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(label)) {
+      newExpanded.delete(label);
+    } else {
+      newExpanded.add(label);
+    }
+    setExpandedItems(newExpanded);
+  };
 
   const getLocalizedSchoolName = () => {
     switch (i18n.language) {
@@ -75,10 +88,17 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
     navigate('/');
   };
 
+  type NavItem = {
+    icon: any;
+    label: string;
+    path?: string;
+    children?: Array<{ icon: any; label: string; path: string }>;
+  };
+
   const getNavItems = () => {
     switch (role) {
       case 'super-admin':
-        const baseItems = [
+        const baseItems: NavItem[] = [
           { icon: LayoutDashboard, label: t('nav.overview'), path: '/' },
           { icon: Building2, label: t('nav.branches'), path: '/branches' },
           { icon: PieChart, label: t('nav.analytics'), path: '/analytics' },
@@ -94,10 +114,16 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
         baseItems.push(
           { icon: Megaphone, label: t('nav.websitePosts'), path: '/website-posts' },
-          { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
-          { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
-          { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
-          { icon: Wallet, label: 'My Finance', path: '/my-finance' },
+          {
+            icon: DollarSign,
+            label: 'Financial Tools',
+            path: '/employee-profiles',
+            children: [
+              { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
+              { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
+              { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
+            ],
+          },
           { icon: MessageSquare, label: 'Chatbot Management', path: '/chatbot-management' },
           { icon: Settings, label: t('nav.settings'), path: '/settings' }
         );
@@ -230,6 +256,11 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   const navItems = getNavItems();
 
+  const isNavItemActive = (item: NavItem) => {
+    if (item.path) return checkActive(item.path);
+    return item.children?.some((child) => checkActive(child.path)) || false;
+  };
+
   return (
     <aside className={cn(
       "fixed inset-y-0 left-0 z-30 w-72 flex flex-col h-screen transition-all duration-300 lg:translate-x-0 lg:static lg:inset-auto border-r border-slate-200 dark:border-slate-800/50",
@@ -261,11 +292,73 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
       <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto custom-scrollbar">
         {navItems.map((item) => {
-          const isActive = checkActive(item.path);
+          const isActive = isNavItemActive(item);
+          const isExpanded = expandedItems.has(item.label);
+
+          if (item.children?.length) {
+            return (
+              <div key={item.label} className="space-y-2">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    toggleExpanded(item.label);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-4 px-5 py-3.5 rounded-2xl transition-all duration-300",
+                    isActive
+                      ? role === 'parent'
+                        ? "bg-blue-600/10 text-blue-400 font-bold"
+                        : "bg-school-primary text-white shadow-lg shadow-school-primary/20"
+                      : role === 'parent'
+                        ? "text-slate-400 hover:text-white hover:bg-white/5"
+                        : "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/20 hover:bg-slate-100 dark:hover:bg-slate-800/50"
+                  )}
+                >
+                  <item.icon size={20} className={cn("text-slate-400 dark:text-slate-500", isActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "")}/>
+                  <span className="font-bold text-sm tracking-wide flex-1 text-left">{item.label}</span>
+                  <ChevronDown size={18} className={cn("transition-transform", isExpanded ? "rotate-180" : "")}/>
+                </button>
+                {isExpanded && (
+                  <div className="space-y-1 pl-12">
+                    {item.children.map((child) => {
+                      const childActive = checkActive(child.path);
+                      return (
+                        <NavLink
+                          key={`${child.path}-${child.label}`}
+                          to={isExamLockedDown ? '#' : child.path}
+                          onClick={(e) => {
+                            if (isExamLockedDown) {
+                              e.preventDefault();
+                              return;
+                            }
+                            if (window.innerWidth < 1024) onClose();
+                          }}
+                          className={cn(
+                            "flex items-center gap-3 px-5 py-2 rounded-2xl transition-all duration-300",
+                            childActive
+                              ? role === 'parent'
+                                ? "bg-blue-600/10 text-blue-400 font-bold"
+                                : "bg-school-primary text-white shadow-lg shadow-school-primary/20 scale-[1.02]"
+                              : role === 'parent'
+                                ? "text-slate-400 hover:text-white hover:bg-white/5"
+                                : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+                          )}
+                        >
+                          <child.icon size={18} className={cn("transition-transform group-hover:scale-110", childActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
+                          <span className="text-sm tracking-wide">{child.label}</span>
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
           return (
             <NavLink
               key={`${item.path}-${item.label}`}
-              to={isExamLockedDown ? '#' : item.path}
+              to={isExamLockedDown ? '#' : item.path || '#'}
               onClick={(e) => {
                 if (isExamLockedDown) {
                   e.preventDefault();
