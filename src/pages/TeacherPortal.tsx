@@ -1,5 +1,5 @@
 import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { 
@@ -114,6 +114,7 @@ export const TeacherPortal = () => {
   };
   const [planForm, setPlanForm] = useState(emptyPlan);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Classes and department heads
   const [myClasses, setMyClasses] = useState<any[]>([]);
@@ -397,17 +398,30 @@ export const TeacherPortal = () => {
     <div className="space-y-8">
       {/* Tabs */}
       <div className="flex gap-3 p-1.5 bg-slate-100/50 dark:bg-slate-800/50 rounded-2xl w-fit border border-slate-200/50 dark:border-slate-700/50 flex-wrap">
-        {[
-          { id: 'overview', label: 'Overview' },
-          { id: 'plans', label: 'Weekly Plans' },
-          { id: 'exams', label: 'Exams' },
-          ...(isDean ? [{ id: 'dept-tasks', label: 'Department Tasks' }] : []),
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}>
-            {tab.label}
-          </button>
-        ))}
+        {(() => {
+          const tabs = [
+            { id: 'overview', label: 'Overview' },
+            { id: 'plans', label: 'Weekly Plans' },
+            { id: 'exams', label: 'Exams' },
+            ...(isDean ? [{ id: 'dept-tasks', label: 'Department Tasks' }] : []),
+          ];
+          return tabs.map(tab => {
+            if (tab.id === 'exams') {
+              return (
+                <button key={tab.id} onClick={() => navigate('/exams')}
+                  className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all text-slate-500 hover:text-slate-700`}>
+                  {tab.label}
+                </button>
+              );
+            }
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
+                className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-xl' : 'text-slate-500 hover:text-slate-700'}`}>
+                {tab.label}
+              </button>
+            );
+          });
+        })()}
       </div>
 
       {activeTab === 'overview' ? (
@@ -546,79 +560,6 @@ export const TeacherPortal = () => {
                   )}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      ) : activeTab === 'exams' ? (
-        /* Exams Tab */
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-              <div>
-                <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Official Examinations</h2>
-                <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Create, manage, and publish exams for your classes</p>
-              </div>
-              <button onClick={() => { setEditingExam(null); setExamForm({ title: '', examType: 'Mid Exam', totalMarks: 100, duration: 60, instructions: '', selectedClass: '', selectedSection: '', gradeId: '', subjectId: '', examPassword: '', isLocked: false, passwordRequired: false, questions: [] }); setIsExamModalOpen(true); }}
-                className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
-                <Plus size={18} /> Create New Exam
-              </button>
-            </div>
-
-            {/* Exams Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Draft Exams */}
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-6 rounded-2xl border border-amber-200 dark:border-amber-800">
-                <h3 className="text-lg font-black text-amber-900 dark:text-amber-300 uppercase tracking-wide mb-4 flex items-center gap-2">
-                  <FileText size={20} /> Draft Exams
-                </h3>
-                <div className="space-y-3">
-                  {draftExams.length === 0 ? (
-                    <p className="text-sm text-slate-500 text-center py-8">No draft exams yet. Create one to get started!</p>
-                  ) : (
-                    draftExams.map((exam: any) => (
-                      <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-amber-200 dark:border-amber-700 hover:shadow-md transition-all">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">{exam.title}</h4>
-                            <p className="text-xs text-slate-500 mt-1">{exam.totalMarks} marks • {exam.duration} min</p>
-                            <p className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-1">DRAFT</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button onClick={() => handleEditDraftExam(exam)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition-colors">Edit</button>
-                            <button onClick={() => handlePublishExam(exam.id)} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors">Publish</button>
-                            <button onClick={() => handleDeleteDraftExam(exam.id)} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold hover:bg-red-700 transition-colors">Delete</button>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              {/* Published Exams */}
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-900/10 dark:to-green-900/10 p-6 rounded-2xl border border-emerald-200 dark:border-emerald-800">
-                <h3 className="text-lg font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wide mb-4 flex items-center gap-2">
-                  <CheckCircle2 size={20} /> Published Exams
-                </h3>
-                <div className="space-y-3">
-                  {publishedExams.length === 0 ? (
-                    <p className="text-sm text-slate-500 text-center py-8">No published exams yet.</p>
-                  ) : (
-                    publishedExams.map((exam: any) => (
-                      <div key={exam.id} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-emerald-200 dark:border-emerald-700 hover:shadow-md transition-all">
-                        <div className="flex justify-between items-start gap-4">
-                          <div className="flex-1">
-                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">{exam.title}</h4>
-                            <p className="text-xs text-slate-500 mt-1">Class: {exam.className} • Section: {exam.section}</p>
-                            <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-1">PUBLISHED</p>
-                          </div>
-                          <button className="px-3 py-1.5 bg-slate-600 text-white rounded-lg text-xs font-bold hover:bg-slate-700 transition-colors">View Results</button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         </div>
