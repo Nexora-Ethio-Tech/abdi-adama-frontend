@@ -90,6 +90,35 @@ export interface GlobalRegistrationFee {
   source: string;
 }
 
+export interface OutstandingFee {
+  feeType: string;
+  label: string;
+  due: number;
+  paid: number;
+  remaining: number;
+  isFullyPaid?: boolean;
+  source?: string;
+}
+
+export interface StudentOutstanding {
+  student: {
+    id: string;
+    name: string;
+    parent_phone: string;
+  };
+  usesTransport?: boolean;
+  paidFees?: string[];
+  month: string;
+  fees: OutstandingFee[];
+  totalDue: number;
+  totalPaid: number;
+  totalRemaining: number;
+  approvedAidTotal: number;
+  aidUsed: number;
+  aidRemaining: number;
+  collection: any | null;
+}
+
 export interface RecordPaymentItem {
   feeType: string;
   amount: number;
@@ -261,11 +290,28 @@ const financeClerkService = {
   },
 
   // 4b. Get outstanding per-fee-type for a student and month
-  getStudentOutstanding: async (studentId: string, month?: string) => {
+  getStudentOutstanding: async (studentId: string, month?: string): Promise<StudentOutstanding> => {
     const params: any = {};
     if (month) params.month = month;
     const response = await api.get(`/finance-clerk/students/${studentId}/outstanding`, { params });
-    return response.data.data;
+    const data = response.data.data;
+    return {
+      ...data,
+      fees: (data.fees || []).map((fee: any) => ({
+        feeType: fee.feeType,
+        label: fee.label,
+        due: Number(fee.due || 0),
+        paid: Number(fee.paid || 0),
+        remaining: Number(fee.remaining || 0),
+        isFullyPaid: fee.isFullyPaid,
+      })),
+      totalDue: Number(data.totalDue || 0),
+      totalPaid: Number(data.totalPaid || 0),
+      totalRemaining: Number(data.totalRemaining || 0),
+      approvedAidTotal: Number(data.approvedAidTotal || 0),
+      aidUsed: Number(data.aidUsed || 0),
+      aidRemaining: Number(data.aidRemaining || 0),
+    };
   },
 
   // 5. Update Student Fee Status

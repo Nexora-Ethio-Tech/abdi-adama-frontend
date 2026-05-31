@@ -218,18 +218,61 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     return total;
   };
 
+  const computeFeeKey = (label: string) => {
+    if (label === 'Monthly Tuition') return 'monthly';
+    if (label === 'Bus Fee') return 'bus';
+    if (label === 'Penalty Fee') return 'penalty';
+    if (label === 'Registration Fee') return 'registration';
+    return label;
+  };
+
+  const computeFeeLabel = (key: string) => {
+    if (key === 'monthly') return 'Monthly Tuition';
+    if (key === 'bus') return 'Bus Fee';
+    if (key === 'penalty') return 'Penalty Fee';
+    if (key === 'registration') return 'Registration Fee';
+    return key;
+  };
+
+  const getSelectedRequestedTotal = () => {
+    if (!outstandingData) return Number(paymentData.amount || 0);
+    return selectedPaymentTypes.reduce((sum, label) => {
+      const key = computeFeeKey(label);
+      return sum + Number(paymentAmounts[key] || 0);
+    }, 0);
+  };
+
+  const getEstimatedAidApplied = () => {
+    if (!outstandingData) return 0;
+    return Math.min(outstandingData.aidRemaining || 0, getSelectedRequestedTotal());
+  };
+
+  const getEstimatedNetPayable = () => {
+    return Math.max(0, getSelectedRequestedTotal() - getEstimatedAidApplied());
+  };
+
+  const [isLoadingOutstanding, setIsLoadingOutstanding] = useState(false);
+
   const openPaymentModal = (student?: StudentFeeInfo) => {
     setOutstandingData(null);
     setPaymentAmounts({});
     if (student) {
       setSelectedStudent(student);
+      setIsLoadingOutstanding(true);
       // fetch outstanding for current month
       financeClerkService.getStudentOutstanding(student.id).then((d) => {
         setOutstandingData(d);
-        // select all fee items with remaining > 0 by default
-        const defaults = (d.fees || []).filter((f: any) => Number(f.remaining || 0) > 0).map((f: any) => f.feeType);
+        // select all fee items with remaining > 0 by default, except filtered ones
+        const validFees = (d.fees || []).filter((f: any) => {
+          if (f.feeType === 'registration') return false;
+          if (f.feeType === 'bus' && !d.usesTransport) return false;
+          if (Number(f.remaining || 0) <= 0) return false;
+          return true;
+        });
+        
+        const defaults = validFees.map((f: any) => f.feeType);
         const amounts: Record<string, number> = {};
-        (d.fees || []).forEach((f: any) => {
+        validFees.forEach((f: any) => {
           amounts[f.feeType] = Number(f.remaining || 0);
         });
         setPaymentAmounts(amounts);
@@ -237,15 +280,16 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           if (k === 'monthly') return 'Monthly Tuition';
           if (k === 'bus') return 'Bus Fee';
           if (k === 'penalty') return 'Penalty Fee';
-          if (k === 'registration') return 'Registration Fee';
           return k;
         }));
         const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
         setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: new Date().toISOString().split('T')[0], month: d.month });
-      }).catch(() => {
-        setSelectedStudent(student);
-        setSelectedPaymentTypes(['Monthly Tuition']);
-        setPaymentData({ studentId: student.id, amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
+      }).catch((err) => {
+        setError(err.response?.data?.error?.message || 'Failed to fetch outstanding fees');
+        setSelectedPaymentTypes([]);
+        setPaymentData({ studentId: student.id, amount: 0, type: [], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
+      }).finally(() => {
+        setIsLoadingOutstanding(false);
       });
     } else {
       setSelectedPaymentTypes(['Monthly Tuition']);
@@ -470,14 +514,27 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     let updated: string[];
     if (selectedPaymentTypes.includes(type)) updated = selectedPaymentTypes.filter(t => t !== type);
     else updated = [...selectedPaymentTypes, type];
-    setSelectedPaymentTypes(updated);
+    const nextAmounts = { ...paymentAmounts };
+
+    // Preserve current paymentAmounts and set defaults when selecting a new fee type
+    if (outstandingData && !selectedPaymentTypes.includes(type)) {
+      const key = computeFeeKey(type);
+      const fee = outstandingData.fees.find((f: any) => f.feeType === key);
+      if (fee && nextAmounts[key] === undefined) {
+        nextAmounts[key] = Number(fee.remaining || 0);
+      }
+    }
+
+    if (Object.keys(nextAmounts).length > 0) {
+      setPaymentAmounts(nextAmounts);
+    }
 
     // Auto-calculate sum based on selected types and outstanding data when available
     let total = 0;
     if (outstandingData) {
       for (const label of updated) {
-        const key = label === 'Monthly Tuition' ? 'monthly' : label === 'Bus Fee' ? 'bus' : label === 'Penalty Fee' ? 'penalty' : label === 'Registration Fee' ? 'registration' : label;
-        total += Number(paymentAmounts[key] || 0);
+        const key = computeFeeKey(label);
+        total += Number(nextAmounts[key] || 0);
       }
     } else {
       total = getCalculatedPaymentAmount(updated, selectedStudent);
@@ -488,6 +545,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       type: updated,
       amount: total
     });
+    setSelectedPaymentTypes(updated);
   };
 
   const confirmStaffPayment = (userId: string) => {
@@ -1708,49 +1766,75 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Payment Types *</label>
                 <div className="grid grid-cols-1 gap-2">
                   {outstandingData ? (
-                    outstandingData.fees.map((f: any) => {
-                      const label = f.feeType === 'monthly' ? 'Monthly Tuition' : f.feeType === 'bus' ? 'Bus Fee' : f.feeType === 'penalty' ? 'Penalty Fee' : f.feeType === 'registration' ? 'Registration Fee' : f.feeType;
-                      const checked = selectedPaymentTypes.includes(label);
-                      const disabled = f.remaining <= 0;
-                      return (
-                        <label key={f.feeType} className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <input type="checkbox" checked={checked} disabled={disabled} onChange={() => handleCheckboxChange(label)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
-                            <div className="min-w-0">
-                              <div className="text-xs font-black text-slate-900 dark:text-slate-100">{label}{disabled ? ' (Paid)' : ''}</div>
-                              <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Due: {Number(f.due).toLocaleString()} ETB • Paid: {Number(f.paid).toLocaleString()} ETB</div>
+                    (() => {
+                      const payableFees = outstandingData.fees.filter((f: any) => {
+                        if (f.feeType === 'bus' && !outstandingData.usesTransport) return false;
+                        if (f.feeType === 'registration') return false;
+                        if (f.due <= 0) return false;
+                        if (f.remaining <= 0) return false;
+                        return true;
+                      });
+
+                      if (payableFees.length === 0) {
+                        return (
+                          <div className="col-span-full p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-center">
+                            <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">All fees for this month have been fully paid.</p>
+                          </div>
+                        );
+                      }
+
+                      return payableFees.map((f: any) => {
+                        const label = f.feeType === 'monthly' ? 'Monthly Tuition' : f.feeType === 'bus' ? 'Bus Fee' : f.feeType === 'penalty' ? 'Penalty Fee' : f.feeType === 'registration' ? 'Registration Fee' : f.feeType;
+                        const checked = selectedPaymentTypes.includes(label);
+
+                        return (
+                          <label key={f.feeType} className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <input type="checkbox" checked={checked} onChange={() => handleCheckboxChange(label)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
+                              <div className="min-w-0">
+                                <div className="text-xs font-black text-slate-900 dark:text-slate-100">{label}</div>
+                                <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                  Due: {Number(f.due).toLocaleString()} ETB • Paid: {Number(f.paid).toLocaleString()} ETB
+                                  {f.source ? <span className="block text-[10px] text-slate-500 dark:text-slate-400">Source: {f.source}</span> : null}
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="text-xs font-black text-slate-900 dark:text-slate-100">Remaining {Number(f.remaining).toLocaleString()} ETB</div>
-                            <input
-                              type="number"
-                              min="0"
-                              max={Number(f.remaining || 0)}
-                              step="0.01"
-                              value={paymentAmounts[f.feeType] ?? Number(f.remaining || 0)}
-                              disabled={disabled || !checked}
-                              onChange={(e) => {
-                                const value = Number(e.target.value || 0);
-                                const clamped = Math.max(0, Math.min(value, Number(f.remaining || 0)));
-                                const next: Record<string, number> = { ...paymentAmounts, [f.feeType]: clamped };
-                                setPaymentAmounts(next);
-                                let total = 0;
-                                for (const selected of selectedPaymentTypes) {
-                                  const selectedKey = selected === 'Monthly Tuition' ? 'monthly' : selected === 'Bus Fee' ? 'bus' : selected === 'Penalty Fee' ? 'penalty' : selected === 'Registration Fee' ? 'registration' : selected;
-                                  total += Number(next[selectedKey] || 0);
-                                }
-                                setPaymentData((prev) => ({ ...prev, amount: total }));
-                              }}
-                              className="w-28 px-2 py-1 rounded-lg border-2 border-slate-500 bg-white text-slate-900 dark:bg-slate-700 dark:text-white dark:border-slate-400 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-                            />
-                          </div>
-                        </label>
-                      );
-                    })
-                  ) : (
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="text-xs font-black text-slate-900 dark:text-slate-100">Remaining {Number(f.remaining).toLocaleString()} ETB</div>
+                              <input
+                                type="number"
+                                min="0"
+                                max={Number(f.remaining || 0)}
+                                step="0.01"
+                                value={paymentAmounts[f.feeType] ?? Number(f.remaining || 0)}
+                                disabled={!checked}
+                                onChange={(e) => {
+                                  const value = Number(e.target.value || 0);
+                                  const clamped = Math.max(0, Math.min(value, Number(f.remaining || 0)));
+                                  const next: Record<string, number> = { ...paymentAmounts, [f.feeType]: clamped };
+                                  setPaymentAmounts(next);
+                                  let total = 0;
+                                  for (const selected of selectedPaymentTypes) {
+                                    const selectedKey = selected === 'Monthly Tuition' ? 'monthly' : selected === 'Bus Fee' ? 'bus' : selected === 'Penalty Fee' ? 'penalty' : selected === 'Registration Fee' ? 'registration' : selected;
+                                    total += Number(next[selectedKey] || 0);
+                                  }
+                                  setPaymentData((prev) => ({ ...prev, amount: total }));
+                                }}
+                                className="w-28 px-2 py-1 rounded-lg border-2 border-slate-500 bg-white text-slate-900 dark:bg-slate-700 dark:text-white dark:border-slate-400 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                              />
+                            </div>
+                          </label>
+                        );
+                      });
+                    })()
+                    ) : isLoadingOutstanding ? (
+                    <div className="col-span-full p-6 flex flex-col items-center justify-center gap-3">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <p className="text-sm text-slate-500 font-medium">Loading outstanding fees...</p>
+                    </div>
+                    ) : (
                     <div className="grid grid-cols-2 gap-3">
-                      {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' }, { key: 'Registration Fee', label: 'Registration Fee' }, { key: 'Bus Fee', label: 'Bus Fee' }, { key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
+                      {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' }, { key: 'Bus Fee', label: 'Bus Fee' }, { key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
                         const checked = selectedPaymentTypes.includes(item.key);
                         return (
                           <label key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
@@ -1763,6 +1847,27 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   )}
                 </div>
               </div>
+              {outstandingData && (
+                <div className="space-y-2 p-4 rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                  <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
+                    <span>Selected subtotal</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{getSelectedRequestedTotal().toLocaleString()} ETB</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
+                    <span>Approved aid available</span>
+                    <span className="font-bold text-emerald-700 dark:text-emerald-400">{outstandingData.aidRemaining.toLocaleString()} ETB</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
+                    <span>Estimated aid applied</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-300">{getEstimatedAidApplied().toLocaleString()} ETB</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-black text-slate-900 dark:text-white">
+                    <span>Estimated net payable</span>
+                    <span>{getEstimatedNetPayable().toLocaleString()} ETB</span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Only approved aid is applied automatically. The backend will consume aid up to the approved remaining amount and prevent double deduction.</p>
+                </div>
+              )}
               <div>
                 <label htmlFor="payment-amount" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Amount (ETB) *</label>
                 <input
