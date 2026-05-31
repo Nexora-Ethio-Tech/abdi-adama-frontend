@@ -491,7 +491,7 @@ export const Dashboard = () => {
         </section>
       )}
 
-      {(role === 'school-admin' || isVP || isSuperAdmin) && (
+      {(isVP || isSuperAdmin) && (
         <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${
           gradesLocked
             ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
@@ -527,7 +527,7 @@ export const Dashboard = () => {
                 Calculate Ranks
               </button>
             )}
-            {(role === 'school-admin' || isSuperAdmin) && (
+            {isSuperAdmin && (
               <button
                 disabled={isSuperAdmin}
                 onClick={() => setGradesLocked(!gradesLocked)}

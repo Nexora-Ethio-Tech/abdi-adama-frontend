@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
 import classService from '../services/classService';
-import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
+import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher, toggleRegistration } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
 import { StudentRegistration } from '../components/StudentRegistration';
 import * as sectionService from '../services/sectionService';
@@ -12,7 +12,7 @@ import { exportToExcel } from '../utils/exportUtils';
 export const Students = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { role, user } = useUser();
+  const { role, user, registrationOpen, setRegistrationOpen } = useUser();
   const isSchoolAdmin = role === 'school-admin';
   const canViewStudentRecord = role === 'school-admin' || role === 'super-admin' || role === 'vice-principal';
 
@@ -521,8 +521,14 @@ export const Students = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveView('add')}
-                className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none ${activeView === 'add' ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''}`}
+                onClick={() => {
+                  if (!registrationOpen) {
+                    showToast('Registration is currently closed', 'error');
+                    return;
+                  }
+                  setActiveView('add');
+                }}
+                className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-blue-200 dark:shadow-none ${activeView === 'add' ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''} ${!registrationOpen ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <UserPlus size={18} />
                 Add Student
@@ -610,6 +616,33 @@ export const Students = () => {
 
       {isSchoolAdmin && activeView === 'registration' ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
+          <div className="flex items-center justify-between mb-6 pb-6 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white">Pending Applications</h2>
+              <p className="text-sm font-medium text-slate-500 mt-1">Manage new student admission requests</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-bold uppercase tracking-widest ${registrationOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                Registration {registrationOpen ? 'Open' : 'Closed'}
+              </span>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const newValue = !registrationOpen;
+                    await toggleRegistration(newValue);
+                    setRegistrationOpen(newValue);
+                    showToast(`Registration is now ${newValue ? 'open' : 'closed'}`, 'success');
+                  } catch (err: any) {
+                    showToast(getErrorMessage(err, 'Failed to toggle registration'), 'error');
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${registrationOpen ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${registrationOpen ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </div>
           <StudentRegistration isAdminView={true} />
         </div>
       ) : isSchoolAdmin && activeView === 'add' ? (

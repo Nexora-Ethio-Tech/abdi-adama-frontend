@@ -608,3 +608,8 @@ export const publishGradingConfigs = async (
   const response = await api.post('/school-admin/grading-configs', { gradeLevel, configs });
   return response.data;
 };
+
+export const toggleRegistration = async (open: boolean): Promise<any> => {
+  const response = await api.patch('/school-admin/system-settings/registration', { open });
+  return response.data.data;
+};
