@@ -1,334 +1,451 @@
 import { useState, useEffect } from 'react';
-import { Users, AlertTriangle, CheckCircle, TrendingDown, Calendar, Flag, Check, X } from 'lucide-react';
-import * as vicePrincipalService from '../services/vicePrincipalService';
+import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone } from 'lucide-react';
+import { useUser } from '../context/UserContext';
+
+interface AbsentStudent {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+  parentName: string;
+  parentPhone: string;
+  studentId: string;
+  roomTeacher: string;
+}
+
+interface SMSMessage {
+  selectedStudents: string[];
+  message: string;
+  sentAt?: string;
+  status?: 'idle' | 'sending' | 'sent' | 'error';
+}
 
 export const VPAttendanceOversight = () => {
-  const [dashboard, setDashboard] = useState<vicePrincipalService.VPDashboard | null>(null);
-  const [overview, setOverview] = useState<vicePrincipalService.AttendanceOverview[]>([]);
-  const [alerts, setAlerts] = useState<vicePrincipalService.AttendanceAlert[]>([]);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const { user } = useUser();
+  const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'alerts'>('overview');
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [selectedAlert, setSelectedAlert] = useState<vicePrincipalService.AttendanceAlert | null>(null);
-  const [approvalRemarks, setApprovalRemarks] = useState('');
+  const [selectAll, setSelectAll] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [showSMSModal, setShowSMSModal] = useState(false);
+  const [smsMessage, setSmsMessage] = useState(
+    'Your child is absent from school today. Please contact the school if you have any questions.'
+  );
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsStatus, setSmsStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [smsError, setSmsError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
 
+  // Fetch today's absent students
   useEffect(() => {
-    fetchData();
-  }, [selectedDate]);
+    fetchAbsentStudents();
+  }, []);
 
-  const fetchData = async () => {
+  const fetchAbsentStudents = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-      const [dashboardData, overviewData, alertsData] = await Promise.all([
-        vicePrincipalService.getVPDashboard(),
-        vicePrincipalService.getAttendanceOverview(selectedDate),
-        vicePrincipalService.getAttendanceAlerts()
-      ]);
-      setDashboard(dashboardData);
-      setOverview(overviewData);
-      setAlerts(alertsData);
+      // Call backend endpoint to get today's absent students
+      const response = await fetch('/api/vice-principal/attendance/absences-today', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch absent students');
+      }
+
+      const data = await response.json();
+      setAbsentStudents(data.data || []);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to fetch data');
+      setError(err.message || 'Failed to load absent students data');
+      console.error('Error fetching absent students:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (status: 'Approved' | 'Flagged') => {
-    if (!selectedAlert) return;
-    try {
-      await vicePrincipalService.approveAttendance(selectedAlert.id, {
-        status,
-        remarks: approvalRemarks
-      });
-      setShowApproveModal(false);
-      setSelectedAlert(null);
-      setApprovalRemarks('');
-      fetchData();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to process attendance');
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedStudents(new Set(absentStudents.map(s => s.id)));
+    } else {
+      setSelectedStudents(new Set());
     }
   };
 
-  if (loading && !dashboard) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
-      </div>
-    );
-  }
+  const handleSelectStudent = (studentId: string, checked: boolean) => {
+    const newSelected = new Set(selectedStudents);
+    if (checked) {
+      newSelected.add(studentId);
+    } else {
+      newSelected.delete(studentId);
+    }
+    setSelectedStudents(newSelected);
+    setSelectAll(newSelected.size === absentStudents.length && absentStudents.length > 0);
+  };
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
+
+  const handleSendSMS = async () => {
+    if (selectedStudents.size === 0) {
+      showToast('Please select at least one student', 'error');
+      return;
+    }
+
+    if (!smsMessage.trim()) {
+      showToast('Please enter a message', 'error');
+      return;
+    }
+
+    setSmsSending(true);
+    setSmsStatus('sending');
+    setSmsError(null);
+
+    try {
+      // Get phone numbers for selected students
+      const selectedData = absentStudents.filter(s => selectedStudents.has(s.id));
+      const phoneNumbers = selectedData.map(s => s.parentPhone);
+
+      // Call backend endpoint to send SMS
+      const response = await fetch('/api/vice-principal/attendance/send-absence-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          phoneNumbers,
+          message: smsMessage,
+          studentIds: Array.from(selectedStudents)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send SMS');
+      }
+
+      setSmsStatus('sent');
+      showToast(`SMS sent to ${selectedStudents.size} parent(s) successfully!`, 'success');
+
+      // Reset modal after 2 seconds
+      setTimeout(() => {
+        setShowSMSModal(false);
+        setSmsMessage('Your child is absent from school today. Please contact the school if you have any questions.');
+        setSmsStatus('idle');
+        setSelectedStudents(new Set());
+        setSelectAll(false);
+      }, 2000);
+    } catch (err: any) {
+      setSmsStatus('error');
+      setSmsError(err.message || 'Failed to send SMS notification');
+      showToast('Failed to send SMS notification', 'error');
+    } finally {
+      setSmsSending(false);
+    }
+  };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Oversight</h1>
-        <p className="text-gray-600 dark:text-slate-300">Monitor and review attendance across all classes</p>
-      </div>
+    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
+      {/* Header */}
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
+        <div className="relative z-10">
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-indigo-400 mb-2">Daily Attendance Monitoring</p>
+          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-2">
+            Absence Oversight & Parent Notifications
+          </h1>
+          <p className="text-slate-400 text-sm max-w-2xl font-medium leading-relaxed">
+            Monitor students absent today and send instant SMS notifications to parents. All data resets daily at midnight.
+          </p>
+        </div>
+      </section>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 dark:bg-red-950/30 dark:border-red-800 dark:text-red-300">
-          {error}
+      {/* Status Summary Card */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-xl">
+                <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Absent Today</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{absentStudents.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                <Users className="text-blue-600 dark:text-blue-400" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Selected</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{selectedStudents.size}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-lg transition-shadow">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+                <Phone className="text-purple-600 dark:text-purple-400" size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Parents to Notify</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{selectedStudents.size}</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Dashboard Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 dark:border dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.totalStudents || 0}</p>
-            </div>
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-2xl p-6 flex items-start gap-4">
+          <AlertCircle className="text-red-600 dark:text-red-400 flex-shrink-0 mt-1" size={20} />
+          <div>
+            <h3 className="font-bold text-red-900 dark:text-red-300">Error Loading Data</h3>
+            <p className="text-sm text-red-700 dark:text-red-200 mt-1">{error}</p>
+            <button
+              onClick={fetchAbsentStudents}
+              className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 dark:border dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-lg">
-              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Today's Attendance</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.todayAttendanceRate || 0}%</p>
-            </div>
-          </div>
+      )}
+
+      {loading ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-16 h-16 border-4 border-indigo-200 dark:border-indigo-900 border-t-indigo-600 dark:border-t-indigo-400 rounded-full animate-spin mb-4" />
+          <p className="text-slate-600 dark:text-slate-300 font-medium">Loading today's absences...</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 dark:border dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/40 rounded-lg">
-              <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Pending Reviews</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.pendingAttendanceReviews || 0}</p>
-            </div>
-          </div>
+      ) : absentStudents.length === 0 ? (
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 p-12 text-center shadow-sm">
+          <CheckCircle className="mx-auto mb-4 text-emerald-500" size={48} />
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Perfect Attendance</h3>
+          <p className="text-slate-600 dark:text-slate-300 max-w-md mx-auto">
+            All students are present today. No absences to report or notifications to send.
+          </p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 dark:border dark:border-slate-700">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-lg">
-              <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Active Alerts</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{dashboard?.attendanceAlerts || 0}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-slate-700">
-        <button
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'overview'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          Class Overview
-        </button>
-        <button
-          onClick={() => setActiveTab('alerts')}
-          className={`px-4 py-2 font-medium ${
-            activeTab === 'alerts'
-              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-              : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white'
-          }`}
-        >
-          Alerts ({alerts.filter(a => a.status === 'Pending').length})
-        </button>
-      </div>
-
-      {activeTab === 'overview' ? (
-        <>
-          <div className="mb-4 flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-gray-600 dark:text-slate-300" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden dark:border dark:border-slate-700">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-slate-700/50 border-b border-gray-200 dark:border-slate-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Class</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Teacher</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Total</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Present</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Absent</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Late</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-300 uppercase">Rate</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                {overview.map((item) => (
-                  <tr key={item.classId} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{item.className}</p>
-                        <p className="text-sm text-gray-500 dark:text-slate-400">{item.section}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-300">{item.teacherName}</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-900 dark:text-white">{item.totalStudents}</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 rounded text-sm font-medium">
-                        {item.presentToday}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 rounded text-sm font-medium">
-                        {item.absentToday}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 rounded text-sm font-medium">
-                        {item.lateToday}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`font-bold ${
-                        item.attendanceRate >= 90 ? 'text-green-600 dark:text-green-400' :
-                        item.attendanceRate >= 75 ? 'text-blue-600 dark:text-blue-400' :
-                        item.attendanceRate >= 60 ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-red-600 dark:text-red-400'
-                      }`}>
-                        {item.attendanceRate}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {overview.length === 0 && !loading && (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-slate-300">No attendance data for this date.</p>
-            </div>
-          )}
-        </>
       ) : (
-        <>
-          <div className="space-y-4">
-            {alerts.filter(a => a.status === 'Pending').map((alert) => (
-              <div
-                key={alert.id}
-                className={`bg-white dark:bg-slate-800 rounded-lg shadow p-6 border-l-4 dark:border dark:border-slate-700 ${
-                  alert.severity === 'High' ? 'border-red-500' :
-                  alert.severity === 'Medium' ? 'border-yellow-500' :
-                  'border-blue-500'
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        alert.severity === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' :
-                        alert.severity === 'Medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' :
-                        'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'
-                      }`}>
-                        {alert.severity}
-                      </span>
-                      <span className="px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 rounded text-xs font-medium">
-                        {alert.type}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {selectAll ? 'Deselect All' : 'Select All'}
+                </span>
+              </label>
+              <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                {selectedStudents.size} of {absentStudents.length} selected
+              </span>
+            </div>
+            <button
+              onClick={() => setShowSMSModal(true)}
+              disabled={selectedStudents.size === 0}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
+                selectedStudents.size === 0
+                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20'
+              }`}
+            >
+              <MessageSquare size={18} />
+              Send SMS ({selectedStudents.size})
+            </button>
+          </div>
+
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {absentStudents.map((student) => (
+              <div key={student.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                <div className="flex items-start gap-4">
+                  <input
+                    type="checkbox"
+                    checked={selectedStudents.has(student.id)}
+                    onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
+                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 cursor-pointer mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-2">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-lg">{student.name}</h3>
+                      <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold uppercase tracking-widest">
+                        {student.grade} - {student.section}
                       </span>
                     </div>
-                    <h3 className="font-bold text-gray-900 dark:text-white mb-1">{alert.studentName}</h3>
-                    <p className="text-sm text-gray-600 dark:text-slate-300 mb-2">{alert.className} • {alert.date}</p>
-                    <p className="text-sm text-gray-700 dark:text-slate-200">{alert.details}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Parent/Guardian</p>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">{student.parentName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Phone Number</p>
+                        <p className="text-slate-700 dark:text-slate-300 font-medium">{student.parentPhone}</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                      <p>Room Teacher: <span className="font-medium text-slate-700 dark:text-slate-300">{student.roomTeacher}</span></p>
+                    </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => {
-                        setSelectedAlert(alert);
-                        setShowApproveModal(true);
-                      }}
-                      className="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/40 rounded-lg"
-                      title="Approve"
-                    >
-                      <Check className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedAlert(alert);
-                        setShowApproveModal(true);
-                      }}
-                      className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 rounded-lg"
-                      title="Flag"
-                    >
-                      <Flag className="w-5 h-5" />
-                    </button>
-                  </div>
+                  {selectedStudents.has(student.id) && (
+                    <CheckCircle className="text-emerald-500 flex-shrink-0 mt-1" size={20} />
+                  )}
                 </div>
               </div>
             ))}
           </div>
-
-          {alerts.filter(a => a.status === 'Pending').length === 0 && !loading && (
-            <div className="text-center py-12">
-              <CheckCircle className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-slate-300">No pending alerts. All attendance issues resolved!</p>
-            </div>
-          )}
-        </>
+        </div>
       )}
 
-      {/* Approve/Flag Modal */}
-      {showApproveModal && selectedAlert && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg p-6 w-full max-w-md dark:border dark:border-slate-700">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Review Attendance Alert</h2>
-              <button onClick={() => setShowApproveModal(false)} className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
+      {showSMSModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black flex items-center gap-3">
+                    <MessageSquare size={28} />
+                    Send Absence Notification
+                  </h2>
+                  <p className="text-indigo-100 text-sm mt-1">
+                    SMS will be sent to {selectedStudents.size} parent(s)
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowSMSModal(false)}
+                  className="text-white/70 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <div className="mb-4 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
-              <p className="text-sm text-gray-600 dark:text-slate-300">Student: <span className="font-medium text-gray-900 dark:text-white">{selectedAlert.studentName}</span></p>
-              <p className="text-sm text-gray-600 dark:text-slate-300">Alert: <span className="font-medium text-gray-900 dark:text-white">{selectedAlert.type}</span></p>
-              <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">{selectedAlert.details}</p>
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Remarks</label>
-              <textarea
-                value={approvalRemarks}
-                onChange={(e) => setApprovalRemarks(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg dark:bg-slate-700 dark:text-white dark:placeholder:text-slate-400"
-                rows={3}
-                placeholder="Add your remarks..."
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleApprove('Approved')}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-              >
-                <Check className="w-5 h-5" />
-                Approve
-              </button>
-              <button
-                onClick={() => handleApprove('Flagged')}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                <Flag className="w-5 h-5" />
-                Flag Issue
-              </button>
-            </div>
+
+            {smsStatus === 'sent' ? (
+              <div className="p-8 text-center">
+                <CheckCircle className="mx-auto mb-4 text-emerald-500" size={48} />
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Messages Sent Successfully!</h3>
+                <p className="text-slate-600 dark:text-slate-300 mb-6">
+                  SMS notifications have been sent to {selectedStudents.size} parent(s).
+                </p>
+                <button
+                  onClick={() => setShowSMSModal(false)}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <div className="p-6 space-y-6">
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white mb-3">Selected Students ({selectedStudents.size})</h3>
+                  <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 max-h-40 overflow-y-auto">
+                    <div className="space-y-2 text-sm">
+                      {absentStudents
+                        .filter((s) => selectedStudents.has(s.id))
+                        .map((student) => (
+                          <div key={student.id} className="flex items-start gap-2">
+                            <span className="text-slate-400">•</span>
+                            <div>
+                              <p className="font-medium text-slate-900 dark:text-white">{student.name}</p>
+                              <p className="text-slate-500 dark:text-slate-400">{student.parentPhone} ({student.parentName})</p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-900 dark:text-white mb-2">SMS Message</label>
+                  <textarea
+                    value={smsMessage}
+                    onChange={(e) => setSmsMessage(e.target.value)}
+                    maxLength={160}
+                    placeholder="Enter your message here..."
+                    className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600 resize-none"
+                    rows={4}
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                    {smsMessage.length}/160 characters
+                  </p>
+                </div>
+
+                {smsStatus === 'error' && smsError && (
+                  <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl p-4">
+                    <p className="text-sm text-red-700 dark:text-red-300">{smsError}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setShowSMSModal(false)}
+                    disabled={smsSending}
+                    className="px-6 py-2.5 rounded-xl font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendSMS}
+                    disabled={smsSending || smsMessage.trim().length === 0}
+                    className={`flex items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-colors ${
+                      smsSending || smsMessage.trim().length === 0
+                        ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20'
+                    }`}
+                  >
+                    {smsSending ? (
+                      <>
+                        <Loader size={18} className="animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Send size={18} />
+                        Send to {selectedStudents.size} Parent{selectedStudents.size !== 1 ? 's' : ''}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {toast.show && (
+        <div className="fixed bottom-6 right-6 z-40 animate-in slide-in-from-bottom-2 duration-300">
+          <div
+            className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-md ${
+              toast.type === 'success'
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300'
+                : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <CheckCircle size={20} />
+            ) : (
+              <AlertCircle size={20} />
+            )}
+            <p className="font-medium">{toast.message}</p>
           </div>
         </div>
       )}
