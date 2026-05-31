@@ -8,7 +8,7 @@ import classService from '../services/classService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService from '../services/subjectService';
 import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '../services/vicePrincipalService';
-import { Star, Trophy, RefreshCcw } from 'lucide-react';
+import { Star, Trophy, RefreshCcw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const MultiSelectDropdown = ({
   options,
@@ -86,6 +86,9 @@ export const Teachers = () => {
   const [activeTab, setActiveTab] = useState<'teachers' | 'leaderboard'>('teachers');
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardSearch, setLeaderboardSearch] = useState('');
+  const [leaderboardPage, setLeaderboardPage] = useState(1);
+  const LEADERBOARD_ITEMS_PER_PAGE = 10;
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -447,6 +450,17 @@ export const Teachers = () => {
     );
   }
 
+  // Calculate paginated and filtered leaderboard data
+  const filteredLeaderboardData = leaderboardData.filter(row =>
+    row.teacher_name.toLowerCase().includes(leaderboardSearch.toLowerCase())
+  );
+  
+  const totalLeaderboardPages = Math.ceil(filteredLeaderboardData.length / LEADERBOARD_ITEMS_PER_PAGE) || 1;
+  const currentLeaderboardData = filteredLeaderboardData.slice(
+    (leaderboardPage - 1) * LEADERBOARD_ITEMS_PER_PAGE,
+    leaderboardPage * LEADERBOARD_ITEMS_PER_PAGE
+  );
+
   return (
     <div className="space-y-6">
       <button
@@ -621,20 +635,36 @@ export const Teachers = () => {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/30">
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <Trophy className="text-yellow-500" size={20} /> Semester Leaderboard
-              </h3>
-              <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating * 100) + (Weekly Plan Rate * 10)</p>
+          {/* Header */}
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <Trophy className="text-yellow-500" size={20} /> Semester Leaderboard
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating × 100) + (Weekly Plan Rate × 10)</p>
+              </div>
+              <button
+                onClick={handleResetLeaderboard}
+                className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-sm font-bold transition-colors self-start sm:self-auto"
+              >
+                <RefreshCcw size={16} /> Reset Semester
+              </button>
             </div>
-            <button
-              onClick={handleResetLeaderboard}
-              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-sm font-bold transition-colors"
-            >
-              <RefreshCcw size={16} /> Reset Semester
-            </button>
+            {/* Search */}
+            <div className="mt-3 relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={leaderboardSearch}
+                onChange={(e) => { setLeaderboardSearch(e.target.value); setLeaderboardPage(1); }}
+                placeholder="Search teacher by name…"
+                className="w-full sm:max-w-xs pl-8 pr-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
+              />
+            </div>
           </div>
+
+          {/* Table */}
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
               <tr>
@@ -649,40 +679,83 @@ export const Teachers = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {leaderboardLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">Loading leaderboard...</td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">Loading leaderboard…</td>
                 </tr>
-              ) : leaderboardData.length === 0 ? (
+              ) : currentLeaderboardData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">No data available for the leaderboard.</td>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                    {leaderboardSearch ? 'No teachers match your search.' : 'No data available for the leaderboard.'}
+                  </td>
                 </tr>
               ) : (
-                leaderboardData.map((row, index) => (
-                  <tr key={row.teacher_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                    <td className="px-6 py-4 font-black text-slate-400">#{index + 1}</td>
-                    <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{row.teacher_name}</td>
-                    <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">{row.student_votes}</td>
-                    <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400">{row.plan_rating_sum}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map(star => (
-                          <button
-                            key={star}
-                            onClick={() => handleRateTeacher(row.teacher_id, star)}
-                            className={`p-1 transition-transform hover:scale-110 ${star <= row.vp_rating ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`}
-                          >
-                            <Star size={18} fill={star <= row.vp_rating ? "currentColor" : "none"} />
-                          </button>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">
-                      {row.total_points}
-                    </td>
-                  </tr>
-                ))
+                currentLeaderboardData.map((row, indexOnPage) => {
+                  // Use global rank from filteredLeaderboardData
+                  const globalRank = filteredLeaderboardData.findIndex(r => r.teacher_id === row.teacher_id) + 1;
+                  return (
+                    <tr key={row.teacher_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-black ${
+                          globalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                          globalRank === 2 ? 'bg-slate-100 text-slate-600' :
+                          globalRank === 3 ? 'bg-orange-100 text-orange-700' :
+                          'text-slate-400'
+                        }`}>
+                          #{globalRank}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{row.teacher_name}</td>
+                      <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">{row.student_votes}</td>
+                      <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400">{row.plan_rating_sum}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              onClick={() => handleRateTeacher(row.teacher_id, star)}
+                              className={`p-1 transition-transform hover:scale-110 ${star <= row.vp_rating ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`}
+                            >
+                              <Star size={18} fill={star <= row.vp_rating ? 'currentColor' : 'none'} />
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">
+                        {row.total_points}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
+
+          {/* Pagination */}
+          {!leaderboardLoading && filteredLeaderboardData.length > LEADERBOARD_ITEMS_PER_PAGE && (
+            <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-500">
+                Showing {(leaderboardPage - 1) * LEADERBOARD_ITEMS_PER_PAGE + 1}–{Math.min(leaderboardPage * LEADERBOARD_ITEMS_PER_PAGE, filteredLeaderboardData.length)} of {filteredLeaderboardData.length} teachers
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}
+                  disabled={leaderboardPage === 1}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                  Page {leaderboardPage} of {totalLeaderboardPages}
+                </span>
+                <button
+                  onClick={() => setLeaderboardPage(p => Math.min(totalLeaderboardPages, p + 1))}
+                  disabled={leaderboardPage === totalLeaderboardPages}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

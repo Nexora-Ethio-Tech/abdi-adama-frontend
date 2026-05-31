@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import api from '../services/api';
 
 interface AbsentStudent {
   id: string;
@@ -49,19 +50,8 @@ export const VPAttendanceOversight = () => {
     setLoading(true);
     setError(null);
     try {
-      // Call backend endpoint to get today's absent students
-      const response = await fetch('/api/vice-principal/attendance/absences-today', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch absent students');
-      }
-
-      const data = await response.json();
+      const response = await api.get('/vice-principal/attendance/absences-today');
+      const data = response.data;
       setAbsentStudents(data.data || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load absent students data');
@@ -116,23 +106,11 @@ export const VPAttendanceOversight = () => {
       const selectedData = absentStudents.filter(s => selectedStudents.has(s.id));
       const phoneNumbers = selectedData.map(s => s.parentPhone);
 
-      // Call backend endpoint to send SMS
-      const response = await fetch('/api/vice-principal/attendance/send-absence-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          phoneNumbers,
-          message: smsMessage,
-          studentIds: Array.from(selectedStudents)
-        })
+      await api.post('/vice-principal/attendance/send-absence-notification', {
+        phoneNumbers,
+        message: smsMessage,
+        studentIds: Array.from(selectedStudents)
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send SMS');
-      }
 
       setSmsStatus('sent');
       showToast(`SMS sent to ${selectedStudents.size} parent(s) successfully!`, 'success');
