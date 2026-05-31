@@ -130,7 +130,7 @@ export const AuditorDashboard = () => {
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium flex items-center gap-2">
           <ShieldCheck size={18} className="text-emerald-500" />
-          High-level overview — open Finance for detailed ledgers and approvals
+          High-level overview — open Student finance for detailed ledgers and approvals
         </p>
       </div>
 
@@ -173,7 +173,7 @@ export const AuditorDashboard = () => {
 
       <div>
         <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-widest mb-4">
-          Finance workspace
+          Student finance workspace
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <QuickLink
@@ -190,14 +190,14 @@ export const AuditorDashboard = () => {
           />
           <QuickLink
             to="/finance?tab=audit"
-            title="Finance audit"
-            description="Audit trail with category and direction filters"
+            title="Student finance"
+            description="Audit trail and student finance filters"
             icon={BarChart3}
           />
           <QuickLink
             to="/finance"
             title="Full finance center"
-            description="Open the complete finance control center"
+            description="Open the complete student finance control center"
             icon={FileText}
           />
         </div>

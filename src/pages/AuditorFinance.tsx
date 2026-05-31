@@ -102,6 +102,11 @@ export const AuditorFinance = () => {
     setActiveTab(tab);
     const queryTab = tab === 'finance' ? 'audit' : tab;
     navigate(`/finance?tab=${queryTab}`);
+
+    if (tab === 'finance') {
+      setFinancePage(1);
+      void fetchAuditTrail();
+    }
   };
 
   const buildPaymentQueryParams = () => {
@@ -242,10 +247,10 @@ export const AuditorFinance = () => {
       setLoading(true);
       setError(null);
       await fetchAuditTrail();
-      setSuccess('Finance audit filters applied.');
+      setSuccess('Student finance filters applied.');
       setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || err.message || 'Failed to apply finance audit filter');
+      setError(err.response?.data?.error?.message || err.message || 'Failed to apply student finance filter');
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
@@ -432,11 +437,11 @@ export const AuditorFinance = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
           <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-            Finance <span className="text-blue-600">Control Center</span>
+            Student Finance <span className="text-blue-600">Control Center</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium flex items-center gap-2">
             <ShieldCheck size={18} className="text-emerald-500" />
-            System-wide financial oversight and fee reduction management
+            Student transaction reporting and fee reduction management
           </p>
         </div>
 
@@ -538,13 +543,6 @@ export const AuditorFinance = () => {
               className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Fee Reductions ({feeReductions.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('finance')}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'finance' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-            >
-              Finance Audit ({auditTrail.length})
             </button>
           </div>
 
@@ -676,7 +674,7 @@ export const AuditorFinance = () => {
                   <option value="Out">Out</option>
                 </select>
               </div>
-              <div className="flex items-end gap-2 col-span-full lg:col-span-4">
+              <div className="flex flex-col sm:flex-row items-end gap-2 col-span-full lg:col-span-4">
                 <button
                   onClick={handleApplyAuditFilter}
                   type="button"
@@ -690,6 +688,13 @@ export const AuditorFinance = () => {
                   className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
                 >
                   Clear Filters
+                </button>
+                <button
+                  onClick={fetchAuditTrail}
+                  type="button"
+                  className="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10"
+                >
+                  Refresh Audit Trail
                 </button>
               </div>
             </div>
@@ -1017,7 +1022,7 @@ export const AuditorFinance = () => {
                 </tbody>
               </table>
 
-              {/* Finance Audit Pagination Footer */}
+              {/* Student Finance Pagination Footer */}
               {filteredAuditTrail.length > 0 && (
                 <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-950/10 flex flex-col sm:flex-row justify-between items-center gap-4">
                   <p className="text-xs font-semibold text-slate-400">

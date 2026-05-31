@@ -208,7 +208,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       case 'auditor':
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/auditor-dashboard' },
-          { icon: Wallet, label: t('nav.finance'), path: '/finance' },
+          { icon: Wallet, label: 'Students Fianance', path: '/finance' },
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
           { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
