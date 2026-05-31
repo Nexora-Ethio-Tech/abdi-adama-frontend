@@ -18,7 +18,7 @@ export const VicePrincipalDashboard = () => {
   const { user } = useUser();
   const [dashboard, setDashboard] = useState<any>(null);
   const [staffAbsentCount, setStaffAbsentCount] = useState<number | null>(null);
-  const [gradeLocks, setGradeLocks] = useState<Array<{ gradeLevel: string; isLocked: boolean; academicYearName?: string }>>([]);
+  const [gradeLocks, setGradeLocks] = useState<Array<{ gradeLevel: string; isLocked: boolean; academicYearName?: string; academicYearId?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
