@@ -1441,7 +1441,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
           {/* Students Table */}
           <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                   <tr>
@@ -1527,6 +1527,55 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               </table>
             </div>
 
+            {/* Mobile Cards View */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {paginatedStudents.map((student) => {
+                const _totalDue = (student.monthly_fee || 0) + (student.bus_fee || 0) + (student.penalty_fee || 0);
+                return (
+                  <div key={student.id} className="p-4 space-y-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{student.name}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{student.digital_id} • Grade {student.grade}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
+                          {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
+                        </span>
+                        {student.fee_approval_status === 'pending' && <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Pending</span>}
+                        {student.fee_approval_status === 'approved' && <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase">Approved</span>}
+                        {student.fee_approval_status === 'rejected' && <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-[9px] font-bold uppercase">Rejected</span>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Tuition</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{(student.monthly_fee || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bus</p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{(student.bus_fee || 0).toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center border border-transparent data-[has-penalty=true]:border-rose-200 dark:data-[has-penalty=true]:border-rose-900/50 data-[has-penalty=true]:bg-rose-50 dark:data-[has-penalty=true]:bg-rose-900/10" data-has-penalty={student.penalty_fee > 0}>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Penalty</p>
+                        <p className={`text-sm font-black ${student.penalty_fee > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                          {student.penalty_fee > 0 ? (student.penalty_fee || 0).toLocaleString() : '-'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => openPaymentModal(student)}
+                      className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
+                    >
+                      Record Payment
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
             {displayedStudents.length === 0 && !loading && (
               <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                 <Users className="w-16 h-16 text-slate-400 mx-auto mb-4" />
@@ -1560,7 +1609,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Manual Transaction Modal */}
       {showTransactionModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Transaction</h2>
               <button
@@ -1572,7 +1621,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <form onSubmit={handleRecordTransaction} className="p-6 space-y-4">
+            <form onSubmit={handleRecordTransaction} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label htmlFor="transaction-category" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Category *</label>
                 <select
@@ -1656,7 +1705,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Aid Request Picker Modal */}
       {showAidPickerModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Add Request Aid</h2>
               <button
@@ -1668,7 +1717,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <form onSubmit={handleStartAidRequest} className="p-6 space-y-4">
+            <form onSubmit={handleStartAidRequest} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label htmlFor="aid-picker-search" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student *</label>
                 <div className="relative">
@@ -1728,7 +1777,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Record Payment</h2>
               <button
@@ -1747,7 +1796,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Due: <span className="font-black text-red-600 text-lg">{(selectedStudent.monthly_fee + selectedStudent.bus_fee + selectedStudent.penalty_fee).toLocaleString()} ETB</span></p>
               </div>
             )}
-            <form onSubmit={handleRecordPayment} className="p-6 space-y-4">
+            <form onSubmit={handleRecordPayment} className="p-6 space-y-4 overflow-y-auto">
               {!selectedStudent && (
                 <div>
                   <label htmlFor="payment-student-id" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Student ID *</label>
@@ -1917,7 +1966,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Transport Assignment Modal */}
       {showTransportModal && transportStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{transportStudent.route_id ? 'Change Driver' : 'Assign Transport'}</h2>
               <button
@@ -1929,7 +1978,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <form onSubmit={handleAssignTransport} className="p-6 space-y-4">
+            <form onSubmit={handleAssignTransport} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.name}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{transportStudent.digital_id}</span></p>
@@ -1995,7 +2044,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Stop Transport Modal */}
       {showStopTransportModal && stopTransportStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stop Transport</h2>
               <button
@@ -2007,7 +2056,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <form onSubmit={handleStopTransport} className="p-6 space-y-4">
+            <form onSubmit={handleStopTransport} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{stopTransportStudent.name}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Current Driver: <span className="font-bold text-slate-900 dark:text-white">{stopTransportStudent.driver_name || 'None'}</span></p>
@@ -2069,7 +2118,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       {/* Fee Reduction Request Modal */}
       {showReductionModal && reductionStudent && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
               <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Request Aid</h2>
               <button
@@ -2081,7 +2130,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
-            <form onSubmit={handleRequestReduction} className="p-6 space-y-4">
+            <form onSubmit={handleRequestReduction} className="p-6 space-y-4 overflow-y-auto">
               <div className="space-y-3">
                 <p className="text-sm text-slate-600 dark:text-slate-400">Student: <span className="font-bold text-slate-900 dark:text-white">{reductionStudent.name}</span></p>
                 <p className="text-sm text-slate-600 dark:text-slate-400">ID: <span className="font-bold text-slate-900 dark:text-white">{reductionStudent.digital_id}</span></p>
