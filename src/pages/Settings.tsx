@@ -2,7 +2,6 @@ import { Building, Palette, Save, HelpCircle, CreditCard, GraduationCap, Plus, T
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
-import { mockGradingConfigs } from '../data/mockData';
 import { useUser } from '../context/UserContext';
 import payrollService, { FinanceSettingsAudit } from '../services/payrollService';
 import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
@@ -110,6 +109,12 @@ export const Settings = () => {
       loadFeeStructure().catch(console.error);
       loadProfitTargets().catch(console.error);
       settingsService.getSmtpSettings().then(setSmtpSettings).catch(console.error);
+    } else if (role === 'school-admin') {
+      // School Admin: load finance settings for read-only viewing of assigned policy
+      loadFinanceSettings();
+      // Allow viewing branch fee structures and profit summaries
+      loadFeeStructure().catch(console.error);
+      loadProfitTargets().catch(console.error);
     }
   }, [role]);
 
@@ -123,7 +128,7 @@ export const Settings = () => {
   }, [branches, feeBranchId, profitTargetBranchId]);
 
   const loadProfitSummary = useCallback(async () => {
-    if (!profitTargetBranchId || role !== 'super-admin') return;
+    if (!profitTargetBranchId || (role !== 'super-admin' && role !== 'school-admin')) return;
     setProfitSummaryLoading(true);
     try {
       const summary = await settingsService.getBranchProfitSummary({
@@ -145,7 +150,7 @@ export const Settings = () => {
   }, [profitTargetBranchId, profitTargetMonth, role]);
 
   useEffect(() => {
-    if (role === 'super-admin' && profitTargetBranchId && activeTab === 'Financial Policy') {
+    if ((role === 'super-admin' || role === 'school-admin') && profitTargetBranchId && activeTab === 'Financial Policy') {
       loadProfitSummary();
     }
   }, [role, profitTargetBranchId, profitTargetMonth, activeTab, loadProfitSummary]);
@@ -225,7 +230,7 @@ export const Settings = () => {
   }, [location.search, location.hash, tabs]);
 
   const [selectedGrade, setSelectedGrade] = useState('1');
-  const [gradeConfigs, setGradeConfigs] = useState<Record<string, Array<{ id: string; label: string; maxWeight: number }>>>(mockGradingConfigs);
+  const [gradeConfigs, setGradeConfigs] = useState<Record<string, Array<{ id: string; label: string; maxWeight: number }>>>({});
   const [gradingLoading, setGradingLoading] = useState(false);
   const [newMethodLabel, setNewMethodLabel] = useState('');
   const [newMethodWeight, setNewMethodWeight] = useState(10);
@@ -255,18 +260,16 @@ export const Settings = () => {
       setGradingLoading(true);
       getGradingConfigs()
         .then((dbConfigs) => {
-          const merged = { ...mockGradingConfigs, ...dbConfigs };
-          setGradeConfigs(merged);
-          Object.assign(mockGradingConfigs, merged);
+          setGradeConfigs(dbConfigs || {});
+          try { localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(dbConfigs || {})); } catch {}
         })
         .catch(() => {
-          // Fallback to localStorage / defaults if backend unavailable
+          // Fallback to localStorage if backend unavailable
           const stored = localStorage.getItem('abdi_adama_grading_configs');
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
               setGradeConfigs(parsed);
-              Object.assign(mockGradingConfigs, parsed);
             } catch { /* ignore */ }
           }
         })
@@ -979,16 +982,19 @@ export const Settings = () => {
                         <div>
                           <label htmlFor="student-registration-fee" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
-                          <input
-                            id="student-registration-fee"
-                            type="number"
-                            title="Student registration fee"
-                            aria-label="Student registration fee"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            value={studentRegistrationFee}
-                            onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                          />
+                          {role === 'super-admin' ? (
+                            <input
+                              id="student-registration-fee"
+                              type="number"
+                              title="Student registration fee"
+                              aria-label="Student registration fee"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={studentRegistrationFee}
+                              onChange={(e) => setStudentRegistrationFee(Number(e.target.value))}
+                            />
+                          ) : (
+                            <p className="text-sm font-bold text-slate-800 dark:text-white">{Number(studentRegistrationFee).toLocaleString()} ETB</p>
+                          )}
                         </div>
                         {role === 'super-admin' && (
                           <button
@@ -1007,16 +1013,19 @@ export const Settings = () => {
                         <div>
                           <label htmlFor="student-late-penalty" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Late Penalty (ETB)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Penalty fee applied automatically to students who miss deadlines.</p>
-                          <input
-                            id="student-late-penalty"
-                            type="number"
-                            title="Student late penalty"
-                            aria-label="Student late penalty"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            value={studentLatePenaltyRate}
-                            onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                          />
+                          {role === 'super-admin' ? (
+                            <input
+                              id="student-late-penalty"
+                              type="number"
+                              title="Student late penalty"
+                              aria-label="Student late penalty"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={studentLatePenaltyRate}
+                              onChange={(e) => setStudentLatePenaltyRate(Number(e.target.value))}
+                            />
+                          ) : (
+                            <p className="text-sm font-bold text-slate-800 dark:text-white">{Number(studentLatePenaltyRate).toLocaleString()} ETB</p>
+                          )}
                         </div>
                         {role === 'super-admin' && (
                           <button
@@ -1035,18 +1044,21 @@ export const Settings = () => {
                         <div>
                           <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Fee Deadline (Day)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which all student fee payments must be settled.</p>
-                          <select
-                            title="Student fee payment deadline"
-                            aria-label="Student fee payment deadline"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            value={studentPaymentDeadline}
-                            onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                          >
-                            {[5, 10, 15, 20, 25, 28, 30].map(day => (
-                              <option key={day} value={day}>Day {day}</option>
-                            ))}
-                          </select>
+                          {role === 'super-admin' ? (
+                            <select
+                              title="Student fee payment deadline"
+                              aria-label="Student fee payment deadline"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={studentPaymentDeadline}
+                              onChange={(e) => setStudentPaymentDeadline(Number(e.target.value))}
+                            >
+                              {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                                <option key={day} value={day}>Day {day}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-sm font-bold text-slate-800 dark:text-white">Day {studentPaymentDeadline}</p>
+                          )}
                         </div>
                         {role === 'super-admin' && (
                           <button
@@ -1065,18 +1077,21 @@ export const Settings = () => {
                         <div>
                           <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Staff Salary Deadline (Day)</label>
                           <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Day of the month by which employee salaries must be disbursed.</p>
-                          <select
-                            title="Staff salary deadline"
-                            aria-label="Staff salary deadline"
-                            className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            value={staffSalaryDeadline}
-                            onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                          >
-                            {[5, 10, 15, 20, 25, 28, 30].map(day => (
-                              <option key={day} value={day}>Day {day}</option>
-                            ))}
-                          </select>
+                          {role === 'super-admin' ? (
+                            <select
+                              title="Staff salary deadline"
+                              aria-label="Staff salary deadline"
+                              className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              value={staffSalaryDeadline}
+                              onChange={(e) => setStaffSalaryDeadline(Number(e.target.value))}
+                            >
+                              {[5, 10, 15, 20, 25, 28, 30].map(day => (
+                                <option key={day} value={day}>Day {day}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <p className="text-sm font-bold text-slate-800 dark:text-white">Day {staffSalaryDeadline}</p>
+                          )}
                         </div>
                         {role === 'super-admin' && (
                           <button
@@ -1092,7 +1107,7 @@ export const Settings = () => {
                     </div>
                   )}
 
-                  {role === 'super-admin' && showSubSection('payroll-loans') && (
+                  {showSubSection('payroll-loans') && (
                     <div className="space-y-6">
                       <div>
                         <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Payroll & Loans</h4>
@@ -1108,6 +1123,7 @@ export const Settings = () => {
                               type="number"
                               title="Daily penalty rate"
                               aria-label="Daily penalty rate"
+                              disabled={role !== 'super-admin'}
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={dailyPenaltyRate}
                               onChange={(e) => setDailyPenaltyRate(Number(e.target.value))}
@@ -1121,14 +1137,16 @@ export const Settings = () => {
                               ) : null;
                             })()}
                           </div>
-                          <button
-                            onClick={() => handleUpdateFinanceSetting('daily_penalty_rate', dailyPenaltyRate)}
-                            disabled={financeLoading}
-                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <Save size={14} />
-                            Save Rate
-                          </button>
+                          {role === 'super-admin' && (
+                            <button
+                              onClick={() => handleUpdateFinanceSetting('daily_penalty_rate', dailyPenaltyRate)}
+                              disabled={financeLoading}
+                              className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                            >
+                              <Save size={14} />
+                              Save Rate
+                            </button>
+                          )}
                         </div>
 
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
@@ -1140,6 +1158,7 @@ export const Settings = () => {
                               type="number"
                               title="Max loan duration"
                               aria-label="Max loan duration"
+                              disabled={role !== 'super-admin'}
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={maxLoanMonths}
                               onChange={(e) => setMaxLoanMonths(Number(e.target.value))}
@@ -1153,14 +1172,16 @@ export const Settings = () => {
                               ) : null;
                             })()}
                           </div>
-                          <button
-                            onClick={() => handleUpdateFinanceSetting('max_loan_months', maxLoanMonths)}
-                            disabled={financeLoading}
-                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <Save size={14} />
-                            Save Duration
-                          </button>
+                          {role === 'super-admin' && (
+                            <button
+                              onClick={() => handleUpdateFinanceSetting('max_loan_months', maxLoanMonths)}
+                              disabled={financeLoading}
+                              className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                            >
+                              <Save size={14} />
+                              Save Duration
+                            </button>
+                          )}
                         </div>
 
                         <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
@@ -1172,6 +1193,7 @@ export const Settings = () => {
                               type="number"
                               title="Loan deduction percentage"
                               aria-label="Loan deduction percentage"
+                              disabled={role !== 'super-admin'}
                               className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
                               value={loanDeductionPct}
                               onChange={(e) => setLoanDeductionPct(Number(e.target.value))}
@@ -1185,20 +1207,22 @@ export const Settings = () => {
                               ) : null;
                             })()}
                           </div>
-                          <button
-                            onClick={() => handleUpdateFinanceSetting('loan_deduction_percentage', loanDeductionPct)}
-                            disabled={financeLoading}
-                            className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
-                          >
-                            <Save size={14} />
-                            Save Percentage
-                          </button>
+                          {role === 'super-admin' && (
+                            <button
+                              onClick={() => handleUpdateFinanceSetting('loan_deduction_percentage', loanDeductionPct)}
+                              disabled={financeLoading}
+                              className="w-full mt-2 bg-slate-950 dark:bg-slate-800 text-white dark:text-slate-200 py-2 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-800 dark:hover:bg-slate-700 transition-all flex items-center justify-center gap-2"
+                            >
+                              <Save size={14} />
+                              Save Percentage
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {role === 'super-admin' && showSubSection('audit') && (
+                  {showSubSection('audit') && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h5 className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Settings Audit Log</h5>
@@ -1237,20 +1261,22 @@ export const Settings = () => {
                     </div>
                   )}
 
-                  {role === 'super-admin' && showSubSection('fee-structure') && (
+                  {showSubSection('fee-structure') && (
                     <div className="space-y-4">
                       <div>
                         <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure</h4>
                         <p className="text-xs text-slate-500 font-medium">Per branch and grade level.</p>
                       </div>
 
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                      {role === 'super-admin' && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="space-y-1">
                           <label htmlFor="fee-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
                           <select
                             id="fee-branch"
                             value={feeBranchId}
                             onChange={(e) => setFeeBranchId(e.target.value)}
+                            disabled={role !== 'super-admin'}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -1262,6 +1288,7 @@ export const Settings = () => {
                             id="fee-grade"
                             value={feeGrade}
                             onChange={(e) => setFeeGrade(e.target.value)}
+                            disabled={role !== 'super-admin'}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           >
                             {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
@@ -1276,6 +1303,7 @@ export const Settings = () => {
                             aria-label="Monthly fee"
                             value={feeMonthly}
                             onChange={(e) => setFeeMonthly(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -1288,6 +1316,7 @@ export const Settings = () => {
                             aria-label="Registration fee"
                             value={feeRegistration}
                             onChange={(e) => setFeeRegistration(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -1300,6 +1329,7 @@ export const Settings = () => {
                             aria-label="Bus fee"
                             value={feeBus}
                             onChange={(e) => setFeeBus(Number(e.target.value))}
+                            disabled={role !== 'super-admin'}
                             className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
@@ -1315,6 +1345,7 @@ export const Settings = () => {
                           </button>
                         </div>
                       </div>
+                      )}
 
                       <div className="overflow-x-auto -mx-4 sm:mx-0 sm:rounded-[2rem] border-y sm:border border-slate-100 dark:border-slate-800 overflow-hidden">
                         <table className="w-full text-left text-[10px] sm:text-xs min-w-[600px]">
@@ -1344,15 +1375,17 @@ export const Settings = () => {
                                   <td className="px-4 py-3 font-bold">{Number(fee.registration_fee).toLocaleString()} ETB</td>
                                   <td className="px-4 py-3 font-bold">{Number(fee.bus_fee).toLocaleString()} ETB</td>
                                   <td className="px-4 py-3 text-right">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteFeeConfig(fee.id)}
-                                      className="text-rose-500 hover:text-rose-700 p-1"
-                                      aria-label="Delete fee configuration"
-                                      title="Delete fee configuration"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
+                                    {role === 'super-admin' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteFeeConfig(fee.id)}
+                                        className="text-rose-500 hover:text-rose-700 p-1"
+                                        aria-label="Delete fee configuration"
+                                        title="Delete fee configuration"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
                                   </td>
                                 </tr>
                               ))
@@ -1363,7 +1396,7 @@ export const Settings = () => {
                     </div>
                   )}
 
-                  {role === 'super-admin' && showSubSection('profit-targets') && (
+                  {showSubSection('profit-targets') && (
                     <div className="space-y-5">
                       <div>
                         <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Branch Profit Target</h4>
@@ -1373,34 +1406,36 @@ export const Settings = () => {
                       </div>
 
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label htmlFor="profit-target-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                            <select
-                              id="profit-target-branch"
-                              value={profitTargetBranchId}
-                              onChange={(e) => setProfitTargetBranchId(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {branches.map((b) => (
-                                <option key={b.id} value={b.id}>{b.name}</option>
-                              ))}
-                            </select>
+                        {role === 'super-admin' && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label htmlFor="profit-target-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                              <select
+                                id="profit-target-branch"
+                                value={profitTargetBranchId}
+                                onChange={(e) => setProfitTargetBranchId(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                {branches.map((b) => (
+                                  <option key={b.id} value={b.id}>{b.name}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label htmlFor="profit-target-month" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
+                              <select
+                                id="profit-target-month"
+                                value={profitTargetMonth}
+                                onChange={(e) => setProfitTargetMonth(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                {ethiopianMonths.map((m) => (
+                                  <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label htmlFor="profit-target-month" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Ethiopian Month</label>
-                            <select
-                              id="profit-target-month"
-                              value={profitTargetMonth}
-                              onChange={(e) => setProfitTargetMonth(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {ethiopianMonths.map((m) => (
-                                <option key={m.id} value={m.id}>{m.ge} — {m.am}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
+                        )}
 
                         {profitSummaryLoading ? (
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider py-6 text-center">Loading branch financials…</p>
@@ -1438,36 +1473,42 @@ export const Settings = () => {
                               </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
-                                <input
-                                  type="number"
-                                  placeholder={String(Math.round(profitSummary.suggested_target))}
-                                  value={profitTargetAmount}
-                                  onChange={(e) => setProfitTargetAmount(e.target.value)}
-                                  className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                                />
+                            {role === 'super-admin' ? (
+                              <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
+                                  <input
+                                    type="number"
+                                    placeholder={String(Math.round(profitSummary.suggested_target))}
+                                    value={profitTargetAmount}
+                                    onChange={(e) => setProfitTargetAmount(e.target.value)}
+                                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
+                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+                                  >
+                                    Use suggested
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleSetProfitTarget}
+                                    disabled={financeLoading || !profitTargetBranchId}
+                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                                  >
+                                    <Save size={14} />
+                                    Save target
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex flex-wrap gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
-                                  className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
-                                >
-                                  Use suggested
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleSetProfitTarget}
-                                  disabled={financeLoading || !profitTargetBranchId}
-                                  className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
-                                >
-                                  <Save size={14} />
-                                  Save target
-                                </button>
+                            ) : (
+                              <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                <p className="text-sm font-bold">Target profit (ETB): {Number(profitTargetAmount || profitSummary.saved_target || Math.round(profitSummary.suggested_target)).toLocaleString()}</p>
                               </div>
-                            </div>
+                            )}
 
                             {(() => {
                               const target = Number(profitTargetAmount) || 0;
