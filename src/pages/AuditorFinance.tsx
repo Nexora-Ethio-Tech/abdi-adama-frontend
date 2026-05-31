@@ -123,6 +123,10 @@ export const AuditorFinance = () => {
       params.endDate = end;
     }
 
+    if (params.startDate && params.endDate && params.startDate > params.endDate) {
+      throw new Error('Start date must be before or equal to end date.');
+    }
+
     return params;
   };
 
@@ -143,6 +147,10 @@ export const AuditorFinance = () => {
         throw new Error('Invalid Ethiopian end date. Use YYYY-MM-DD.');
       }
       params.endDate = end;
+    }
+
+    if (params.startDate && params.endDate && params.startDate > params.endDate) {
+      throw new Error('Start date must be before or equal to end date.');
     }
 
     if (auditCategoryFilter) {
@@ -229,6 +237,21 @@ export const AuditorFinance = () => {
     await fetchData();
   };
 
+  const handleApplyAuditFilter = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await fetchAuditTrail();
+      setSuccess('Finance audit filters applied.');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || err.message || 'Failed to apply finance audit filter');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleExportTransactions = () => {
     if (filteredPayments.length === 0) {
       setError('No transactions available to export.');
@@ -253,12 +276,12 @@ export const AuditorFinance = () => {
         name: 'Transactions',
         rows: filteredPayments.map((payment) => ({
           Date: formatEthiopianLabel(payment.date),
-          Student: payment.student_name,
-          StudentId: payment.student_id,
+          'Student Name': payment.student_name,
           Amount: Number(payment.amount),
           Type: payment.type,
-          VerifiedBy: payment.verified_by,
-          DateCreated: new Date(payment.created_at).toLocaleString()
+          'Verified By': payment.verified_by,
+          'Created At': new Date(payment.created_at).toLocaleString(),
+          'Branch ID': payment.branch_id
         }))
       }
     ], `auditor-transactions-${transactionStartEth || 'all'}-${transactionEndEth || 'all'}`);
@@ -323,14 +346,14 @@ export const AuditorFinance = () => {
       {
         name: 'Transactions',
         rows: financialReport.transactions.map((transaction) => ({
-          Date: transaction.date,
-          Student: transaction.student_name,
-          StudentId: transaction.student_id,
+          Date: formatEthiopianLabel(transaction.date),
+          'Student Name': transaction.student_name,
+          'Student ID': transaction.student_id,
           Amount: Number(transaction.amount),
           Type: transaction.type,
-          VerifiedBy: transaction.verified_by,
-          BranchId: transaction.branch_id,
-          CreatedAt: transaction.created_at
+          'Verified By': transaction.verified_by,
+          'Branch ID': transaction.branch_id,
+          'Created At': transaction.created_at
         }))
       },
       {
@@ -338,8 +361,8 @@ export const AuditorFinance = () => {
         rows: [
           {
             Period: `${financialReport.period.startDate} to ${financialReport.period.endDate}`,
-            TotalTransactions: financialReport.summary.totalTransactions,
-            TotalCollected: financialReport.summary.totalCollected
+            'Total Transactions': financialReport.summary.totalTransactions,
+            'Total Collected (ETB)': financialReport.summary.totalCollected
           }
         ]
       },
@@ -348,15 +371,15 @@ export const AuditorFinance = () => {
         rows: financialReport.byType.map((item) => ({
           Type: item.type,
           Transactions: Number(item.count),
-          TotalCollected: Number(item.total)
+          'Total Collected (ETB)': Number(item.total)
         }))
       },
       {
         name: 'Daily Breakdown',
         rows: financialReport.dailyBreakdown.map((item) => ({
-          Date: new Date(item.date).toLocaleDateString(),
+          Date: formatEthiopianLabel(item.date),
           Transactions: Number(item.transactions),
-          TotalCollected: Number(item.total)
+          'Total Collected (ETB)': Number(item.total)
         }))
       }
     ], `auditor-financial-report-${financialReport.period.startDate}-${financialReport.period.endDate}`);
@@ -503,20 +526,23 @@ export const AuditorFinance = () => {
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-fit">
             <button
+              type="button"
               onClick={() => handleTabChange('transactions')}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Transactions ({payments.length})
             </button>
             <button
+              type="button"
               onClick={() => handleTabChange('fee-reductions')}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500'}`}
             >
               Fee Reductions ({feeReductions.length})
             </button>
             <button
+              type="button"
               onClick={() => handleTabChange('finance')}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'finance' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'finance' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Finance Audit ({auditTrail.length})
             </button>
@@ -652,7 +678,15 @@ export const AuditorFinance = () => {
               </div>
               <div className="flex items-end gap-2 col-span-full lg:col-span-4">
                 <button
+                  onClick={handleApplyAuditFilter}
+                  type="button"
+                  className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10"
+                >
+                  Apply Filters
+                </button>
+                <button
                   onClick={handleClearAuditFilter}
+                  type="button"
                   className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
                 >
                   Clear Filters

@@ -87,6 +87,11 @@ const toCellXml = (ref: string, value: any) => {
   return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(String(value))}</t></is></c>`;
 };
 
+const calculateColumnWidth = (value: any) => {
+  const text = value == null ? '' : String(value);
+  return Math.min(Math.max(text.length + 4, 12), 40);
+};
+
 const buildWorksheetXml = (rows: Record<string, any>[]) => {
   const dataRows = rows.length > 0 ? rows : [{}];
   const headerSet = new Set<string>();
@@ -94,6 +99,18 @@ const buildWorksheetXml = (rows: Record<string, any>[]) => {
     Object.keys(row).forEach((key) => headerSet.add(key));
   });
   const headers = Array.from(headerSet);
+
+  const columnWidths = headers.map((header, index) => {
+    const maxLength = Math.max(
+      header.length,
+      ...dataRows.map((row) => calculateColumnWidth(row[header]))
+    );
+    return Math.min(Math.max(maxLength, 12), 40);
+  });
+
+  const colXml = columnWidths
+    .map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`)
+    .join('');
 
   const xmlRows = [];
   if (headers.length > 0) {
@@ -115,6 +132,7 @@ const buildWorksheetXml = (rows: Record<string, any>[]) => {
 
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <cols>${colXml}</cols>
   <sheetData>${xmlRows.join('')}</sheetData>
 </worksheet>`;
 };
