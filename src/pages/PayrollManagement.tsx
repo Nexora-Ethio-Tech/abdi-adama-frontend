@@ -67,12 +67,12 @@ export const PayrollManagement = () => {
       const activeProfiles = await payrollService.getAllProfiles({
         branchId: selectedBranchId || undefined
       });
-      
+
       const eligible = activeProfiles.filter(p => p.profile_id !== null && p.basic_salary > 0);
       if (eligible.length === 0) {
         throw new Error('No employees with active salary profiles found in selected branch.');
       }
-      
+
       setEmployeesForOt(eligible);
       // Initialize map with 0
       const initialMap: { [id: string]: number } = {};
@@ -140,7 +140,7 @@ export const PayrollManagement = () => {
     try {
       await payrollService.finalizePayroll(runId);
       setSuccessMsg('Payroll run has been successfully finalized! All employee payslips are now live.');
-      
+
       // Reload details
       const data = await payrollService.getPayrollRun(runId);
       setRunDetail(data);
@@ -182,6 +182,8 @@ export const PayrollManagement = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
+              type="button"
+              aria-label="Go back to payroll list"
               onClick={() => {
                 setSelectedRunId(null);
                 setRunDetail(null);
@@ -198,6 +200,7 @@ export const PayrollManagement = () => {
 
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => handleExport(run.id, 'csv')}
               className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl flex items-center gap-1.5"
             >
@@ -205,6 +208,7 @@ export const PayrollManagement = () => {
               Export Excel
             </button>
             <button
+              type="button"
               onClick={() => handleExport(run.id, 'html')}
               className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl flex items-center gap-1.5"
             >
@@ -213,6 +217,7 @@ export const PayrollManagement = () => {
             </button>
             {isDraft && isAuditorOrAdmin && (
               <button
+                type="button"
                 onClick={() => handleFinalizeRun(run.id)}
                 disabled={actionLoading}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl flex items-center gap-1.5 shadow-lg shadow-emerald-250 dark:shadow-none disabled:opacity-50"
@@ -292,6 +297,7 @@ export const PayrollManagement = () => {
         </div>
         {role !== 'auditor' && (
           <button
+            type="button"
             onClick={() => setIsGenerating(true)}
             className="bg-slate-900 dark:bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
           >
@@ -402,11 +408,10 @@ export const PayrollManagement = () => {
                       {Number(r.total_net).toLocaleString()} ETB
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${
-                        r.status === 'draft'
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${r.status === 'draft'
                           ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
                           : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
-                      }`}>
+                        }`}>
                         {r.status}
                       </span>
                     </td>
@@ -414,13 +419,15 @@ export const PayrollManagement = () => {
                       <div className="flex gap-2 justify-end">
                         {r.status === 'draft' && role !== 'auditor' && (
                           <button
+                            type="button"
+                            aria-label="Delete draft payroll run"
                             onClick={(e) => handleDeleteRun(r.id, e)}
                             className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/20 rounded-xl transition-all"
                           >
                             <Trash2 size={13} />
                           </button>
                         )}
-                        <button className="bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-slate-700 dark:text-slate-300 font-black text-[9px] uppercase tracking-wide px-3">
+                        <button type="button" className="bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-slate-700 dark:text-slate-300 font-black text-[9px] uppercase tracking-wide px-3">
                           Ledger Details
                         </button>
                       </div>
@@ -449,6 +456,8 @@ export const PayrollManagement = () => {
                   </div>
                 </div>
                 <button
+                  type="button"
+                  aria-label="Close payroll generation panel"
                   onClick={() => {
                     setIsGenerating(false);
                     setGenerationStep(1);
@@ -462,8 +471,10 @@ export const PayrollManagement = () => {
               {generationStep === 1 ? (
                 <div className="space-y-5">
                   <div className="space-y-1">
-                    <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Branch Scope</label>
+                    <label htmlFor="branchScope" className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Branch Scope</label>
                     <select
+                      id="branchScope"
+                      aria-label="Branch scope"
                       className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                       value={selectedBranchId}
                       onChange={(e) => setSelectedBranchId(e.target.value)}
@@ -477,8 +488,10 @@ export const PayrollManagement = () => {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Payroll Month *</label>
+                      <label htmlFor="payrollMonth" className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Payroll Month *</label>
                       <select
+                        id="payrollMonth"
+                        aria-label="Payroll month"
                         className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                         value={month}
                         onChange={(e) => setMonth(e.target.value)}
@@ -491,8 +504,10 @@ export const PayrollManagement = () => {
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Year *</label>
+                      <label htmlFor="payrollYear" className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Year *</label>
                       <input
+                        id="payrollYear"
+                        aria-label="Payroll year"
                         type="number"
                         className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 transition-all"
                         value={year}
@@ -523,14 +538,16 @@ export const PayrollManagement = () => {
                   </div>
 
                   <div className="flex gap-2 shrink-0">
-                    <input 
-                      type="text" 
-                      placeholder="Search employee..." 
+                    <input
+                      type="text"
+                      placeholder="Search employee..."
+                      aria-label="Search employee"
                       className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={otSearchFilter}
                       onChange={(e) => setOtSearchFilter(e.target.value)}
                     />
-                    <select 
+                    <select
+                      aria-label="Filter employees by role"
                       className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={otRoleFilter}
                       onChange={(e) => setOtRoleFilter(e.target.value)}
@@ -547,26 +564,26 @@ export const PayrollManagement = () => {
                       .filter(e => !otRoleFilter || e.role === otRoleFilter)
                       .filter(e => !otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))
                       .map((e) => (
-                      <div key={e.user_id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
-                        <div>
-                          <p className="font-bold text-slate-850 dark:text-white text-xs">{e.name}</p>
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{e.role}</span>
+                        <div key={e.user_id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                          <div>
+                            <p className="font-bold text-slate-850 dark:text-white text-xs">{e.name}</p>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{e.role}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              className="w-16 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:ring-2 focus:ring-blue-500 transition-all"
+                              placeholder="Hrs"
+                              min="0"
+                              value={overtimeHoursMap[e.user_id] || ''}
+                              onChange={(evt) => setOvertimeHoursMap({
+                                ...overtimeHoursMap,
+                                [e.user_id]: Number(evt.target.value)
+                              })}
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            className="w-16 px-2 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-800 dark:text-slate-200 outline-none text-center focus:ring-2 focus:ring-blue-500 transition-all"
-                            placeholder="Hrs"
-                            min="0"
-                            value={overtimeHoursMap[e.user_id] || ''}
-                            onChange={(evt) => setOvertimeHoursMap({
-                              ...overtimeHoursMap,
-                              [e.user_id]: Number(evt.target.value)
-                            })}
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                     {employeesForOt.filter(e => (!otRoleFilter || e.role === otRoleFilter) && (!otSearchFilter || e.name.toLowerCase().includes(otSearchFilter.toLowerCase()))).length === 0 && (
                       <p className="text-center text-xs text-slate-400 py-4">No employees match your search.</p>
                     )}
@@ -581,7 +598,7 @@ export const PayrollManagement = () => {
                     </h4>
                     <div className="space-y-2">
                       {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).map(e => (
-                        <div key={'added-'+e.user_id} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
+                        <div key={'added-' + e.user_id} className="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
                           <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{e.name}</span>
                           <span className="text-xs font-black text-blue-600 dark:text-blue-400">+{overtimeHoursMap[e.user_id]} hrs</span>
                         </div>
@@ -589,7 +606,7 @@ export const PayrollManagement = () => {
                       {employeesForOt.filter(e => (overtimeHoursMap[e.user_id] || 0) > 0).length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50 py-4">
                           <Award size={24} className="mb-2" />
-                          <p className="text-[10px] font-bold text-center">No overtime entries added yet.<br/>Type hours above to add.</p>
+                          <p className="text-[10px] font-bold text-center">No overtime entries added yet.<br />Type hours above to add.</p>
                         </div>
                       )}
                     </div>

@@ -91,6 +91,7 @@ export const Attendance = () => {
       <div className="flex flex-col gap-1">
         <Breadcrumbs />
         <button
+          type="button"
           onClick={() => navigate(-1)}
           className="flex items-center gap-1 text-blue-600 hover:underline text-xs font-bold uppercase tracking-widest"
         >
@@ -128,6 +129,7 @@ export const Attendance = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
+                    type="button"
                     onClick={() => setAbsentReviewQueue(prev => prev.filter(q => q.id !== item.id))}
                     className="flex-1 sm:flex-none px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100"
                   >
@@ -135,6 +137,7 @@ export const Attendance = () => {
                     Pass (Excused)
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       alert(`Notifying parents of ${item.studentName}...`);
                       setAbsentReviewQueue(prev => prev.filter(q => q.id !== item.id));
@@ -173,6 +176,7 @@ export const Attendance = () => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={runProxyAnalysis}
                 disabled={isProxyAnalysisRunning}
                 className="flex items-center gap-2 px-6 py-3 bg-slate-900 dark:bg-blue-600 hover:bg-black dark:hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50"
@@ -211,6 +215,7 @@ export const Attendance = () => {
                           </div>
                         </div>
                         <button
+                          type="button"
                           onClick={() => { setAbsentTeacher(teacher); setShowSubModal(true); }}
                           className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
                         >
@@ -249,7 +254,7 @@ export const Attendance = () => {
                             </div>
                             <p className="text-sm font-bold text-emerald-900 dark:text-emerald-100">{suggestion}</p>
                           </div>
-                          <button className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest hover:underline">
+                          <button type="button" className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest hover:underline">
                             Quick Assign
                           </button>
                         </div>
@@ -279,10 +284,11 @@ export const Attendance = () => {
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Student Attendance</h2>
           </div>
           <div className="flex gap-2">
-            <button className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold text-sm">
+            <button type="button" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 px-4 py-2 rounded-lg font-bold text-sm">
               Attendance Reports
             </button>
-            <button 
+            <button
+              type="button"
               onClick={async () => {
                 try {
                   const records = Object.entries(attendance).map(([studentId, status]) => ({
@@ -309,9 +315,10 @@ export const Attendance = () => {
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between transition-colors duration-300">
           <div className="flex items-center gap-4">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Select Grade/Section</label>
+              <label htmlFor="gradeSection" className="text-[10px] font-bold text-slate-500 uppercase">Select Grade/Section</label>
               <div className="relative">
                 <select
+                  id="gradeSection"
                   value={selectedGrade}
                   onChange={(e) => setSelectedGrade(e.target.value)}
                   className="appearance-none pl-4 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all w-40"
@@ -327,8 +334,9 @@ export const Attendance = () => {
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Attendance Date</label>
+              <label htmlFor="attendanceDate" className="text-[10px] font-bold text-slate-500 uppercase">Attendance Date</label>
               <input
+                id="attendanceDate"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
@@ -345,12 +353,14 @@ export const Attendance = () => {
           {(role === 'teacher') && (
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => markAll('present')}
                 className="text-[10px] font-bold text-emerald-600 border border-emerald-100 bg-emerald-50 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors uppercase tracking-wider"
               >
                 Mark All Present
               </button>
               <button
+                type="button"
                 onClick={() => markAll('absent')}
                 className="text-[10px] font-bold text-rose-600 border border-rose-100 bg-rose-50 px-3 py-1.5 rounded-lg hover:bg-rose-100 transition-colors uppercase tracking-wider"
               >
@@ -422,35 +432,38 @@ export const Attendance = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
+                            type="button"
                             onClick={() => toggleStatus(student.id, 'present')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'present'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'present'
                                 ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'
-                            }`}
+                              }`}
                             title="Present"
+                            aria-label="Mark present"
                           >
                             <CheckCircle size={20} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => toggleStatus(student.id, 'absent')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'absent'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'absent'
                                 ? 'bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-rose-500 hover:text-rose-500'
-                            }`}
+                              }`}
                             title="Absent"
+                            aria-label="Mark absent"
                           >
                             <XCircle size={20} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => toggleStatus(student.id, 'late')}
-                            className={`p-2 rounded-lg border transition-all ${
-                              attendance[student.id] === 'late'
+                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'late'
                                 ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-100'
                                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-500'
-                            }`}
+                              }`}
                             title="Late"
+                            aria-label="Mark late"
                           >
                             <Clock size={20} />
                           </button>
@@ -488,7 +501,7 @@ export const Attendance = () => {
                   <p className="text-xs text-slate-500 font-medium tracking-tight">Rapid Proxy Teacher Assignment</p>
                 </div>
               </div>
-              <button onClick={() => setShowSubModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button type="button" aria-label="Close substitution modal" onClick={() => setShowSubModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -527,7 +540,7 @@ export const Attendance = () => {
                           <p className="text-[10px] text-slate-400 font-medium uppercase">{teacher.subjects.join(', ')}</p>
                         </div>
                       </div>
-                      <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all">
+                      <button type="button" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all">
                         Assign Proxy
                         <ArrowRight size={14} />
                       </button>

@@ -276,7 +276,7 @@ const financeClerkService = {
       // Convert legacy amount/type to items; if type is array map to known fee keys
       const types = Array.isArray(data.type) ? data.type : [data.type || 'Monthly Tuition'];
       const items = types.map((t, i) => ({ feeType: t.toString().toLowerCase().includes('monthly') ? 'monthly' : t.toString().toLowerCase().includes('bus') ? 'bus' : t.toString().toLowerCase().includes('penalty') ? 'penalty' : t, amount: Number(data.amount || 0) }));
-      payload = { studentId: data.studentId, items, month: data.month || new Date().toISOString().slice(0,7), date: data.date, reference: data.reference };
+      payload = { studentId: data.studentId, items, month: data.month || new Date().toISOString().slice(0, 7), date: data.date, reference: data.reference };
     }
 
     const response = await api.post('/finance-clerk/payments', payload);
@@ -344,7 +344,7 @@ const financeClerkService = {
   },
 
   // 9. Approve a pending application (finalize registration)
-  approveApplication: async (applicationId: string, data: { amount?: number; reference?: string }) => {
+  approveApplication: async (applicationId: string, data: { amount?: number; reference?: string; parentDigitalId?: string }) => {
     const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
   },
