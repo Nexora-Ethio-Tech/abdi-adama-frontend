@@ -63,6 +63,12 @@ export const getVPTeachers = async () => {
   return response.data;
 };
 
+export const getTeacherAttendanceDetail = async (userId: string, startDate: string, endDate: string) => {
+  const params = new URLSearchParams({ startDate, endDate });
+  const response = await api.get(`/vice-principal/teachers/${userId}/attendance?${params}`);
+  return response.data.data;
+};
+
 // Teacher Leaderboard
 export const getLeaderboard = async () => {
   const response = await api.get('/vice-principal/teachers/leaderboard');

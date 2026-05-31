@@ -1,4 +1,4 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Eye } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService from '../services/subjectService';
 import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '../services/vicePrincipalService';
 import { Star, Trophy, RefreshCcw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TeacherAttendanceModal } from '../components/TeacherAttendanceModal';
 
 const MultiSelectDropdown = ({
   options,
@@ -83,6 +84,7 @@ export const Teachers = () => {
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+  const [attendanceTeacher, setAttendanceTeacher] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'teachers' | 'leaderboard'>('teachers');
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
@@ -277,6 +279,8 @@ export const Teachers = () => {
         branchId: teacher.branch_id,
         createdAt: teacher.created_at,
         staffProfile: teacher.staff_profile,
+        todayAttendanceStatus: teacher.today_attendance_status,
+        todayAttendanceCount: Number(teacher.today_attendance_count || 0),
         // VP-specific fields
         classesAssigned: teacher.classes_assigned || '0',
         plansSubmitted: teacher.plans_submitted || '0',
@@ -542,17 +546,17 @@ export const Teachers = () => {
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
                 {isVP && (
                   <>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Classes</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plans</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Today</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Attendance</th>
                   </>
                 )}
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
+                {isAdmin && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {teachers.length === 0 ? (
                 <tr>
-                  <td colSpan={isVP ? 7 : 5} className="px-6 py-12 text-center text-slate-500">
+                  <td colSpan={isVP ? (isAdmin ? 7 : 6) : (isAdmin ? 5 : 4)} className="px-6 py-12 text-center text-slate-500">
                     No teachers found. Register your first teacher.
                   </td>
                 </tr>
@@ -570,30 +574,37 @@ export const Teachers = () => {
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
                     <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                        teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
+                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' : teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                         {teacher.status}
                       </span>
                     </td>
                     {isVP && (
                       <>
-                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.classesAssigned}</td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm">
-                            <span className="text-slate-600 dark:text-slate-400">{teacher.plansSubmitted}</span>
-                            {teacher.plansPending !== '0' && (
-                              <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">
-                                {teacher.plansPending} pending
-                              </span>
-                            )}
-                          </div>
+                        <td className="px-6 py-4 text-center">
+                          {teacher.todayAttendanceCount > 0 ? (
+                            teacher.todayAttendanceStatus && teacher.todayAttendanceStatus !== 'absent' ? (
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-black">✓</span>
+                            ) : (
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-black">✗</span>
+                            )
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-600 font-black">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setAttendanceTeacher(teacher)}
+                            className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                            title="View monthly attendance"
+                          >
+                            <Eye size={18} />
+                          </button>
                         </td>
                       </>
                     )}
-                    <td className="px-6 py-4">
-                      {isAdmin && (
+                    {isAdmin && (
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           {teacher.status === 'Pending' ? (
                             <button
@@ -637,8 +648,8 @@ export const Teachers = () => {
                             <Trash2 size={16} />
                           </button>
                         </div>
-                      )}
-                    </td>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -647,7 +658,6 @@ export const Teachers = () => {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-          {/* Header */}
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
@@ -657,13 +667,13 @@ export const Teachers = () => {
                 <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating × 100) + (Weekly Plan Rate × 10)</p>
               </div>
               <button
+                type="button"
                 onClick={handleResetLeaderboard}
                 className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-sm font-bold transition-colors self-start sm:self-auto"
               >
                 <RefreshCcw size={16} /> Reset Semester
               </button>
             </div>
-            {/* Search + Grade Filter */}
             <div className="mt-3 flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1 sm:max-w-xs">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -696,7 +706,6 @@ export const Teachers = () => {
             </div>
           </div>
 
-          {/* Table */}
           <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
               <tr>
@@ -712,7 +721,7 @@ export const Teachers = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {leaderboardLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">Loading leaderboard…</td>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">Loading leaderboard…</td>
                 </tr>
               ) : currentLeaderboardData.length === 0 ? (
                 <tr>
@@ -723,8 +732,7 @@ export const Teachers = () => {
                   </td>
                 </tr>
               ) : (
-                currentLeaderboardData.map((row, indexOnPage) => {
-                  // Use global rank from filteredLeaderboardData
+                currentLeaderboardData.map((row) => {
                   const globalRank = filteredLeaderboardData.findIndex(r => r.teacher_id === row.teacher_id) + 1;
                   return (
                     <tr key={row.teacher_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
@@ -775,9 +783,7 @@ export const Teachers = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">
-                        {row.total_points}
-                      </td>
+                      <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">{row.total_points}</td>
                     </tr>
                   );
                 })
@@ -785,7 +791,6 @@ export const Teachers = () => {
             </tbody>
           </table>
 
-          {/* Pagination */}
           {!leaderboardLoading && filteredLeaderboardData.length > LEADERBOARD_ITEMS_PER_PAGE && (
             <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
               <p className="text-xs text-slate-500">
@@ -799,9 +804,7 @@ export const Teachers = () => {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                  Page {leaderboardPage} of {totalLeaderboardPages}
-                </span>
+                <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Page {leaderboardPage} of {totalLeaderboardPages}</span>
                 <button
                   onClick={() => setLeaderboardPage(p => Math.min(totalLeaderboardPages, p + 1))}
                   disabled={leaderboardPage === totalLeaderboardPages}
@@ -814,6 +817,12 @@ export const Teachers = () => {
           )}
         </div>
       )}
+
+      <TeacherAttendanceModal
+        open={Boolean(attendanceTeacher)}
+        teacher={attendanceTeacher}
+        onClose={() => setAttendanceTeacher(null)}
+      />
 
       {/* Add Teacher Modal */}
       {showAddModal && (
