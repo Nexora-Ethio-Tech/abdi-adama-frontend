@@ -87,6 +87,7 @@ export const Teachers = () => {
   const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [leaderboardSearch, setLeaderboardSearch] = useState('');
+  const [leaderboardGradeFilter, setLeaderboardGradeFilter] = useState('');
   const [leaderboardPage, setLeaderboardPage] = useState(1);
   const LEADERBOARD_ITEMS_PER_PAGE = 10;
   const [formData, setFormData] = useState({
@@ -450,10 +451,21 @@ export const Teachers = () => {
     );
   }
 
+  // Derive all unique grades from the leaderboard for the filter dropdown
+  const allLeaderboardGrades = Array.from(
+    new Set(leaderboardData.flatMap(row => row.grades_taught ?? []))
+  ).sort((a, b) => {
+    // Natural sort: extract numbers so 'Grade 9' < 'Grade 10'
+    const num = (s: string) => parseInt(s.replace(/\D/g, '')) || 0;
+    return num(a) - num(b) || a.localeCompare(b);
+  });
+
   // Calculate paginated and filtered leaderboard data
-  const filteredLeaderboardData = leaderboardData.filter(row =>
-    row.teacher_name.toLowerCase().includes(leaderboardSearch.toLowerCase())
-  );
+  const filteredLeaderboardData = leaderboardData.filter(row => {
+    const matchesName = row.teacher_name.toLowerCase().includes(leaderboardSearch.toLowerCase());
+    const matchesGrade = leaderboardGradeFilter === '' || (row.grades_taught ?? []).includes(leaderboardGradeFilter);
+    return matchesName && matchesGrade;
+  });
   
   const totalLeaderboardPages = Math.ceil(filteredLeaderboardData.length / LEADERBOARD_ITEMS_PER_PAGE) || 1;
   const currentLeaderboardData = filteredLeaderboardData.slice(
@@ -651,16 +663,36 @@ export const Teachers = () => {
                 <RefreshCcw size={16} /> Reset Semester
               </button>
             </div>
-            {/* Search */}
-            <div className="mt-3 relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={leaderboardSearch}
-                onChange={(e) => { setLeaderboardSearch(e.target.value); setLeaderboardPage(1); }}
-                placeholder="Search teacher by name…"
-                className="w-full sm:max-w-xs pl-8 pr-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
-              />
+            {/* Search + Grade Filter */}
+            <div className="mt-3 flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1 sm:max-w-xs">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={leaderboardSearch}
+                  onChange={(e) => { setLeaderboardSearch(e.target.value); setLeaderboardPage(1); }}
+                  placeholder="Search teacher by name…"
+                  className="w-full pl-8 pr-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition"
+                />
+              </div>
+              <select
+                value={leaderboardGradeFilter}
+                onChange={(e) => { setLeaderboardGradeFilter(e.target.value); setLeaderboardPage(1); }}
+                className="py-2 px-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-700 dark:text-slate-300"
+              >
+                <option value="">All Grades</option>
+                {allLeaderboardGrades.map(grade => (
+                  <option key={grade} value={grade}>{grade}</option>
+                ))}
+              </select>
+              {(leaderboardSearch || leaderboardGradeFilter) && (
+                <button
+                  onClick={() => { setLeaderboardSearch(''); setLeaderboardGradeFilter(''); setLeaderboardPage(1); }}
+                  className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 transition"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
@@ -673,6 +705,7 @@ export const Teachers = () => {
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student Votes</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plan Rating</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">VP Rating</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Grades</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Total Points</th>
               </tr>
             </thead>
@@ -683,8 +716,10 @@ export const Teachers = () => {
                 </tr>
               ) : currentLeaderboardData.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
-                    {leaderboardSearch ? 'No teachers match your search.' : 'No data available for the leaderboard.'}
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                    {leaderboardSearch || leaderboardGradeFilter
+                      ? `No teachers found${leaderboardGradeFilter ? ` teaching ${leaderboardGradeFilter}` : ''}${leaderboardSearch ? ` matching "${leaderboardSearch}"` : ''}.`
+                      : 'No data available for the leaderboard.'}
                   </td>
                 </tr>
               ) : (
@@ -717,6 +752,27 @@ export const Teachers = () => {
                               <Star size={18} fill={star <= row.vp_rating ? 'currentColor' : 'none'} />
                             </button>
                           ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {(row.grades_taught ?? []).length === 0 ? (
+                            <span className="text-xs text-slate-400 italic">—</span>
+                          ) : (
+                            (row.grades_taught as string[]).map(grade => (
+                              <button
+                                key={grade}
+                                onClick={() => { setLeaderboardGradeFilter(grade === leaderboardGradeFilter ? '' : grade); setLeaderboardPage(1); }}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
+                                  grade === leaderboardGradeFilter
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
+                                }`}
+                              >
+                                {grade}
+                              </button>
+                            ))
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">
