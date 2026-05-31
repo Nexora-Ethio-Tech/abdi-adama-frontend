@@ -171,9 +171,7 @@ export const EmployeeProfiles = () => {
                     <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Rate (Hr)</th>
                     <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">TIN Number</th>
                     <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bank Account</th>
-                    {!isAuditor && (
-                      <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                    )}
+                    <th className="px-6 py-5 text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
@@ -239,18 +237,16 @@ export const EmployeeProfiles = () => {
                             <span className="text-slate-400">N/A</span>
                           )}
                         </td>
-                        {!isAuditor && (
-                          <td className="px-6 py-4 text-right">
-                            <button
-                              type="button"
-                              title="Edit employee profile"
-                              onClick={() => handleEditClick(p)}
-                              className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2.5 rounded-xl transition-all shadow-md"
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                          </td>
-                        )}
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            type="button"
+                            title="Edit employee profile"
+                            onClick={() => handleEditClick(p)}
+                            className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 p-2.5 rounded-xl transition-all shadow-md"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
