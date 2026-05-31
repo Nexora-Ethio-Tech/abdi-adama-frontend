@@ -2,7 +2,7 @@ import { Users, GraduationCap, Clock, ChevronRight, BarChart3, Lock, CheckCircle
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getVPDashboard } from '../services/vicePrincipalService';
+import { getVPDashboard, getStaffAbsentCount } from '../services/vicePrincipalService';
 
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800/80 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
@@ -17,6 +17,7 @@ const StatCard = ({ icon: Icon, label, value, color }: any) => (
 export const VicePrincipalDashboard = () => {
   const { user } = useUser();
   const [dashboard, setDashboard] = useState<any>(null);
+  const [staffAbsentCount, setStaffAbsentCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
@@ -28,8 +29,12 @@ export const VicePrincipalDashboard = () => {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const data = await getVPDashboard();
-      setDashboard(data);
+      const [dashboardData, absentData] = await Promise.all([
+        getVPDashboard(),
+        getStaffAbsentCount(),
+      ]);
+      setDashboard(dashboardData);
+      setStaffAbsentCount(absentData.absentCount);
     } catch (err: any) {
       console.error('VP Dashboard error:', err);
       showToast('Failed to load vice principal dashboard data.', 'error');
@@ -71,20 +76,39 @@ export const VicePrincipalDashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <Link to="/vp-attendance" className="block">
-          <StatCard 
-            icon={Clock} 
-            label="Today's Attendance" 
-            value={dashboard?.todayAttendanceRate != null ? `${dashboard.todayAttendanceRate.toFixed(1)}%` : '-'} 
-            color="bg-emerald-600 shadow-lg shadow-emerald-600/10" 
+          <StatCard
+            icon={Users}
+            label="Pending Absences"
+            value={staffAbsentCount != null ? staffAbsentCount : dashboard?.pendingAbsencesCount ?? '-'}
+            color="bg-rose-600 shadow-lg shadow-rose-600/10"
           />
         </Link>
-        <div className="block">
-          <StatCard 
-            icon={Users} 
-            label="Pending Absences" 
-            value={dashboard?.pendingAbsencesCount ?? '-'} 
-            color="bg-rose-600 shadow-lg shadow-rose-600/10" 
+        <Link to="/vp-attendance" className="block">
+          <StatCard
+            icon={Clock}
+            label="Today's Attendance"
+            value={dashboard?.todayAttendanceRate != null ? `${dashboard.todayAttendanceRate.toFixed(1)}%` : '-'}
+            color="bg-emerald-600 shadow-lg shadow-emerald-600/10"
           />
+        </Link>
+      </div>
+
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-slate-800 dark:text-white text-lg">Staff Absence Summary</h3>
+            <p className="text-xs text-slate-500 mt-1">
+              {staffAbsentCount != null
+                ? `${staffAbsentCount} staff member(s) have not checked in today`
+                : 'Calculating absent staff...'}
+            </p>
+          </div>
+          <Link
+            to="/vp-attendance"
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-all"
+          >
+            View Details
+          </Link>
         </div>
       </div>
 

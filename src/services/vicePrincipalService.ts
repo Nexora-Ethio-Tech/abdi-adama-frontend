@@ -162,3 +162,9 @@ export const getTeacherOfWeekVotes = async (): Promise<TeacherOfWeekVoteSummary>
   return response.data.data;
 };
 
+export const getStaffAbsentCount = async (date?: string) => {
+  const params = date ? `?date=${date}` : '';
+  const response = await api.get(`/vice-principal/staff-absent-count${params}`);
+  return response.data.data;
+};
+
