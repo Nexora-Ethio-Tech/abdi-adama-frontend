@@ -50,6 +50,7 @@ const TeacherGrades = lazy(() => import('./pages/TeacherGrades').then((m) => ({ 
 const TeacherStudentGrades = lazy(() => import('./pages/TeacherStudentGrades').then((m) => ({ default: m.TeacherStudentGrades })));
 const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight').then((m) => ({ default: m.VPAttendanceOversight })));
 const VPGradeLocks = lazy(() => import('./pages/VPGradeLocks').then((m) => ({ default: m.VPGradeLocks })));
+const VPGradeManagement = lazy(() => import('./pages/VPGradeManagement').then((m) => ({ default: m.VPGradeManagement })));
 const VPTranscripts = lazy(() => import('./pages/VPTranscripts').then((m) => ({ default: m.VPTranscripts })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 const FinanceStaff = lazy(() => import('./pages/FinanceStaff').then((m) => ({ default: m.FinanceStaff })));
@@ -276,6 +277,12 @@ function App() {
                 </ProtectedRoute>
               } />
 
+              <Route path="vp-grade-management" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <VPGradeManagement />
+                </ProtectedRoute>
+              } />
+
               <Route path="finance-dashboard" element={
                 <ProtectedRoute allowedRoles={['finance-clerk', 'super-admin']}>
                   <FinanceClerkDashboard initialTab="all" />
@@ -411,7 +418,7 @@ function App() {
 
               <Route path="grades" element={
                 <ProtectedRoute allowedRoles={['teacher', 'vice-principal', 'school-admin']}>
-                  <GradeEntry />
+                  {normalizeRouteRole(role) === 'vice-principal' ? <VPGradeManagement /> : <GradeEntry />}
                 </ProtectedRoute>
               } />
 

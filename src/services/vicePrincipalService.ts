@@ -63,6 +63,22 @@ export const getVPTeachers = async () => {
   return response.data;
 };
 
+// Teacher Leaderboard
+export const getLeaderboard = async () => {
+  const response = await api.get('/vice-principal/teachers/leaderboard');
+  return response.data.data;
+};
+
+export const rateTeacher = async (teacherId: string, rating: number) => {
+  const response = await api.post(`/vice-principal/teachers/${teacherId}/rate`, { rating });
+  return response.data.data;
+};
+
+export const resetLeaderboard = async () => {
+  const response = await api.post('/vice-principal/teachers/leaderboard/reset');
+  return response.data;
+};
+
 // Attendance Summary
 export const getAttendanceSummary = async (date?: string, gradeLevel?: string) => {
   const params = new URLSearchParams();
@@ -79,6 +95,32 @@ export const getAcademicPerformance = async (gradeLevel?: string, courseId?: str
   if (courseId) params.append('courseId', courseId);
   const response = await api.get(`/vice-principal/academic-performance?${params}`);
   return response.data;
+};
+
+// Grade Management
+export const getGradesAndSections = async () => {
+  const response = await api.get('/vice-principal/grade-management/sections');
+  return response.data.data;
+};
+
+export const getStudentsBySection = async (sectionId: string) => {
+  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/students`);
+  return response.data.data;
+};
+
+export const getCoursesBySection = async (sectionId: string) => {
+  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/courses`);
+  return response.data.data;
+};
+
+export const getSectionGrades = async (sectionId: string) => {
+  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/grades`);
+  return response.data.data;
+};
+
+export const generateSectionResults = async (sectionId: string) => {
+  const response = await api.post(`/vice-principal/grade-management/generate-results/${sectionId}`, {});
+  return response.data.data;
 };
 
 // ─── TypeScript Interfaces ────────────────────────────────────────────────────

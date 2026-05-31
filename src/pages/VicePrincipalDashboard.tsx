@@ -131,6 +131,20 @@ export const VicePrincipalDashboard = () => {
         </Link>
 
         <Link 
+          to="/vp-grade-management" 
+          className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-blue-500/10"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <GraduationCap size={24} />
+            </div>
+            <ChevronRight className="group-hover:translate-x-1.5 transition-transform" size={20} />
+          </div>
+          <h3 className="font-bold text-lg mb-1">Grade Management</h3>
+          <p className="text-blue-50/90 text-sm font-medium">Process and view student grades by section</p>
+        </Link>
+
+        <Link 
           to="/vp-grade-locks" 
           className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-purple-500/10"
         >

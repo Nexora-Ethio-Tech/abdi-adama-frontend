@@ -7,7 +7,8 @@ import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteT
 import classService from '../services/classService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService from '../services/subjectService';
-import { getVPTeachers } from '../services/vicePrincipalService';
+import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '../services/vicePrincipalService';
+import { Star, Trophy, RefreshCcw } from 'lucide-react';
 
 const MultiSelectDropdown = ({
   options,
@@ -82,6 +83,9 @@ export const Teachers = () => {
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
+  const [activeTab, setActiveTab] = useState<'teachers' | 'leaderboard'>('teachers');
+  const [leaderboardData, setLeaderboardData] = useState<any[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -137,6 +141,46 @@ export const Teachers = () => {
     fetchClasses();
     fetchSubjects();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'leaderboard' && isVP) {
+      fetchLeaderboardData();
+    }
+  }, [activeTab]);
+
+  const fetchLeaderboardData = async () => {
+    try {
+      setLeaderboardLoading(true);
+      const data = await getLeaderboard();
+      setLeaderboardData(data);
+    } catch (err: any) {
+      console.error('Failed to fetch leaderboard:', err);
+      alert(err.response?.data?.error?.message || 'Failed to load leaderboard');
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
+  const handleRateTeacher = async (teacherId: string, rating: number) => {
+    try {
+      await rateTeacher(teacherId, rating);
+      fetchLeaderboardData();
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to rate teacher');
+    }
+  };
+
+  const handleResetLeaderboard = async () => {
+    if (!window.confirm('Are you sure you want to reset all teacher points and votes? This will start a new semester leaderboard.')) {
+      return;
+    }
+    try {
+      await resetLeaderboard();
+      fetchLeaderboardData();
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to reset leaderboard');
+    }
+  };
 
   const fetchSubjects = async () => {
     try {
@@ -436,119 +480,211 @@ export const Teachers = () => {
         </div>
       )}
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Teacher</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Email</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-              {isVP && (
-                <>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Classes</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plans</th>
-                </>
-              )}
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {teachers.length === 0 ? (
+      {isVP && (
+        <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6 gap-4">
+          <button
+            onClick={() => setActiveTab('teachers')}
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors ${
+              activeTab === 'teachers'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            All Teachers
+          </button>
+          <button
+            onClick={() => setActiveTab('leaderboard')}
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-1 ${
+              activeTab === 'leaderboard'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Trophy size={16} /> Leaderboard
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'teachers' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
               <tr>
-                <td colSpan={isVP ? 7 : 5} className="px-6 py-12 text-center text-slate-500">
-                  No teachers found. Register your first teacher.
-                </td>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Teacher</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Email</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
+                {isVP && (
+                  <>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Classes</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plans</th>
+                  </>
+                )}
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>
               </tr>
-            ) : (
-              teachers.map((teacher) => (
-                <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                  <td className="px-6 py-4">
-                    <button type="button" onClick={() => setSelectedStaff(teacher)} className="flex items-center gap-3 text-left">
-                      <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-xl flex items-center justify-center font-bold">
-                        {teacher.name?.split(' ').map((n: string) => n[0]).join('') || 'T'}
-                      </div>
-                      <span className="font-bold text-slate-800 dark:text-white">{teacher.name}</span>
-                    </button>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
-                  <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' :
-                      teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                      {teacher.status}
-                    </span>
-                  </td>
-                  {isVP && (
-                    <>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.classesAssigned}</td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm">
-                          <span className="text-slate-600 dark:text-slate-400">{teacher.plansSubmitted}</span>
-                          {teacher.plansPending !== '0' && (
-                            <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">
-                              {teacher.plansPending} pending
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  )}
-                  <td className="px-6 py-4">
-                    {isAdmin && (
-                      <div className="flex items-center gap-2">
-                        {teacher.status === 'Pending' ? (
-                          <button
-                            onClick={() => setConfirmAction({ show: true, action: 'approve', teacher })}
-                            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                          >
-                            <CheckCircle size={14} />
-                            Approve
-                          </button>
-                        ) : teacher.status === 'Approved' ? (
-                          <button
-                            onClick={() => setConfirmAction({ show: true, action: 'revoke', teacher })}
-                            className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                          >
-                            <XCircle size={14} />
-                            Revoke
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={() => {
-                            setPromotionTarget(teacher);
-                            setShowPromoteModal(true);
-                            setPromotionForm({
-                              promotionType: 'home-teacher',
-                              subjects: [],
-                              grades: [],
-                              sectionsByGrade: {},
-                              beforeSchool: { days: [], startTime: '07:00', endTime: '08:00', useConfiguredRate: true }
-                            });
-                          }}
-                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                          title="Promote"
-                        >
-                          Promote
-                        </button>
-                        <button
-                          onClick={() => setConfirmAction({ show: true, action: 'delete', teacher })}
-                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                          title="Delete User"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    )}
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {teachers.length === 0 ? (
+                <tr>
+                  <td colSpan={isVP ? 7 : 5} className="px-6 py-12 text-center text-slate-500">
+                    No teachers found. Register your first teacher.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                teachers.map((teacher) => (
+                  <tr key={teacher.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                    <td className="px-6 py-4">
+                      <button type="button" onClick={() => setSelectedStaff(teacher)} className="flex items-center gap-3 text-left">
+                        <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-xl flex items-center justify-center font-bold">
+                          {teacher.name?.split(' ').map((n: string) => n[0]).join('') || 'T'}
+                        </div>
+                        <span className="font-bold text-slate-800 dark:text-white">{teacher.name}</span>
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
+                    <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' :
+                        teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                        {teacher.status}
+                      </span>
+                    </td>
+                    {isVP && (
+                      <>
+                        <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.classesAssigned}</td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm">
+                            <span className="text-slate-600 dark:text-slate-400">{teacher.plansSubmitted}</span>
+                            {teacher.plansPending !== '0' && (
+                              <span className="ml-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-bold">
+                                {teacher.plansPending} pending
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </>
+                    )}
+                    <td className="px-6 py-4">
+                      {isAdmin && (
+                        <div className="flex items-center gap-2">
+                          {teacher.status === 'Pending' ? (
+                            <button
+                              onClick={() => setConfirmAction({ show: true, action: 'approve', teacher })}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                            >
+                              <CheckCircle size={14} />
+                              Approve
+                            </button>
+                          ) : teacher.status === 'Approved' ? (
+                            <button
+                              onClick={() => setConfirmAction({ show: true, action: 'revoke', teacher })}
+                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                            >
+                              <XCircle size={14} />
+                              Revoke
+                            </button>
+                          ) : null}
+                          <button
+                            onClick={() => {
+                              setPromotionTarget(teacher);
+                              setShowPromoteModal(true);
+                              setPromotionForm({
+                                promotionType: 'home-teacher',
+                                subjects: [],
+                                grades: [],
+                                sectionsByGrade: {},
+                                beforeSchool: { days: [], startTime: '07:00', endTime: '08:00', useConfiguredRate: true }
+                              });
+                            }}
+                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
+                            title="Promote"
+                          >
+                            Promote
+                          </button>
+                          <button
+                            onClick={() => setConfirmAction({ show: true, action: 'delete', teacher })}
+                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                            title="Delete User"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/30">
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Trophy className="text-yellow-500" size={20} /> Semester Leaderboard
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating * 100) + (Weekly Plan Rate * 10)</p>
+            </div>
+            <button
+              onClick={handleResetLeaderboard}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/40 dark:text-red-400 rounded-lg text-sm font-bold transition-colors"
+            >
+              <RefreshCcw size={16} /> Reset Semester
+            </button>
+          </div>
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Rank</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Teacher</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student Votes</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Plan Rating</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">VP Rating</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Total Points</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {leaderboardLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">Loading leaderboard...</td>
+                </tr>
+              ) : leaderboardData.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-500">No data available for the leaderboard.</td>
+                </tr>
+              ) : (
+                leaderboardData.map((row, index) => (
+                  <tr key={row.teacher_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
+                    <td className="px-6 py-4 font-black text-slate-400">#{index + 1}</td>
+                    <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">{row.teacher_name}</td>
+                    <td className="px-6 py-4 font-bold text-indigo-600 dark:text-indigo-400">{row.student_votes}</td>
+                    <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400">{row.plan_rating_sum}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            onClick={() => handleRateTeacher(row.teacher_id, star)}
+                            className={`p-1 transition-transform hover:scale-110 ${star <= row.vp_rating ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`}
+                          >
+                            <Star size={18} fill={star <= row.vp_rating ? "currentColor" : "none"} />
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-black text-xl text-slate-800 dark:text-white">
+                      {row.total_points}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Add Teacher Modal */}
       {showAddModal && (
