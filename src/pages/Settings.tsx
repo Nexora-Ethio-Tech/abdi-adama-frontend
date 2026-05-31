@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAppearance, type UIStyle } from '../context/AppearanceContext';
 import { useUser } from '../context/UserContext';
+import { useStore } from '../context/useStore';
 import payrollService, { FinanceSettingsAudit } from '../services/payrollService';
 import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdminService';
 import settingsService, { type BranchGradeFee, type BranchProfitSummary, type MonthlyProfitTarget } from '../services/settingsService';
@@ -14,7 +15,8 @@ export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
   const location = useLocation();
   const { style, setStyle, autoDarkMode, setAutoDarkMode } = useAppearance();
-  const { schoolName, setSchoolName, schoolMotto, setSchoolMotto, role, branches, gradesLocked, setGradesLocked, registrationOpen, setRegistrationOpen } = useUser();
+  const { schoolName, setSchoolName, schoolMotto, setSchoolMotto, role, branches, gradesLocked, setGradesLocked, registrationOpen, setRegistrationOpen, user } = useUser();
+  const { selectedBranchId } = useStore();
 
   // Finance Module Settings & Auditing State
   const [financeAuditLog, setFinanceAuditLog] = useState<FinanceSettingsAudit[]>([]);
@@ -51,6 +53,10 @@ export const Settings = () => {
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeSuccessMsg, setFinanceSuccessMsg] = useState('');
   const [financeErrorMsg, setFinanceErrorMsg] = useState('');
+
+  const currentBranchScopeId = role === 'super-admin'
+    ? selectedBranchId || undefined
+    : selectedBranchId || (user as any)?.branchId || branches[0]?.id || undefined;
 
   const applySystemSettings = useCallback((settings: Record<string, string>) => {
     if (settings.school_name_oromic !== undefined) {
@@ -92,13 +98,13 @@ export const Settings = () => {
     if (active) setSelectedAcademicYearId(active.id);
   };
 
-  const loadFeeStructure = async () => {
-    const fees = await settingsService.getBranchGradeFees();
+  const loadFeeStructure = async (branchId?: string) => {
+    const fees = await settingsService.getBranchGradeFees({ branchId });
     setBranchGradeFees(fees);
   };
 
-  const loadProfitTargets = async () => {
-    const targets = await settingsService.getProfitTargets();
+  const loadProfitTargets = async (branchId?: string) => {
+    const targets = await settingsService.getProfitTargets(branchId ? { branchId } : undefined);
     setProfitTargets(targets);
   };
 
@@ -106,26 +112,27 @@ export const Settings = () => {
     if (role === 'super-admin') {
       loadFinanceSettings();
       loadGeneralSettings().catch(console.error);
-      loadFeeStructure().catch(console.error);
-      loadProfitTargets().catch(console.error);
+      loadFeeStructure(currentBranchScopeId).catch(console.error);
+      loadProfitTargets(currentBranchScopeId).catch(console.error);
       settingsService.getSmtpSettings().then(setSmtpSettings).catch(console.error);
     } else if (role === 'school-admin') {
       // School Admin: load finance settings for read-only viewing of assigned policy
       loadFinanceSettings();
-      // Allow viewing branch fee structures and profit summaries
-      loadFeeStructure().catch(console.error);
-      loadProfitTargets().catch(console.error);
+      // Show only the currently assigned branch's fee structures and profit targets
+      loadFeeStructure(currentBranchScopeId).catch(console.error);
+      loadProfitTargets(currentBranchScopeId).catch(console.error);
     }
-  }, [role]);
+  }, [role, currentBranchScopeId]);
 
   useEffect(() => {
+    const defaultBranchId = selectedBranchId || (role !== 'super-admin' ? (user as any)?.branchId || branches[0]?.id : branches[0]?.id);
     if (branches.length > 0 && !feeBranchId) {
-      setFeeBranchId(branches[0].id);
+      setFeeBranchId(defaultBranchId);
     }
     if (branches.length > 0 && !profitTargetBranchId) {
-      setProfitTargetBranchId(branches[0].id);
+      setProfitTargetBranchId(defaultBranchId);
     }
-  }, [branches, feeBranchId, profitTargetBranchId]);
+  }, [branches, feeBranchId, profitTargetBranchId, selectedBranchId, role, user]);
 
   const loadProfitSummary = useCallback(async () => {
     if (!profitTargetBranchId || (role !== 'super-admin' && role !== 'school-admin')) return;
@@ -1396,7 +1403,7 @@ export const Settings = () => {
                     </div>
                   )}
 
-                  {showSubSection('profit-targets') && (
+                  {role === 'super-admin' && showSubSection('profit-targets') && (
                     <div className="space-y-5">
                       <div>
                         <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Branch Profit Target</h4>

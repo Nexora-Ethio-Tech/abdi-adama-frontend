@@ -49,18 +49,18 @@ export const VicePrincipalDashboard = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, absenceRes, plansRes, submissionsRes, voteRes] = await Promise.all([
-        getVPDashboard(),
-        getAbsenceQueue('pending'),
-        getWeeklyPlans('Pending'),
-        getVPGradeSubmissions(),
-        getTeacherOfWeekVotes().catch(() => null),
+      const results = await Promise.allSettled([
+        getVPDashboard().catch((err) => { console.error('Dashboard error:', err); return null; }),
+        getAbsenceQueue('pending').catch((err) => { console.error('Absence queue error:', err); return { data: [] }; }),
+        getWeeklyPlans('Pending').catch((err) => { console.error('Weekly plans error:', err); return { data: [] }; }),
+        getVPGradeSubmissions().catch((err) => { console.error('Grade submissions error:', err); return []; }),
+        getTeacherOfWeekVotes().catch((err) => { console.error('Teacher votes error:', err); return null; }),
       ]);
-      setDashboard(dash);
-      setAbsences(absenceRes.data || []);
-      setPlans(plansRes.data || []);
-      setSubmissions(submissionsRes || []);
-      setTeacherVotes(voteRes);
+      setDashboard(results[0].status === 'fulfilled' ? results[0].value : null);
+      setAbsences(results[1].status === 'fulfilled' ? (results[1].value?.data || []) : []);
+      setPlans(results[2].status === 'fulfilled' ? (results[2].value?.data || []) : []);
+      setSubmissions(results[3].status === 'fulfilled' ? (Array.isArray(results[3].value) ? results[3].value : []) : []);
+      setTeacherVotes(results[4].status === 'fulfilled' ? results[4].value : null);
     } catch (err) {
       console.error('VP Dashboard error:', err);
     } finally {
@@ -142,15 +142,7 @@ export const VicePrincipalDashboard = () => {
       </section>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <a href="#lesson-plans" className="block">
-          <StatCard 
-            icon={FileText} 
-            label="Pending Plans" 
-            value={dashboard?.pendingPlansCount ?? plans.length} 
-            color="bg-indigo-600 shadow-lg shadow-indigo-600/10" 
-          />
-        </a>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <a href="#absence-queue" className="block">
           <StatCard 
             icon={Users} 
@@ -260,7 +252,7 @@ export const VicePrincipalDashboard = () => {
                     <div className="flex-1 min-w-0 pr-4">
                       <p className="font-bold text-slate-800 dark:text-white text-sm truncate">{plan.teacher_name}</p>
                       <p className="text-xs text-slate-500 mt-0.5 truncate">
-                        Week {plan.week_number} · {plan.subject || 'Generic'}
+                        {plan.week_number ? `Week ${plan.week_number} · ` : ''}{plan.course_name || plan.subject || 'Generic'}
                       </p>
                     </div>
                     <button

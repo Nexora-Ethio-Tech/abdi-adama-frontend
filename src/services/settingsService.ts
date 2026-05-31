@@ -80,8 +80,8 @@ const settingsService = {
     return response.data;
   },
 
-  getBranchGradeFees: async (): Promise<BranchGradeFee[]> => {
-    const response = await api.get('/super-admin/branch-grade-fees');
+  getBranchGradeFees: async (params?: { branchId?: string }): Promise<BranchGradeFee[]> => {
+    const response = await api.get('/super-admin/branch-grade-fees', { params });
     return response.data.data;
   },
 
