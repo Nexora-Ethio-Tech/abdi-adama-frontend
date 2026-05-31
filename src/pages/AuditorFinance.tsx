@@ -535,7 +535,7 @@ export const AuditorFinance = () => {
             <button
               type="button"
               onClick={() => handleTabChange('fee-reductions')}
-              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Fee Reductions ({feeReductions.length})
             </button>
@@ -823,7 +823,7 @@ export const AuditorFinance = () => {
                 {paginatedFeeReductions.map((reduction) => {
                   const totalDue = reduction.monthly_fee + reduction.bus_fee + reduction.penalty_fee;
                   return (
-                    <div key={reduction.id} className="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
+                    <div key={reduction.id} className="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 hover:bg-slate-100 dark:hover:bg-slate-900/20 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/15 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform">
                           <Users size={24} />
@@ -835,14 +835,14 @@ export const AuditorFinance = () => {
                               Grade {reduction.grade}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-450 dark:text-slate-400 mt-1 font-medium">{reduction.digital_id} • {reduction.email}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">{reduction.digital_id} • {reduction.email}</p>
                           {reduction.requested_aid_amount != null && reduction.requested_aid_amount > 0 && (
                             <p className="text-xs font-bold text-purple-600 dark:text-purple-400 mt-1">
                               Requested aid: {Number(reduction.requested_aid_amount).toLocaleString()} ETB
                             </p>
                           )}
                           {reduction.fee_notes && (
-                            <p className="text-xs text-slate-600 dark:text-slate-350 mt-1.5 italic bg-slate-55/60 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-100/50 dark:border-slate-800/40">
+                            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 italic bg-slate-100/70 dark:bg-slate-900/30 p-1.5 rounded-lg border border-slate-200/50 dark:border-slate-800/40">
                               "{reduction.fee_notes}"
                             </p>
                           )}
