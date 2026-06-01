@@ -33,7 +33,7 @@ const MultiSelectDropdown = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-left flex justify-between items-center outline-none focus:ring-2 focus:ring-indigo-500"
       >
-        <span className="truncate text-slate-700 dark:text-slate-200">
+        <span className="text-slate-700 dark:text-slate-200 break-words">
           {selectedValues.length === 0
             ? placeholder
             : shortDisplay
@@ -46,7 +46,7 @@ const MultiSelectDropdown = ({
       {isOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20 p-2 space-y-1">
+          <div className="absolute left-0 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-72 overflow-y-auto z-20 p-2 space-y-1">
             {options.map((option) => {
               const isChecked = selectedValues.includes(option);
               return (
@@ -134,13 +134,45 @@ export const Teachers = () => {
       days: [],
       startTime: '07:00',
       endTime: '08:00',
-      useConfiguredRate: false,
+      useConfiguredRate: true,
     },
   });
   const [promoting, setPromoting] = useState(false);
   const [allGrades, setAllGrades] = useState<string[]>([]);
   const [sectionsMap, setSectionsMap] = useState<Record<string, string[]>>({});
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
+
+  const getDefaultPromotionForm = () => ({
+    promotionType: 'home-teacher' as const,
+    subjects: [] as string[],
+    grades: [] as string[],
+    sectionsByGrade: {} as Record<string, string[]>,
+    beforeSchool: {
+      days: [] as string[],
+      startTime: '07:00',
+      endTime: '08:00',
+      useConfiguredRate: true,
+      extraPayAmount: ''
+    }
+  });
+
+  const getPromotionFormFromProfile = (promotion: any) => {
+    if (!promotion) return getDefaultPromotionForm();
+
+    return {
+      promotionType: promotion.promotionType || 'home-teacher',
+      subjects: promotion.subjects || [],
+      grades: promotion.grades || [],
+      sectionsByGrade: promotion.sections || {},
+      beforeSchool: {
+        days: promotion.beforeSchool?.days || [],
+        startTime: promotion.beforeSchool?.startTime || '07:00',
+        endTime: promotion.beforeSchool?.endTime || '08:00',
+        useConfiguredRate: promotion.beforeSchool?.useConfiguredRate ?? true,
+        extraPayAmount: promotion.beforeSchool?.extraPayAmount != null ? String(promotion.beforeSchool.extraPayAmount) : ''
+      }
+    };
+  };
 
   useEffect(() => {
     fetchTeachers();
@@ -188,47 +220,66 @@ export const Teachers = () => {
     }
   };
 
-  const fetchSubjects = async () => {
+  const fetchSubjects = async (branchId?: string) => {
     try {
       const subs = await subjectService.getAllSubjects();
-      setAllSubjects(subs || []);
+      console.log('[DEBUG] Fetched subjects from server:', subs);
+      
+      let filtered = subs || [];
+      if (branchId) {
+        filtered = filtered.filter((s: any) => {
+          const subBranch = s.branch_id || s.branchId;
+          return !subBranch || subBranch === branchId;
+        });
+      }
+
+      // Transform snake_case to camelCase for consistency
+      const transformed = filtered.map((s: any) => ({
+        ...s,
+        gradeLevel: s.grade_level || s.gradeLevel // Handle both formats
+      }));
+      setAllSubjects(transformed);
     } catch (err) {
       console.error('Failed to fetch subjects for promotion UI', err);
     }
   };
 
-  const fetchClasses = async () => {
+  const fetchClasses = async (branchId?: string) => {
     try {
       const resp = await classService.getAllClasses();
-      const classes = resp.data || resp || [];
-      // Expect class.name like 'Grade 10A' or '10A' - try to split
-      const map: Record<string, Set<string>> = {};
+      let classes = resp.data || resp || [];
+      console.log('[DEBUG] Fetched classes from server:', classes);
 
-      // Prepopulate with all Grade 1 through Grade 12
-      for (let i = 1; i <= 12; i++) {
-        map[`Grade ${i}`] = new Set<string>();
+      if (branchId) {
+        classes = classes.filter((c: any) => {
+          const classBranch = c.branch_id || c.branchId;
+          return !classBranch || classBranch === branchId;
+        });
       }
 
+      const map: Record<string, Set<string>> = {};
+
       classes.forEach((c: any) => {
-        const name = c.name || c.className || '';
-        // Extract grade (letters and numbers) and section (last char(s))
-        // If name includes a space, assume format 'Grade 10A' -> gradeKey 'Grade 10'
-        let gradeKey = name;
-        let section = '';
-        const match = name.match(/^(Grade\s+\d+)([A-Z])?$/i);
-        if (match) {
-          gradeKey = match[1];
-          section = (match[2] || '').toUpperCase();
-        } else {
-          // fallback: split trailing letter(s)
-          const m2 = name.match(/^(.*?\d+)([A-Z])$/i);
-          if (m2) {
-            gradeKey = m2[1];
-            section = (m2[2] || '').toUpperCase();
+        const rawGrade = c.grade || c.name || c.className || '';
+        const rawSection = c.section || '';
+        let gradeKey = String(rawGrade).trim();
+        let section = String(rawSection).trim();
+
+        if (!gradeKey) {
+          const name = String(c.name || c.className || '');
+          const match = name.match(/^(Grade\s+\d+)([A-Z0-9])?$/i);
+          if (match) {
+            gradeKey = match[1];
+            section = section || (match[2] || '');
+          } else {
+            const m2 = name.match(/^(.*?\d+)([A-Z0-9])$/i);
+            if (m2) {
+              gradeKey = m2[1];
+              section = section || (m2[2] || '');
+            }
           }
         }
 
-        // Normalize gradeKey (e.g. "9" or "Grade9" to "Grade 9")
         gradeKey = gradeKey.trim();
         const digitMatch = gradeKey.match(/^(\d+)$/);
         if (digitMatch) {
@@ -240,11 +291,11 @@ export const Teachers = () => {
           }
         }
 
+        if (!gradeKey) return;
         if (!map[gradeKey]) map[gradeKey] = new Set<string>();
         if (section) map[gradeKey].add(section);
       });
 
-      // Sort grades numerically: Grade 1, Grade 2, ..., Grade 12
       const grades = Object.keys(map).sort((a, b) => {
         const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
         const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
@@ -252,10 +303,10 @@ export const Teachers = () => {
       });
 
       const smap: Record<string, string[]> = {};
-      grades.forEach(g => { smap[g] = Array.from(map[g]); });
+      grades.forEach(g => { smap[g] = Array.from(map[g]).sort(); });
+      console.log('[DEBUG] Sections map:', smap);
       setAllGrades(grades);
       setSectionsMap(smap);
-      setPromotionForm(prev => ({ ...prev, sectionsByGrade: {} }));
     } catch (err) {
       console.error('Failed to fetch classes for promotion UI', err);
     }
@@ -269,23 +320,35 @@ export const Teachers = () => {
       // Use different endpoint based on role
       const response = isVP ? await getVPTeachers() : await getBranchTeachers();
 
-      const teachers = (response.data || []).map((teacher: any) => ({
-        id: teacher.id,
-        name: teacher.name,
-        email: teacher.email,
-        digitalId: teacher.digital_id,
-        status: teacher.status,
-        userId: teacher.user_id,
-        branchId: teacher.branch_id,
-        createdAt: teacher.created_at,
-        staffProfile: teacher.staff_profile,
-        todayAttendanceStatus: teacher.today_attendance_status,
-        todayAttendanceCount: Number(teacher.today_attendance_count || 0),
-        // VP-specific fields
-        classesAssigned: teacher.classes_assigned || '0',
-        plansSubmitted: teacher.plans_submitted || '0',
-        plansPending: teacher.plans_pending || '0'
-      }));
+      const teachers = (response.data || []).map((teacher: any) => {
+        const rawProfile = teacher.staff_profile;
+        let parsedProfile = rawProfile;
+        if (typeof rawProfile === 'string' && rawProfile.length > 0) {
+          try {
+            parsedProfile = JSON.parse(rawProfile);
+          } catch {
+            parsedProfile = rawProfile;
+          }
+        }
+
+        return {
+          id: teacher.id,
+          name: teacher.name,
+          email: teacher.email,
+          digitalId: teacher.digital_id,
+          status: teacher.status,
+          userId: teacher.user_id,
+          branchId: teacher.branch_id,
+          createdAt: teacher.created_at,
+          staffProfile: parsedProfile,
+          todayAttendanceStatus: teacher.today_attendance_status,
+          todayAttendanceCount: Number(teacher.today_attendance_count || 0),
+          // VP-specific fields
+          classesAssigned: teacher.classes_assigned || '0',
+          plansSubmitted: teacher.plans_submitted || '0',
+          plansPending: teacher.plans_pending || '0'
+        };
+      });
       setTeachers(teachers);
     } catch (err: any) {
       console.error('Failed to fetch teachers:', err);
@@ -574,9 +637,19 @@ export const Teachers = () => {
                     <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
                     <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' : teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                        {teacher.status}
-                      </span>
+                      {isAdmin && teacher.status !== 'Pending' ? (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmAction({ show: true, action: teacher.status === 'Approved' ? 'revoke' : 'approve', teacher })}
+                          className={`px-2 py-1 rounded text-xs font-bold uppercase transition-colors ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200' : 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'}`}
+                        >
+                          {teacher.status}
+                        </button>
+                      ) : (
+                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${teacher.status === 'Approved' ? 'bg-green-100 text-green-700' : teacher.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                          {teacher.status}
+                        </span>
+                      )}
                     </td>
                     {isVP && (
                       <>
@@ -614,31 +687,19 @@ export const Teachers = () => {
                               <CheckCircle size={14} />
                               Approve
                             </button>
-                          ) : teacher.status === 'Approved' ? (
-                            <button
-                              onClick={() => setConfirmAction({ show: true, action: 'revoke', teacher })}
-                              className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                            >
-                              <XCircle size={14} />
-                              Revoke
-                            </button>
                           ) : null}
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               setPromotionTarget(teacher);
+                              setPromotionForm(getPromotionFormFromProfile(teacher.staffProfile?.promotion));
+                              await fetchSubjects(teacher.branchId);
+                              await fetchClasses(teacher.branchId);
                               setShowPromoteModal(true);
-                              setPromotionForm({
-                                promotionType: 'home-teacher',
-                                subjects: [],
-                                grades: [],
-                                sectionsByGrade: {},
-                                beforeSchool: { days: [], startTime: '07:00', endTime: '08:00', useConfiguredRate: true }
-                              });
                             }}
-                            className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
-                            title="Promote"
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${teacher.staffProfile?.promotion ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                            title={teacher.staffProfile?.promotion ? 'Edit promotion' : 'Promote'}
                           >
-                            Promote
+                            {teacher.staffProfile?.promotion ? 'Promoted' : 'Promote'}
                           </button>
                           <button
                             onClick={() => setConfirmAction({ show: true, action: 'delete', teacher })}
@@ -1002,8 +1063,8 @@ export const Teachers = () => {
       {/* Promote Modal */}
       {showPromoteModal && promotionTarget && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center flex-shrink-0">
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Promote {promotionTarget.name}</h3>
                 <p className="text-sm text-slate-500">Choose the new responsibility for this teacher</p>
@@ -1013,7 +1074,7 @@ export const Teachers = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Promotion Type</label>
                 <select
@@ -1283,7 +1344,7 @@ export const Teachers = () => {
                   className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50"
                   disabled={promoting}
                 >
-                  {promoting ? 'Promoting...' : 'Promote Teacher'}
+                  {promoting ? 'Promoting...' : promotionTarget?.staffProfile?.promotion ? 'Save Promotion' : 'Promote Teacher'}
                 </button>
               </div>
             </div>
