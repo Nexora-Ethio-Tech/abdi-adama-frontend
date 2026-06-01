@@ -7,6 +7,7 @@ import BranchesPage from "./components/BranchesPage";
 import Navbar from "./components/Navbar";
 import { LanguageProvider } from "./context/LanguageContext";
 import Footer from "./components/Footer";
+import { Chatbot } from '../../components/Chatbot';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -32,6 +33,7 @@ export default function LandingPage() {
           <Route path="/branches" element={<BranchesPage />} />
         </Routes>
         <Footer />
+        <Chatbot />
       </div>
     </LanguageProvider>
   );
