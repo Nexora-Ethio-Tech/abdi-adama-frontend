@@ -725,7 +725,7 @@ export const Teachers = () => {
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                   <Trophy className="text-yellow-500" size={20} /> Semester Leaderboard
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating × 100) + (Weekly Plan Rate × 10)</p>
+                <p className="text-xs text-slate-500 mt-1">Points = (Student Votes) + (VP Rating × 100) + (Weekly Plan Rating Points)</p>
               </div>
               <button
                 type="button"
