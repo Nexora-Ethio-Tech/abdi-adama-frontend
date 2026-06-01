@@ -170,163 +170,67 @@ export const StudentPortal = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="bg-orange-100 p-3 rounded-lg text-orange-600 w-fit mb-4">
+            <div className="bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/20 text-white">
+              <div className="bg-blue-600 p-3 rounded-2xl text-white w-fit mb-4">
                 <BookOpen size={24} />
               </div>
-              <h3 className="text-slate-500 text-sm font-medium">Active Courses</h3>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{dashboard?.stats.totalCourses ?? 0}</p>
+              <h3 className="text-slate-300 text-sm font-medium">Active Courses</h3>
+              <p className="text-3xl font-black text-white mt-2">{dashboard?.stats.totalCourses ?? 0}</p>
             </div>
-            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="bg-emerald-100 p-3 rounded-lg text-emerald-600 w-fit mb-4">
+            <div className="bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/20 text-white">
+              <div className="bg-emerald-500 p-3 rounded-2xl text-white w-fit mb-4">
                 <Clock size={24} />
               </div>
-              <h3 className="text-slate-500 text-sm font-medium">Attendance Rate</h3>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{attendanceDisplay}</p>
+              <h3 className="text-slate-300 text-sm font-medium">Attendance Rate</h3>
+              <p className="text-3xl font-black text-white mt-2">{attendanceDisplay}</p>
             </div>
-            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-              <div className="bg-blue-100 p-3 rounded-lg text-blue-600 w-fit mb-4">
+            <div className="bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/20 text-white">
+              <div className="bg-blue-500 p-3 rounded-2xl text-white w-fit mb-4">
                 <Award size={24} />
               </div>
-              <h3 className="text-slate-500 text-sm font-medium">Average Grade</h3>
-              <p className="text-2xl font-bold text-slate-800 mt-1">{averageGradeDisplay}</p>
+              <h3 className="text-slate-300 text-sm font-medium">Average Grade</h3>
+              <p className="text-3xl font-black text-white mt-2">{averageGradeDisplay}</p>
               {dashboard?.stats.currentSemester === 2 && (
-                <p className="text-xs text-slate-400 mt-1">First semester average</p>
+                <p className="text-xs text-slate-400 mt-2">First semester average</p>
               )}
             </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-800 mb-6">My Schedule</h3>
-            {weeklySchedule.length === 0 ? (
-              <p className="text-sm text-slate-500">No schedule published for your class yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px]">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">Time</th>
-                      {WEEK_DAYS.map((day) => (
-                        <th key={day} className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          {day}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {timeSlots.map((timeSlot) => (
-                      <tr key={timeSlot}>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-slate-800">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-400" />
-                            {timeSlot}
-                          </div>
-                        </td>
-                        {WEEK_DAYS.map((day) => {
-                          const session = getScheduleForDay(day, weeklySchedule).find(
-                            (s) => s.timeSlot === timeSlot
-                          );
-                          return (
-                            <td key={day} className="px-4 py-4 align-top">
-                              {session ? (
-                                <div className="space-y-1">
-                                  <p className="text-sm font-semibold text-slate-900">{session.subject}</p>
-                                  <p className="text-xs text-slate-600 flex items-center gap-1">
-                                    <User className="w-3 h-3" />
-                                    {session.teacher}
-                                  </p>
-                                  {session.room && (
-                                    <p className="text-xs text-slate-500 flex items-center gap-1">
-                                      <MapPin className="w-3 h-3" />
-                                      {session.room}
-                                    </p>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-slate-400">—</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
 
           {(schoolAnnouncements.length > 0 || logisticsAnnouncements.length > 0) && (
-            <div className={`grid grid-cols-1 gap-8 ${schoolAnnouncements.length > 0 && logisticsAnnouncements.length > 0 ? 'lg:grid-cols-2' : ''}`}>
-              {schoolAnnouncements.length > 0 && (
-                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                    <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
-                      <Megaphone size={20} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-800">School Announcements</h3>
-                      <p className="text-xs text-slate-500">Official updates from the administration</p>
-                    </div>
-                  </div>
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/20 text-white">
+                <div>
+                  <h3 className="text-lg font-bold">Announcements and Notices</h3>
+                  <p className="text-sm text-slate-300 mt-1">Latest updates from your assigned driver and the School Admin.</p>
+                </div>
+                <div className="text-sm text-slate-400">{schoolAnnouncements.length + logisticsAnnouncements.length} notices</div>
+              </div>
 
-                  <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                    {schoolAnnouncements.map((notice) => (
-                      <div key={notice.id} className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                            notice.priority === 'High' ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'
-                          }`}>
-                            {notice.priority}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {[...schoolAnnouncements.map((notice) => ({ ...notice, source: 'School Admin' })),
+                  ...logisticsAnnouncements.map((notice) => ({ ...notice, source: 'Driver' }))].map((notice) => (
+                  <div key={notice.id} className="bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/30 text-white">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-slate-800/80 text-slate-200">
+                            {notice.source}
                           </span>
-                          <span className="text-[10px] text-slate-400 font-bold">
-                            {new Date(notice.timestamp).toLocaleDateString()}
+                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-slate-900/80">
+                            {notice.category || 'Notice'}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 mb-1">{notice.title}</h4>
-                        <p className="text-xs text-slate-600 leading-relaxed">{notice.content}</p>
+                        <h4 className="text-base font-bold text-white">{notice.title}</h4>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {logisticsAnnouncements.length > 0 && (
-                <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-6">
-                  <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                    <div className="bg-indigo-100 p-2.5 rounded-lg text-indigo-600">
-                      <Bell size={20} />
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(notice.timestamp).toLocaleDateString()}</span>
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-800">Logistics & Driver Logs</h3>
-                      <p className="text-xs text-slate-500">Real-time school bus and transit logs</p>
-                    </div>
+                    <p className="text-sm leading-relaxed text-slate-300 mb-4">{notice.content}</p>
+                    {notice.source === 'Driver' && (notice as any).driverName ? (
+                      <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 border-t border-slate-800 pt-3">Driver: {(notice as any).driverName}</div>
+                    ) : null}
                   </div>
-
-                  <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
-                    {logisticsAnnouncements.map((notice) => (
-                      <div key={notice.id} className="p-4 rounded-xl bg-indigo-50/30 border border-indigo-100/40 hover:border-indigo-100 transition-colors">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                            Logistics
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-bold">
-                            {new Date(notice.timestamp).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <h4 className="text-sm font-bold text-slate-900 mb-1">{notice.title}</h4>
-                        <p className="text-xs text-slate-600 leading-relaxed mb-3">{notice.content}</p>
-                        {notice.driverName && (
-                          <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-600 uppercase tracking-wider pt-2 border-t border-indigo-100/30">
-                            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                            Driver: {notice.driverName}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
         </>

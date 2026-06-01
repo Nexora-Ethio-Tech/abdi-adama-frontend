@@ -81,9 +81,9 @@ export const StudentCourses = () => {
       if (coursesData.length > 0) {
         if (preserveSelection && selectedCourse) {
           const stillThere = coursesData.find((c: StudentCourse) => c.id === selectedCourse.id);
-          setSelectedCourse(stillThere || coursesData[0]);
+          setSelectedCourse(stillThere || null);
         } else {
-          setSelectedCourse(coursesData[0]);
+          setSelectedCourse(null);
         }
       } else {
         setSelectedCourse(null);
@@ -274,7 +274,7 @@ export const StudentCourses = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                       type="text"
-                      placeholder="Type course name or code..."
+                      placeholder="Select Course"
                       value={courseSearchQuery}
                       onChange={(e) => {
                         setCourseSearchQuery(e.target.value);
@@ -340,135 +340,78 @@ export const StudentCourses = () => {
                       </div>
                       <div className="flex-1">
                         <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
-                        <div className="flex flex-wrap items-center gap-4 mt-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
-                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
-                            <User size={14} />
-                            Instructor: {typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}
-                          </div>
-                          {(selectedCourse as any).class_name && (
-                            <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                              Class: {(selectedCourse as any).class_name}{(selectedCourse as any).section_name ? ` — Section ${(selectedCourse as any).section_name}` : ''}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Course Progress - Compact Version on Right */}
-                    <div className="shrink-0 w-48">
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 rounded-xl p-4 border border-blue-100 dark:border-slate-600">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                            <BookOpen size={16} />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-slate-900 dark:text-white">Course Progress</h4>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400">Your score</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-end">
-                            <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
-                              {getSubmittedTotal(selectedCourse) !== null ? Math.round(getSubmittedTotal(selectedCourse)!) : '--'}
-                              {getSubmittedTotal(selectedCourse) !== null ? '%' : ''}
-                            </span>
-                          </div>
-
-                          <div className="w-full h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
-                                ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
-                                : getStatus(selectedCourse) === 'FAILED'
-                                  ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
-                                }`}
-                              style={{ width: `${getSubmittedTotal(selectedCourse) !== null ? Math.min(100, Math.max(0, getSubmittedTotal(selectedCourse)!)) : 0}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
+                        <div className="flex flex-col gap-3 mt-4">
+                          <div className="text-sm text-slate-500 dark:text-slate-400 font-bold">Course Code: <span className="text-slate-900 dark:text-white">{selectedCourse.code}</span></div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400 font-bold">Instructor: <span className="text-slate-900 dark:text-white">{typeof selectedCourse.teacher === 'string' ? selectedCourse.teacher : (selectedCourse.teacher as any)?.name || 'N/A'}</span></div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Grade Detail Table */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
-                  <div className="p-8">
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
+                <div className="bg-slate-950/95 border border-slate-800 rounded-[2rem] shadow-xl overflow-hidden">
+                  <div className="p-6">
                     {weightSumError && (
-                      <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-lg mb-4">
+                      <div className="flex items-center gap-2 bg-amber-50/10 border border-amber-200/20 text-amber-200 px-4 py-3 rounded-xl mb-4">
                         <AlertCircle size={18} />
                         <span>Grading weights total {gradingWeightSum}%, which does not equal 100%.</span>
                       </div>
                     )}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
-                          <tr>
-                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">Assessment Component</th>
-                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Weight</th>
-                            <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Your Mark</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {gradingMethods.length > 0 ? (
-                            gradingMethods.map((method) => {
-                              const gradeVal = selectedCourse.grades?.[method.id];
-                              return (
-                                <tr key={method.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">{method.label}</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">{method.maxWeight}%</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
+                    {gradingMethods.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse text-sm text-slate-200">
+                          <tbody>
+                            <tr className="border-b border-slate-800">
+                              <th className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Assessment Component</th>
+                              {gradingMethods.map((method) => (
+                                <th key={method.id} className="min-w-[140px] px-5 py-4 text-left font-black uppercase tracking-widest text-slate-300">
+                                  {method.label}
+                                </th>
+                              ))}
+                            </tr>
+                            <tr>
+                              <td className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Student Score</td>
+                              {gradingMethods.map((method) => {
+                                const gradeVal = selectedCourse.grades?.[method.id];
+                                return (
+                                  <td key={method.id} className="px-5 py-4 text-left font-bold text-slate-100">
                                     {gradeVal !== null && gradeVal !== undefined ? Number(gradeVal).toFixed(1) : '--'}
                                   </td>
-                                </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan={3} className="px-6 py-8 text-center text-slate-500 dark:text-slate-400">
-                                No grading components configured for this grade level.
-                              </td>
+                                );
+                              })}
                             </tr>
-                          )}
-                          <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
-                            <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>
-                            <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400">100%</td>
-                            <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 text-base">
-                              {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-8 text-center text-slate-400">
+                        Select a course to load grading components from the system.
+                      </div>
+                    )}
 
-                    {/* Status and Progress Bar Container */}
-                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
+                    <div className="mt-8 pt-6 border-t border-slate-800 space-y-6">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Standing</p>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Course Status:</span>
+                            <span className="text-sm font-bold text-slate-200">Course Status:</span>
                             {(() => {
                               const status = getStatus(selectedCourse);
                               if (status === 'PASSED') {
                                 return (
-                                  <span className="px-3.5 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                  <span className="px-3.5 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-full text-xs font-black tracking-widest uppercase">
                                     PASSED
                                   </span>
                                 );
                               } else if (status === 'FAILED') {
                                 return (
-                                  <span className="px-3.5 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                  <span className="px-3.5 py-1 bg-rose-500/10 text-rose-300 border border-rose-500/20 rounded-full text-xs font-black tracking-widest uppercase">
                                     FAILED
                                   </span>
                                 );
                               } else {
                                 return (
-                                  <span className="px-3.5 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50 rounded-full text-xs font-black tracking-widest uppercase">
+                                  <span className="px-3.5 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-full text-xs font-black tracking-widest uppercase">
                                     PENDING
                                   </span>
                                 );
@@ -478,19 +421,19 @@ export const StudentCourses = () => {
                         </div>
 
                         <div className="text-right">
-                          <span className="text-2xl font-black text-slate-800 dark:text-white">
+                          <span className="text-3xl font-black text-white">
                             {getSubmittedTotal(selectedCourse) !== null ? Number(getSubmittedTotal(selectedCourse)).toFixed(1) : '--'}
                           </span>
                           <span className="text-sm text-slate-400 font-bold"> / 100</span>
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
                           <span>Total Score Progress</span>
                           <span>{getSubmittedTotal(selectedCourse) !== null ? Math.round(getSubmittedTotal(selectedCourse)!) + '%' : 'Pending'}</span>
                         </div>
-                        <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
                               ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
@@ -508,7 +451,11 @@ export const StudentCourses = () => {
               </div>
             ) : (
               <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
-                <p className="font-bold text-lg">No courses found for the selected Academic Year and Semester.</p>
+                <p className="font-bold text-lg">
+                  {courses.length > 0
+                    ? 'Please select a course to view the grade details.'
+                    : 'No courses found for the selected Academic Year and Semester.'}
+                </p>
               </div>
             )}
           </div>

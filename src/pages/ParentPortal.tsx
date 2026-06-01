@@ -642,17 +642,17 @@ export const ParentPortal = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-16">
       {/* Premium Family Dashboard Header Banner (Second Screenshot Design) */}
-      <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden border border-white/5">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[10px] font-black uppercase tracking-widest">
+      <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-4 md:p-6 text-white shadow-2xl relative overflow-hidden border border-white/5">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[9px] font-black uppercase tracking-widest">
               FAMILY DASHBOARD
             </div>
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-none">
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-none">
               Hello, {parentName}
             </h2>
-            <p className="text-sm md:text-base max-w-lg leading-relaxed font-medium">
-              Your central hub for tracking educational milestones, health updates, and school announcements.
+            <p className="text-xs md:text-sm max-w-lg leading-relaxed font-medium">
+              Central hub for tracking educational milestones and school announcements.
             </p>
           </div>
         </div>
@@ -662,21 +662,21 @@ export const ParentPortal = () => {
 
       {/* ==================== 1. DASHBOARD TAB ==================== */}
       {activePortalTab === 'dashboard' && (
-        <div className="space-y-12 animate-in fade-in duration-500">
+        <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
 
           {/* Children Grid */}
-          <div className="space-y-6">
+          <div className="space-y-3 md:space-y-4">
             <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
-                <Award className="text-blue-600 dark:text-blue-400" size={24} />
-                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">My Children</h3>
+                <Award className="text-blue-600 dark:text-blue-400" size={20} />
+                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">My Children</h3>
               </div>
-              <span className="bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-black text-slate-500 uppercase tracking-widest">
+              <span className="bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg text-xs font-black text-slate-500 uppercase tracking-widest">
                 {children.length} Enrolled
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {children.map((child) => {
                 const isSelected = selectedChild?.id === child.id;
                 return (
@@ -686,11 +686,12 @@ export const ParentPortal = () => {
                   className="group relative cursor-pointer"
                 >
                   <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg transition duration-500 ${isSelected ? 'opacity-20' : 'opacity-0 group-hover:opacity-10'}`} />
-                  <div className={`relative bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1.5 transition-all duration-500 ${
+                  <div className={`relative bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-500 ${(
                     isSelected
                       ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/30'
                       : 'border-slate-100 dark:border-slate-800'
-                  }`}>
+                  )}
+                  `}>
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-5">
                         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-all duration-500 ${
@@ -964,435 +965,153 @@ export const ParentPortal = () => {
 
       {/* ==================== 2. GRADES & COURSES TAB ==================== */}
       {activePortalTab === 'grades' && (
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Grades & Courses</h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track live grades and course details for the current term.</p>
-            </div>
-          </div>
-
-          {/* Child Picker (Scope to Parent Role) */}
-          {renderChildPicker()}
-
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {selectedChild ? (
-              // ================= CURRENT TERM VIEW =================
-              <div className="space-y-8">
-                {/* First Div: Controls Row */}
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Year Selector */}
-                    <div>
-                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Academic Year</label>
-                      <select
-                        title="Academic Year"
-                        value={selectedYear}
-                        onChange={(e) => {
-                          setSelectedYear(e.target.value);
-                          setSelectedCourse(null);
-                        }}
-                       className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
-                      >
-                        {academicYears.map((year) => (
-                          <option key={year} value={year}>
-                            {gregorianToECYear(year)} E.C. ({year})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Semester Selector */}
-                    <div>
-                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Semester</label>
-                      <select
-                        title="Semester"
-                        value={selectedSemester}
-                        onChange={(e) => {
-                          setSelectedSemester(e.target.value);
-                          setSelectedCourse(null);
-                        }}
-                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
-                      >
-                        <option>First Semester</option>
-                        <option>Second Semester</option>
-                      </select>
-                    </div>
-
-                    {/* Searchable Course Dropdown (Combobox) */}
-                    <div className="relative">
-                      <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-3">Search & Select Course</label>
-                      <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                          type="text"
-                          placeholder="Type course name or code..."
-                          value={courseSearchQuery}
-                          onChange={(e) => {
-                            setCourseSearchQuery(e.target.value);
-                            setDropdownOpen(true);
-                          }}
-                          onFocus={() => {
-                            setDropdownOpen(true);
-                            if (selectedCourse && courseSearchQuery === selectedCourse.name) {
-                              setCourseSearchQuery('');
-                            }
-                          }}
-                          onBlur={() => {
-                            setTimeout(() => {
-                              setDropdownOpen(false);
-                              if (selectedCourse) {
-                                setCourseSearchQuery(selectedCourse.name);
-                              }
-                            }, 250);
-                          }}
-                          className="w-full pl-12 pr-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white"
-                        />
-                      </div>
-
-                      {dropdownOpen && (
-                        <div className="absolute z-50 left-0 right-0 mt-2 max-h-[250px] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-2 space-y-1">
-                          {filteredCourses.length > 0 ? (
-                            filteredCourses.map((c) => (
-                              <button
-                                key={c.id || c.name}
-                                type="button"
-                                onMouseDown={() => {
-                                  setSelectedCourse(c);
-                                  setCourseSearchQuery(c.name);
-                                  setDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                                  selectedCourse?.name === c.name
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                                }`}
-                              >
-                                <p className="text-sm font-bold">{c.name}</p>
-                                <p className="text-xs opacity-75">{c.code}</p>
-                              </button>
-                            ))
-                          ) : (
-                            <p className="text-xs text-slate-500 text-center py-4">No courses found</p>
-                          )}
-                        </div>
-                      )}
+            <div className="space-y-8">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 md:p-6 shadow-lg">
+                {children.length > 1 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Select Student:</span>
+                      {children.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => selectChild(c)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all ${selectedChild?.id === c.id ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                        >
+                          {c.fullName}
+                        </button>
+                      ))}
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Sub-Header Row: Communication Book Toggle (Exclusive to Parent role) */}
-                <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-md">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <h3 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">Teacher Observations</h3>
-                    <p className="text-xs text-slate-400 font-bold uppercase mt-0.5">Click to view direct classroom ratings</p>
+                    <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-2">Academic Year</label>
+                    <select
+                      title="Academic Year"
+                      value={selectedYear}
+                      onChange={(e) => { setSelectedYear(e.target.value); setSelectedCourse(null); }}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none"
+                    >
+                      {academicYears.map((year) => (
+                        <option key={year} value={year}>{gregorianToECYear(year)} E.C. ({year})</option>
+                      ))}
+                    </select>
                   </div>
-                  <button
-                    onClick={() => setShowCommBook(!showCommBook)}
-                    className={`px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest transition-all border flex items-center gap-2 ${
-                      showCommBook
-                        ? 'bg-amber-500 border-amber-500 text-white shadow-md'
-                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-650 dark:text-slate-400 hover:border-amber-400'
-                    }`}
-                  >
-                    <ClipboardList size={16} />
-                    {showCommBook ? 'Close Communication Book' : 'Open Communication Book'}
-                  </button>
-                </div>
 
-                {/* RENDER COMMUNICATION BOOK */}
-                {showCommBook ? (
-                  <div className="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg space-y-8 animate-in slide-in-from-top-4 duration-300">
-                    {commLoading ? (
-                      <div className="flex justify-center items-center h-48">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500"></div>
-                      </div>
-                    ) : commLogs.length === 0 ? (
-                      <div className="p-8 text-center border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl space-y-2">
-                        <ClipboardList className="text-slate-400 mx-auto" size={28} />
-                        <p className="text-slate-500 font-bold text-sm">No weekly reviews published yet.</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Teachers publish new observations at the end of each school week.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-8">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <h4 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                              <Star className="text-amber-500 animate-pulse" size={20} />
-                              Weekly Progress Book
-                            </h4>
-                            <p className="text-xs text-slate-500 mt-1">Review ratings provided by your child's teachers.</p>
-                          </div>
-                          <div className="flex items-center gap-4 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div>
+                    <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-2">Semester</label>
+                    <select
+                      title="Semester"
+                      value={selectedSemester}
+                      onChange={(e) => { setSelectedSemester(e.target.value); setSelectedCourse(null); }}
+                      className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none"
+                    >
+                      <option>First Semester</option>
+                      <option>Second Semester</option>
+                    </select>
+                  </div>
+
+                  <div className="relative">
+                    <label className="block text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest mb-2">Course</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        type="text"
+                        placeholder="Select Course"
+                        value={courseSearchQuery}
+                        onChange={(e) => { setCourseSearchQuery(e.target.value); setDropdownOpen(true); }}
+                        onFocus={() => setDropdownOpen(true)}
+                        onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none"
+                      />
+                    </div>
+
+                    {dropdownOpen && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 max-h-[220px] overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-1.5">
+                        {filteredCourses.length > 0 ? (
+                          filteredCourses.map((c) => (
                             <button
-                              title="Previous review"
-                              disabled={currentLogIndex === 0}
-                              onClick={() => setCurrentLogIndex(prev => prev - 1)}
-                              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
+                              key={c.id || c.name}
+                              type="button"
+                              onMouseDown={() => { setSelectedCourse(c); setCourseSearchQuery(c.name); setDropdownOpen(false); }}
+                              className={`w-full text-left px-4 py-3 rounded-xl ${selectedCourse?.name === c.name ? 'bg-blue-600 text-white' : 'text-slate-700 dark:text-slate-200'}`}
                             >
-                              <ChevronRight className="rotate-180" size={18} />
+                              <div className="text-sm font-bold">{c.name}</div>
+                              <div className="text-xs opacity-75">{c.code}</div>
                             </button>
-                            <div className="flex flex-col items-center min-w-[100px]">
-                              <span className="text-[8px] uppercase font-black text-slate-400">Week Ending</span>
-                              <span className="text-xs font-black text-blue-600 dark:text-blue-400">{currentLog.week_ending_formatted || currentLog.week_ending}</span>
-                            </div>
-                            <button
-                              title="Next review"
-                              disabled={currentLogIndex === commLogs.length - 1}
-                              onClick={() => setCurrentLogIndex(prev => prev + 1)}
-                              className="p-1 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all disabled:opacity-30"
-                            >
-                              <ChevronRight size={18} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                          {commFields.map(field => {
-                            const rating = getFieldRating(currentLog, field.id);
-                            return (
-                              <div key={field.id} className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-100/80 dark:border-slate-800 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all duration-250">
-                                <div className="flex gap-1 mb-3">
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <Star
-                                      key={star}
-                                      size={18}
-                                      className={star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-700"}
-                                    />
-                                  ))}
-                                </div>
-                                <h5 className="font-bold text-slate-800 dark:text-slate-100 text-xs mb-1">{field.label}</h5>
-                                <p className="text-[9px] text-slate-500 leading-tight mb-3 min-h-[24px]">{field.description}</p>
-                                <span className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${getRatingColor(rating)} text-white`}>
-                                  {ratingLabels[rating] || 'Unrated'}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <div className="p-6 bg-amber-500/10 rounded-2xl border border-amber-500/20">
-                          <h5 className="text-xs font-black uppercase text-amber-600 mb-2 flex items-center gap-2 tracking-widest">
-                            <ClipboardList size={14} />
-                            Teacher Observation Notes
-                          </h5>
-                          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed italic font-medium">
-                            "${currentLog.teacher_note || "Student has shown consistent engagement this week. Maintain current focus on home assignments for continued progress."}"
-                          </p>
-                          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mt-4">
-                            Submitted by: {currentLog.teacher_name || 'Class Room Teacher'}
-                          </p>
-                        </div>
+                          ))
+                        ) : (
+                          <div className="text-xs text-slate-500 text-center py-4">No courses found</div>
+                        )}
                       </div>
                     )}
                   </div>
-                ) : (
-                  // COURSE PROGRESS AND GRADES DETAILS
-                  gradesLoading ? (
-                    <div className="flex justify-center items-center h-64">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : gradesError ? (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
-                      {gradesError}
-                    </div>
-                  ) : selectedCourse ? (
-                    <div className="space-y-6 animate-in fade-in duration-500">
-                      {/* Course Metadata Card with Course Progress on Right */}
-                      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-8 shadow-lg">
-                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-                          <div className="flex items-center gap-5 flex-1">
-                            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shrink-0">
-                              <BookOpen size={32} />
-                            </div>
-                            <div className="flex-1">
-                              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedCourse.name}</h2>
-                              <div className="flex flex-wrap items-center gap-4 mt-3">
-                                <span className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full">{selectedCourse.code}</span>
-                                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-bold">
-                                  <User size={14} />
-                                  Instructor: {selectedCourse.teacher || 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Course Progress - Compact Version on Right */}
-                          <div className="shrink-0 w-full md:w-48 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-850 dark:to-slate-800 rounded-xl p-4 border border-blue-100 dark:border-slate-700">
-                            <div className="flex items-center gap-2 mb-3">
-                              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
-                                <BookOpen size={16} />
-                              </div>
-                              <div>
-                                <h4 className="text-xs font-black text-slate-900 dark:text-white">Course Progress</h4>
-                                <p className="text-[10px] text-slate-500 dark:text-slate-400">Student score</p>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-end">
-                                <span className="text-3xl font-black text-blue-600 dark:text-blue-400">
-                                  {selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) : 0}%
-                                </span>
-                              </div>
-
-                              <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                <svg viewBox="0 0 100 10" className="w-full h-full">
-                                  <rect
-                                    x="0"
-                                    y="0"
-                                    width={getClampedPercentage(selectedCourse.total)}
-                                    height="10"
-                                    rx="5"
-                                    ry="5"
-                                    fill="currentColor"
-                                    className={`transition-all duration-1000 ${getProgressBarClass(selectedCourse)}`}
-                                  />
-                                </svg>
-                              </div>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 text-center">Based on course completion</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Grade Detail Table */}
-                      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
-                        <div className="p-8">
-                          <h3 className="text-lg font-black text-slate-900 dark:text-white mb-6">Grade Details</h3>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                              <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
-                                <tr>
-                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">Assessment Component</th>
-                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-center">Weight</th>
-                                  <th className="px-6 py-4 font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right">Student Mark</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 1</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                    {selectedCourse.quiz_10 !== null && selectedCourse.quiz_10 !== undefined ? Number(selectedCourse.quiz_10).toFixed(1) : '--'}
-                                  </td>
-                                </tr>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Test</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">10%</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                    {selectedCourse.assignment_10 !== null && selectedCourse.assignment_10 !== undefined ? Number(selectedCourse.assignment_10).toFixed(1) : '--'}
-                                  </td>
-                                </tr>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Assignment</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                                </tr>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Midterm Exam</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">30%</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                    {selectedCourse.mid_30 !== null && selectedCourse.mid_30 !== undefined ? Number(selectedCourse.mid_30).toFixed(1) : '--'}
-                                  </td>
-                                </tr>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Quiz 2</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">--</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">--</td>
-                                </tr>
-                                <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                                  <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-200">Final Exam</td>
-                                  <td className="px-6 py-4 text-center text-slate-500 dark:text-slate-400 font-medium">50%</td>
-                                  <td className="px-6 py-4 text-right font-black text-slate-800 dark:text-white">
-                                    {selectedCourse.final_50 !== null && selectedCourse.final_50 !== undefined ? Number(selectedCourse.final_50).toFixed(1) : '--'}
-                                  </td>
-                                </tr>
-                                <tr className="bg-slate-50/30 dark:bg-slate-800/20 font-black">
-                                  <td className="px-6 py-4 text-blue-600 dark:text-blue-400">Total Score</td>
-                                  <td className="px-6 py-4 text-center text-blue-600 dark:text-blue-400">100%</td>
-                                  <td className="px-6 py-4 text-right text-emerald-600 dark:text-emerald-400 text-base">
-                                    {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {/* Status and Progress Bar Container */}
-                          <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div className="space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Standing</p>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Course Status:</span>
-                                  {(() => {
-                                    const status = getStatus(selectedCourse);
-                                    if (status === 'PASSED') {
-                                      return (
-                                        <span className="px-3.5 py-1 bg-emerald-50 dark:bg-emerald-955/40 text-emerald-600 border border-emerald-200 dark:border-emerald-800 rounded-full text-xs font-black tracking-widest uppercase">
-                                          PASSED
-                                        </span>
-                                      );
-                                    } else if (status === 'FAILED') {
-                                      return (
-                                        <span className="px-3.5 py-1 bg-rose-50 dark:bg-rose-955/40 text-rose-600 border border-rose-200 dark:border-rose-800 rounded-full text-xs font-black tracking-widest uppercase">
-                                          FAILED
-                                        </span>
-                                      );
-                                    } else {
-                                      return (
-                                        <span className="px-3.5 py-1 bg-amber-50 dark:bg-amber-955/40 text-amber-600 border border-amber-200 dark:border-amber-800 rounded-full text-xs font-black tracking-widest uppercase">
-                                          PENDING
-                                        </span>
-                                      );
-                                    }
-                                  })()}
-                                </div>
-                              </div>
-
-                              <div className="text-right">
-                                <span className="text-2xl font-black text-slate-800 dark:text-white">
-                                  {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
-                                </span>
-                                <span className="text-sm text-slate-400 font-bold"> / 100</span>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-400">
-                                <span>Total Score Progress</span>
-                                <span>{selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.round(Number(selectedCourse.total)) + '%' : '0%'}</span>
-                              </div>
-                              <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                <svg viewBox="0 0 100 10" className="w-full h-full">
-                                  <rect
-                                    x="0"
-                                    y="0"
-                                    width={getClampedPercentage(selectedCourse.total)}
-                                    height="10"
-                                    rx="5"
-                                    ry="5"
-                                    fill="currentColor"
-                                    className={`transition-all duration-1000 ${getProgressBarClass(selectedCourse)}`}
-                                  />
-                                </svg>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center text-slate-500 dark:text-slate-400">
-                      <p className="font-bold text-lg">No courses found for the selected Academic Year and Semester.</p>
-                    </div>
-                  )
-                )}
+                </div>
               </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl text-center text-slate-500 text-sm border border-slate-100 dark:border-slate-800 animate-pulse">
-              Please link a child student account to verify academic courses and progress.
+
+              {/* Grading area: only visible after a course is selected */}
+              {selectedCourse ? (
+                <div className="bg-slate-950/95 dark:bg-slate-950/95 rounded-[2rem] overflow-hidden shadow-lg border border-slate-800">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
+                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Quiz</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
+                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Test</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
+                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Midterm</div><div className="text-lg font-black text-slate-300 mt-1">30%</div></div>
+                    <div className="p-4"><div className="text-xs font-bold uppercase text-slate-400">Final</div><div className="text-lg font-black text-slate-300 mt-1">50%</div></div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
+                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.quiz_10 ?? '--'}</div></div>
+                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.assignment_10 ?? '--'}</div></div>
+                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.mid_30 ?? '--'}</div></div>
+                    <div className="p-4"><div className="text-3xl font-black text-slate-100">{selectedCourse.final_50 ?? '--'}</div></div>
+                  </div>
+
+                  <div className="bg-slate-900/50 p-6 border-t border-slate-800">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Standing</p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <span className="text-sm font-bold text-slate-200">Course Status:</span>
+                          {(() => {
+                            const status = getStatus(selectedCourse);
+                            if (status === 'PASSED') return <span className="px-3 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-full text-xs font-black">PASSED</span>;
+                            if (status === 'FAILED') return <span className="px-3 py-1 bg-rose-500/10 text-rose-300 border border-rose-500/20 rounded-full text-xs font-black">FAILED</span>;
+                            return <span className="px-3 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-full text-xs font-black">PENDING</span>;
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <div className="text-3xl md:text-4xl font-black text-white">{selectedCourse.total ?? '--'}</div>
+                        <div className="text-sm text-slate-400">/ 100</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex justify-between text-xs font-black uppercase text-slate-400"><span>Total Score Progress</span><span>{getSubmittedTotal(selectedCourse) !== null ? Math.round(Number(getSubmittedTotal(selectedCourse))) + '%' : 'Pending'}</span></div>
+                      <div className="w-full h-3 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                        {getSubmittedTotal(selectedCourse) !== null ? (
+                          <div
+                            className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-400 to-teal-500"
+                            style={{ width: `${getClampedPercentage(selectedCourse.total)}%` }}
+                          ></div>
+                        ) : (
+                          <div className="h-full w-0 rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-center text-slate-500">Select Course to view grading components.</div>
+              )}
             </div>
+          ) : (
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl text-center text-slate-500 text-sm border border-slate-100 dark:border-slate-800 animate-pulse">Please link a child student account to verify academic courses and progress.</div>
           )}
         </div>
       )}
