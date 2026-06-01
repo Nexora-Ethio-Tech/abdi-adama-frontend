@@ -1,6 +1,6 @@
-import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save } from 'lucide-react';
+import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save, Send } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 import { 
   getTeacherDashboard, 
@@ -116,9 +116,13 @@ export const TeacherPortal = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Classes and department heads
+  // Classes, actual assigned courses, and department heads
   const [myClasses, setMyClasses] = useState<any[]>([]);
+  const [myCourses, setMyCourses] = useState<any[]>([]); // actual courses from courses table
   const [deptHeads, setDeptHeads] = useState<any[]>([]);
+
+  // localStorage key for draft persistence
+  const DRAFT_KEY = 'teacher_plan_draft';
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -164,16 +168,18 @@ export const TeacherPortal = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, planList, classList, examsData] = await Promise.all([
+      const [dash, planList, classList, examsData, courseList] = await Promise.all([
         getTeacherDashboard(),
         getMyWeeklyPlans(),
         getMyClasses(),
-        getTeacherExams()
+        getTeacherExams(),
+        getTeacherCoursesForExams()   // real assigned courses from DB
       ]);
       setDashboard(dash);
       setPlans(Array.isArray(planList) ? planList : []);
       setMyClasses(Array.isArray(classList) ? classList : []);
-      
+      setMyCourses(Array.isArray(courseList) ? courseList : []);
+
       // Load exams from backend
       if (examsData) {
         setDraftExams(Array.isArray(examsData.draftExams) ? examsData.draftExams : []);
@@ -210,24 +216,41 @@ export const TeacherPortal = () => {
     }
   }, [location.search]);
 
-  const handleSubmitPlan = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Persist draft to localStorage whenever form changes
+  const saveDraftLocally = useCallback((form: typeof emptyPlan) => {
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(form)); } catch {}
+  }, []);
+
+  // Load locally-saved draft (only for new plans)
+  const loadLocalDraft = useCallback((): typeof emptyPlan | null => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+
+  const clearLocalDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch {} };
+
+  // Save plan as draft (status = Draft) or submit (status = Pending)
+  const handleSavePlan = async (targetStatus: 'Draft' | 'Pending') => {
     setSubmitting(true);
+    const payload = { ...planForm, status: targetStatus };
     try {
       if (editingPlan) {
-        await updateWeeklyPlan(editingPlan.id, planForm);
-        showToast('Lesson plan updated successfully!', 'success');
+        await updateWeeklyPlan(editingPlan.id, payload);
+        showToast(targetStatus === 'Draft' ? 'Draft saved successfully!' : 'Plan submitted for review!', 'success');
       } else {
-        await submitWeeklyPlan(planForm);
-        showToast('Lesson plan submitted successfully!', 'success');
+        await submitWeeklyPlan(payload);
+        showToast(targetStatus === 'Draft' ? 'Draft saved! You can continue editing it any time.' : 'Plan submitted for review!', 'success');
       }
+      clearLocalDraft();
       setIsPlanModalOpen(false);
       setEditingPlan(null);
       setPlanForm(emptyPlan);
       const planList = await getMyWeeklyPlans();
       setPlans(Array.isArray(planList) ? planList : []);
     } catch (err: any) {
-      showToast(err.response?.data?.error?.message || 'Failed to submit plan', 'error');
+      showToast(err.response?.data?.error?.message || 'Failed to save plan', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -235,7 +258,7 @@ export const TeacherPortal = () => {
 
   const openEditModal = (plan: any) => {
     setEditingPlan(plan);
-    setPlanForm({
+    const filled = {
       date: plan.date?.slice(0, 10) || '',
       content: plan.content || '',
       objectives: plan.objectives || '',
@@ -246,12 +269,13 @@ export const TeacherPortal = () => {
       teachingAids: plan.teaching_aids || plan.teachingAids || '',
       evaluation: plan.evaluation || '',
       remark: plan.remark || '',
-      status: plan.status || 'Pending',
+      status: plan.status || 'Draft',
       courseId: plan.course_id || plan.courseId || '',
       subject: plan.subject || '',
       deptHeadId: plan.dept_head_id || plan.deptHeadId || '',
       weekNumber: plan.week_number || plan.weekNumber || 1
-    });
+    };
+    setPlanForm(filled);
     setIsPlanModalOpen(true);
   };
 
@@ -528,7 +552,13 @@ export const TeacherPortal = () => {
                 <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Weekly Plans</h2>
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Submit lesson plans for head of department review</p>
               </div>
-              <button onClick={() => { setEditingPlan(null); setPlanForm(emptyPlan); setIsPlanModalOpen(true); }}
+              <button onClick={() => {
+                setEditingPlan(null);
+                // Restore locally-saved draft if one exists
+                const draft = loadLocalDraft();
+                setPlanForm(draft ?? emptyPlan);
+                setIsPlanModalOpen(true);
+              }}
                 className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
                 <Plus size={18} /> Create New Plan
               </button>
@@ -826,19 +856,27 @@ export const TeacherPortal = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPlan} className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+            <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="planDate" className="text-xs font-bold text-slate-500 uppercase">Date</label>
                   <input id="planDate" type="date" required value={planForm.date}
-                    onChange={e => setPlanForm({ ...planForm, date: e.target.value })}
+                    onChange={e => {
+                      const updated = { ...planForm, date: e.target.value };
+                      setPlanForm(updated);
+                      if (!editingPlan) saveDraftLocally(updated);
+                    }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
                   <label htmlFor="planTimeDuration" className="text-xs font-bold text-slate-500 uppercase">Time Duration</label>
                   <input id="planTimeDuration" type="text" required placeholder="e.g. 45 minutes" value={planForm.timeDuration}
-                    onChange={e => setPlanForm({ ...planForm, timeDuration: e.target.value })}
+                    onChange={e => {
+                      const updated = { ...planForm, timeDuration: e.target.value };
+                      setPlanForm(updated);
+                      if (!editingPlan) saveDraftLocally(updated);
+                    }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -846,24 +884,30 @@ export const TeacherPortal = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="planCourseId" className="text-xs font-bold text-slate-500 uppercase">Course / Class</label>
+                  <label htmlFor="planCourseId" className="text-xs font-bold text-slate-500 uppercase">Course / Subject</label>
                   <select
                     id="planCourseId"
                     required
                     value={planForm.courseId || ''}
                     onChange={e => {
-                      const selected = myClasses.find((c: any) => c.id === e.target.value);
-                      setPlanForm({
+                      const updated = {
                         ...planForm,
                         courseId: e.target.value,
-                        subject: selected ? (selected.name || selected.class_name || selected.subject) : ''
-                      });
+                        subject: myCourses.find((c: any) => c.id === e.target.value)?.name || ''
+                      };
+                      setPlanForm(updated);
+                      if (!editingPlan) saveDraftLocally(updated);
                     }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select Course</option>
-                    {myClasses.map((c: any) => (
-                      <option key={c.id} value={c.id}>{c.name || c.class_name || c.subject} {c.section ? `(${c.section})` : ''}</option>
+                    <option value="">Select Course / Subject</option>
+                    {myCourses.length === 0 && (
+                      <option value="" disabled>No courses assigned yet</option>
+                    )}
+                    {myCourses.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{c.code ? ` (${c.code})` : ''}{c.class_name ? ` — ${c.class_name}` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -873,12 +917,21 @@ export const TeacherPortal = () => {
                     id="planDeptHeadId"
                     required
                     value={planForm.deptHeadId || ''}
-                    onChange={e => setPlanForm({ ...planForm, deptHeadId: e.target.value })}
+                    onChange={e => {
+                      const updated = { ...planForm, deptHeadId: e.target.value };
+                      setPlanForm(updated);
+                      if (!editingPlan) saveDraftLocally(updated);
+                    }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select Dept Head</option>
+                    <option value="">Select Department Head</option>
+                    {deptHeads.length === 0 && (
+                      <option value="" disabled>No department heads found</option>
+                    )}
                     {deptHeads.map((dh: any) => (
-                      <option key={dh.teacher_id} value={dh.teacher_id}>{dh.name} ({dh.department || 'Dean'})</option>
+                      <option key={dh.teacher_id} value={dh.teacher_id}>
+                        {dh.name}{dh.department ? ` — ${dh.department}` : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -898,33 +951,52 @@ export const TeacherPortal = () => {
                   <label htmlFor={`plan${key}`} className="text-xs font-bold text-slate-500 uppercase">{label}</label>
                   <textarea id={`plan${key}`} rows={2} placeholder={placeholder} required={key !== 'remark'}
                     value={(planForm as any)[key]}
-                    onChange={e => setPlanForm({ ...planForm, [key]: e.target.value })}
+                    onChange={e => {
+                      const updated = { ...planForm, [key]: e.target.value };
+                      setPlanForm(updated);
+                      if (!editingPlan) saveDraftLocally(updated);
+                    }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                 </div>
               ))}
 
-              <div>
-                <label htmlFor="planStatus" className="text-xs font-bold text-slate-500 uppercase">Status</label>
-                <select id="planStatus" title="Set plan status" value={planForm.status} onChange={e => setPlanForm({ ...planForm, status: e.target.value as any })}
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                  <option value="Pending">Pending (Submit for head of department review)</option>
-                  <option value="Draft">Draft (Save for later)</option>
-                </select>
-              </div>
+              {/* Draft notice for new plans */}
+              {!editingPlan && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+                  <Save size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                    Your progress is automatically saved locally. Click <strong>Save Draft</strong> to store it on the server and continue later.
+                  </p>
+                </div>
+              )}
 
+              {/* Action buttons */}
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => { setIsPlanModalOpen(false); setEditingPlan(null); }}
-                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
-                  disabled={submitting}>Cancel</button>
-                <button type="submit"
-                  className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
+                <button type="button"
+                  onClick={() => { setIsPlanModalOpen(false); setEditingPlan(null); }}
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   disabled={submitting}>
-                  {submitting ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
-                  <span>{submitting ? 'Submitting...' : editingPlan ? 'Update Plan' : 'Submit Plan'}</span>
+                  Cancel
+                </button>
+                {/* Save Draft */}
+                <button type="button"
+                  onClick={() => handleSavePlan('Draft')}
+                  disabled={submitting}
+                  className="flex items-center justify-center gap-2 px-5 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-sm rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-50 transition-colors">
+                  {submitting ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                  {editingPlan ? 'Update Draft' : 'Save Draft'}
+                </button>
+                {/* Submit for review */}
+                <button type="button"
+                  onClick={() => handleSavePlan('Pending')}
+                  disabled={submitting}
+                  className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                  {submitting ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
+                  {editingPlan ? 'Submit for Review' : 'Submit Plan'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
