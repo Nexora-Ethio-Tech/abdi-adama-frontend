@@ -1,102 +1,217 @@
-export type EthiopianDateParts = {
-    year: number;
-    month: number;
-    day: number;
-};
+/**
+ * Ethiopian Calendar Utilities
+ *
+ * Ethiopian calendar is ~7 years and 8 months behind Gregorian.
+ * Ethiopian New Year (Enkutatash): September 11 (September 12 in leap years).
+ *
+ * Academic year convention in Ethiopia:
+ *   - Starts: Meskerem (≈ Sep 11) each year
+ *   - First Semester: Meskerem – Tir (≈ Sep – Jan)
+ *   - Second Semester: Yekatit – Sene (≈ Feb – Jun)
+ *   - School year label = the EC year it starts in (e.g. "2018" means Sep 2025 – Jun 2026)
+ *
+ * Gregorian → Ethiopian year offset:
+ *   - Jan–Sep 10: Gregorian year − 8
+ *   - Sep 11–Dec: Gregorian year − 7
+ */
 
-const ETHIOPIAN_EPOCH = 1723856;
-const ETHIOPIAN_MONTHS = [
-    'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
-    'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
+// ─── Core conversion ──────────────────────────────────────────────────────────
+
+/** Return the Ethiopian Calendar year for a given JS Date. */
+export function getEthiopianYear(date: Date = new Date()): number {
+  const month = date.getMonth() + 1; // 1-based
+  const day = date.getDate();
+  const gYear = date.getFullYear();
+  // After Enkutatash (Sep 11), Ethiopian year = Gregorian year − 7
+  if (month > 9 || (month === 9 && day >= 11)) return gYear - 7;
+  return gYear - 8;
+}
+
+/** Return the current Ethiopian Calendar year. */
+export const getCurrentECYear = (): number => getEthiopianYear(new Date());
+
+/**
+ * Determine the current semester from today's Gregorian date.
+ * First Semester : Sep 11 – Jan 31 (Meskerem – Tir)
+ * Second Semester: Feb 1  – Jun 30 (Yekatit – Sene)
+ * Jul/Aug are summer break – we return 2 (end of previous year).
+ */
+export function getCurrentSemester(): 1 | 2 {
+  const month = new Date().getMonth() + 1; // 1-based
+  const day = new Date().getDate();
+  // Sep 11 to Jan 31 → First Semester
+  if ((month === 9 && day >= 11) || month >= 10 || month === 1) return 1;
+  // Feb 1 to Jun 30 → Second Semester
+  if (month >= 2 && month <= 6) return 2;
+  // Jul–Sep 10: summer / between years → treat as 2
+  return 2;
+}
+
+// ─── Gregorian ↔ EC academic year string conversion ──────────────────────────
+
+/**
+ * Convert a Gregorian academic year string to an Ethiopian Calendar year number.
+ * e.g. "2025/2026" → 2018
+ */
+export function gregorianToECYear(gregorianRange: string): number {
+  const startYear = parseInt(gregorianRange.split('/')[0], 10);
+  return startYear - 7;
+}
+
+/**
+ * Convert an Ethiopian Calendar year number to a Gregorian academic year string.
+ * e.g. 2018 → "2025/2026"
+ */
+export function ecYearToGregorian(ecYear: number): string {
+  return `${ecYear + 7}/${ecYear + 8}`;
+}
+
+/** Format an EC year for display, e.g. 2018 → "2018 E.C." */
+export const formatECYear = (ecYear: number): string => `${ecYear} E.C.`;
+
+/** Format semester number for display. */
+export const formatSemester = (sem: 1 | 2): string =>
+  sem === 1 ? 'First Semester' : 'Second Semester';
+
+// ─── Available academic years ─────────────────────────────────────────────────
+
+/**
+ * Returns the last N Ethiopian Calendar years (including current), in descending order.
+ * The active year is the one ≤ currentECYear.
+ */
+export function getAvailableECYears(count = 4): number[] {
+  const current = getCurrentECYear();
+  return Array.from({ length: count }, (_, i) => current - i);
+}
+
+/**
+ * Returns available Gregorian year strings corresponding to available EC years.
+ * e.g. [2018, 2017, 2016] → ["2025/2026", "2024/2025", "2023/2024"]
+ */
+export function getAvailableGregorianYears(count = 4): string[] {
+  return getAvailableECYears(count).map(ecYearToGregorian);
+}
+
+// ─── Access control helpers ───────────────────────────────────────────────────
+
+/**
+ * Return true if the requested academic year is accessible.
+ * A year is accessible if it is ≤ the current EC year.
+ * Teachers/Students cannot view grades for future academic years.
+ */
+export function isYearAccessible(gregorianRange: string): boolean {
+  const requestedEC = gregorianToECYear(gregorianRange);
+  const currentEC = getCurrentECYear();
+  return requestedEC <= currentEC;
+}
+
+/**
+ * Return true if the requested semester is accessible for the given year.
+ * If the year is a past year, both semesters are always accessible.
+ * If the year is the current year, only semesters up to the current one are accessible.
+ */
+export function isSemesterAccessible(gregorianRange: string, semester: 1 | 2): boolean {
+  if (!isYearAccessible(gregorianRange)) return false;
+  const requestedEC = gregorianToECYear(gregorianRange);
+  const currentEC = getCurrentECYear();
+  if (requestedEC < currentEC) return true; // past year – both semesters accessible
+  // Current year: only allow semesters ≤ current semester
+  return semester <= getCurrentSemester();
+}
+
+/**
+ * Parses an Ethiopian date string YYYY-MM-DD into year, month, and day parts.
+ */
+export function parseEthiopianDateString(value: string): { year: number; month: number; day: number } | null {
+  if (!value) return null;
+  const parts = value.split('-');
+  if (parts.length !== 3) return null;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const day = parseInt(parts[2], 10);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  return { year, month, day };
+}
+
+/**
+ * Convert a Gregorian Date (or Date string) to Ethiopian calendar parts.
+ */
+export function gregorianToEthiopian(date: Date | string): { year: number; month: number; day: number } {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return { year: 2018, month: 1, day: 1 };
+  
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  
+  const a = Math.floor((14 - month) / 12);
+  const y = year + 4800 - a;
+  const m = month + 12 * a - 3;
+  
+  const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
+  
+  const r = (jdn - 1723856) % 1461;
+  const ethYear = Math.floor((jdn - 1723856) / 1461) * 4 + Math.floor(r / 365) + 1;
+  const ethMonth = Math.floor((r % 365) / 30) + 1;
+  const ethDay = ((r % 365) % 30) + 1;
+  
+  if (r === 1460) {
+    return { year: ethYear - 1, month: 13, day: 6 };
+  }
+  
+  return { year: ethYear, month: ethMonth, day: ethDay };
+}
+
+/**
+ * Converts an Ethiopian calendar date string YYYY-MM-DD to a Gregorian ISO string YYYY-MM-DD.
+ */
+export function ethiopianToGregorianIso(ethDateStr: string): string {
+  const parts = parseEthiopianDateString(ethDateStr);
+  if (!parts) return '';
+  const { year, month, day } = parts;
+  
+  const era = 1723856;
+  const jdn = era + 365 * (year - 1) + Math.floor(year / 4) + 30 * (month - 1) + day;
+  
+  const j = jdn + 32044;
+  const g = Math.floor(j / 146097);
+  const dg = j % 146097;
+  const c = Math.floor(((Math.floor(dg / 36524) + 1) * 3) / 4);
+  const dc = dg - c * 36524;
+  const b = Math.floor(dc / 1461);
+  const db = dc % 1461;
+  const a = Math.floor(((Math.floor(db / 365) + 1) * 3) / 4);
+  const da = db - a * 365;
+  
+  const y = g * 400 + c * 100 + b * 4 + a;
+  const m = Math.floor((da * 5 + 308) / 153) - 2;
+  const d = da - Math.floor(((m + 4) * 153) / 5) + 122;
+  
+  const gregYear = y - 4800 + Math.floor((m + 2) / 12);
+  const gregMonth = ((m + 2) % 12) + 1;
+  const gregDay = d + 1;
+  
+  const dateObj = new Date(gregYear, gregMonth - 1, gregDay);
+  const finalYear = dateObj.getFullYear();
+  const finalMonth = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const finalDay = String(dateObj.getDate()).padStart(2, '0');
+  
+  return `${finalYear}-${finalMonth}-${finalDay}`;
+}
+
+const ETHIOPIAN_MONTHS_LABELS = [
+  'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+  'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
 ];
 
-const toJdnFromGregorian = (year: number, month: number, day: number) => {
-    const a = Math.floor((14 - month) / 12);
-    const y = year + 4800 - a;
-    const m = month + 12 * a - 3;
-    return day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4)
-        - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-};
+/**
+ * Formats a Gregorian Date/date string to a beautiful Ethiopian date string label.
+ */
+export function formatEthiopianLabel(dateInput: string | Date | null): string {
+  if (!dateInput) return '';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  if (isNaN(date.getTime())) return '';
+  const { year, month, day } = gregorianToEthiopian(date);
+  return `${day} ${ETHIOPIAN_MONTHS_LABELS[month - 1]} ${year} E.C.`;
+}
 
-const jdnToGregorian = (jdn: number) => {
-    const a = jdn + 32044;
-    const b = Math.floor((4 * a + 3) / 146097);
-    const c = a - Math.floor((146097 * b) / 4);
-    const d = Math.floor((4 * c + 3) / 1461);
-    const e = c - Math.floor((1461 * d) / 4);
-    const m = Math.floor((5 * e + 2) / 153);
-
-    const day = e - Math.floor((153 * m + 2) / 5) + 1;
-    const month = m + 3 - 12 * Math.floor(m / 10);
-    const year = b * 100 + d - 4800 + Math.floor(m / 10);
-
-    return { year, month, day };
-};
-
-const jdnToEthiopian = (jdn: number): EthiopianDateParts => {
-    const r = jdn - ETHIOPIAN_EPOCH;
-    const year = Math.floor(r / 1461) * 4 + Math.floor((r % 1461) / 365) + 1;
-    const month = Math.floor(((r % 1461) % 365) / 30) + 1;
-    const day = (((r % 1461) % 365) % 30) + 1;
-    return { year, month, day };
-};
-
-const ethiopianToJdn = ({ year, month, day }: EthiopianDateParts) => {
-    return ETHIOPIAN_EPOCH + 365 * (year - 1) + Math.floor(year / 4) + 30 * (month - 1) + day - 1;
-};
-
-export const parseEthiopianDateString = (value: string): EthiopianDateParts | null => {
-    const match = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(value.trim());
-    if (!match) return null;
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    if (month < 1 || month > 13) return null;
-    if (day < 1 || day > (month === 13 ? 6 : 30)) return null;
-
-    return { year, month, day };
-};
-
-export const ethiopianToGregorianIso = (value: string): string | null => {
-    const eth = parseEthiopianDateString(value);
-    if (!eth) return null;
-    const jdn = ethiopianToJdn(eth);
-    const { year, month, day } = jdnToGregorian(jdn);
-    return `${year.toString().padStart(4, '0')}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-};
-
-export const gregorianToEthiopian = (date: Date): EthiopianDateParts => {
-    const jdn = toJdnFromGregorian(date.getFullYear(), date.getMonth() + 1, date.getDate());
-    return jdnToEthiopian(jdn);
-};
-
-export const formatEthiopianDate = (date: Date | string): string => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (Number.isNaN(d.getTime())) return '';
-    const eth = gregorianToEthiopian(d);
-    return `${eth.year}-${String(eth.month).padStart(2, '0')}-${String(eth.day).padStart(2, '0')} ${ETHIOPIAN_MONTHS[eth.month - 1]}`;
-};
-
-export const formatEthiopianLabel = (date: Date | string): string => {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    if (Number.isNaN(d.getTime())) return '';
-    const eth = gregorianToEthiopian(d);
-    return `${eth.day} ${ETHIOPIAN_MONTHS[eth.month - 1]} ${eth.year}`;
-};
-
-export const isoToEthiopianLabel = (value: string): string => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return formatEthiopianLabel(date);
-};
-
-export const validateEthiopianDateString = (value: string): boolean => {
-    return parseEthiopianDateString(value) !== null;
-};
-
-export const gregorianToIso = (value: string): string | null => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    return `${date.getFullYear().toString().padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};

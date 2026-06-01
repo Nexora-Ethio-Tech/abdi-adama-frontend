@@ -2,6 +2,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, User, Calendar, GraduationCap, Search, Award, AlertCircle } from 'lucide-react';
 import { StudentCourse, getMyGradesForSemester, getMyHistory } from '../services/studentPortalService';
+import {
+  getCurrentECYear,
+  ecYearToGregorian,
+  getCurrentSemester,
+  formatSemester,
+  getAvailableGregorianYears,
+  gregorianToECYear,
+  isSemesterAccessible
+} from '../utils/ethiopianCalendar';
 
 export const StudentCourses = () => {
   const location = useLocation();
@@ -12,8 +21,8 @@ export const StudentCourses = () => {
   const [error, setError] = useState('');
 
   // Current Term state
-  const [selectedSemester, setSelectedSemester] = useState('Second Semester');
-  const [selectedYear, setSelectedYear] = useState('2025/2026');
+  const [selectedSemester, setSelectedSemester] = useState(() => formatSemester(getCurrentSemester()));
+  const [selectedYear, setSelectedYear] = useState(() => ecYearToGregorian(getCurrentECYear()));
   const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<StudentCourse | null>(null);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
@@ -31,7 +40,7 @@ export const StudentCourses = () => {
   const [historyLoading, setHistoryLoading] = useState(false);
 
   // Available academic years
-  const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
+  const academicYears = getAvailableGregorianYears();
 
   const getStatus = (course: any) => {
     if (!course || course.total === null || course.total === undefined) {
@@ -54,6 +63,16 @@ export const StudentCourses = () => {
       setLoading(true);
       setError('');
       const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+      
+      // Block access to future academic periods
+      if (!isSemesterAccessible(selectedYear, semNum as 1 | 2)) {
+        setError('Grades for this academic period are not yet accessible. Please select a current or past year and semester.');
+        setCourses([]);
+        setSelectedCourse(null);
+        setLoading(false);
+        return;
+      }
+
       const data = await getMyGradesForSemester(semNum, selectedYear);
       const coursesData = data.courses || [];
       const methods = data.gradingMethods || [];
@@ -222,7 +241,9 @@ export const StudentCourses = () => {
                     className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
                   >
                     {academicYears.map((year) => (
-                      <option key={year} value={year}>{year}</option>
+                      <option key={year} value={year}>
+                        {gregorianToECYear(year)} E.C. ({year})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -523,7 +544,9 @@ export const StudentCourses = () => {
                 >
                   <option value="">-- Select Year --</option>
                   {academicYears.map((year) => (
-                    <option key={year} value={year}>{year}</option>
+                    <option key={year} value={year}>
+                      {gregorianToECYear(year)} E.C. ({year})
+                    </option>
                   ))}
                 </select>
               </div>

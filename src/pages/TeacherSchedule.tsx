@@ -1,23 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, BookOpen, Loader2, Info, Layers } from 'lucide-react';
+import { Calendar, BookOpen, Loader2, Info } from 'lucide-react';
 import { getTeacherSchedule } from '../services/teacherService';
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as const;
 
-const DAY_COLORS: Record<string, string> = {
-  Monday:    'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-900',
-  Tuesday:   'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-900',
-  Wednesday: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900',
-  Thursday:  'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900',
-  Friday:    'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900',
+const getPeriodLabel = (periodNum: any) => {
+  const num = Number(periodNum);
+  switch (num) {
+    case 1: return 'First Period';
+    case 2: return 'Second Period';
+    case 3: return 'Third Period';
+    case 4: return 'Fourth Period';
+    case 5: return 'Fifth Period';
+    case 6: return 'Sixth Period';
+    case 7: return 'Seventh Period';
+    case 8: return 'Eighth Period';
+    default: return `${periodNum} Period`;
+  }
 };
 
-const DAY_HEADER_COLORS: Record<string, string> = {
-  Monday:    'bg-blue-600',
-  Tuesday:   'bg-violet-600',
-  Wednesday: 'bg-emerald-600',
-  Thursday:  'bg-amber-500',
-  Friday:    'bg-rose-600',
+const DAY_BADGE_THEMES: Record<string, string> = {
+  Monday: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/50',
+  Tuesday: 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-100 dark:border-violet-900/50',
+  Wednesday: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50',
+  Thursday: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50',
+  Friday: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/50',
 };
 
 export const TeacherSchedule = () => {
@@ -46,12 +53,6 @@ export const TeacherSchedule = () => {
     fetchSchedule();
   }, []);
 
-  // Group by day
-  const scheduleByDay: Record<string, any[]> = WEEKDAYS.reduce((acc, day) => {
-    acc[day] = schedule.filter(s => s.day === day);
-    return acc;
-  }, {} as Record<string, any[]>);
-
   const totalSlots = schedule.length;
 
   if (loading) {
@@ -63,9 +64,11 @@ export const TeacherSchedule = () => {
     );
   }
 
+  // Get all unique subjects
+  const uniqueSubjects = Array.from(new Set(schedule.map(s => s.subject || 'General'))).sort();
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-
       {/* Banner */}
       <div className="relative overflow-hidden bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 text-white p-8 rounded-3xl shadow-xl shadow-indigo-500/10">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
@@ -96,7 +99,6 @@ export const TeacherSchedule = () => {
         </div>
       )}
 
-      {/* Schedule Grid — one column per weekday */}
       {totalSlots === 0 && !error ? (
         <div className="py-20 text-center bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
           <Info className="mx-auto text-slate-300 dark:text-slate-600 mb-4" size={40} />
@@ -106,68 +108,70 @@ export const TeacherSchedule = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {WEEKDAYS.map(day => {
-            const slots = scheduleByDay[day];
-            const headerColor = DAY_HEADER_COLORS[day];
-            return (
-              <div key={day} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                {/* Day header */}
-                <div className={`${headerColor} text-white px-4 py-3 text-center`}>
-                  <p className="text-xs font-black uppercase tracking-widest">{day}</p>
-                  <p className="text-[10px] text-white/70 mt-0.5">{slots.length} class{slots.length !== 1 ? 'es' : ''}</p>
-                </div>
+        <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] border-collapse text-left">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                  <th className="px-6 py-5">Subject</th>
+                  <th className="px-6 py-5">Monday</th>
+                  <th className="px-6 py-5">Tuesday</th>
+                  <th className="px-6 py-5">Wednesday</th>
+                  <th className="px-6 py-5">Thursday</th>
+                  <th className="px-6 py-5">Friday</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm font-medium">
+                {uniqueSubjects.map(subject => (
+                  <tr key={subject} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 p-2.5 rounded-xl border border-indigo-100/50 dark:border-indigo-900/20">
+                          <BookOpen size={16} />
+                        </div>
+                        <span className="font-extrabold text-slate-800 dark:text-slate-200">{subject}</span>
+                      </div>
+                    </td>
+                    {WEEKDAYS.map(day => {
+                      // Filter periods for this subject and day
+                      const daySlots = schedule.filter(s => s.subject === subject && s.day === day)
+                        .slice()
+                        .sort((a, b) => (a.period_number || a.time_slot || '').toString().localeCompare((b.period_number || b.time_slot || '').toString()));
 
-                {/* Slots */}
-                {slots.length === 0 ? (
-                  <div className="p-4 text-center text-slate-400 dark:text-slate-500 text-xs font-medium italic py-8">
-                    No classes
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {slots
-                      .slice()
-                      .sort((a, b) => (a.time_slot || '').localeCompare(b.time_slot || ''))
-                      .map((slot, i) => (
-                        <div key={slot.id || i} className="p-4 space-y-2">
-                          {/* Time */}
-                          <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            <Clock size={11} />
-                            <span>{slot.time_slot || 'Time TBD'}</span>
-                            {slot.period_number && (
-                              <span className="ml-auto bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 dark:text-slate-400">
-                                P{slot.period_number}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Subject */}
-                          <div className="flex items-start gap-2">
-                            <div className={`mt-0.5 p-1.5 rounded-lg border ${DAY_COLORS[day]} shrink-0`}>
-                              <BookOpen size={13} />
-                            </div>
-                            <p className="font-bold text-slate-800 dark:text-white text-sm leading-snug">
-                              {slot.subject || 'Subject TBD'}
-                            </p>
-                          </div>
-
-                          {/* Class / Section */}
-                          {(slot.class_name || slot.section) && (
-                            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                              <Layers size={11} className="text-indigo-400" />
-                              <span>
-                                {slot.class_name || ''}
-                                {slot.section ? ` (${slot.section})` : ''}
-                              </span>
+                      return (
+                        <td key={day} className="px-6 py-5">
+                          {daySlots.length === 0 ? (
+                            <span className="text-slate-300 dark:text-slate-700">—</span>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              {daySlots.map((slot, index) => (
+                                <div
+                                  key={slot.id || index}
+                                  className={`p-2.5 rounded-xl border text-[11px] font-bold ${DAY_BADGE_THEMES[day]} flex flex-col gap-1 shadow-sm`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span>{getPeriodLabel(slot.period_number)}</span>
+                                  </div>
+                                  <div className="text-[10px] opacity-75 font-semibold">
+                                    {slot.class_name} {slot.section ? `(${slot.section})` : ''}
+                                  </div>
+                                  {slot.time_slot && (
+                                    <div className="text-[9px] opacity-60 font-mono mt-0.5">
+                                      {slot.time_slot}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2 } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
+import {
+  getCurrentECYear,
+  ecYearToGregorian,
+  getCurrentSemester,
+  formatSemester,
+  getAvailableGregorianYears,
+  gregorianToECYear,
+} from '../utils/ethiopianCalendar';
 
 interface VpGradeGroup {
   id: string;
@@ -45,7 +53,10 @@ interface StudentGrade {
 export const VPGradeManagement = () => {
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [selectedGradeGroup, setSelectedGradeGroup] = useState<VpGradeGroup | null>(null);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(() => ecYearToGregorian(getCurrentECYear()));
+  const [selectedSemester, setSelectedSemester] = useState<string>(() => formatSemester(getCurrentSemester()));
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [studentGrades, setStudentGrades] = useState<StudentGrade[]>([]);
@@ -86,16 +97,21 @@ export const VPGradeManagement = () => {
     }
   };
 
-  const handleSectionSelect = async (grade: VpGradeGroup, section: Section) => {
+  const handleSectionSelect = useCallback(async (grade: VpGradeGroup, section: Section, yearOverride?: string, semOverride?: string) => {
     setSelectedGrade(grade.name);
+    setSelectedGradeGroup(grade);
     setSelectedSection(section);
     setLoadingSectionData(true);
+
+    const yearToUse = yearOverride ?? selectedYear;
+    const semToUse = semOverride ?? selectedSemester;
+    const semNum = semToUse === 'First Semester' ? 1 : 2;
 
     try {
       const [studentsData, coursesData, gradesData] = await Promise.all([
         vicePrincipalService.getStudentsBySection(section.id),
         vicePrincipalService.getCoursesBySection(section.id),
-        vicePrincipalService.getSectionGrades(section.id)
+        vicePrincipalService.getSectionGrades(section.id, yearToUse, semNum)
       ]);
 
       setStudents(studentsData);
@@ -107,14 +123,23 @@ export const VPGradeManagement = () => {
     } finally {
       setLoadingSectionData(false);
     }
-  };
+  }, [selectedYear, selectedSemester]);
+
+  // Reload section grades whenever the year or semester filter changes
+  useEffect(() => {
+    if (selectedSection && selectedGradeGroup) {
+      handleSectionSelect(selectedGradeGroup, selectedSection, selectedYear, selectedSemester);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear, selectedSemester]);
 
   const handleGenerateResults = async () => {
     if (!selectedSection) return;
 
+    const semNum = selectedSemester === 'First Semester' ? 1 : 2;
     setGeneratingResults(true);
     try {
-      const results = await vicePrincipalService.generateSectionResults(selectedSection.id);
+      const results = await vicePrincipalService.generateSectionResults(selectedSection.id, selectedYear, semNum);
       
       // Update the studentGrades with the calculated values
       const updatedGrades = studentGrades.map(sg => {
@@ -195,6 +220,60 @@ export const VPGradeManagement = () => {
           </p>
         </div>
       </section>
+
+      {/* Academic Period Filter */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-6 items-end">
+          <div className="flex-1">
+            <label htmlFor="vp-academic-year" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+              Academic Year
+            </label>
+            <div className="relative">
+              <select
+                id="vp-academic-year"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="w-full appearance-none px-5 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-all cursor-pointer pr-10"
+              >
+                {getAvailableGregorianYears().map((year) => {
+                  const ecYear = gregorianToECYear(year);
+                  return (
+                    <option key={year} value={year}>
+                      {ecYear} E.C. ({year})
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <label htmlFor="vp-semester" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+              Semester
+            </label>
+            <div className="relative">
+              <select
+                id="vp-semester"
+                value={selectedSemester}
+                onChange={(e) => setSelectedSemester(e.target.value)}
+                className="w-full appearance-none px-5 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-all cursor-pointer pr-10"
+              >
+                <option>First Semester</option>
+                <option>Second Semester</option>
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+          <div className="flex-1 flex items-end">
+            <div className="px-5 py-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-2xl text-sm">
+              <span className="text-xs font-black text-indigo-500 uppercase tracking-widest">Viewing</span>
+              <p className="font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">
+                {gregorianToECYear(selectedYear)} E.C. &bull; {selectedSemester}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Error Display */}
       {error && (

@@ -53,6 +53,16 @@ import {
   DriverUpdate,
   FinancialSummary
 } from '../services/parentService';
+import {
+  getCurrentECYear,
+  ecYearToGregorian,
+  getCurrentSemester,
+  formatSemester,
+  getAvailableGregorianYears,
+  gregorianToECYear,
+  isYearAccessible,
+  isSemesterAccessible,
+} from '../utils/ethiopianCalendar';
 
 export const ParentPortal = () => {
   const navigate = useNavigate();
@@ -66,8 +76,8 @@ export const ParentPortal = () => {
   const [loading, setLoading] = useState(true);
 
   // Grades (Current Term) State
-  const [selectedSemester, setSelectedSemester] = useState('Second Semester');
-  const [selectedYear, setSelectedYear] = useState('2025/2026');
+  const [selectedSemester, setSelectedSemester] = useState(() => formatSemester(getCurrentSemester()));
+  const [selectedYear, setSelectedYear] = useState(() => ecYearToGregorian(getCurrentECYear()));
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
@@ -127,7 +137,7 @@ export const ParentPortal = () => {
   const [financialData, setFinancialData] = useState<FinancialSummary[]>([]);
   const [financialLoading, setFinancialLoading] = useState(false);
 
-  const academicYears = useMemo(() => ['2025/2026', '2024/2025', '2023/2024'], []);
+  const academicYears = getAvailableGregorianYears();
 
   const familyIdText = useMemo(() => {
     // Extract numeric part from digitalId (e.g., "PAR-MB-0001" -> "#0001")
@@ -305,6 +315,15 @@ export const ParentPortal = () => {
   useEffect(() => {
     if (!selectedChild || activePortalTab !== 'grades') return;
     if (viewMode !== 'current') return;
+
+    // Block access to future academic periods
+    const semNumCheck = selectedSemester === 'First Semester' ? 1 : 2;
+    if (!isSemesterAccessible(selectedYear, semNumCheck as 1 | 2)) {
+      setGradesError('Grades for this academic period are not yet accessible. Please select a current or past year and semester.');
+      setCourses([]);
+      setSelectedCourse(null);
+      return;
+    }
 
     let cancelled = false;
     const loadGrades = (preserveSelection = false) => {
@@ -972,10 +991,12 @@ export const ParentPortal = () => {
                           setSelectedYear(e.target.value);
                           setSelectedCourse(null);
                         }}
-                        className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
+                       className="w-full appearance-none px-6 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold outline-none focus:border-blue-500 transition-all cursor-pointer text-slate-900 dark:text-white"
                       >
                         {academicYears.map((year) => (
-                          <option key={year} value={year}>{year}</option>
+                          <option key={year} value={year}>
+                            {gregorianToECYear(year)} E.C. ({year})
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1414,7 +1435,9 @@ export const ParentPortal = () => {
                   >
                     <option value="">-- Select Year --</option>
                     {academicYears.map((year) => (
-                      <option key={year} value={year}>{year}</option>
+                      <option key={year} value={year}>
+                        {gregorianToECYear(year)} E.C. ({year})
+                      </option>
                     ))}
                   </select>
                 </div>

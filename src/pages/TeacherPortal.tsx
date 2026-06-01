@@ -235,7 +235,7 @@ export const TeacherPortal = () => {
       const [dash, planList, classList, examsData, courseList] = await Promise.all([
         getTeacherDashboard().catch(() => null),
         getMyWeeklyPlans().catch(() => []),
-        getMyClasses().catch(() => []),
+        getMyClasses('grades').catch(() => []),
         getTeacherExams().catch(() => ({ draftExams: [], publishedExams: [] })),
         getTeacherCoursesForExams().catch(() => [])   // real assigned courses from DB
       ]);
@@ -899,7 +899,7 @@ export const TeacherPortal = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl">
               <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-600 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"><Users size={28} /></div>
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Assigned Classes</p>
@@ -911,12 +911,6 @@ export const TeacherPortal = () => {
               <h3 className="text-3xl font-black text-slate-800 dark:text-white">{todaySchedule.length}</h3>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Classes today · View full schedule →</p>
             </Link>
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl">
-              <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"><ClipboardList size={28} /></div>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Pending Plans</p>
-              <h3 className="text-3xl font-black text-slate-800 dark:text-white">{dashboard?.pendingPlansCount ?? pendingPlans}</h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Awaiting head of department review</p>
-            </div>
           </div>
 
           {/* My Assigned Classes */}
@@ -959,9 +953,6 @@ export const TeacherPortal = () => {
                         <p className="font-black text-slate-800 dark:text-white">{cls.enrolledStudents ?? '—'}</p>
                       </div>
                       <div className="flex gap-2">
-                        <Link to="/attendance" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
-                          Attendance
-                        </Link>
                         <Link 
                           to={`/grades?classId=${cls.id || cls.class_id}&courseId=${cls.course_id || cls.id}&subject=${encodeURIComponent(cls.subject || 'General')}`} 
                           className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"

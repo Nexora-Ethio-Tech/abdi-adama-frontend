@@ -5,6 +5,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, TeacherClass, ClassStudent } from '../services/teacherService';
 import { mockGradingConfigs } from '../data/mockData';
+import {
+  getCurrentECYear,
+  ecYearToGregorian,
+  getCurrentSemester,
+  formatSemester,
+  getAvailableGregorianYears,
+  gregorianToECYear,
+  isYearAccessible,
+  isSemesterAccessible,
+} from '../utils/ethiopianCalendar';
 
 type GradingMethod = { id: string; label: string; maxWeight: number };
 
@@ -36,8 +46,14 @@ export const GradeEntry = () => {
   const [submittingGrades, setSubmittingGrades] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [selectedYear, setSelectedYear] = useState('2025/2026');
-  const [selectedSemester, setSelectedSemester] = useState<'First Semester' | 'Second Semester'>('Second Semester');
+  const [selectedYear, setSelectedYear] = useState<string>(() => ecYearToGregorian(getCurrentECYear()));
+  const [selectedSemester, setSelectedSemester] = useState<'First Semester' | 'Second Semester'>(
+    () => formatSemester(getCurrentSemester()) as 'First Semester' | 'Second Semester'
+  );
+
+  // Derived: is the currently-selected period accessible?
+  const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+  const periodBlocked = !isYearAccessible(selectedYear) || !isSemesterAccessible(selectedYear, semNum as 1 | 2);
 
   const initialClassId = searchParams.get('classId');
   const initialCourseId = searchParams.get('courseId');
@@ -133,7 +149,7 @@ export const GradeEntry = () => {
   };
 
   const handleSave = async () => {
-    if (gradesLocked || !selectedCourseId) return;
+    if (gradesLocked || !selectedCourseId || periodBlocked) return;
     setSaving(true);
     setSaveError('');
     try {
@@ -306,9 +322,11 @@ export const GradeEntry = () => {
               className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-bold"
               aria-label="Academic Year"
             >
-              <option value="2025/2026">2025/2026</option>
-              <option value="2024/2025">2024/2025</option>
-              <option value="2023/2024">2023/2024</option>
+              {getAvailableGregorianYears().map((year) => (
+                <option key={year} value={year}>
+                  {gregorianToECYear(year)} E.C. ({year})
+                </option>
+              ))}
             </select>
             <select
               value={selectedSemester}
@@ -319,6 +337,12 @@ export const GradeEntry = () => {
               <option>First Semester</option>
               <option>Second Semester</option>
             </select>
+            {periodBlocked && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-700 dark:text-amber-400 text-xs font-semibold">
+                <AlertCircle size={14} />
+                This academic period is not yet active — grade entry is disabled.
+              </div>
+            )}
           </div>
           {gradingMethods.length > 0 && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -331,7 +355,7 @@ export const GradeEntry = () => {
           <div className="flex gap-3">
             <button
               onClick={handleSave}
-              disabled={saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
+              disabled={periodBlocked || saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
               className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60 text-slate-800 dark:text-white rounded-xl flex items-center gap-2 font-bold transition-all"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
@@ -339,7 +363,7 @@ export const GradeEntry = () => {
             </button>
             <button
               onClick={handleSubmitGrades}
-              disabled={saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
+              disabled={periodBlocked || saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
             >
               {submittingGrades ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}

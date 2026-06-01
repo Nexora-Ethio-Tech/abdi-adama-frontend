@@ -174,19 +174,30 @@ export const Classes = () => {
     e.preventDefault();
     if (!selectedClass || !selectedTeacherId) return;
     try {
-      console.log('🔄 Assigning teacher:', { classId: selectedClass.id, teacherId: selectedTeacherId });
-      const response = await classService.assignTeacher(selectedClass.id, selectedTeacherId);
-      console.log('✅ Teacher assigned:', response);
-      showToast('Teacher assigned successfully!', 'success');
+      if (selectedTeacherId === 'unassign') {
+        // Unassign the current homeroom teacher
+        const currentTeacher = selectedClass.teachers?.[0];
+        if (!currentTeacher?.teacher_id) {
+          showToast('No teacher is currently assigned to this class.', 'error');
+          return;
+        }
+        console.log('🔄 Unassigning teacher:', { classId: selectedClass.id, teacherId: currentTeacher.teacher_id });
+        await classService.unassignTeacher(selectedClass.id, currentTeacher.teacher_id);
+        showToast('Teacher unassigned successfully!', 'success');
+      } else {
+        console.log('🔄 Assigning teacher:', { classId: selectedClass.id, teacherId: selectedTeacherId });
+        await classService.assignTeacher(selectedClass.id, selectedTeacherId);
+        showToast('Teacher assigned successfully!', 'success');
+      }
       setShowAssignModal(false);
       setSelectedClass(null);
       setSelectedTeacherId('');
       fetchClasses();
     } catch (err: any) {
-      console.error('❌ Error assigning teacher:', err);
+      console.error('❌ Error managing teacher assignment:', err);
       const errorMsg = err.response?.status === 500
-        ? 'Backend error: Teacher assignment endpoint not implemented or has a bug. Contact backend team.'
-        : err.response?.data?.error?.message || 'Failed to assign teacher';
+        ? 'Backend error: Teacher assignment endpoint not implemented or has a bug.'
+        : err.response?.data?.error?.message || 'Failed to update teacher assignment';
       showToast(errorMsg, 'error');
     }
   };
@@ -485,7 +496,10 @@ export const Classes = () => {
                 <div className="p-2 bg-green-100 text-green-600 rounded-lg">
                   <UserPlus size={20} />
                 </div>
-                <h3 className="font-bold text-slate-800 dark:text-slate-100">Assign Teacher</h3>
+                <div>
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Assign Homeroom Teacher</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{selectedClass.name} · {selectedClass.section}</p>
+                </div>
               </div>
               <button type="button" title="Close assign teacher modal" onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
@@ -493,6 +507,14 @@ export const Classes = () => {
             </div>
 
             <form className="p-6 space-y-4" onSubmit={handleAssignTeacher}>
+              {/* Current assignment banner */}
+              {selectedClass.teachers && selectedClass.teachers.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-xs">
+                  <span className="text-blue-600 font-bold">Current:</span>
+                  <span className="text-blue-800 dark:text-blue-200 font-semibold">{selectedClass.teachers[0]?.teacher_name || selectedClass.teacherName}</span>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Select Teacher</label>
                 <select
@@ -500,9 +522,11 @@ export const Classes = () => {
                   value={selectedTeacherId}
                   onChange={(e) => setSelectedTeacherId(e.target.value)}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 >
-                  <option value="">Select a teacher</option>
+                  <option value="">— Select a teacher —</option>
+                  {selectedClass.teachers && selectedClass.teachers.length > 0 && (
+                    <option value="unassign">🚫 Remove / Unassign current teacher</option>
+                  )}
                   {teachers.map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>
                       {teacher.name} ({teacher.digitalId})
@@ -511,7 +535,7 @@ export const Classes = () => {
                 </select>
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-2 flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowAssignModal(false)}
@@ -521,10 +545,15 @@ export const Classes = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-700"
+                  disabled={!selectedTeacherId}
+                  className={`flex-1 font-bold py-2 rounded-lg flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                    selectedTeacherId === 'unassign'
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
                 >
                   <Check size={18} />
-                  <span>Assign Teacher</span>
+                  <span>{selectedTeacherId === 'unassign' ? 'Unassign Teacher' : 'Assign Teacher'}</span>
                 </button>
               </div>
             </form>

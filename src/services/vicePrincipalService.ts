@@ -125,13 +125,20 @@ export const getCoursesBySection = async (sectionId: string) => {
   return response.data.data;
 };
 
-export const getSectionGrades = async (sectionId: string) => {
-  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/grades`);
+export const getSectionGrades = async (sectionId: string, academicYear?: string, semester?: number) => {
+  const params = new URLSearchParams();
+  if (academicYear) params.append('academicYear', academicYear);
+  if (semester !== undefined) params.append('semester', String(semester));
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/grades${queryString}`);
   return response.data.data;
 };
 
-export const generateSectionResults = async (sectionId: string) => {
-  const response = await api.post(`/vice-principal/grade-management/generate-results/${sectionId}`, {});
+export const generateSectionResults = async (sectionId: string, academicYear?: string, semester?: number) => {
+  const response = await api.post(`/vice-principal/grade-management/generate-results/${sectionId}`, {
+    academicYear,
+    semester
+  });
   return response.data.data;
 };
 
