@@ -456,12 +456,12 @@ export const TeacherPortal = () => {
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Assigned Classes</p>
               <h3 className="text-3xl font-black text-slate-800 dark:text-white">{dashboard?.assignedClassesCount ?? '—'}</h3>
             </div>
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl">
+            <Link to="/schedule" className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl hover:border-purple-300 dark:hover:border-purple-700 transition-colors block">
               <div className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"><Calendar size={28} /></div>
-              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Today's Schedule</p>
+              <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">My Schedule</p>
               <h3 className="text-3xl font-black text-slate-800 dark:text-white">{todaySchedule.length}</h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Classes today</p>
-            </div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-4">Classes today · View full schedule →</p>
+            </Link>
             <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl">
               <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 w-14 h-14 rounded-2xl flex items-center justify-center mb-6"><ClipboardList size={28} /></div>
               <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Pending Plans</p>
@@ -470,25 +470,54 @@ export const TeacherPortal = () => {
             </div>
           </div>
 
-          {/* Today's Schedule */}
-          {todaySchedule.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-slate-800 dark:text-white">Today's Schedule</h3>
+          {/* My Assigned Classes */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800 dark:text-white">My Assigned Classes</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Classes assigned to you from the school administration</p>
               </div>
+              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-bold">{myClasses.length} class{myClasses.length !== 1 ? 'es' : ''}</span>
+            </div>
+            {myClasses.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"><Users size={28} className="text-slate-400" /></div>
+                <p className="font-bold text-slate-500 dark:text-slate-400">No classes assigned yet</p>
+                <p className="text-xs text-slate-400 mt-1">Contact the school admin to assign classes to you.</p>
+              </div>
+            ) : (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {todaySchedule.map((item: any) => (
-                  <div key={item.id} className="px-6 py-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-800 dark:text-white">{item.subject} — Class {item.class_name}</p>
-                      <p className="text-xs text-slate-500">{item.time_slot} · {item.day}</p>
+                {myClasses.map((cls: any) => (
+                  <div key={cls.id} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <BookOpen size={18} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-white">
+                          {cls.name || cls.class_name || `Grade ${cls.grade_level}`}
+                          {cls.section ? ` — Section ${cls.section}` : ''}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          {cls.subject && cls.subject !== 'Assigned Class' ? cls.subject : 'General Class'}
+                          {cls.grade_level ? ` · Grade ${cls.grade_level}` : ''}
+                        </p>
+                      </div>
                     </div>
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">{item.time_slot}</span>
+                    <div className="flex items-center gap-4 text-right">
+                      <div>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Students</p>
+                        <p className="font-black text-slate-800 dark:text-white">{cls.enrolledStudents ?? '—'}</p>
+                      </div>
+                      <Link to="/attendance" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                        Attendance
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </>
       ) : activeTab === 'plans' ? (
         /* Weekly Plans Tab */
