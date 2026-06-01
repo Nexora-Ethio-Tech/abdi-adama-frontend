@@ -208,7 +208,7 @@ export const StudentPortal = () => {
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {[...schoolAnnouncements.map((notice) => ({ ...notice, source: 'School Admin' })),
-                  ...logisticsAnnouncements.map((notice) => ({ ...notice, source: 'Driver' }))].map((notice) => (
+                ...logisticsAnnouncements.map((notice) => ({ ...notice, source: 'Driver' }))].map((notice) => (
                   <div key={notice.id} className="bg-slate-950/95 border border-slate-800 p-6 rounded-3xl shadow-xl shadow-slate-900/30 text-white">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="space-y-2">

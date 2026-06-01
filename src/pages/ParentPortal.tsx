@@ -618,11 +618,10 @@ export const ParentPortal = () => {
             key={c.id}
             type="button"
             onClick={() => selectChild(c)}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              selectedChild?.id === c.id
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${selectedChild?.id === c.id
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
-            }`}
+              }`}
           >
             {c.fullName}
           </button>
@@ -680,60 +679,59 @@ export const ParentPortal = () => {
               {children.map((child) => {
                 const isSelected = selectedChild?.id === child.id;
                 return (
-                <div
-                  key={child.id}
-                  onClick={() => selectChild(child)}
-                  className="group relative cursor-pointer"
-                >
-                  <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg transition duration-500 ${isSelected ? 'opacity-20' : 'opacity-0 group-hover:opacity-10'}`} />
-                  <div className={`relative bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-500 ${(
-                    isSelected
-                      ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/30'
-                      : 'border-slate-100 dark:border-slate-800'
-                  )}
+                  <div
+                    key={child.id}
+                    onClick={() => selectChild(child)}
+                    className="group relative cursor-pointer"
+                  >
+                    <div className={`absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[2.5rem] blur-lg transition duration-500 ${isSelected ? 'opacity-20' : 'opacity-0 group-hover:opacity-10'}`} />
+                    <div className={`relative bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border shadow-sm group-hover:shadow-xl group-hover:-translate-y-1 transition-all duration-500 ${(
+                      isSelected
+                        ? 'border-blue-500 dark:border-blue-500 ring-2 ring-blue-500/30'
+                        : 'border-slate-100 dark:border-slate-800'
+                    )}
                   `}>
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-5">
-                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-all duration-500 ${
-                          isSelected
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-50 dark:bg-slate-850 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
-                        }`}>
-                          {child.fullName.charAt(0)}
+                      <div className="flex items-center justify-between mb-8">
+                        <div className="flex items-center gap-5">
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-all duration-500 ${isSelected
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-50 dark:bg-slate-850 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
+                            }`}>
+                            {child.fullName.charAt(0)}
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white mb-1">{child.fullName}</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grade {child.grade}</p>
+                            {isSelected && (
+                              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Currently Selected</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-xl font-black text-slate-900 dark:text-white mb-1">{child.fullName}</h4>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Grade {child.grade}</p>
-                          {isSelected && (
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Currently Selected</p>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectChild(child, 'grades');
+                          }}
+                          className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all"
+                          title={`View ${child.fullName}'s grades`}
+                        >
+                          <ChevronRight size={20} />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          selectChild(child, 'grades');
-                        }}
-                        className="p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 hover:text-white transition-all"
-                        title={`View ${child.fullName}'s grades`}
-                      >
-                        <ChevronRight size={20} />
-                      </button>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-5">
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
-                        <p className="text-xl font-black text-emerald-600">{child.attendance || '0.0%'}</p>
-                      </div>
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance Rank</p>
-                        <p className="text-lg font-black text-blue-600 truncate">{child.performance || 'Pending'}</p>
+                      <div className="grid grid-cols-2 gap-5">
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
+                          <p className="text-xl font-black text-emerald-600">{child.attendance || '0.0%'}</p>
+                        </div>
+                        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance Rank</p>
+                          <p className="text-lg font-black text-blue-600 truncate">{child.performance || 'Pending'}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
                 );
               })}
             </div>
@@ -755,33 +753,30 @@ export const ParentPortal = () => {
                 <button
                   type="button"
                   onClick={() => setNoticeFilter('all')}
-                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                    noticeFilter === 'all'
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'all'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   All ({schoolAnnouncementsData.length + driverUpdates.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setNoticeFilter('school')}
-                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                    noticeFilter === 'school'
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'school'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   School Admin ({schoolAnnouncementsData.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setNoticeFilter('driver')}
-                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
-                    noticeFilter === 'driver'
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'driver'
                       ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
                       : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   Driver Logs ({driverUpdates.length})
                 </button>
@@ -812,11 +807,10 @@ export const ParentPortal = () => {
                               <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] font-black uppercase tracking-wider">
                                 School Admin
                               </span>
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                                notice.priority === 'High'
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${notice.priority === 'High'
                                   ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'
                                   : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
-                              }`}>
+                                }`}>
                                 {notice.priority} Priority
                               </span>
                             </div>
@@ -893,12 +887,12 @@ export const ParentPortal = () => {
                 {((noticeFilter === 'all' && schoolAnnouncementsData.length === 0 && driverUpdates.length === 0) ||
                   (noticeFilter === 'school' && schoolAnnouncementsData.length === 0) ||
                   (noticeFilter === 'driver' && driverUpdates.length === 0)) && (
-                  <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/10 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 space-y-3">
-                    <Megaphone className="mx-auto text-slate-300 dark:text-slate-700 animate-pulse" size={36} />
-                    <p className="text-sm font-black uppercase tracking-widest text-slate-400">No active notices found</p>
-                    <p className="text-xs text-slate-400 italic">There are no updates from {noticeFilter === 'school' ? 'the School Admin' : noticeFilter === 'driver' ? 'the transit driver' : 'either admin or driver'} at this time.</p>
-                  </div>
-                )}
+                    <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/10 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 space-y-3">
+                      <Megaphone className="mx-auto text-slate-300 dark:text-slate-700 animate-pulse" size={36} />
+                      <p className="text-sm font-black uppercase tracking-widest text-slate-400">No active notices found</p>
+                      <p className="text-xs text-slate-400 italic">There are no updates from {noticeFilter === 'school' ? 'the School Admin' : noticeFilter === 'driver' ? 'the transit driver' : 'either admin or driver'} at this time.</p>
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -1218,11 +1212,10 @@ export const ParentPortal = () => {
                           <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{course.name}</td>
                           <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
                           <td className="px-8 py-5 text-right">
-                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${
-                              course.score_display === 'Pending' || course.score === null
+                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${course.score_display === 'Pending' || course.score === null
                                 ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
                                 : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                            }`}>
+                              }`}>
                               {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
                             </span>
                           </td>
@@ -1409,13 +1402,12 @@ export const ParentPortal = () => {
                         <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                           <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{new Date(record.date).toLocaleDateString()}</td>
                           <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${
-                              record.status === 'present'
+                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${record.status === 'present'
                                 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                                 : record.status === 'absent'
-                                ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
-                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                            }`}>
+                                  ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                                  : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                              }`}>
                               {record.status}
                             </span>
                           </td>
@@ -1462,13 +1454,12 @@ export const ParentPortal = () => {
                       <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">{financial.student_name}</h3>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Student ID: {financial.student_id}</p>
                     </div>
-                    <span className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
-                      financial.fee_status === 'paid'
+                    <span className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${financial.fee_status === 'paid'
                         ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                         : financial.fee_status === 'pending'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                        : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
-                    }`}>
+                          ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                          : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                      }`}>
                       {financial.fee_status}
                     </span>
                   </div>
@@ -1547,21 +1538,19 @@ export const ParentPortal = () => {
                 <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                   <button
                     onClick={() => setClinicSupportTab('visits')}
-                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                      clinicSupportTab === 'visits'
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'visits'
                         ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                    }`}
+                      }`}
                   >
                     Clinic Visits
                   </button>
                   <button
                     onClick={() => setClinicSupportTab('chat')}
-                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                      clinicSupportTab === 'chat'
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'chat'
                         ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                    }`}
+                      }`}
                   >
                     Chat
                   </button>
@@ -1579,11 +1568,10 @@ export const ParentPortal = () => {
                           key={c.id}
                           type="button"
                           onClick={() => selectChild(c, 'clinic')}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            selectedChild?.id === c.id
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChild?.id === c.id
                               ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
                               : 'text-slate-500 hover:text-slate-800'
-                          }`}
+                            }`}
                         >
                           {c.fullName.split(' ')[0]}
                         </button>
@@ -1676,11 +1664,10 @@ export const ParentPortal = () => {
                               <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1">{visit.reason}</h4>
                               <p className="text-sm text-slate-600 dark:text-slate-400">{visit.treatment}</p>
                             </div>
-                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${
-                              visit.status === 'completed'
+                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${visit.status === 'completed'
                                 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
                                 : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                            }`}>
+                              }`}>
                               {visit.status}
                             </span>
                           </div>
@@ -1709,17 +1696,15 @@ export const ParentPortal = () => {
                 ) : (
                   chatMessages.map((m) => (
                     <div key={m.id} className={`flex items-start gap-3 ${m.role === 'parent' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${
-                        m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center shadow-sm ${m.role === 'parent' ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white'
+                        }`}>
                         {m.role === 'parent' ? <User size={14} /> : <HeartPulse size={14} />}
                       </div>
                       <div className={`max-w-[75%] space-y-1 ${m.role === 'parent' ? 'text-right' : ''}`}>
-                        <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${
-                          m.role === 'parent'
+                        <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${m.role === 'parent'
                             ? 'bg-blue-600 text-white rounded-tr-none'
                             : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
-                        }`}>
+                          }`}>
                           {m.text}
                         </div>
                         <div className="flex items-center gap-2 justify-end px-1">

@@ -63,7 +63,7 @@ export const StudentCourses = () => {
       setLoading(true);
       setError('');
       const semNum = selectedSemester === 'First Semester' ? 1 : 2;
-      
+
       // Block access to future academic periods
       if (!isSemesterAccessible(selectedYear, semNum as 1 | 2)) {
         setError('Grades for this academic period are not yet accessible. Please select a current or past year and semester.');
@@ -558,29 +558,28 @@ export const StudentCourses = () => {
             ) : historyData && historyData.courses ? (
               <div className="overflow-hidden rounded-3xl border border-slate-100 dark:border-slate-800">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50">
-                      <tr>
-                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Course</th>
-                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Code</th>
-                        <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Final Score</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {historyData.courses.map((course: any, i: number) => (
-                        <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{course.name}</td>
-                          <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
-                          <td className="px-8 py-5 text-right">
-                            <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${
-                              course.score_display === 'Pending' || course.score === null
-                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                  <thead className="bg-slate-50 dark:bg-slate-800/50">
+                    <tr>
+                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Course</th>
+                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest">Code</th>
+                      <th className="px-8 py-5 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Final Score</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {historyData.courses.map((course: any, i: number) => (
+                      <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="px-8 py-5 font-bold text-slate-800 dark:text-white">{course.name}</td>
+                        <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
+                        <td className="px-8 py-5 text-right">
+                          <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${course.score_display === 'Pending' || course.score === null
+                              ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                              : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                             }`}>
-                              {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                            {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
