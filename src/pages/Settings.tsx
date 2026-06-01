@@ -423,8 +423,6 @@ export const Settings = () => {
   const handleSaveChanges = async () => {
     if (activeTab === 'Grading System') {
       localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      Object.keys(mockGradingConfigs).forEach(key => delete (mockGradingConfigs as any)[key]);
-      Object.assign(mockGradingConfigs, gradeConfigs);
       setSuccessMessage('Grading configurations saved locally as draft. Click Publish to push to all teachers.');
       setTimeout(() => setSuccessMessage(''), 5000);
     } else if (activeTab === 'General' && role === 'super-admin') {
@@ -447,13 +445,10 @@ export const Settings = () => {
       await publishGradingConfigs(selectedGrade, currentMethods);
       // Also persist all grades locally
       localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      Object.keys(mockGradingConfigs).forEach(key => delete (mockGradingConfigs as any)[key]);
-      Object.assign(mockGradingConfigs, gradeConfigs);
       setSuccessMessage(`Grade ${selectedGrade} grading structure published! Teachers, Students & Parents can now see the updated format.`);
     } catch (err: any) {
       // Fallback: still save locally
       localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      Object.assign(mockGradingConfigs, gradeConfigs);
       setSuccessMessage(`Published locally. (Backend: ${err?.response?.data?.message || err?.message || 'unavailable'})`);
     } finally {
       setGradingLoading(false);
@@ -504,13 +499,13 @@ export const Settings = () => {
         <p className="text-slate-500 dark:text-slate-400 text-sm">Manage your school preferences and system configuration.</p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <div className="w-full lg:w-72 flex overflow-x-auto lg:flex-col no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0 gap-3 lg:space-y-2 pb-4 lg:pb-0">
+      <div className="flex flex-col lg:flex-row gap-5">
+        <div className="w-full lg:w-60 flex overflow-x-auto lg:flex-col no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0 gap-3 lg:space-y-2 pb-4 lg:pb-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-shrink-0 flex items-center gap-4 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === tab.id
+              className={`flex-shrink-0 flex items-center gap-3 px-5 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all duration-300 ${activeTab === tab.id
                 ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-900/20 dark:shadow-white/10 translate-x-1'
                 : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 bg-slate-50 dark:bg-slate-800/30 lg:bg-transparent border border-transparent'
                 }`}
@@ -521,8 +516,8 @@ export const Settings = () => {
           ))}
         </div>
 
-        <div className="flex-1 bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden transition-all duration-500 flex flex-col min-h-[520px] max-h-[calc(100vh-10rem)]">
-          <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="flex-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-none overflow-hidden transition-all duration-500 flex flex-col min-h-[520px] max-h-[calc(100vh-4rem)]">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
             <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
               {superAdminSubTabs ? getSubTabLabel(activeTab, activeSubTab) : activeTab}
               <span className="text-slate-400 font-bold text-sm normal-case tracking-normal ml-2">
@@ -535,7 +530,7 @@ export const Settings = () => {
             </button>
           </div>
 
-          <div className="p-6 flex flex-col gap-6 flex-1 min-h-0 overflow-hidden">
+          <div className="px-6 py-5 flex flex-col gap-5 flex-1 min-h-0 overflow-y-auto">
             {successMessage && (
               <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300 p-4 rounded-2xl text-xs font-bold uppercase tracking-wider flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
                 <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400" />
@@ -1638,7 +1633,7 @@ export const Settings = () => {
                             ];
                             updateGradeConfig(recommended);
                           }}
-                          className="text-[10px] font-black px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white rounded-full transition-all border border-blue-100 dark:border-blue-900/30"
+                          className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 rounded-full transition-all shadow-md shadow-blue-500/30 active:scale-95"
                         >
                           Apply Recommended Template
                         </button>
@@ -1691,7 +1686,7 @@ export const Settings = () => {
                                 const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
                                 updateGradeConfig(filtered);
                               }}
-                              className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                              className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-all active:scale-95"
                             >
                               <Trash2 size={18} />
                             </button>
@@ -1716,9 +1711,9 @@ export const Settings = () => {
                           <button
                             key={preset.label}
                             onClick={() => addPresetMethod(preset.label, preset.weight)}
-                            className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-1.5 shadow-sm"
+                            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2 shadow-sm active:scale-95"
                           >
-                            <Plus size={12} className="text-blue-500" />
+                            <Plus size={14} className="text-blue-500" />
                             {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
                           </button>
                         ))}
@@ -1765,7 +1760,7 @@ export const Settings = () => {
                               updateGradeConfig(currentMethods);
                               setNewMethodLabel('');
                             }}
-                            className="bg-slate-800 dark:bg-blue-600 text-white p-2.5 rounded-xl hover:bg-slate-700 dark:hover:bg-blue-700 transition-all shadow-md"
+                            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-2.5 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 active:scale-95 flex items-center justify-center"
                           >
                             <Plus size={20} />
                           </button>
@@ -1820,12 +1815,12 @@ export const Settings = () => {
                 READ-ONLY: Grading configurations are managed at the School Admin level.
               </div>
             )}
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
+            <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               {activeTab === 'Grading System' && (
                 <button
                   onClick={handlePublishChanges}
                   disabled={gradingLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-100 dark:shadow-none"
+                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-60 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
                 >
                   {gradingLoading ? <CheckCircle size={18} className="animate-spin" /> : <CheckCircle size={18} />}
                   <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
