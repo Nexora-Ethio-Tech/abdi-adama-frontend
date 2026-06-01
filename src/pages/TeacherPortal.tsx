@@ -958,9 +958,17 @@ export const TeacherPortal = () => {
                         <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Students</p>
                         <p className="font-black text-slate-800 dark:text-white">{cls.enrolledStudents ?? '—'}</p>
                       </div>
-                      <Link to="/attendance" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
-                        Attendance
-                      </Link>
+                      <div className="flex gap-2">
+                        <Link to="/attendance" className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors">
+                          Attendance
+                        </Link>
+                        <Link 
+                          to={`/grades?classId=${cls.id || cls.class_id}&courseId=${cls.course_id || cls.id}&subject=${encodeURIComponent(cls.subject || 'General')}`} 
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                        >
+                          Enter Grades
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 ))}

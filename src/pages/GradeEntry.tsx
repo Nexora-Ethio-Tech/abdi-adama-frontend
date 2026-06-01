@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
 import { Save, Lock, ArrowLeft, ChevronRight, Users, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, TeacherClass, ClassStudent } from '../services/teacherService';
 import { mockGradingConfigs } from '../data/mockData';
@@ -13,6 +13,7 @@ type ScoreMap = Record<string, Record<string, number | ''>>;
 
 export const GradeEntry = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { gradesLocked } = useUser();
 
   const [classes, setClasses] = useState<TeacherClass[]>([]);
@@ -38,14 +39,9 @@ export const GradeEntry = () => {
   const [selectedYear, setSelectedYear] = useState('2025/2026');
   const [selectedSemester, setSelectedSemester] = useState<'First Semester' | 'Second Semester'>('Second Semester');
 
-  // Load teacher's classes on mount
-  useEffect(() => {
-    setLoadingClasses(true);
-    getMyClasses('grades')
-      .then((data) => setClasses(data || []))
-      .catch(() => setClassError('Could not load your classes. Please try again.'))
-      .finally(() => setLoadingClasses(false));
-  }, []);
+  const initialClassId = searchParams.get('classId');
+  const initialCourseId = searchParams.get('courseId');
+  const initialSubject = searchParams.get('subject');
 
   // Load students and grading config when a class is selected
   const handleSelectClass = useCallback(async (cls: TeacherClass, courseId: string, subject: string) => {
@@ -99,6 +95,24 @@ export const GradeEntry = () => {
       })
       .finally(() => setLoadingMethods(false));
   }, []);
+
+  // Load teacher's classes on mount
+  useEffect(() => {
+    setLoadingClasses(true);
+    getMyClasses('grades')
+      .then((data) => {
+        setClasses(data || []);
+        if (initialClassId && initialCourseId && initialSubject && data) {
+          const matched = data.find((c: any) => c.id === initialClassId || (c as any).class_id === initialClassId || (c as any).course_id === initialCourseId || (c as any).course_id === initialClassId);
+          if (matched) {
+            const realCourseId = matched.course_id || initialCourseId;
+            handleSelectClass(matched, realCourseId, initialSubject);
+          }
+        }
+      })
+      .catch(() => setClassError('Could not load your classes. Please try again.'))
+      .finally(() => setLoadingClasses(false));
+  }, [initialClassId, initialCourseId, initialSubject, handleSelectClass]);
 
   const handleScoreChange = (studentId: string, methodId: string, value: string) => {
     if (lockedMethods.has(methodId) || gradesLocked) return;
@@ -317,7 +331,7 @@ export const GradeEntry = () => {
           <div className="flex gap-3">
             <button
               onClick={handleSave}
-              disabled={saving || submittingGrades}
+              disabled={saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
               className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60 text-slate-800 dark:text-white rounded-xl flex items-center gap-2 font-bold transition-all"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
@@ -325,7 +339,7 @@ export const GradeEntry = () => {
             </button>
             <button
               onClick={handleSubmitGrades}
-              disabled={saving || submittingGrades}
+              disabled={saving || submittingGrades || (gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)))}
               className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
             >
               {submittingGrades ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
@@ -334,6 +348,16 @@ export const GradeEntry = () => {
           </div>
         )}
       </div>
+
+      {gradingMethods.length > 0 && gradingMethods.every(m => lockedMethods.has(m.id)) && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 p-4 rounded-xl flex items-center gap-3 text-emerald-800 dark:text-emerald-300">
+          <Lock size={20} className="text-emerald-600 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-sm">All Grades Submitted &amp; Locked</p>
+            <p className="text-xs opacity-80">All grades for this course have been officially submitted to the administration. They are now locked and cannot be edited anymore.</p>
+          </div>
+        </div>
+      )}
 
       {gradesLocked && (
         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 p-4 rounded-xl flex items-center gap-3 text-amber-800 dark:text-amber-300">
@@ -369,20 +393,21 @@ export const GradeEntry = () => {
             <table className="w-full text-left" style={{ minWidth: `${300 + gradingMethods.length * 140}px` }}>
               <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student Name</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Digital ID</th>
                   {gradingMethods.map((method) => (
                     <th key={method.id} className="px-4 py-4 text-center w-32">
                       <p className="text-xs font-bold text-slate-600 dark:text-slate-300">{method.label}</p>
                       <p className="text-[10px] font-black text-blue-500 mt-0.5">/{method.maxWeight}</p>
                     </th>
                   ))}
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right w-28">Total /100</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right w-28">Total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {students.length === 0 ? (
                   <tr>
-                    <td colSpan={gradingMethods.length + 2} className="px-6 py-12 text-center text-slate-400 text-sm">
+                    <td colSpan={gradingMethods.length + 3} className="px-6 py-12 text-center text-slate-400 text-sm">
                       No students enrolled in this class.
                     </td>
                   </tr>
@@ -392,30 +417,28 @@ export const GradeEntry = () => {
                     return (
                       <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-sm flex-shrink-0">
-                              {student.firstName?.[0]}{student.lastName?.[0]}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold text-slate-800 dark:text-white">{student.firstName} {student.lastName}</p>
-                              <p className="text-xs text-slate-500">{student.digitalId}</p>
-                            </div>
-                          </div>
+                          <p className="text-sm font-bold text-slate-800 dark:text-white">{student.firstName} {student.lastName}</p>
                         </td>
-                        {gradingMethods.map((method) => (
-                          <td key={method.id} className="px-4 py-4">
-                            <input
-                              disabled={gradesLocked}
-                              type="number"
-                              min={0}
-                              max={method.maxWeight}
-                              placeholder="0"
-                              value={scores[student.id]?.[method.id] ?? ''}
-                              onChange={(e) => handleScoreChange(student.id, method.id, e.target.value)}
-                              className="w-full text-center p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 font-bold text-blue-600 dark:text-blue-400"
-                            />
-                          </td>
-                        ))}
+                        <td className="px-6 py-4">
+                          <p className="text-xs font-mono text-slate-500">{student.digitalId}</p>
+                        </td>
+                        {gradingMethods.map((method) => {
+                          const isLocked = lockedMethods.has(method.id);
+                          return (
+                            <td key={method.id} className="px-4 py-4">
+                              <input
+                                disabled={gradesLocked || isLocked}
+                                type="number"
+                                min={0}
+                                max={method.maxWeight}
+                                placeholder="0"
+                                value={scores[student.id]?.[method.id] ?? ''}
+                                onChange={(e) => handleScoreChange(student.id, method.id, e.target.value)}
+                                className={`w-full text-center p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 font-bold ${isLocked ? 'text-slate-500 dark:text-slate-500' : 'text-blue-600 dark:text-blue-400'}`}
+                              />
+                            </td>
+                          );
+                        })}
                         <td className="px-6 py-4 text-right">
                           <span className={`font-black text-base ${total >= 80 ? 'text-emerald-600' : total >= 60 ? 'text-blue-600' : total >= 40 ? 'text-amber-600' : 'text-rose-500'}`}>
                             {total}

@@ -161,6 +161,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: BookOpen, label: t('nav.weeklyPlans'), path: '/dashboard/teacher?tab=plans' },
           { icon: CalendarCheck, label: t('nav.attendance'), path: '/attendance' },
           { icon: BookOpen, label: t('nav.mySchedule'), path: '/schedule' },
+          { icon: ClipboardCheck, label: 'Grade Entry', path: '/grades' },
           { icon: ClipboardList, label: t('nav.exams'), path: '/exams' },
         ];
       case 'student':
