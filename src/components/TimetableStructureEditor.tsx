@@ -48,6 +48,23 @@ const buildGradeMap = (classes: ClassRecord[], rows: StructureRow[]): Record<str
   const classLookup = new Map(classes.map(clazz => [clazz.id, clazz]));
   const map: Record<string, GradeState> = {};
 
+  // First, populate map with all existing classes from the DB
+  for (const clazz of classes) {
+    const parsed = parseClassName(clazz.name || '');
+    const gradeKey = parsed.grade || clazz.name || 'Untitled Grade';
+    const sectionName = parsed.section || clazz.section || 'A';
+
+    if (!map[gradeKey]) {
+      map[gradeKey] = { displayName: gradeKey, sections: [], courses: [], assignments: {}, collapsed: false };
+    }
+
+    const grade = map[gradeKey];
+    if (!grade.sections.some(section => section.name === sectionName)) {
+      grade.sections.push({ name: sectionName, classId: clazz.id });
+    }
+  }
+
+  // Then process structure rows to add courses and assignments
   if (rows.length > 0) {
     for (const row of rows) {
       const clazz = classLookup.get(row.classId);
@@ -57,10 +74,10 @@ const buildGradeMap = (classes: ClassRecord[], rows: StructureRow[]): Record<str
       const gradeKey = parsed.grade || clazz.name || 'Untitled Grade';
       const sectionName = parsed.section || clazz.section || 'A';
 
+      // (The grade and section should already exist from the loop above, but we ensure it just in case)
       if (!map[gradeKey]) {
         map[gradeKey] = { displayName: gradeKey, sections: [], courses: [], assignments: {}, collapsed: false };
       }
-
       const grade = map[gradeKey];
       if (!grade.sections.some(section => section.name === sectionName)) {
         grade.sections.push({ name: sectionName, classId: clazz.id });
@@ -81,8 +98,6 @@ const buildGradeMap = (classes: ClassRecord[], rows: StructureRow[]): Record<str
 
       grade.assignments[sectionName][course.id] = row.teacherId;
     }
-
-    return map;
   }
 
   return map;

@@ -153,7 +153,6 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: UserSquare2, label: t('nav.teachers'), path: '/teachers' },
           { icon: FileText, label: t('nav.transcripts'), path: '/vp-transcripts' },
           { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
-          { icon: Lock, label: 'Grade Locks', path: '/vp-grade-locks' },
           { icon: ClipboardList, label: 'Grade Management', path: '/vp-grade-management' },
         ];
       case 'teacher':

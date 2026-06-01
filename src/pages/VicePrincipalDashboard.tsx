@@ -2,8 +2,7 @@ import { Users, GraduationCap, Clock, ChevronRight, BarChart3, Lock, CheckCircle
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getVPDashboard, getStaffAbsentCount, getGradeLocks, toggleGradeLock as apiToggleGradeLock } from '../services/vicePrincipalService';
-
+import { getVPDashboard, getStaffAbsentCount } from '../services/vicePrincipalService';
 const StatCard = ({ icon: Icon, label, value, color }: any) => (
   <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800/80 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
     <div className="flex items-center justify-between mb-4">
@@ -18,7 +17,7 @@ export const VicePrincipalDashboard = () => {
   const { user } = useUser();
   const [dashboard, setDashboard] = useState<any>(null);
   const [staffAbsentCount, setStaffAbsentCount] = useState<number | null>(null);
-  const [gradeLocks, setGradeLocks] = useState<Array<{ gradeLevel: string; isLocked: boolean; academicYearName?: string; academicYearId?: string }>>([]);
+
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
@@ -30,14 +29,12 @@ export const VicePrincipalDashboard = () => {
   const fetchDashboard = async () => {
     setLoading(true);
     try {
-      const [dashboardData, absentData, locksData] = await Promise.all([
+      const [dashboardData, absentData] = await Promise.all([
         getVPDashboard(),
         getStaffAbsentCount(),
-        getGradeLocks(),
       ]);
       setDashboard(dashboardData);
       setStaffAbsentCount(absentData.absentCount);
-      setGradeLocks(locksData.data || []);
     } catch (err: any) {
       console.error('VP Dashboard error:', err);
       showToast('Failed to load vice principal dashboard data.', 'error');
@@ -144,19 +141,6 @@ export const VicePrincipalDashboard = () => {
           <p className="text-blue-50/90 text-sm font-medium">Process and view student grades by section</p>
         </Link>
 
-        <Link 
-          to="/vp-grade-locks" 
-          className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-purple-500/10"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-white/20 rounded-2xl">
-              <Lock size={24} />
-            </div>
-            <ChevronRight className="group-hover:translate-x-1.5 transition-transform" size={20} />
-          </div>
-          <h3 className="font-bold text-lg mb-1">Grade Entry Controls</h3>
-          <p className="text-purple-50/90 text-sm font-medium">Lock/unlock grade periods for this branch</p>
-        </Link>
 
         <Link 
           to="/vp-transcripts" 
@@ -173,102 +157,7 @@ export const VicePrincipalDashboard = () => {
         </Link>
       </div>
 
-      {/* Grade Lock Control Section */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-100 dark:border-slate-800/80 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-white text-lg">Grade Submission Control</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Open or close grade submission for each grade level. Teachers cannot submit grades when locked.
-              </p>
-            </div>
-            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl">
-              <Lock className="text-indigo-600 dark:text-indigo-400" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-          {gradeLocks.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-sm text-slate-500 dark:text-slate-400">No grade locks configured yet. Use the button below to open/close submission for a grade.</p>
-            </div>
-          ) : (
-            gradeLocks.map((lock) => (
-              <div key={lock.gradeLevel} className="px-6 py-4 flex items-center justify-between hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className={`p-2.5 rounded-xl ${lock.isLocked ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'}`}>
-                    {lock.isLocked
-                      ? <Lock className="text-amber-600 dark:text-amber-400" size={18} />
-                      : <Unlock className="text-emerald-600 dark:text-emerald-400" size={18} />
-                    }
-                  </div>
-                  <div>
-                    <p className="font-bold text-slate-800 dark:text-white text-sm">Grade {lock.gradeLevel}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {lock.academicYearName || 'Current Academic Year'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    lock.isLocked
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'
-                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'
-                  }`}>
-                    {lock.isLocked ? 'Closed' : 'Open'}
-                  </span>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await apiToggleGradeLock({
-                          gradeLevel: lock.gradeLevel,
-                          isLocked: !lock.isLocked,
-                          academicYearId: lock.academicYearId,
-                        });
-                        setGradeLocks(prev => prev.map(l =>
-                          l.gradeLevel === lock.gradeLevel ? { ...l, isLocked: !lock.isLocked } : l
-                        ));
-                        showToast(`Grade ${lock.gradeLevel} submission ${!lock.isLocked ? 'opened' : 'closed'}`, 'success');
-                      } catch (err: any) {
-                        showToast(err.response?.data?.message || 'Failed to update grade lock', 'error');
-                      }
-                    }}
-                    className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
-                      lock.isLocked
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/10'
-                        : 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/10'
-                    }`}
-                  >
-                    {lock.isLocked ? 'Open Submission' : 'Close Submission'}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
 
-        {gradeLocks.length === 0 && !loading && (
-          <div className="p-6 border-t border-slate-100 dark:border-slate-800">
-            <button
-              onClick={async () => {
-                const gradeLevel = prompt('Enter grade level to configure (e.g. 10, 11, 12):');
-                if (!gradeLevel) return;
-                try {
-                  await apiToggleGradeLock({ gradeLevel, isLocked: false });
-                  showToast(`Grade ${gradeLevel} submission opened`, 'success');
-                  fetchDashboard();
-                } catch (err: any) {
-                  showToast(err.response?.data?.message || 'Failed to create grade lock', 'error');
-                }
-              }}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-600/10 transition-all"
-            >
-              + Add Grade Level
-            </button>
-          </div>
-        )}
-      </div>
 
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
