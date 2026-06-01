@@ -10,6 +10,7 @@ export const PayrollManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [exportInfoMsg, setExportInfoMsg] = useState('');
 
   // Custom Export Modal State
   const [showExportModal, setShowExportModal] = useState(false);
@@ -165,18 +166,28 @@ export const PayrollManagement = () => {
 
   const handleCustomExport = async () => {
     if (!exportIncludeStaff && !exportIncludeOther) {
-      setErrorMsg('Please select at least one data type to export.');
+      setExportInfoMsg('Please select at least one data type to export.');
       return;
     }
     setActionLoading(true);
     setErrorMsg('');
+    setExportInfoMsg('');
     try {
       await payrollService.downloadCustomExport(exportMonth, Number(exportYear), exportIncludeStaff, exportIncludeOther);
       setShowExportModal(false);
       setSuccessMsg('Export completed successfully.');
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to export data.');
+      const msg: string = err.message || '';
+      const isNoData =
+        msg.toLowerCase().includes('no transaction') ||
+        msg.toLowerCase().includes('not found') ||
+        msg.toLowerCase().includes('no data');
+      if (isNoData) {
+        setExportInfoMsg('No transactions were found for the selected period.');
+      } else {
+        setErrorMsg(msg || 'Failed to export data.');
+      }
     } finally {
       setActionLoading(false);
     }
@@ -743,6 +754,13 @@ export const PayrollManagement = () => {
                   </div>
                 </label>
               </div>
+
+              {exportInfoMsg && (
+                <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-xl text-xs font-semibold">
+                  <HelpCircle size={15} className="flex-shrink-0 mt-0.5" />
+                  <span>{exportInfoMsg}</span>
+                </div>
+              )}
 
               <button
                 type="button"
