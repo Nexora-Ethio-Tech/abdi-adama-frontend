@@ -317,6 +317,10 @@ export const MyFinance = () => {
                                     <span className="text-slate-500 font-semibold">Position Allowance:</span>
                                     <strong className="text-slate-800 dark:text-white">+{Number(expandedSlipDetail.position_allowance).toLocaleString()} ETB</strong>
                                   </div>
+                                  <div className="flex justify-between items-center text-xs border-t border-slate-100 dark:border-slate-800/80 pt-2 font-black">
+                                    <span className="text-slate-800 dark:text-white">Total Allowances:</span>
+                                    <strong className="text-slate-900 dark:text-white">+{(Number(expandedSlipDetail.transport_allowance) + Number(expandedSlipDetail.housing_allowance) + Number(expandedSlipDetail.position_allowance)).toLocaleString()} ETB</strong>
+                                  </div>
                                   <div className="flex justify-between items-center text-xs">
                                     <span className="text-slate-500 font-semibold">Overtime ({expandedSlipDetail.overtime_hours} hrs):</span>
                                     <strong className="text-slate-800 dark:text-white">+{Number(expandedSlipDetail.overtime_amount).toLocaleString()} ETB</strong>

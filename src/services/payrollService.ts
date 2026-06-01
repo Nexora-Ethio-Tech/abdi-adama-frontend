@@ -33,6 +33,7 @@ export interface EmployeePayrollProfile {
   transport_allowance: number;
   housing_allowance: number;
   position_allowance: number;
+  total_allowance: number;
   overtime_rate_per_hour: number;
   bank_account: string | null;
   tin_number: string | null;
@@ -206,6 +207,34 @@ const payrollService = {
   exportPayrollUrl: (id: string, format: 'csv' | 'html'): string => {
     const token = localStorage.getItem('abdi_adama_token');
     return `${api.defaults.baseURL}/payroll/export/${id}?format=${format}&token=${token}`;
+  },
+
+  downloadCustomExport: async (month: string, year: number, includeStaff: boolean, includeOther: boolean): Promise<void> => {
+    try {
+      const response = await api.get('/payroll/custom-export', {
+        params: { month, year, includeStaff, includeOther },
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `auditor_report_${month}_${year}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (e: any) {
+      if (e.response && e.response.data instanceof Blob) {
+        const text = await e.response.data.text();
+        try {
+          const errData = JSON.parse(text);
+          throw new Error(errData.error?.message || 'Export failed');
+        } catch {
+          throw new Error('Export failed');
+        }
+      }
+      throw new Error(e.response?.data?.error?.message || e.message || 'Export failed');
+    }
   },
 
   // Personal Payslip ("My Finance")

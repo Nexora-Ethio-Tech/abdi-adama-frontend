@@ -11,6 +11,13 @@ export const PayrollManagement = () => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Custom Export Modal State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportIncludeStaff, setExportIncludeStaff] = useState(true);
+  const [exportIncludeOther, setExportIncludeOther] = useState(true);
+  const [exportMonth, setExportMonth] = useState('Meskerem');
+  const [exportYear, setExportYear] = useState('');
+
   // Selected Run Detail State
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [runDetail, setRunDetail] = useState<{ run: PayrollRun; items: PayrollItem[] } | null>(null);
@@ -29,6 +36,8 @@ export const PayrollManagement = () => {
   const [otSearchFilter, setOtSearchFilter] = useState('');
 
   useEffect(() => {
+    setExportMonth(ethiopianMonths[0]);
+    setExportYear(currentEthiopianYear.toString());
     loadPayrollRuns();
   }, []);
 
@@ -154,9 +163,23 @@ export const PayrollManagement = () => {
     }
   };
 
-  const handleExport = (runId: string, format: 'csv' | 'html') => {
-    const url = payrollService.exportPayrollUrl(runId, format);
-    window.open(url, '_blank');
+  const handleCustomExport = async () => {
+    if (!exportIncludeStaff && !exportIncludeOther) {
+      setErrorMsg('Please select at least one data type to export.');
+      return;
+    }
+    setActionLoading(true);
+    setErrorMsg('');
+    try {
+      await payrollService.downloadCustomExport(exportMonth, Number(exportYear), exportIncludeStaff, exportIncludeOther);
+      setShowExportModal(false);
+      setSuccessMsg('Export completed successfully.');
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to export data.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Helper to calculate totals from runs
@@ -199,22 +222,6 @@ export const PayrollManagement = () => {
           </div>
 
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleExport(run.id, 'csv')}
-              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl flex items-center gap-1.5"
-            >
-              <Download size={14} />
-              Export Excel
-            </button>
-            <button
-              type="button"
-              onClick={() => handleExport(run.id, 'html')}
-              className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-black text-xs uppercase tracking-wider px-5 py-3 rounded-xl flex items-center gap-1.5"
-            >
-              <FileText size={14} />
-              Print PDF
-            </button>
             {isDraft && isAuditorOrAdmin && (
               <button
                 type="button"
@@ -237,7 +244,7 @@ export const PayrollManagement = () => {
                 <tr>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Employee Details</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Basic</th>
-                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Allowances</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Total Allowances</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">OT Hours/Pay</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Gross Salary</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-red-500">Penalties</th>
@@ -303,6 +310,16 @@ export const PayrollManagement = () => {
           >
             <Plus size={16} />
             Generate Monthly Payroll
+          </button>
+        )}
+        {(role === 'auditor' || role === 'super-admin') && (
+          <button
+            type="button"
+            onClick={() => setShowExportModal(true)}
+            className="bg-emerald-600 dark:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none"
+          >
+            <Download size={16} />
+            Custom Export
           </button>
         )}
       </div>
@@ -636,6 +653,110 @@ export const PayrollManagement = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2rem] p-8 shadow-2xl animate-fade-in border border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 rounded-2xl">
+                  <Download size={22} />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 dark:text-white text-base uppercase tracking-tight">Auditor Export</h3>
+                  <p className="text-xs text-slate-400 font-semibold">Select period and data types</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label="Close export panel"
+                onClick={() => setShowExportModal(false)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Ethiopic Month</label>
+                  <select
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    value={exportMonth}
+                    onChange={(e) => setExportMonth(e.target.value)}
+                  >
+                    {ethiopianMonths.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Ethiopic Year</label>
+                  <input
+                    type="number"
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                    value={exportYear}
+                    onChange={(e) => setExportYear(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Data Included</label>
+                <label className="flex items-center gap-3 cursor-pointer group p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      checked={exportIncludeStaff}
+                      onChange={(e) => setExportIncludeStaff(e.target.checked)}
+                    />
+                    <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all"></div>
+                    <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white">Staff Payroll</p>
+                    <p className="text-[10px] font-medium text-slate-400">Includes TIN numbers and itemized deductions</p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer group p-3 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <div className="relative flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      className="peer sr-only"
+                      checked={exportIncludeOther}
+                      onChange={(e) => setExportIncludeOther(e.target.checked)}
+                    />
+                    <div className="w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 peer-checked:bg-emerald-500 peer-checked:border-emerald-500 transition-all"></div>
+                    <CheckCircle size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800 dark:text-white">Other Transactions</p>
+                    <p className="text-[10px] font-medium text-slate-400">All non-student financial transactions</p>
+                  </div>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleCustomExport}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 dark:shadow-none disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              >
+                {actionLoading ? 'Exporting...' : (
+                  <>
+                    <Download size={14} />
+                    Download Report
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

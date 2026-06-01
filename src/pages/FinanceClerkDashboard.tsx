@@ -1277,7 +1277,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 {(() => {
                   const filtered = staffProfiles.filter(staff => {
                     const isPaid = confirmedStaffPayments[staff.user_id];
-                    const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
+                    const totalAllowance = Number(staff.total_allowance ?? (Number(staff.transport_allowance || 0) + Number(staff.housing_allowance || 0) + Number(staff.position_allowance || 0)));
+                    const netPay = Number(staff.basic_salary || 0) + totalAllowance;
                     if (staffSearchTerm && !staff.name.toLowerCase().includes(staffSearchTerm.toLowerCase()) && !staff.digital_id.toLowerCase().includes(staffSearchTerm.toLowerCase())) return false;
                     if (minSalaryFilter && netPay < Number(minSalaryFilter)) return false;
                     if (paymentStatusFilter === 'paid' && !isPaid) return false;
@@ -1287,7 +1288,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   const paginated = filtered.slice((staffPage - 1) * staffPerPage, staffPage * staffPerPage);
 
                   return paginated.map((staff) => {
-                    const netPay = (staff.basic_salary || 0) + (staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0);
+                    const totalAllowance = Number(staff.total_allowance ?? (Number(staff.transport_allowance || 0) + Number(staff.housing_allowance || 0) + Number(staff.position_allowance || 0)));
+                    const netPay = Number(staff.basic_salary || 0) + totalAllowance;
                     const isPaid = confirmedStaffPayments[staff.user_id];
                     return (
                       <tr key={staff.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -1307,7 +1309,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                           {(staff.basic_salary || 0).toLocaleString()} ETB
                         </td>
                         <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                          {((staff.transport_allowance || 0) + (staff.housing_allowance || 0) + (staff.position_allowance || 0)).toLocaleString()} ETB
+                          {totalAllowance.toLocaleString()} ETB
                         </td>
                         <td className="px-6 py-4 text-sm font-black text-emerald-600 dark:text-emerald-400">
                           {netPay.toLocaleString()} ETB

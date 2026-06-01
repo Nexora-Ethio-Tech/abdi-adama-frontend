@@ -176,7 +176,7 @@ export const EmployeeProfiles = () => {
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
                   {paginatedProfiles.map((p) => {
-                    const allowancesSum = p.transport_allowance + p.housing_allowance + p.position_allowance;
+                    const allowancesSum = Number(p.total_allowance ?? p.transport_allowance + p.housing_allowance + p.position_allowance);
                     const hasProfile = p.profile_id !== null;
                     return (
                       <tr key={p.user_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
@@ -205,14 +205,7 @@ export const EmployeeProfiles = () => {
                         </td>
                         <td className="px-6 py-4">
                           {hasProfile ? (
-                            <div>
-                              <span className="font-bold text-slate-700 dark:text-slate-300">+{allowancesSum.toLocaleString()} ETB</span>
-                              <div className="flex gap-1.5 text-xs text-slate-400 font-semibold mt-1">
-                                <span>T: {p.transport_allowance}</span>
-                                <span>H: {p.housing_allowance}</span>
-                                <span>P: {p.position_allowance}</span>
-                              </div>
-                            </div>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">+{allowancesSum.toLocaleString()} ETB</span>
                           ) : (
                             <span className="text-slate-400">&mdash;</span>
                           )}
