@@ -86,7 +86,7 @@ export default function SchoolStats() {
   return (
     <section className="min-h-screen bg-zinc-950 text-white flex items-center justify-center py-20 px-6 sm:px-12 md:px-16 lg:px-24">
       <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-start">
-        
+
         {/* LEFT COLUMN: Editorial Section Title */}
         <div className="lg:col-span-4 sticky top-24">
           <div className="flex items-center gap-3 mb-6">
@@ -103,12 +103,12 @@ export default function SchoolStats() {
         {/* RIGHT COLUMN: Performance Stats Grid */}
         <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-2 gap-x-8 gap-y-12 md:gap-x-12 md:gap-y-16">
           {stats.map((stat, idx) => (
-            <StatItem 
-              key={stat.label} 
+            <StatItem
+              key={stat.label}
               index={idx}
-              value={stat.value} 
-              label={stat.label} 
-              final={stat.final} 
+              value={stat.value}
+              label={stat.label}
+              final={stat.final}
             />
           ))}
         </div>

@@ -58,8 +58,7 @@ export default function Navbar() {
               key={link.path}
               to={link.path}
               className={({ isActive }) =>
-                `hover:text-white transition-all relative py-2 ${
-                  isActive ? "text-white font-bold" : ""
+                `hover:text-white transition-all relative py-2 ${isActive ? "text-white font-bold" : ""
                 }`
               }
             >
