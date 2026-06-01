@@ -15,6 +15,7 @@ import {
   History,
   Send,
   Clock,
+  Check,
   ShieldCheck,
   Bell,
   MessageSquare,
@@ -106,7 +107,7 @@ export const ParentPortal = () => {
   const [attendanceExpanded, setAttendanceExpanded] = useState(false);
 
   // NEW: Clinic Support Sub-Tab
-  const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('chat');
+  const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('visits');
 
   // NEW: Clinic Updates State
   const [clinicVisits, setClinicVisits] = useState<ClinicVisit[]>([]);
@@ -1851,6 +1852,15 @@ export const ParentPortal = () => {
 
             {/* Main Clinic Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-[350px]">
+              {/* Active Child Label */}
+              {selectedChild && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Viewing records for:</span>
+                  <span className="px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    {selectedChild.fullName}
+                  </span>
+                </div>
+              )}
               {clinicSupportTab === 'visits' ? (
                 clinicUpdatesLoading ? (
                   <div className="flex justify-center items-center h-48">
@@ -1859,7 +1869,7 @@ export const ParentPortal = () => {
                 ) : clinicVisits.length === 0 ? (
                   <div className="text-center py-20 text-slate-400 space-y-3">
                     <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No clinic visits recorded yet for this child.</p>
+                    <p className="text-xs font-bold uppercase tracking-widest">No clinic visits recorded yet for {selectedChild?.fullName || 'this child'}.</p>
                     <p className="text-[10px] opacity-75">Clinic visit records and health profile updates will appear here when available.</p>
                   </div>
                 ) : (
@@ -1964,7 +1974,9 @@ export const ParentPortal = () => {
                         </div>
                         <div className="flex items-center gap-2 justify-end px-1">
                           <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
-                          {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
+                          {m.role === 'parent' && (
+                            <Check size={10} className="text-emerald-400" strokeWidth={3} />
+                          )}
                         </div>
                       </div>
                     </div>
