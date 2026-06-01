@@ -18,6 +18,7 @@ export interface ParentAnnouncement {
   timestamp: string;
   category: string;
   driverName?: string;
+  created_by_name?: string;
 }
 
 export interface CommunicationLog {

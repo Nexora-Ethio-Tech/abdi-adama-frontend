@@ -15,6 +15,7 @@ import {
   History,
   Send,
   Clock,
+  Check,
   ShieldCheck,
   Bell,
   MessageSquare,
@@ -106,7 +107,7 @@ export const ParentPortal = () => {
   const [attendanceExpanded, setAttendanceExpanded] = useState(false);
 
   // NEW: Clinic Support Sub-Tab
-  const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('chat');
+  const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('visits');
 
   // NEW: Clinic Updates State
   const [clinicVisits, setClinicVisits] = useState<ClinicVisit[]>([]);
@@ -120,6 +121,7 @@ export const ParentPortal = () => {
   // NEW: School Announcements State
   const [schoolAnnouncementsData, setSchoolAnnouncementsData] = useState<ParentAnnouncement[]>([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [noticeFilter, setNoticeFilter] = useState<'all' | 'school' | 'driver'>('all');
 
   // NEW: Financial Summary State
   const [financialData, setFinancialData] = useState<FinancialSummary[]>([]);
@@ -715,241 +717,227 @@ export const ParentPortal = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setAttendanceExpanded((prev) => !prev)}
-              className="w-full flex items-center justify-between gap-4 px-6 py-5 bg-slate-50 dark:bg-slate-800/70 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
-            >
+          {/* Dedicated Notice Board & Announcements Section (Replaces Attendance Section) */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Attendance Summary</p>
-                <h3 className="mt-2 text-2xl font-black text-slate-900 dark:text-white">{selectedChild?.fullName || 'Your child'} Attendance</h3>
-              </div>
-              <ChevronDown className={`transition-transform ${attendanceExpanded ? 'rotate-180' : ''}`} size={20} />
-            </button>
-            <div className="px-6 pb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-5">
-                {attendanceLoading ? (
-                  <div className="col-span-full flex justify-center py-6">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                  </div>
-                ) : (
-                  <>
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Total Days</p>
-                  <p className="mt-3 text-3xl font-black text-slate-900 dark:text-white">{Number(attendanceStats?.total_days ?? 0)}</p>
+                <div className="flex items-center gap-2">
+                  <Megaphone className="text-blue-600 dark:text-blue-400" size={22} />
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Notice Board & Announcements</h3>
                 </div>
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Present</p>
-                  <p className="mt-3 text-3xl font-black text-emerald-600">{Number(attendanceStats?.present_days ?? 0)}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Absent</p>
-                  <p className="mt-3 text-3xl font-black text-rose-600">{Number(attendanceStats?.absent_days ?? 0)}</p>
-                </div>
-                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 p-5 border border-slate-100 dark:border-slate-800">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Rate</p>
-                  <p className="mt-3 text-3xl font-black text-blue-600">{Number(attendanceStats?.attendance_percentage ?? 0).toFixed(1)}%</p>
-                </div>
-                  </>
-                )}
-              </div>
-              {attendanceExpanded && (
-                <div className="space-y-4 mt-3">
-                  {attendanceLoading ? (
-                    <div className="flex justify-center py-10">
-                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                    </div>
-                  ) : attendanceRecords.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      {attendanceRecords.slice(0, 6).map((record) => (
-                        <div key={record.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800">
-                          <p className="text-xs uppercase tracking-widest font-black text-slate-400 dark:text-slate-500">{new Date(record.date).toLocaleDateString()}</p>
-                          <p className="mt-3 text-lg font-black text-slate-900 dark:text-white">{record.status}</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Recorded by {record.recorded_by_name || record.recorded_by}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 p-6 text-center text-slate-500 dark:text-slate-400">
-                      No attendance records available yet.
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Announcements & Notices Section */}
-          {showNotices ? (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-8 space-y-6">
-                {hasAnnouncements && (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3 px-2">
-                      <Megaphone className="text-blue-600 dark:text-blue-400" size={22} />
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Announcements from School Admin</h3>
-                    </div>
-
-                    {schoolAnnouncements.map((notice) => (
-                      <div key={notice.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            notice.priority === 'High' ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30'
-                          }`}>
-                            {notice.priority}
-                          </span>
-                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.time).toLocaleDateString()}</span>
-                        </div>
-                        <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{notice.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {hasDriverNotifications && (
-                  <div className="space-y-6 pt-4">
-                    <div className="flex items-center gap-3 px-2">
-                      <Bell className="text-indigo-600 dark:text-indigo-400" size={22} />
-                      <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Notifications & Driver Logs</h3>
-                    </div>
-
-                    {driverNotifications.map((notice) => (
-                      <div key={notice.id} className="bg-slate-50 dark:bg-slate-800/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-wider">
-                            Logistics
-                          </span>
-                          <span className="text-xs text-slate-400 font-bold">{new Date(notice.time).toLocaleDateString()}</span>
-                        </div>
-                        <h4 className="text-base font-black text-slate-900 dark:text-white mb-2">{notice.title}</h4>
-                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">{notice.content}</p>
-                        {notice.driverName && (
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-200/50 dark:border-slate-700/50">
-                            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                            Bus Driver: {notice.driverName}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1">Official updates from School Administration and the transport team</p>
               </div>
 
-              <div className="lg:col-span-4 space-y-6">
-                <div className="flex items-center gap-3 px-2">
-                  <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 space-y-6 shadow-sm">
-                  <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-                    <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
-                      <HeartPulse size={20} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Clinic Administrator</h4>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Health & Medical Reviews</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    {clinicPreviews.length > 0 ? (
-                      clinicPreviews.map((m, idx) => (
-                        <div
-                          key={idx}
-                          onClick={() => openClinicForChild(m.child_id)}
-                          className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
-                        >
-                          <div className="flex justify-between items-center">
-                            <span className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
-                              {m.student_name}
-                            </span>
-                            <span className="text-[9px] font-bold text-slate-400">{m.timestamp}</span>
-                          </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate group-hover:text-slate-800 dark:group-hover:text-white">
-                            {m.role === 'clinic' ? 'Admin: ' : 'You: '}{m.text}
-                          </p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase">
-                        No recent clinic messages.
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setClinicSupportTab('chat');
-                      handleTabChange('clinic');
-                    }}
-                    className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
-                  >
-                    <HeartPulse size={16} />
-                    Open Clinic Support
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 px-2">
-                <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
-                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
-              </div>
-
-              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 space-y-6 shadow-sm">
-                <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
-                    <HeartPulse size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Clinic Administrator</h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Health & Medical Reviews</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {clinicPreviews.length > 0 ? (
-                    clinicPreviews.map((m, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => openClinicForChild(m.child_id)}
-                        className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
-                            {m.student_name}
-                          </span>
-                          <span className="text-[9px] font-bold text-slate-400">{m.timestamp}</span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 font-medium truncate group-hover:text-slate-800 dark:group-hover:text-white">
-                          {m.role === 'clinic' ? 'Admin: ' : 'You: '}{m.text}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase">
-                      No recent clinic messages.
-                    </div>
-                  )}
-                </div>
-
+              {/* Premium Tab Filters */}
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/40 p-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
                 <button
-                  onClick={() => {
-                    setClinicSupportTab('chat');
-                    handleTabChange('clinic');
-                  }}
-                  className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
+                  type="button"
+                  onClick={() => setNoticeFilter('all')}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    noticeFilter === 'all'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                  }`}
                 >
-                  <HeartPulse size={16} />
-                  Open Clinic Support
+                  All ({schoolAnnouncementsData.length + driverUpdates.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoticeFilter('school')}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    noticeFilter === 'school'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  School Admin ({schoolAnnouncementsData.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNoticeFilter('driver')}
+                  className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                    noticeFilter === 'driver'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  Driver Logs ({driverUpdates.length})
                 </button>
               </div>
             </div>
-          )}
+
+            {/* Content Feed */}
+            {announcementsLoading || driverUpdatesLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* School Announcements List */}
+                {noticeFilter !== 'driver' && schoolAnnouncementsData.length > 0 && (
+                  <div className="space-y-4">
+                    {noticeFilter === 'all' && (
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">School Board Announcements</h4>
+                    )}
+                    <div className="grid grid-cols-1 gap-4">
+                      {schoolAnnouncementsData.map((notice) => (
+                        <div
+                          key={notice.id}
+                          className="group relative bg-slate-50/50 dark:bg-slate-800/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-400/30 transition-all duration-300"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                School Admin
+                              </span>
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                notice.priority === 'High'
+                                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'
+                                  : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
+                              }`}>
+                                {notice.priority} Priority
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-400 font-bold">
+                              📅 {new Date(notice.timestamp).toLocaleDateString()} at {new Date(notice.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 transition-colors">
+                            {notice.title}
+                          </h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed font-medium">
+                            {notice.content}
+                          </p>
+                          {notice.created_by_name && (
+                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                              <span>Posted by: {notice.created_by_name}</span>
+                              <span className="text-[10px] bg-blue-50 dark:bg-blue-950/30 text-blue-500 dark:text-blue-400 px-2 py-0.5 rounded-md">Verified Admin</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Driver Route Updates List */}
+                {noticeFilter !== 'school' && driverUpdates.length > 0 && (
+                  <div className="space-y-4">
+                    {noticeFilter === 'all' && (
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mt-6">Driver Logistics Updates</h4>
+                    )}
+                    <div className="grid grid-cols-1 gap-4">
+                      {driverUpdates.map((update) => (
+                        <div
+                          key={update.id}
+                          className="group relative bg-slate-50/50 dark:bg-slate-800/20 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-400/30 transition-all duration-300"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                Logistics Notice
+                              </span>
+                              {update.stations && (
+                                <span className="px-2.5 py-1 bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400 rounded-full text-[9px] font-black uppercase tracking-wider">
+                                  Route: {update.stations}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-slate-400 font-bold">
+                              📅 {new Date(update.created_at).toLocaleDateString()} at {new Date(update.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 transition-colors">
+                            {update.title}
+                          </h4>
+                          <p className="text-sm text-slate-600 dark:text-slate-350 leading-relaxed font-medium">
+                            {update.content}
+                          </p>
+                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            <span>Driver: {update.driver_name || 'Assigned Driver'}</span>
+                            {update.driver_email && (
+                              <span className="text-[10px] text-indigo-500 hover:underline cursor-pointer">
+                                📧 Contact: {update.driver_email}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {((noticeFilter === 'all' && schoolAnnouncementsData.length === 0 && driverUpdates.length === 0) ||
+                  (noticeFilter === 'school' && schoolAnnouncementsData.length === 0) ||
+                  (noticeFilter === 'driver' && driverUpdates.length === 0)) && (
+                  <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/10 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 space-y-3">
+                    <Megaphone className="mx-auto text-slate-300 dark:text-slate-700 animate-pulse" size={36} />
+                    <p className="text-sm font-black uppercase tracking-widest text-slate-400">No active notices found</p>
+                    <p className="text-xs text-slate-400 italic">There are no updates from {noticeFilter === 'school' ? 'the School Admin' : noticeFilter === 'driver' ? 'the transit driver' : 'either admin or driver'} at this time.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Clinic Chat Alerts Section */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-2">
+              <MessageSquare className="text-rose-600 dark:text-rose-400" size={22} />
+              <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Clinic Chat Alerts</h3>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 space-y-6 shadow-sm">
+              <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 rounded-xl flex items-center justify-center text-rose-600 shadow-inner">
+                  <HeartPulse size={20} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">Clinic Administrator</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Health & Medical Reviews</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {clinicPreviews.length > 0 ? (
+                  clinicPreviews.map((m, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => openClinicForChild(m.child_id)}
+                      className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 hover:bg-rose-50/30 dark:hover:bg-rose-900/10 border border-slate-100 dark:border-slate-800 cursor-pointer transition-all space-y-2 group"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
+                          {m.student_name}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400">{m.timestamp}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-350 font-medium truncate group-hover:text-slate-800 dark:group-hover:text-white">
+                        {m.role === 'clinic' ? 'Admin: ' : 'You: '}{m.text}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-slate-400 text-xs font-bold uppercase">
+                    No recent clinic messages.
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setClinicSupportTab('chat');
+                  handleTabChange('clinic');
+                }}
+                className="w-full py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-rose-600/10 flex items-center justify-center gap-2"
+              >
+                <HeartPulse size={16} />
+                Open Clinic Support
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1864,6 +1852,15 @@ export const ParentPortal = () => {
 
             {/* Main Clinic Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar min-h-[350px]">
+              {/* Active Child Label */}
+              {selectedChild && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Viewing records for:</span>
+                  <span className="px-3 py-1 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full text-[10px] font-black uppercase tracking-widest">
+                    {selectedChild.fullName}
+                  </span>
+                </div>
+              )}
               {clinicSupportTab === 'visits' ? (
                 clinicUpdatesLoading ? (
                   <div className="flex justify-center items-center h-48">
@@ -1872,7 +1869,7 @@ export const ParentPortal = () => {
                 ) : clinicVisits.length === 0 ? (
                   <div className="text-center py-20 text-slate-400 space-y-3">
                     <HeartPulse size={36} className="mx-auto text-slate-300 animate-pulse" />
-                    <p className="text-xs font-bold uppercase tracking-widest">No clinic visits recorded yet for this child.</p>
+                    <p className="text-xs font-bold uppercase tracking-widest">No clinic visits recorded yet for {selectedChild?.fullName || 'this child'}.</p>
                     <p className="text-[10px] opacity-75">Clinic visit records and health profile updates will appear here when available.</p>
                   </div>
                 ) : (
@@ -1977,7 +1974,9 @@ export const ParentPortal = () => {
                         </div>
                         <div className="flex items-center gap-2 justify-end px-1">
                           <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
-                          {m.role === 'parent' && <Clock size={8} className="text-slate-300" />}
+                          {m.role === 'parent' && (
+                            <Check size={10} className="text-emerald-400" strokeWidth={3} />
+                          )}
                         </div>
                       </div>
                     </div>
