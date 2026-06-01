@@ -433,16 +433,19 @@ export const StudentCourses = () => {
                           <span>Total Score Progress</span>
                           <span>{getSubmittedTotal(selectedCourse) !== null ? Math.round(getSubmittedTotal(selectedCourse)!) + '%' : 'Pending'}</span>
                         </div>
-                        <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-1000 ${getStatus(selectedCourse) === 'PASSED'
-                              ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
+                        <div className="w-full">
+                          <progress
+                            className={`w-full h-3 rounded-full appearance-none bg-slate-800 ${getStatus(selectedCourse) === 'PASSED'
+                              ? 'accent-emerald-400'
                               : getStatus(selectedCourse) === 'FAILED'
-                                ? 'bg-gradient-to-r from-rose-400 to-red-500'
-                                : 'bg-gradient-to-r from-amber-400 to-orange-500'
-                              }`}
-                            style={{ width: `${selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}%` }}
-                          ></div>
+                                ? 'accent-rose-400'
+                                : 'accent-amber-400'
+                            }`}
+                            value={selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}
+                            max={100}
+                            title="Total score progress"
+                            aria-label="Total score progress"
+                          />
                         </div>
                       </div>
                     </div>

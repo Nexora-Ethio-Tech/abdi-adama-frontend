@@ -1087,15 +1087,14 @@ export const ParentPortal = () => {
 
                     <div className="mt-4">
                       <div className="flex justify-between text-xs font-black uppercase text-slate-400"><span>Total Score Progress</span><span>{getSubmittedTotal(selectedCourse) !== null ? Math.round(Number(getSubmittedTotal(selectedCourse))) + '%' : 'Pending'}</span></div>
-                      <div className="w-full h-3 bg-slate-800 rounded-full mt-2 overflow-hidden">
-                        {getSubmittedTotal(selectedCourse) !== null ? (
-                          <div
-                            className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-400 to-teal-500"
-                            style={{ width: `${getClampedPercentage(selectedCourse.total)}%` }}
-                          ></div>
-                        ) : (
-                          <div className="h-full w-0 rounded-full transition-all duration-1000 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-                        )}
+                      <div className="w-full mt-2">
+                        <progress
+                          className="w-full h-3 rounded-full appearance-none bg-slate-800 accent-emerald-400"
+                          value={Math.round(getClampedPercentage(selectedCourse.total))}
+                          max={100}
+                          title="Total score progress"
+                          aria-label="Total score progress"
+                        />
                       </div>
                     </div>
                   </div>

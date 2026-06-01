@@ -747,6 +747,7 @@ export const Teachers = () => {
                 />
               </div>
               <select
+                title="Filter leaderboard by grade"
                 value={leaderboardGradeFilter}
                 onChange={(e) => { setLeaderboardGradeFilter(e.target.value); setLeaderboardPage(1); }}
                 className="py-2 px-3 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition text-slate-700 dark:text-slate-300"
@@ -815,6 +816,8 @@ export const Teachers = () => {
                           {[1, 2, 3, 4, 5].map(star => (
                             <button
                               key={star}
+                              type="button"
+                              title={`Rate ${star} star${star !== 1 ? 's' : ''}`}
                               onClick={() => handleRateTeacher(row.teacher_id, star)}
                               className={`p-1 transition-transform hover:scale-110 ${star <= row.vp_rating ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-600'}`}
                             >
@@ -831,6 +834,8 @@ export const Teachers = () => {
                             (row.grades_taught as string[]).map(grade => (
                               <button
                                 key={grade}
+                                type="button"
+                                title={`Filter by grade ${grade}`}
                                 onClick={() => { setLeaderboardGradeFilter(grade === leaderboardGradeFilter ? '' : grade); setLeaderboardPage(1); }}
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
                                   grade === leaderboardGradeFilter
@@ -859,6 +864,8 @@ export const Teachers = () => {
               </p>
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
+                  title="Previous page"
                   onClick={() => setLeaderboardPage(p => Math.max(1, p - 1))}
                   disabled={leaderboardPage === 1}
                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
@@ -867,6 +874,8 @@ export const Teachers = () => {
                 </button>
                 <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Page {leaderboardPage} of {totalLeaderboardPages}</span>
                 <button
+                  type="button"
+                  title="Next page"
                   onClick={() => setLeaderboardPage(p => Math.min(totalLeaderboardPages, p + 1))}
                   disabled={leaderboardPage === totalLeaderboardPages}
                   className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition"
@@ -896,7 +905,7 @@ export const Teachers = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Register New Teacher</h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" title="Close register teacher dialog" onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -930,6 +939,7 @@ export const Teachers = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Role</label>
                 <select
                   required
+                  title="Select staff role"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -968,6 +978,7 @@ export const Teachers = () => {
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
                   <select
+                    title="Select education level"
                     value={formData.educationLevel}
                     onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -983,6 +994,7 @@ export const Teachers = () => {
                   <label className="text-xs font-bold text-slate-500 uppercase">Specialty / Course</label>
                   <input
                     type="text"
+                    title="Specialty or course taught"
                     value={formData.specialty}
                     onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -993,6 +1005,7 @@ export const Teachers = () => {
                   <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
                   <input
                     type="date"
+                    title="Staff member date of birth"
                     value={formData.dob}
                     onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -1069,7 +1082,7 @@ export const Teachers = () => {
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Promote {promotionTarget.name}</h3>
                 <p className="text-sm text-slate-500">Choose the new responsibility for this teacher</p>
               </div>
-              <button onClick={() => setShowPromoteModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button type="button" title="Close" onClick={() => setShowPromoteModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -1078,6 +1091,7 @@ export const Teachers = () => {
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-500 uppercase">Promotion Type</label>
                 <select
+                  title="Select promotion type"
                   value={promotionForm.promotionType}
                   onChange={(e) => setPromotionForm({ ...promotionForm, promotionType: e.target.value as any })}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
@@ -1261,6 +1275,7 @@ export const Teachers = () => {
                       <label className="text-xs font-bold text-slate-500 uppercase">Start Time</label>
                       <input
                         type="time"
+                        title="Start time for before-school session"
                         value={promotionForm.beforeSchool.startTime}
                         onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, startTime: e.target.value } }))}
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm"
@@ -1270,6 +1285,7 @@ export const Teachers = () => {
                       <label className="text-xs font-bold text-slate-500 uppercase">End Time</label>
                       <input
                         type="time"
+                        title="End time for before-school session"
                         value={promotionForm.beforeSchool.endTime}
                         onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, endTime: e.target.value } }))}
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm"
