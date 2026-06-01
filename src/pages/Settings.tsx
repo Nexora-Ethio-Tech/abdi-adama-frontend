@@ -10,6 +10,7 @@ import settingsService, { type BranchGradeFee, type BranchProfitSummary, type Mo
 import { authService } from '../services/authService';
 import { SettingsSubTabs, SettingsPanel } from '../components/settings/SettingsSubTabs';
 import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
+import { mockGradingConfigs } from '../data/mockData';
 
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');

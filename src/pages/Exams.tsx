@@ -10,7 +10,7 @@ import {
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
 import {
-  getAvailableExams, createExam, getTeacherExams, saveTeacherExam,
+  getAvailableExams, createExam, getTeacherExams, saveTeacherExam, publishTeacherExam,
   getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams
 } from '../services/examService';
 import type { PublishedExam } from '../services/examService';
