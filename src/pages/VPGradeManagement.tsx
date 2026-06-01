@@ -194,7 +194,7 @@ export const VPGradeManagement = () => {
     if (selectedSection && selectedGradeGroup) {
       handleSectionSelect(selectedGradeGroup, selectedSection, selectedYear, selectedSemester);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedYear, selectedSemester]);
 
   const handleGenerateResults = async () => {
@@ -204,7 +204,7 @@ export const VPGradeManagement = () => {
     setGeneratingResults(true);
     try {
       const results = await vicePrincipalService.generateSectionResults(selectedSection.id, selectedYear, semNum);
-      
+
       // Update the studentGrades with the calculated values
       const updatedGrades = studentGrades.map(sg => {
         const result = results.find((r: any) => r.student_id === sg.id);
@@ -218,7 +218,7 @@ export const VPGradeManagement = () => {
         }
         return sg;
       });
-      
+
       setStudentGrades(updatedGrades);
       showToast('Results generated successfully', 'success');
     } catch (err: any) {
@@ -544,11 +544,10 @@ export const VPGradeManagement = () => {
       {/* Toast Notification */}
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border ${
-            toast.type === 'success'
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border ${toast.type === 'success'
               ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300'
               : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300'
-          }`}>
+            }`}>
             <CheckCircle2 className="text-emerald-500" size={20} />
             <p className="text-sm font-semibold">{toast.message}</p>
           </div>
