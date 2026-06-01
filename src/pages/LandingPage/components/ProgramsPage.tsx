@@ -58,7 +58,7 @@ export default function ProgramsPage() {
             transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="text-4xl md:text-6xl font-serif font-medium tracking-tight text-white mb-8"
           >
-            {t.title || "Academic Programs"}
+            {t?.label || "Academic Programs"}
           </motion.h1>
 
           <motion.p
@@ -67,7 +67,7 @@ export default function ProgramsPage() {
             transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="text-zinc-400 text-lg md:text-xl font-light leading-relaxed max-w-2xl"
           >
-            {t.desc || "A cohesive learning continuum designed to foster intellectual agility, cultural pride, and future-ready skills from early childhood through graduation."}
+            {"A cohesive learning continuum designed to foster intellectual agility, cultural pride, and future-ready skills from early childhood through graduation."}
           </motion.p>
         </header>
 

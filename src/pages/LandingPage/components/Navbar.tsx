@@ -13,7 +13,7 @@ export default function Navbar() {
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (latest) => {
-    const previous = scrollY.getPrevious();
+    const previous = scrollY.getPrevious() ?? 0;
     if (mobileMenuOpen) return;
 
     if (latest > previous && latest > 50) {
@@ -89,6 +89,7 @@ export default function Navbar() {
               id="language"
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
+              title="Select language"
             >
               <option value="en" className="bg-zinc-950 text-white">EN</option>
               <option value="am" className="bg-zinc-950 text-white">AM</option>
@@ -175,6 +176,7 @@ export default function Navbar() {
                   className="appearance-none bg-transparent text-xs font-bold uppercase tracking-widest text-zinc-300 outline-none cursor-pointer pr-4 text-center w-full"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as Language)}
+                  title="Select language"
                 >
                   <option value="en" className="bg-zinc-950 text-white">EN</option>
                   <option value="am" className="bg-zinc-950 text-white">AM</option>

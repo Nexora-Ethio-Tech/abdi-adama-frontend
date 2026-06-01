@@ -92,11 +92,11 @@ export default function SchoolStats() {
           <div className="flex items-center gap-3 mb-6">
             <span className="h-px w-6 bg-zinc-700" />
             <span className="text-xs font-mono tracking-[0.3em] uppercase text-zinc-500">
-              {translations.stats.badge || "Key Figures"}
+              {"Key Figures"}
             </span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-none uppercase">
-            {translations.stats.title}
+            {translations.stats.title || "Our Impact"}
           </h2>
         </div>
 
