@@ -224,7 +224,7 @@ export const Teachers = () => {
     try {
       const subs = await subjectService.getAllSubjects();
       console.log('[DEBUG] Fetched subjects from server:', subs);
-      
+
       let filtered = subs || [];
       if (branchId) {
         filtered = filtered.filter((s: any) => {
@@ -533,7 +533,7 @@ export const Teachers = () => {
     const matchesGrade = leaderboardGradeFilter === '' || (row.grades_taught ?? []).includes(leaderboardGradeFilter);
     return matchesName && matchesGrade;
   });
-  
+
   const totalLeaderboardPages = Math.ceil(filteredLeaderboardData.length / LEADERBOARD_ITEMS_PER_PAGE) || 1;
   const currentLeaderboardData = filteredLeaderboardData.slice(
     (leaderboardPage - 1) * LEADERBOARD_ITEMS_PER_PAGE,
@@ -577,21 +577,19 @@ export const Teachers = () => {
         <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6 gap-4">
           <button
             onClick={() => setActiveTab('teachers')}
-            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors ${
-              activeTab === 'teachers'
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors ${activeTab === 'teachers'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
+              }`}
           >
             All Teachers
           </button>
           <button
             onClick={() => setActiveTab('leaderboard')}
-            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-1 ${
-              activeTab === 'leaderboard'
+            className={`pb-2 px-1 text-sm font-bold border-b-2 transition-colors flex items-center gap-1 ${activeTab === 'leaderboard'
                 ? 'border-blue-600 text-blue-600 dark:text-blue-400'
                 : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-            }`}
+              }`}
           >
             <Trophy size={16} /> Leaderboard
           </button>
@@ -799,12 +797,11 @@ export const Teachers = () => {
                   return (
                     <tr key={row.teacher_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-black ${
-                          globalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
-                          globalRank === 2 ? 'bg-slate-100 text-slate-600' :
-                          globalRank === 3 ? 'bg-orange-100 text-orange-700' :
-                          'text-slate-400'
-                        }`}>
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-black ${globalRank === 1 ? 'bg-yellow-100 text-yellow-700' :
+                            globalRank === 2 ? 'bg-slate-100 text-slate-600' :
+                              globalRank === 3 ? 'bg-orange-100 text-orange-700' :
+                                'text-slate-400'
+                          }`}>
                           #{globalRank}
                         </span>
                       </td>
@@ -837,11 +834,10 @@ export const Teachers = () => {
                                 type="button"
                                 title={`Filter by grade ${grade}`}
                                 onClick={() => { setLeaderboardGradeFilter(grade === leaderboardGradeFilter ? '' : grade); setLeaderboardPage(1); }}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${
-                                  grade === leaderboardGradeFilter
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-colors ${grade === leaderboardGradeFilter
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50'
-                                }`}
+                                  }`}
                               >
                                 {grade}
                               </button>

@@ -98,7 +98,7 @@ export const VPGradeManagement = () => {
   };
 
   const handleSectionSelect = useCallback(async (grade: VpGradeGroup, section: Section, yearOverride?: string, semOverride?: string) => {
-    setSelectedGrade(grade.name);
+    setSelectedGrade(grade.grade_name ?? grade.name);
     setSelectedGradeGroup(grade);
     setSelectedSection(section);
     setLoadingSectionData(true);
@@ -124,6 +124,70 @@ export const VPGradeManagement = () => {
       setLoadingSectionData(false);
     }
   }, [selectedYear, selectedSemester]);
+
+  const handleGradeSelect = useCallback((gradeName: string) => {
+    const grade = grades.find((g) => g.grade_name === gradeName);
+    if (!grade) {
+      setSelectedGrade(null);
+      setSelectedGradeGroup(null);
+      setSelectedSection(null);
+      setStudents([]);
+      setCourses([]);
+      setStudentGrades([]);
+      return;
+    }
+
+    setSelectedGrade(grade.grade_name ?? grade.name);
+    setSelectedGradeGroup(grade);
+    setSelectedSection(null);
+    setStudents([]);
+    setCourses([]);
+    setStudentGrades([]);
+
+    if (grade.sections.length === 1) {
+      handleSectionSelect(grade, grade.sections[0]);
+    }
+  }, [grades, handleSectionSelect]);
+
+  const getExportPayload = () => {
+    const headers = ['Student Name', ...courses.map(c => `${c.name}${c.teacher_name ? ` (${c.teacher_name})` : ''}`), 'Total', 'Average', 'Rank'];
+    const rows = studentGrades.map((student) => [
+      student.name,
+      ...courses.map((course) => student.grades[course.id]?.score ?? ''),
+      student.total !== undefined && student.total !== null ? student.total.toFixed(2) : '',
+      student.average !== undefined && student.average !== null ? student.average.toFixed(2) : '',
+      student.rank ?? ''
+    ]);
+
+    return { headers, rows };
+  };
+
+
+
+  const exportToExcel = () => {
+    if (!selectedSection || studentGrades.length === 0) return;
+
+    const { headers, rows } = getExportPayload();
+    const tableRows = [
+      `<tr>${headers.map((header) => `<th style="border:1px solid #d1d5db;padding:8px;text-align:left;">${header}</th>`).join('')}</tr>`,
+      ...rows.map((row) => `<tr>${row.map((cell) => `<td style="border:1px solid #d1d5db;padding:8px;">${String(cell)}</td>`).join('')}</tr>`)
+    ].join('');
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><table>${tableRows}</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+
+    const element = document.createElement('a');
+    element.href = url;
+    element.download = `${selectedGrade}-${selectedSection.section_name}-grades.xls`;
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+    URL.revokeObjectURL(url);
+
+    showToast('Grades exported to Excel', 'success');
+  };
 
   // Reload section grades whenever the year or semester filter changes
   useEffect(() => {
@@ -163,38 +227,6 @@ export const VPGradeManagement = () => {
     } finally {
       setGeneratingResults(false);
     }
-  };
-
-  const exportToCSV = () => {
-    if (!selectedSection || studentGrades.length === 0) return;
-
-    // Create CSV header
-    const headers = ['Student Name', ...courses.map(c => c.name), 'Total', 'Average', 'Rank'];
-    
-    // Create CSV rows
-    const rows = studentGrades.map(student => [
-      student.name,
-      ...courses.map(course => student.grades[course.id]?.score || ''),
-      student.total || '',
-      student.average || '',
-      student.rank || ''
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    // Download CSV
-    const element = document.createElement('a');
-    element.setAttribute('href', `data:text/csv;charset=utf-8,${encodeURIComponent(csvContent)}`);
-    element.setAttribute('download', `${selectedGrade}-${selectedSection.section_name}-grades.csv`);
-    element.style.display = 'none';
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-
-    showToast('Grades exported to CSV', 'success');
   };
 
   if (loading) {
@@ -282,41 +314,85 @@ export const VPGradeManagement = () => {
         </div>
       )}
 
-      {/* Grades and Sections Selection */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {grades.map((grade) => (
-          <div key={grade.name} className="space-y-3">
-            <div className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
-              <h3 className="font-bold text-slate-800 dark:text-white text-sm">{grade.name}</h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400">{grade.sections.length} section(s)</p>
-            </div>
-            
-            <div className="space-y-2">
-              {grade.sections.map((section) => (
-                <button
-                  key={section.id}
-                  onClick={() => handleSectionSelect(grade, section)}
-                  className={`w-full px-4 py-3 rounded-xl font-medium text-sm transition-all ${
-                    selectedSection?.id === section.id
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span>Section {section.section_name}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      selectedSection?.id === section.id
-                        ? 'bg-white/20'
-                        : 'bg-slate-100 dark:bg-slate-700'
-                    }`}>
-                      {section.student_count}/{section.capacity}
-                    </span>
-                  </div>
-                </button>
-              ))}
+      {/* Grade and Section Selection */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Grade Dropdown */}
+          <div>
+            <label htmlFor="vp-grade" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+              Grade
+            </label>
+            <div className="relative">
+              <select
+                id="vp-grade"
+                value={selectedGrade ?? ''}
+                onChange={(e) => {
+                  const gradeName = e.target.value;
+                  if (gradeName) {
+                    handleGradeSelect(gradeName);
+                  } else {
+                    setSelectedGrade(null);
+                    setSelectedGradeGroup(null);
+                    setSelectedSection(null);
+                    setStudents([]);
+                    setCourses([]);
+                    setStudentGrades([]);
+                  }
+                }}
+                className="w-full appearance-none px-5 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-all cursor-pointer pr-10"
+                title="Select a grade"
+              >
+                <option value="">Select Grade</option>
+                {grades.map((grade) => (
+                  <option key={grade.id} value={grade.grade_name ?? grade.name}>
+                    {grade.grade_name ?? grade.name}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             </div>
           </div>
-        ))}
+
+          {/* Section Dropdown */}
+          <div>
+            <label htmlFor="vp-section" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+              Section
+            </label>
+            <div className="relative">
+              <select
+                id="vp-section"
+                value={selectedSection?.id ?? ''}
+                onChange={(e) => {
+                  const sectionId = e.target.value;
+                  if (sectionId && selectedGradeGroup) {
+                    const section = selectedGradeGroup.sections.find((s) => s.id === sectionId);
+                    if (section) {
+                      handleSectionSelect(selectedGradeGroup, section);
+                    }
+                  } else {
+                    setSelectedSection(null);
+                    setStudents([]);
+                    setCourses([]);
+                    setStudentGrades([]);
+                  }
+                }}
+                disabled={!selectedGradeGroup}
+                className="w-full appearance-none px-5 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-indigo-500 transition-all cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Select a section (choose a grade first)"
+              >
+                <option value="">
+                  {selectedGradeGroup ? 'Select Section' : 'Choose Grade First'}
+                </option>
+                {selectedGradeGroup?.sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.section_name} ({section.student_count}/{section.capacity})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Section Content */}
@@ -373,12 +449,12 @@ export const VPGradeManagement = () => {
                   {generatingResults ? 'Generating...' : 'Generate Results'}
                 </button>
                 <button
-                  onClick={exportToCSV}
+                  onClick={exportToExcel}
                   disabled={studentGrades.length === 0}
-                  className="px-6 py-2.5 bg-slate-600 hover:bg-slate-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-slate-600/10"
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10"
                 >
                   <Download size={16} />
-                  Export CSV
+                  Export Excel
                 </button>
               </div>
             </div>
@@ -400,7 +476,12 @@ export const VPGradeManagement = () => {
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Student Name</th>
                     {courses.map((course) => (
                       <th key={course.id} className="px-4 py-4 text-center text-xs font-bold text-slate-600 dark:text-slate-300 uppercase whitespace-nowrap">
-                        {course.name}
+                        <div>{course.name}</div>
+                        {course.teacher_name && (
+                          <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 mt-1">
+                            {course.teacher_name}
+                          </div>
+                        )}
                       </th>
                     ))}
                     <th className="px-4 py-4 text-center text-xs font-bold text-slate-600 dark:text-slate-300 uppercase">Total</th>

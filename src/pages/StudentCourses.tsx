@@ -440,7 +440,7 @@ export const StudentCourses = () => {
                               : getStatus(selectedCourse) === 'FAILED'
                                 ? 'accent-rose-400'
                                 : 'accent-amber-400'
-                            }`}
+                              }`}
                             value={selectedCourse.total !== null && selectedCourse.total !== undefined ? Math.min(100, Math.max(0, Number(selectedCourse.total))) : 0}
                             max={100}
                             title="Total score progress"
@@ -575,8 +575,8 @@ export const StudentCourses = () => {
                         <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
                         <td className="px-8 py-5 text-right">
                           <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${course.score_display === 'Pending' || course.score === null
-                              ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                              : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                            : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                             }`}>
                             {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
                           </span>

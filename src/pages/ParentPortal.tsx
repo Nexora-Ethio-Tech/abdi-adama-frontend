@@ -619,8 +619,8 @@ export const ParentPortal = () => {
             type="button"
             onClick={() => selectChild(c)}
             className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${selectedChild?.id === c.id
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
+              ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:border-blue-400'
               }`}
           >
             {c.fullName}
@@ -694,8 +694,8 @@ export const ParentPortal = () => {
                       <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-5">
                           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl shadow-inner transition-all duration-500 ${isSelected
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-slate-50 dark:bg-slate-850 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-slate-50 dark:bg-slate-850 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white'
                             }`}>
                             {child.fullName.charAt(0)}
                           </div>
@@ -754,8 +754,8 @@ export const ParentPortal = () => {
                   type="button"
                   onClick={() => setNoticeFilter('all')}
                   className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'all'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
                     }`}
                 >
                   All ({schoolAnnouncementsData.length + driverUpdates.length})
@@ -764,8 +764,8 @@ export const ParentPortal = () => {
                   type="button"
                   onClick={() => setNoticeFilter('school')}
                   className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'school'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
                     }`}
                 >
                   School Admin ({schoolAnnouncementsData.length})
@@ -774,8 +774,8 @@ export const ParentPortal = () => {
                   type="button"
                   onClick={() => setNoticeFilter('driver')}
                   className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${noticeFilter === 'driver'
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'
                     }`}
                 >
                   Driver Logs ({driverUpdates.length})
@@ -808,8 +808,8 @@ export const ParentPortal = () => {
                                 School Admin
                               </span>
                               <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${notice.priority === 'High'
-                                  ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'
-                                  : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
+                                ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30'
+                                : 'bg-slate-100 text-slate-650 dark:bg-slate-800 dark:text-slate-400'
                                 }`}>
                                 {notice.priority} Priority
                               </span>
@@ -1212,8 +1212,8 @@ export const ParentPortal = () => {
                           <td className="px-8 py-5 text-slate-500 dark:text-slate-400 text-sm">{course.code || '—'}</td>
                           <td className="px-8 py-5 text-right">
                             <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-black ${course.score_display === 'Pending' || course.score === null
-                                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                              ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                              : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                               }`}>
                               {course.score_display || (course.score !== null ? `${course.score}%` : 'Pending')}
                             </span>
@@ -1402,10 +1402,10 @@ export const ParentPortal = () => {
                           <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{new Date(record.date).toLocaleDateString()}</td>
                           <td className="px-8 py-5">
                             <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${record.status === 'present'
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                : record.status === 'absent'
-                                  ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
-                                  : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                              ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                              : record.status === 'absent'
+                                ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
                               }`}>
                               {record.status}
                             </span>
@@ -1454,10 +1454,10 @@ export const ParentPortal = () => {
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Student ID: {financial.student_id}</p>
                     </div>
                     <span className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${financial.fee_status === 'paid'
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                        : financial.fee_status === 'pending'
-                          ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                          : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                      : financial.fee_status === 'pending'
+                        ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                        : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
                       }`}>
                       {financial.fee_status}
                     </span>
@@ -1538,8 +1538,8 @@ export const ParentPortal = () => {
                   <button
                     onClick={() => setClinicSupportTab('visits')}
                     className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'visits'
-                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                       }`}
                   >
                     Clinic Visits
@@ -1547,8 +1547,8 @@ export const ParentPortal = () => {
                   <button
                     onClick={() => setClinicSupportTab('chat')}
                     className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'chat'
-                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                       }`}
                   >
                     Chat
@@ -1568,8 +1568,8 @@ export const ParentPortal = () => {
                           type="button"
                           onClick={() => selectChild(c, 'clinic')}
                           className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedChild?.id === c.id
-                              ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
-                              : 'text-slate-500 hover:text-slate-800'
+                            ? 'bg-white dark:bg-slate-700 text-blue-600 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
                             }`}
                         >
                           {c.fullName.split(' ')[0]}
@@ -1664,8 +1664,8 @@ export const ParentPortal = () => {
                               <p className="text-sm text-slate-600 dark:text-slate-400">{visit.treatment}</p>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap ${visit.status === 'completed'
-                                ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
+                              ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
+                              : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
                               }`}>
                               {visit.status}
                             </span>
@@ -1701,8 +1701,8 @@ export const ParentPortal = () => {
                       </div>
                       <div className={`max-w-[75%] space-y-1 ${m.role === 'parent' ? 'text-right' : ''}`}>
                         <div className={`p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed ${m.role === 'parent'
-                            ? 'bg-blue-600 text-white rounded-tr-none'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
+                          ? 'bg-blue-600 text-white rounded-tr-none'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-none'
                           }`}>
                           {m.text}
                         </div>
