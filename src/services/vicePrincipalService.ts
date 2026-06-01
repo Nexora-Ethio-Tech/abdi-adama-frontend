@@ -57,6 +57,12 @@ export const getStudentTranscript = async (studentId: string) => {
   return response.data.data;
 };
 
+export const searchStudents = async (query: string) => {
+  const params = new URLSearchParams({ query });
+  const response = await api.get(`/vice-principal/students/search?${params.toString()}`);
+  return response.data.data;
+};
+
 // Teachers
 export const getVPTeachers = async () => {
   const response = await api.get('/vice-principal/teachers');

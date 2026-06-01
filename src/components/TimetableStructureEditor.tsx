@@ -482,8 +482,10 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-sm font-bold whitespace-nowrap">Section</span>
                         <input
-                          value={s.name}
-                          onChange={(e) => updateSectionName(gradeKey, s.name, e.target.value)}
+                          type="number"
+                          min="1"
+                          value={s.name.replace(/\D/g, '')}
+                          onChange={(e) => updateSectionName(gradeKey, s.name, `Section ${e.target.value.replace(/\D/g, '')}`)}
                           className="flex-1 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm outline-none"
                         />
                         <button

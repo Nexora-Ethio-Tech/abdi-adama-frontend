@@ -547,12 +547,27 @@ export const TeacherPortal = () => {
                             </div>
                           ) : <span className="text-xs text-slate-400">—</span>}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 flex gap-2">
                           {(plan.status === 'Draft' || plan.status === 'Revision Required') && (
-                            <button onClick={() => openEditModal(plan)}
-                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors">
-                              Edit
-                            </button>
+                            <>
+                              <button onClick={() => openEditModal(plan)}
+                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-colors">
+                                Edit
+                              </button>
+                              <button onClick={async () => {
+                                try {
+                                  await updateWeeklyPlan(plan.id, { ...plan, status: 'Pending' });
+                                  showToast('Plan submitted to Department Head successfully!', 'success');
+                                  const updatedPlans = await getMyWeeklyPlans();
+                                  setPlans(Array.isArray(updatedPlans) ? updatedPlans : []);
+                                } catch (err: any) {
+                                  showToast(err.response?.data?.error?.message || 'Failed to submit plan', 'error');
+                                }
+                              }}
+                                className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
+                                <CheckCircle2 size={14} /> Submit
+                              </button>
+                            </>
                           )}
                         </td>
                       </tr>

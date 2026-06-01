@@ -784,7 +784,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
     setQuestions(updateQs(questions));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (publish: boolean = false) => {
     const examQuestions = assignmentDetails.isDocumentOnly
       ? []
       : questions.map((question) => ({
@@ -811,6 +811,11 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
           passwordRequired,
           questions: examQuestions
         });
+        
+        if (publish) {
+           await publishTeacherExam(created.id);
+        }
+        
         onSave({
           id: created.id,
           title: created.title,
@@ -821,7 +826,7 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
           category: created.category || (examData.category as ExamCategory),
           durationMinutes: created.duration || Number(examData.durationMinutes || 60),
           questions: created.questions || examQuestions,
-          status: created.status || 'available',
+          status: publish ? 'published' : (created.status || 'available'),
           isLocked: created.is_locked || created.isLocked,
           isHidden: created.is_hidden || created.isHidden
         } as Exam);
@@ -870,8 +875,11 @@ const ExamCreator = ({ type, onCancel, onSave }: { type: 'Exam' | 'Assignment', 
           <button onClick={onCancel} className="px-4 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
             Cancel
           </button>
-          <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+          <button onClick={() => handleSave(false)} className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white hover:bg-slate-300 dark:hover:bg-slate-600 px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
             <Save size={20} />
+            Save Draft
+          </button>
+          <button onClick={() => handleSave(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
             Publish {type}
           </button>
         </div>

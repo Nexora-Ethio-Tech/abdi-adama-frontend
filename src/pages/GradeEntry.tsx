@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
-import { Save, Lock, ArrowLeft, ChevronRight, Users, Loader2, AlertCircle } from 'lucide-react';
+import { Save, Lock, ArrowLeft, ChevronRight, Users, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
-import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, TeacherClass, ClassStudent } from '../services/teacherService';
+import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, TeacherClass, ClassStudent } from '../services/teacherService';
 import { mockGradingConfigs } from '../data/mockData';
 
 type GradingMethod = { id: string; label: string; maxWeight: number };
@@ -30,7 +30,9 @@ export const GradeEntry = () => {
   const [loadingMethods, setLoadingMethods] = useState(false);
 
   const [scores, setScores] = useState<ScoreMap>({});
+  const [lockedMethods, setLockedMethods] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [submittingGrades, setSubmittingGrades] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [selectedYear, setSelectedYear] = useState('2025/2026');
@@ -53,6 +55,7 @@ export const GradeEntry = () => {
     setStudents([]);
     setGradingMethods([]);
     setScores({});
+    setLockedMethods(new Set());
     setSaveError('');
 
     setLoadingStudents(true);
@@ -77,12 +80,17 @@ export const GradeEntry = () => {
         try {
           const existing = await getCourseGrades(courseId);
           const prefill: ScoreMap = {};
+          const locks = new Set<string>();
           for (const g of (existing || [])) {
             if (!prefill[g.student_id]) prefill[g.student_id] = {};
             // match by type (method id)
             prefill[g.student_id][g.type] = g.score ?? '';
+            if (g.is_submitted) {
+              locks.add(g.type);
+            }
           }
           setScores(prefill);
+          setLockedMethods(locks);
         } catch { /* no prefill */ }
       })
       .catch(() => {
@@ -93,6 +101,7 @@ export const GradeEntry = () => {
   }, []);
 
   const handleScoreChange = (studentId: string, methodId: string, value: string) => {
+    if (lockedMethods.has(methodId) || gradesLocked) return;
     setScores((prev) => ({
       ...prev,
       [studentId]: { ...(prev[studentId] || {}), [methodId]: value === '' ? '' : Number(value) },
@@ -118,6 +127,7 @@ export const GradeEntry = () => {
       for (const student of students) {
         const studentScores = scores[student.id] || {};
         for (const method of gradingMethods) {
+          if (lockedMethods.has(method.id)) continue; // skip already locked grades
           const score = studentScores[method.id];
           if (score !== '' && score !== undefined) {
             gradeEntries.push({
@@ -145,6 +155,39 @@ export const GradeEntry = () => {
       setSaveError(err?.response?.data?.message || 'Failed to save grades. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSubmitGrades = async () => {
+    if (gradesLocked || !selectedCourseId) return;
+    // Confirm with user
+    if (!window.confirm('Are you sure you want to Submit? Once submitted, these grades will be LOCKED and visible to the administration, parents, and students. You will not be able to edit them.')) return;
+    
+    setSubmittingGrades(true);
+    setSaveError('');
+    try {
+      // 1. Save any pending changes first
+      await handleSave();
+      
+      // 2. Lock all unlocked methods
+      const newLocks = new Set(lockedMethods);
+      for (const method of gradingMethods) {
+        if (!lockedMethods.has(method.id)) {
+          // Check if there are actually any scores for this method to prevent empty submissions
+          const hasScores = students.some(s => scores[s.id]?.[method.id] !== '' && scores[s.id]?.[method.id] !== undefined);
+          if (hasScores) {
+            await submitCourseGrades(selectedCourseId, method.id);
+            newLocks.add(method.id);
+          }
+        }
+      }
+      setLockedMethods(newLocks);
+      setSubmitted(true);
+      setTimeout(() => setSubmitted(false), 3000);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.message || 'Failed to submit and lock grades. Please try again.');
+    } finally {
+      setSubmittingGrades(false);
     }
   };
 
@@ -271,14 +314,24 @@ export const GradeEntry = () => {
         </div>
 
         {!gradesLocked && !isLoading && (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
-          >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            <span>{saving ? 'Saving…' : 'Save All Grades'}</span>
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving || submittingGrades}
+              className="px-6 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60 text-slate-800 dark:text-white rounded-xl flex items-center gap-2 font-bold transition-all"
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              <span>{saving ? 'Saving…' : 'Save Draft'}</span>
+            </button>
+            <button
+              onClick={handleSubmitGrades}
+              disabled={saving || submittingGrades}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-blue-200 dark:shadow-none transition-all"
+            >
+              {submittingGrades ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle size={18} />}
+              <span>{submittingGrades ? 'Submitting…' : 'Submit Grades'}</span>
+            </button>
+          </div>
         )}
       </div>
 
