@@ -380,93 +380,125 @@ export const PayrollManagement = () => {
         </div>
       </div>
 
-      {/* Ledger Table List */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/40 dark:shadow-none overflow-hidden">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-          <h3 className="text-xs font-black text-slate-850 dark:text-white uppercase tracking-widest">Monthly Payroll Batches</h3>
-        </div>
+      {/* Ledger Table List — rolling queue of 5 most recent */}
+      {(() => {
+        const recentRuns = [...runs]
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5);
+        const hiddenCount = runs.length - recentRuns.length;
 
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center space-y-4">
-            <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 dark:border-slate-700 dark:border-t-white rounded-full animate-spin" />
-            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Fetching ledger history...</p>
+        return (
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/40 dark:shadow-none overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xs font-black text-slate-850 dark:text-white uppercase tracking-widest">Recent Payroll Batches</h3>
+                {runs.length > 0 && (
+                  <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl">
+                    {recentRuns.length} of {runs.length}
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Showing last 5 · oldest auto-drops</span>
+            </div>
+
+            {loading ? (
+              <div className="py-20 flex flex-col items-center justify-center space-y-4">
+                <div className="w-10 h-10 border-4 border-slate-200 border-t-slate-800 dark:border-slate-700 dark:border-t-white rounded-full animate-spin" />
+                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">Fetching ledger history...</p>
+              </div>
+            ) : recentRuns.length === 0 ? (
+              <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-3">
+                <Calendar size={48} />
+                <p className="font-bold uppercase text-[11px] tracking-widest">No payroll runs yet.</p>
+                <p className="text-[10px] font-medium text-slate-300 dark:text-slate-600">Generated payrolls will appear here, up to the last 5.</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <tr>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Period / Month</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Gross Ledger</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deductions</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Net Salary Payout</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
+                      {recentRuns.map((r, idx) => (
+                        <tr
+                          key={r.id}
+                          onClick={() => handleRunClick(r.id)}
+                          className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 cursor-pointer transition-colors"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                              {idx === 0 && (
+                                <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-500 rounded-lg">Latest</span>
+                              )}
+                              <Calendar size={14} className="text-slate-400" />
+                              <span className="font-bold text-slate-800 dark:text-white">{r.month} {r.year}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-400">
+                            {r.branch_name || 'Global'}
+                          </td>
+                          <td className="px-6 py-4 font-bold">
+                            {Number(r.total_gross).toLocaleString()} ETB
+                          </td>
+                          <td className="px-6 py-4 text-rose-500 font-bold">
+                            -{Number(r.total_deductions).toLocaleString()} ETB
+                          </td>
+                          <td className="px-6 py-4 font-black text-emerald-600 dark:text-emerald-400">
+                            {Number(r.total_net).toLocaleString()} ETB
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${
+                              r.status === 'draft'
+                                ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
+                                : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
+                            }`}>
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex gap-2 justify-end">
+                              {r.status === 'draft' && role !== 'auditor' && (
+                                <button
+                                  type="button"
+                                  aria-label="Delete draft payroll run"
+                                  onClick={(e) => handleDeleteRun(r.id, e)}
+                                  className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/20 rounded-xl transition-all"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                              <button type="button" className="bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-slate-700 dark:text-slate-300 font-black text-[9px] uppercase tracking-wide px-3">
+                                Ledger Details
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {hiddenCount > 0 && (
+                  <div className="px-6 py-3 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center">
+                    <p className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+                      {hiddenCount} older {hiddenCount === 1 ? 'batch' : 'batches'} exist in the database but are outside the recent queue window.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        ) : runs.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center text-slate-400 space-y-3">
-            <Calendar size={48} />
-            <p className="font-bold uppercase text-[11px] tracking-widest">No payroll history has been logged yet.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Period / Month</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Gross Ledger</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deductions</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Net Salary Payout</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
-                {runs.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => handleRunClick(r.id)}
-                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 cursor-pointer transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-slate-400" />
-                        <span className="font-bold text-slate-800 dark:text-white">{r.month} {r.year}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-slate-600 dark:text-slate-400">
-                      {r.branch_name || 'Global'}
-                    </td>
-                    <td className="px-6 py-4 font-bold">
-                      {Number(r.total_gross).toLocaleString()} ETB
-                    </td>
-                    <td className="px-6 py-4 text-rose-500 font-bold">
-                      -{Number(r.total_deductions).toLocaleString()} ETB
-                    </td>
-                    <td className="px-6 py-4 font-black text-emerald-600 dark:text-emerald-400">
-                      {Number(r.total_net).toLocaleString()} ETB
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${r.status === 'draft'
-                          ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
-                          : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
-                        }`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex gap-2 justify-end">
-                        {r.status === 'draft' && role !== 'auditor' && (
-                          <button
-                            type="button"
-                            aria-label="Delete draft payroll run"
-                            onClick={(e) => handleDeleteRun(r.id, e)}
-                            className="p-2 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white dark:bg-rose-950/20 rounded-xl transition-all"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                        <button type="button" className="bg-slate-100 dark:bg-slate-800 p-2 rounded-xl text-slate-700 dark:text-slate-300 font-black text-[9px] uppercase tracking-wide px-3">
-                          Ledger Details
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* Generation Slide Drawer / Form Panel */}
       {isGenerating && (
@@ -756,8 +788,8 @@ export const PayrollManagement = () => {
               </div>
 
               {exportInfoMsg && (
-                <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-3 rounded-xl text-xs font-semibold">
-                  <HelpCircle size={15} className="flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 px-4 py-3 rounded-xl text-xs font-semibold">
+                  <CheckCircle size={15} className="flex-shrink-0 mt-0.5" />
                   <span>{exportInfoMsg}</span>
                 </div>
               )}

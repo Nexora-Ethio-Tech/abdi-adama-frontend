@@ -215,10 +215,10 @@ const payrollService = {
       responseType: 'blob'
     });
 
-    const contentType = response.headers?.['content-type'] || '';
+    const contentType = String(response.headers?.['content-type'] || '');
 
     // Server returned a JSON response (empty period notice) instead of a file
-    if (contentType.includes('application/json') || response.data?.type === 'application/json') {
+    if (contentType.includes('application/json') || (response.data as Blob)?.type === 'application/json') {
       const text = await (response.data as Blob).text();
       try {
         const json = JSON.parse(text);
