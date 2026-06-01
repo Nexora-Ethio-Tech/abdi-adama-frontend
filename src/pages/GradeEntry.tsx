@@ -41,7 +41,7 @@ export const GradeEntry = () => {
   // Load teacher's classes on mount
   useEffect(() => {
     setLoadingClasses(true);
-    getMyClasses()
+    getMyClasses('grades')
       .then((data) => setClasses(data || []))
       .catch(() => setClassError('Could not load your classes. Please try again.'))
       .finally(() => setLoadingClasses(false));
@@ -230,7 +230,7 @@ export const GradeEntry = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {classes.map((cls) => (
-              <div key={cls.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
+              <div key={(cls as any).course_id || cls.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div className="bg-blue-100 dark:bg-blue-950/30 p-3 rounded-xl text-blue-600">
                     <Users size={24} />
@@ -240,13 +240,13 @@ export const GradeEntry = () => {
                 <p className="text-sm text-slate-500 mb-6">{cls.enrolledStudents ?? '—'} Students Enrolled</p>
 
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Select Subject</p>
-                  {cls.subject || (cls as any).name ? (
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Subject</p>
+                  {(cls as any).course_id ? (
                     <button
-                      onClick={() => handleSelectClass(cls, (cls as any).course_id || cls.id, cls.subject || (cls as any).name)}
+                      onClick={() => handleSelectClass(cls, (cls as any).course_id, cls.subject)}
                       className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-blue-600 hover:text-white transition-all text-sm font-medium"
                     >
-                      {cls.subject || (cls as any).name}
+                      {cls.subject}
                       <ChevronRight size={16} />
                     </button>
                   ) : (

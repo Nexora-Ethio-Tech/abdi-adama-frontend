@@ -213,11 +213,13 @@ export const ParentPortal = () => {
 
   const getRatingColor = (r: number) => {
     switch (r) {
-      case 3: return 'bg-emerald-500';
-      case 2: return 'bg-blue-500';
-      case 1: return 'bg-amber-500';
-      case 0: return 'bg-rose-500';
-      default: return 'bg-slate-200';
+      case 5: return 'bg-emerald-500';
+      case 4: return 'bg-teal-500';
+      case 3: return 'bg-blue-500';
+      case 2: return 'bg-amber-500';
+      case 1: return 'bg-orange-500';
+      case 0: return 'bg-slate-400';
+      default: return 'bg-slate-300';
     }
   };
 
@@ -1086,8 +1088,8 @@ export const ParentPortal = () => {
                     ) : commLogs.length === 0 ? (
                       <div className="p-8 text-center border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 rounded-2xl space-y-2">
                         <ClipboardList className="text-slate-400 mx-auto" size={28} />
-                        <p className="text-slate-500 font-bold text-sm">No active weekly review published yet.</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Old reviews automatically delete on Friday mornings. Teachers post new updates on weekends.</p>
+                        <p className="text-slate-500 font-bold text-sm">No weekly reviews published yet.</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Teachers publish new observations at the end of each school week.</p>
                       </div>
                     ) : (
                       <div className="space-y-8">
@@ -1127,14 +1129,20 @@ export const ParentPortal = () => {
                           {commFields.map(field => {
                             const rating = getFieldRating(currentLog, field.id);
                             return (
-                              <div key={field.id} className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col items-center text-center">
-                                <div className={`w-12 h-12 rounded-xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-xl mb-3`}>
-                                  {rating + 1}
+                              <div key={field.id} className="bg-slate-50 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-100/80 dark:border-slate-800 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-all duration-250">
+                                <div className="flex gap-1 mb-3">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      size={18}
+                                      className={star <= rating ? "fill-amber-400 text-amber-400" : "text-slate-300 dark:text-slate-700"}
+                                    />
+                                  ))}
                                 </div>
                                 <h5 className="font-bold text-slate-800 dark:text-slate-100 text-xs mb-1">{field.label}</h5>
                                 <p className="text-[9px] text-slate-500 leading-tight mb-3 min-h-[24px]">{field.description}</p>
-                                <span className={`w-full py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${getRatingColor(rating)} text-white`}>
-                                  {ratingLabels[rating]}
+                                <span className={`w-full py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${getRatingColor(rating)} text-white`}>
+                                  {ratingLabels[rating] || 'Unrated'}
                                 </span>
                               </div>
                             );

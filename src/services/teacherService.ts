@@ -13,8 +13,9 @@ export const getTeacherSchedule = async () => {
 };
 
 // ─── Classes ──────────────────────────────────────────────────────────────────
-export const getMyClasses = async () => {
-  const response = await api.get('/teacher/classes');
+export const getMyClasses = async (purpose?: 'grades' | 'attendance') => {
+  const params = purpose ? `?purpose=${purpose}` : '';
+  const response = await api.get(`/teacher/classes${params}`);
   return response.data.data;
 };
 
@@ -161,6 +162,7 @@ export const submitCommunicationLog = async (data: {
   ratingSocial: number;
   ratingPunctuality: number;
   ratingNoteTaking: number;
+  ratingExcellent: number;
   teacherNote?: string;
 }) => {
   const response = await api.post('/teacher/communication-logs', data);

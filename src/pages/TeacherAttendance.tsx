@@ -20,7 +20,7 @@ export const TeacherAttendance = () => {
     const fetchClasses = async () => {
       try {
         setLoading(true);
-        const data = await getMyClasses();
+        const data = await getMyClasses('attendance');
         const list = Array.isArray(data) ? data : [];
         const transformed = list.map((cls: any) => ({
           id: cls.id,
@@ -52,10 +52,10 @@ export const TeacherAttendance = () => {
       }));
       setStudents(transformed);
 
-      // Default empty/null status to 'present', else load from DB
+      // Default empty/null status to 'absent', else load from DB
       const loadedAttendance: Record<string, 'present' | 'absent' | 'late' | 'excused'> = {};
       transformed.forEach((s: any) => {
-        loadedAttendance[s.id] = s.status || 'present';
+        loadedAttendance[s.id] = s.status || 'absent';
       });
       setAttendance(loadedAttendance);
     } catch (err) {
@@ -78,10 +78,19 @@ export const TeacherAttendance = () => {
   };
 
   const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late' | 'excused') => {
-    setAttendance(prev => ({
-      ...prev,
-      [studentId]: status
-    }));
+    setAttendance(prev => {
+      const current = prev[studentId] || 'absent';
+      if (status === 'absent' && current === 'absent') {
+        return { ...prev, [studentId]: 'present' };
+      }
+      if (status === 'present' && current === 'present') {
+        return { ...prev, [studentId]: 'absent' };
+      }
+      return {
+        ...prev,
+        [studentId]: status
+      };
+    });
   };
 
   const markAllStatus = (status: 'present' | 'absent' | 'late' | 'excused') => {
@@ -237,7 +246,7 @@ export const TeacherAttendance = () => {
             className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center gap-2 font-bold shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 active:scale-95 transition-all disabled:opacity-50"
           >
             {submitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            <span>{submitting ? 'Saving...' : 'Save Attendance'}</span>
+            <span>{submitting ? 'Submitting...' : 'Submit Attendance'}</span>
           </button>
         </div>
       </div>

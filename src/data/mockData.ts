@@ -342,10 +342,11 @@ export const commFields = [
   { id: 'conduct', label: 'Conduct', description: 'General behavior and ethical standing' },
   { id: 'social', label: 'Social', description: 'Interaction and cooperation with other students' },
   { id: 'punctuality', label: 'Punctuality', description: 'Arriving at and leaving school on time' },
+  { id: 'excellent', label: 'Excellent', description: 'Exceptional academic or personal effort' },
   { id: 'noteTaking', label: 'Note-taking', description: 'Quality of notebook handling and writing' },
 ];
 
-export const ratingLabels = ['Needs Improvement', 'Good', 'Very Good', 'Excellent'];
+export const ratingLabels = ['Unrated', 'Needs Improvement', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
 export const mockCommunicationLogs: CommunicationLog[] = [
   {

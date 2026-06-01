@@ -1,4 +1,4 @@
-import { BookOpen, Users, Calendar, ArrowRight, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save, Send } from 'lucide-react';
+import { BookOpen, Users, Calendar, ArrowRight, ArrowLeft, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save, Send, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
@@ -8,9 +8,12 @@ import {
   submitWeeklyPlan, 
   updateWeeklyPlan,
   getMyClasses,
+  getClassStudents,
   getDepartmentHeads,
   getDeptPlans,
-  reviewDeptPlan
+  reviewDeptPlan,
+  submitCommunicationLog,
+  getCommunicationLogs
 } from '../services/teacherService';
 import {
   getTeacherExams,
@@ -152,13 +155,35 @@ export const TeacherPortal = () => {
   const [deptHeads, setDeptHeads] = useState<any[]>([]);
 
   // Sub-tab selection for weekly plans
-  const [weeklyPlanSubTab, setWeeklyPlanSubTab] = useState<'my-plans' | 'dept-plans'>('my-plans');
+  const [weeklyPlanSubTab, setWeeklyPlanSubTab] = useState<'my-plans' | 'dept-plans' | 'communication-book'>('my-plans');
   // Plan detail expand overlay
   const [selectedPlanForView, setSelectedPlanForView] = useState<any | null>(null);
   // Temporary evaluation rating
   const [reviewRating, setReviewRating] = useState<number>(0);
   // Simulation mode for Department Head role preview
   const [simulateDeanMode, setSimulateDeanMode] = useState<boolean>(false);
+
+  // ─── Communication Book States ───────────────────────────────────────────────
+  const [commSections, setCommSections] = useState<any[]>([]);
+  const [selectedCommSection, setSelectedCommSection] = useState<any | null>(null);
+  const [commStudents, setCommStudents] = useState<any[]>([]);
+  const [commStudentsLoading, setCommStudentsLoading] = useState(false);
+  const [commPage, setCommPage] = useState(1);
+  const COMM_PAGE_SIZE = 8;
+  const [globalCommSearch, setGlobalCommSearch] = useState('');
+  const [allHomeroomStudents, setAllHomeroomStudents] = useState<any[]>([]);
+  const [activeCommStudent, setActiveCommStudent] = useState<any | null>(null);
+  const [isCommCardOpen, setIsCommCardOpen] = useState(false);
+  const [isSubmittingLog, setIsSubmittingLog] = useState(false);
+  const [commLogSuccess, setCommLogSuccess] = useState(false);
+  const defaultCommForm = {
+    ratingUniform: 0, ratingMaterials: 0, ratingHomework: 0,
+    ratingParticipation: 0, ratingConduct: 0, ratingSocial: 0,
+    ratingPunctuality: 0, ratingExcellent: 0, ratingNoteTaking: 0,
+    teacherNote: ''
+  };
+  const [commLogForm, setCommLogForm] = useState(defaultCommForm);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // localStorage key for draft persistence
   const DRAFT_KEY = 'teacher_plan_draft';
@@ -468,6 +493,103 @@ export const TeacherPortal = () => {
       setActiveTab('overview');
     }
   }, [location.search]);
+
+  // ─── Communication Book Helpers ───────────────────────────────────────────────
+  const getWeekEndingSunday = (): string => {
+    const today = new Date();
+    const day = today.getDay(); // 0=Sun
+    const diff = day === 0 ? 0 : 7 - day;
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() + diff);
+    return sunday.toISOString().split('T')[0];
+  };
+
+  // Load all homeroom sections + their students for global search
+  const fetchAllHomeroomStudents = async (sections: any[]) => {
+    const promises = sections.map(s => getClassStudents(s.id).catch(() => []));
+    const rosters = await Promise.all(promises);
+    const merged: any[] = [];
+    rosters.forEach((roster, i) => {
+      (Array.isArray(roster) ? roster : []).forEach((st: any) => {
+        merged.push({ ...st, sectionName: sections[i].name || sections[i].class_name || `Section ${i + 1}`, sectionId: sections[i].id });
+      });
+    });
+    setAllHomeroomStudents(merged);
+  };
+
+  // Load homeroom sections when comm-book tab opens
+  useEffect(() => {
+    if (weeklyPlanSubTab !== 'communication-book') return;
+    getMyClasses('attendance').then(data => {
+      const list = Array.isArray(data) ? data : [];
+      const sections = list.map((c: any) => ({
+        id: c.id,
+        name: c.name || c.class_name,
+        section: c.section,
+        enrolledStudents: c.enrolledStudents || c.student_count || 0,
+      }));
+      setCommSections(sections);
+      fetchAllHomeroomStudents(sections);
+    }).catch(() => { setCommSections([]); setAllHomeroomStudents([]); });
+  }, [weeklyPlanSubTab]);
+
+  // Load students when a section is selected
+  useEffect(() => {
+    if (!selectedCommSection) return;
+    setCommStudentsLoading(true);
+    setCommPage(1);
+    getClassStudents(selectedCommSection.id).then((data: any) => {
+      const list = Array.isArray(data) ? data : [];
+      setCommStudents(list.map((s: any) => ({
+        id: s.studentId || s.student_id || s.id,
+        name: s.studentName || s.student_name || s.name,
+        digitalId: s.digitalId || s.digital_id,
+        grade: s.grade,
+      })));
+    }).catch(() => setCommStudents([])).finally(() => setCommStudentsLoading(false));
+  }, [selectedCommSection]);
+
+  const openCommCard = async (student: any) => {
+    setActiveCommStudent(student);
+    setCommLogForm(defaultCommForm);
+    setIsCommCardOpen(true);
+    setCommLogSuccess(false);
+    try {
+      const logs = await getCommunicationLogs(student.id);
+      const weekEnding = getWeekEndingSunday();
+      const existing = Array.isArray(logs) ? logs.find((l: any) => l.week_ending && l.week_ending.startsWith(weekEnding)) : null;
+      if (existing) {
+        setCommLogForm({
+          ratingUniform: existing.rating_uniform ?? 0,
+          ratingMaterials: existing.rating_materials ?? 0,
+          ratingHomework: existing.rating_homework ?? 0,
+          ratingParticipation: existing.rating_participation ?? 0,
+          ratingConduct: existing.rating_conduct ?? 0,
+          ratingSocial: existing.rating_social ?? 0,
+          ratingPunctuality: existing.rating_punctuality ?? 0,
+          ratingExcellent: existing.rating_excellent ?? 0,
+          ratingNoteTaking: existing.rating_note_taking ?? 0,
+          teacherNote: existing.teacher_note || '',
+        });
+      }
+    } catch { /* no existing log */ }
+  };
+
+  const handleSubmitCommLog = async () => {
+    if (!activeCommStudent) return;
+    setIsSubmittingLog(true);
+    try {
+      await submitCommunicationLog({ studentId: activeCommStudent.id, weekEnding: getWeekEndingSunday(), ...commLogForm });
+      setCommLogSuccess(true);
+      showToast(`Communication log sent for ${activeCommStudent.name}!`, 'success');
+      setTimeout(() => { setIsCommCardOpen(false); setCommLogSuccess(false); }, 1800);
+    } catch {
+      showToast('Failed to send log. Please try again.', 'error');
+    } finally {
+      setIsSubmittingLog(false);
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────────
 
   // Persist draft to localStorage whenever form changes
   const saveDraftLocally = useCallback((form: typeof emptyPlan) => {
@@ -851,19 +973,19 @@ export const TeacherPortal = () => {
         <div className="space-y-6">
           {/* Sub-tab Switcher & Simulation Toggle */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
-            {isDean ? (
-              <div className="flex gap-6">
-                <button
-                  type="button"
-                  onClick={() => setWeeklyPlanSubTab('my-plans')}
-                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
-                    weeklyPlanSubTab === 'my-plans'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  My Weekly Plans
-                </button>
+            <div className="flex gap-6 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setWeeklyPlanSubTab('my-plans')}
+                className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                  weeklyPlanSubTab === 'my-plans'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                My Weekly Plans
+              </button>
+              {isDean && (
                 <button
                   type="button"
                   onClick={() => setWeeklyPlanSubTab('dept-plans')}
@@ -875,13 +997,20 @@ export const TeacherPortal = () => {
                 >
                   Department Submissions
                 </button>
-              </div>
-            ) : (
-              <div className="text-xs font-black uppercase tracking-wider text-slate-400 pb-2">
-                Teacher Panel
-              </div>
-            )}
-            
+              )}
+              <button
+                type="button"
+                onClick={() => setWeeklyPlanSubTab('communication-book')}
+                className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                  weeklyPlanSubTab === 'communication-book'
+                    ? 'border-emerald-600 text-emerald-600'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                }`}
+              >
+                Communication Book
+              </button>
+            </div>
+
             {/* Elegant simulation toggle to facilitate testing both states easily */}
             <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-2.5 rounded-2xl border border-slate-200/50 dark:border-slate-700/50">
               <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">
@@ -902,7 +1031,247 @@ export const TeacherPortal = () => {
             </div>
           </div>
 
-          {(!isDean || weeklyPlanSubTab === 'my-plans') ? (
+          {weeklyPlanSubTab === 'communication-book' ? (
+            <div className="animate-in fade-in duration-200 space-y-6">
+
+              {/* ── Header Banner ── */}
+              <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-10 opacity-10"><ClipboardList size={160} /></div>
+                <div className="relative z-10">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200 mb-2 block">Home Room · Weekly Reports</span>
+                  <h2 className="text-3xl font-black mb-1 tracking-tight">Communication Book</h2>
+                  <p className="text-emerald-100 font-medium text-sm">Select a section or search a student to send weekly ratings to parents.</p>
+                </div>
+              </div>
+
+              {/* ── Global Student Search ── */}
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg p-6">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 block">Quick Search — All My Homeroom Students</label>
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input
+                    type="text"
+                    placeholder="Type student name to search across all sections…"
+                    value={globalCommSearch}
+                    onChange={e => setGlobalCommSearch(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-medium outline-none focus:border-emerald-500 transition-all text-slate-900 dark:text-white"
+                  />
+                </div>
+                {globalCommSearch.trim().length >= 2 && (
+                  <div className="mt-3 max-h-72 overflow-y-auto rounded-2xl border border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800">
+                    {allHomeroomStudents.filter(s => (s.studentName || s.student_name || s.name || '').toLowerCase().includes(globalCommSearch.toLowerCase())).slice(0, 20).map(s => {
+                      const name = s.studentName || s.student_name || s.name;
+                      const id = s.studentId || s.student_id || s.id;
+                      return (
+                        <div key={id} className="flex items-center justify-between px-5 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all">
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-white">{name}</p>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest">{s.sectionName} · {s.digitalId || ''}</p>
+                          </div>
+                          <button
+                            onClick={() => { setGlobalCommSearch(''); openCommCard({ id, name }); }}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1"
+                          >
+                            <Send size={12} /> Talk to Parent
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {allHomeroomStudents.filter(s => (s.studentName || s.student_name || s.name || '').toLowerCase().includes(globalCommSearch.toLowerCase())).length === 0 && (
+                      <p className="text-center text-slate-400 text-sm py-6 font-medium">No students found.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Section Browser or Student Roster ── */}
+              {!selectedCommSection ? (
+                /* Section Cards */
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">My Homeroom Sections</h3>
+                  {commSections.length === 0 ? (
+                    <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-12 text-center">
+                      <Users className="text-slate-300 dark:text-slate-700 mx-auto mb-4" size={40} />
+                      <p className="text-slate-500 font-bold text-sm">No homeroom sections assigned.</p>
+                      <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1">Contact administration if this is incorrect.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {commSections.map(sec => (
+                        <button
+                          key={sec.id}
+                          onClick={() => setSelectedCommSection(sec)}
+                          className="group bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 rounded-[2rem] p-7 text-left transition-all shadow-sm hover:shadow-xl"
+                        >
+                          <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-all">
+                            <Users className="text-emerald-600 group-hover:text-white transition-all" size={26} />
+                          </div>
+                          <h4 className="text-lg font-black text-slate-800 dark:text-white">{sec.name}</h4>
+                          {sec.section && <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Section {sec.section}</p>}
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mt-3">{sec.enrolledStudents} students · Click to view roster →</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Student Roster */
+                <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-lg overflow-hidden">
+                  <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => { setSelectedCommSection(null); setCommStudents([]); setCommPage(1); }} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                        <ArrowLeft size={18} className="text-slate-500" />
+                      </button>
+                      <div>
+                        <h3 className="font-black text-slate-800 dark:text-white">{selectedCommSection.name}</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Student Roster</p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1.5 rounded-full">{commStudents.length} students</span>
+                  </div>
+
+                  {commStudentsLoading ? (
+                    <div className="flex justify-center items-center h-48"><Loader2 className="animate-spin text-emerald-500" size={32} /></div>
+                  ) : commStudents.length === 0 ? (
+                    <div className="p-10 text-center"><p className="text-slate-400 font-medium">No students in this section.</p></div>
+                  ) : (
+                    <>
+                      {/* Paginated Table */}
+                      <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                        {commStudents.slice((commPage - 1) * COMM_PAGE_SIZE, commPage * COMM_PAGE_SIZE).map((s, idx) => (
+                          <div key={s.id} className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                            <div className="flex items-center gap-4">
+                              <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-black text-sm">
+                                {((commPage - 1) * COMM_PAGE_SIZE + idx + 1)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-800 dark:text-white text-sm">{s.name}</p>
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{s.digitalId || s.grade || '—'}</p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => openCommCard(s)}
+                              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-sm"
+                            >
+                              <Send size={13} /> Talk to Parent
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {commStudents.length > COMM_PAGE_SIZE && (
+                        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                          <p className="text-xs text-slate-400 font-bold">Page {commPage} of {Math.ceil(commStudents.length / COMM_PAGE_SIZE)}</p>
+                          <div className="flex gap-2">
+                            <button disabled={commPage === 1} onClick={() => setCommPage(p => p - 1)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-30 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"><ChevronLeft size={16} /></button>
+                            <button disabled={commPage >= Math.ceil(commStudents.length / COMM_PAGE_SIZE)} onClick={() => setCommPage(p => p + 1)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 disabled:opacity-30 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-all"><ChevronRight size={16} /></button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Talk-to-Parent Rating Card Modal ── */}
+              {isCommCardOpen && activeCommStudent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setIsCommCardOpen(false); }}>
+                  <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-y-auto">
+
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 rounded-t-[2.5rem] flex items-center justify-between">
+                      <div>
+                        <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest">Communication Book</p>
+                        <h3 className="text-white text-xl font-black mt-0.5">{activeCommStudent.name}</h3>
+                        <p className="text-emerald-200 text-xs mt-0.5">Week ending: {getWeekEndingSunday()}</p>
+                      </div>
+                      <button onClick={() => setIsCommCardOpen(false)} className="p-2 rounded-xl bg-white/20 hover:bg-white/30 transition-all"><X size={20} className="text-white" /></button>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                      {commLogSuccess ? (
+                        <div className="flex flex-col items-center justify-center py-10 space-y-3">
+                          <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                            <CheckCircle2 className="text-emerald-500" size={36} />
+                          </div>
+                          <p className="text-emerald-600 font-black text-lg">Sent to Parent!</p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Metrics Grid */}
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4">Rate each area (1–5 stars)</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              {[
+                                { key: 'ratingMaterials', label: 'Materials', icon: '📚' },
+                                { key: 'ratingUniform', label: 'Uniform', icon: '👔' },
+                                { key: 'ratingHomework', label: 'Homework', icon: '📝' },
+                                { key: 'ratingParticipation', label: 'Participation', icon: '🙋' },
+                                { key: 'ratingConduct', label: 'Conduct', icon: '✅' },
+                                { key: 'ratingSocial', label: 'Social', icon: '🤝' },
+                                { key: 'ratingPunctuality', label: 'Punctuality', icon: '⏰' },
+                                { key: 'ratingExcellent', label: 'Excellent', icon: '⭐' },
+                                { key: 'ratingNoteTaking', label: 'Note-taking', icon: '🗒️' },
+                              ].map(({ key, label, icon }) => {
+                                const val = commLogForm[key as keyof typeof commLogForm] as number;
+                                return (
+                                  <div key={key} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                                    <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2"><span>{icon}</span>{label}</span>
+                                    <div className="flex gap-1">
+                                      {[1, 2, 3, 4, 5].map(star => (
+                                        <button
+                                          key={star}
+                                          onClick={() => setCommLogForm(f => ({ ...f, [key]: star === val ? 0 : star }))}
+                                          className="transition-transform hover:scale-110"
+                                        >
+                                          <Star
+                                            size={22}
+                                            className={star <= val ? 'fill-amber-400 text-amber-400' : 'text-slate-300 dark:text-slate-600'}
+                                          />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Teacher Note */}
+                          <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Teacher's Observation Note</label>
+                            <textarea
+                              rows={4}
+                              placeholder="Describe the student's performance this week…"
+                              value={commLogForm.teacherNote}
+                              onChange={e => setCommLogForm(f => ({ ...f, teacherNote: e.target.value }))}
+                              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm outline-none focus:border-emerald-500 transition-all resize-none text-slate-800 dark:text-white"
+                            />
+                          </div>
+
+                          {/* Footer Buttons */}
+                          <div className="flex gap-3 pt-2">
+                            <button onClick={() => setIsCommCardOpen(false)} className="flex-1 py-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-black text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                              Close
+                            </button>
+                            <button
+                              onClick={handleSubmitCommLog}
+                              disabled={isSubmittingLog}
+                              className="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg"
+                            >
+                              {isSubmittingLog ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                              {isSubmittingLog ? 'Sending…' : 'Send to Parent'}
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (!isDean || weeklyPlanSubTab === 'my-plans') ? (
             <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-200">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
