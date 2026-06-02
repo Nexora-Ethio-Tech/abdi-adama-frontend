@@ -11,7 +11,7 @@ export const MyFinance = () => {
   const [activeLoan, setActiveLoan] = useState<Loan | null>(null);
   const [payslips, setPayslips] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<StaffNotification[]>([]);
-  
+
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [expandedSlipId, setExpandedSlipId] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export const MyFinance = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Loan Status and Notifications */}
           <div className="lg:col-span-1 space-y-6">
-            
+
             {/* Outstanding Loan Card */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col justify-between">
               <div className="border-b border-slate-50 dark:border-slate-800 pb-3 mb-4">
@@ -135,7 +135,7 @@ export const MyFinance = () => {
                     return (
                       <div className="space-y-1">
                         <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className={`${styles.progressBarFill}`} style={{'--progress-width': `${percent}%`} as any} />
+                          <div className={`${styles.progressBarFill}`} style={{ '--progress-width': `${percent}%` } as any} />
                         </div>
                         <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
                           <span>{percent}% Repaid</span>
@@ -173,11 +173,10 @@ export const MyFinance = () => {
                   notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`p-3 rounded-2xl border transition-all flex items-start gap-3 relative group ${
-                        !n.is_read
+                      className={`p-3 rounded-2xl border transition-all flex items-start gap-3 relative group ${!n.is_read
                           ? 'border-blue-100 bg-blue-50/20 dark:border-blue-950/20'
                           : 'border-slate-50 dark:border-slate-800/80 bg-transparent'
-                      }`}
+                        }`}
                     >
                       <div className="mt-0.5">
                         {n.type === 'loan' ? (
@@ -191,7 +190,7 @@ export const MyFinance = () => {
                         <p className="text-[10px] text-slate-500 font-medium leading-relaxed mt-0.5">{n.message}</p>
                         <span className="text-[8px] text-slate-400 font-bold block mt-1">{formatEthiopianLabel(n.created_at)}</span>
                       </div>
-                      
+
                       {!n.is_read && (
                         <button
                           onClick={() => handleMarkAsRead(n.id)}
@@ -211,7 +210,7 @@ export const MyFinance = () => {
 
           {/* Right Column: Payslips History and Detailed Slip Expansion */}
           <div className="lg:col-span-2 space-y-6">
-            
+
             {/* Payslips List */}
             <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
               <div className="p-6 border-b border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
@@ -258,10 +257,10 @@ export const MyFinance = () => {
                         {/* Expands details */}
                         {isExpanded && expandedSlipDetail && (
                           <div className="px-6 pb-6 pt-2 bg-slate-50/50 dark:bg-slate-800/10 border-t border-slate-50 dark:border-slate-800/60 animate-slide-in">
-                            
+
                             {/* Standard Printable Payslip Design */}
                             <div id={`payslip-print-${slip.id}`} className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6 max-w-2xl mx-auto">
-                              
+
                               {/* School Name & Branding */}
                               <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4">
                                 <div>
@@ -299,7 +298,7 @@ export const MyFinance = () => {
 
                               {/* Ledger breakdown grid */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-                                
+
                                 {/* Income parameters */}
                                 <div className="space-y-2">
                                   <h5 className="text-[9px] font-black text-emerald-600 uppercase tracking-widest border-b border-slate-50 dark:border-slate-850 pb-1 mb-2">Earnings (+)</h5>
