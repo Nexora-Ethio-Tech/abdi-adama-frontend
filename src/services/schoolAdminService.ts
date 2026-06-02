@@ -146,6 +146,12 @@ export const registerUser = async (data: RegisterUserData): Promise<RegisterUser
   return response.data;
 };
 
+// Toggle Registration Open/Closed
+export const toggleRegistration = async (open: boolean): Promise<void> => {
+  const response = await api.patch('/school-admin/system-settings/registration', { open });
+  return response.data;
+};
+
 // Get Branch Users
 export const getBranchUsers = async (role?: string, status?: string) => {
   const params = new URLSearchParams();

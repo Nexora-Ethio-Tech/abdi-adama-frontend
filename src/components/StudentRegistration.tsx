@@ -9,7 +9,8 @@ import {
   updateApplicationStatus,
   createPendingApplication,
   createPublicPendingApplication,
-  registerUser
+  registerUser,
+  toggleRegistration
 } from '../services/schoolAdminService';
 import api from '../services/api';
 import { EthiopianDatePicker } from './EthiopianDatePicker';
@@ -186,7 +187,7 @@ const initialPendingApplications: PendingApp[] = [];
 export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role, user, registrationOpen } = useUser();
+  const { role, user, registrationOpen, setRegistrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -224,6 +225,20 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [branchesList, setBranchesList] = useState<{ id: string; name: string }[]>([]);
   const [selectedBranchName, setSelectedBranchName] = useState('');
   const [expandedAppIds, setExpandedAppIds] = useState<Record<string, boolean>>({});
+
+  // Toggle registration open/closed — persists to backend
+  const handleToggleRegistration = async (newValue: boolean) => {
+    try {
+      await toggleRegistration(newValue);
+      setRegistrationOpen(newValue);
+      setSuccessMessage(`Registration is now ${newValue ? 'open' : 'closed'}.`);
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to toggle registration:', err);
+      setSubmitError(err.response?.data?.message || 'Failed to update registration status.');
+      setTimeout(() => setSubmitError(null), 5000);
+    }
+  };
 
   // Fetch branches on component mount
   useEffect(() => {
@@ -750,7 +765,11 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           <div className="space-y-5">
             {/* Registration Window Toggle */}
             {!isFinance && (
-              <div className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'}`}>
+              <div
+                onClick={() => handleToggleRegistration(!registrationOpen)}
+                title={registrationOpen ? 'Click to close registration' : 'Click to open registration'}
+                className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between cursor-pointer select-none hover:opacity-90 active:scale-[0.99] ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'}`}
+              >
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl text-white ${registrationOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                     <Shield size={18} />
