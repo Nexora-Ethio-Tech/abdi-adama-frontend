@@ -13,6 +13,67 @@ import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
 import { mockGradingConfigs } from '../data/mockData';
 
+const MultiSelectDropdown = ({
+  options,
+  selectedValues,
+  onChange,
+  placeholder = "Select options",
+  disabled = false,
+  className = ''
+}: {
+  options: { value: string, label: string }[];
+  selectedValues: string[];
+  onChange: (value: string, checked: boolean) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className={`relative ${className}`}> 
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={`w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-left flex justify-between items-center outline-none focus:ring-2 focus:ring-blue-500 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
+        <span className="text-slate-700 dark:text-slate-200 truncate pr-2">
+          {selectedValues.length === 0
+            ? placeholder
+            : `${selectedValues.length} selected`}
+        </span>
+        <span className="text-slate-400 font-bold ml-2">▼</span>
+      </button>
+
+      {isOpen && !disabled && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="absolute left-0 mt-1 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg max-h-60 overflow-y-auto z-20 p-2 space-y-1">
+            {options.map((option) => {
+              const isChecked = selectedValues.includes(option.value);
+              return (
+                <label
+                  key={option.value}
+                  className="flex items-center gap-3 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200 select-none"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => onChange(option.value, e.target.checked)}
+                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 export const Settings = () => {
   const [activeTab, setActiveTab] = useState('General');
   const location = useLocation();
@@ -31,6 +92,7 @@ export const Settings = () => {
   const [branchGradeFees, setBranchGradeFees] = useState<BranchGradeFee[]>([]);
   const [feeBranchId, setFeeBranchId] = useState('');
   const [feeGrade, setFeeGrade] = useState('KG');
+  const [feeGrades, setFeeGrades] = useState<string[]>(['KG']);
   const [feeMonthly, setFeeMonthly] = useState(5000);
   const [feeRegistration, setFeeRegistration] = useState(2500);
   const [feeBus, setFeeBus] = useState(1200);
@@ -128,11 +190,13 @@ export const Settings = () => {
 
   useEffect(() => {
     const defaultBranchId = selectedBranchId || (role !== 'super-admin' ? (user as any)?.branchId || branches[0]?.id : branches[0]?.id);
-    if (branches.length > 0 && !feeBranchId) {
-      setFeeBranchId(defaultBranchId);
-    }
-    if (branches.length > 0 && !profitTargetBranchId) {
-      setProfitTargetBranchId(defaultBranchId);
+    if (branches.length > 0) {
+      if (!feeBranchId || !branches.some(b => b.id === feeBranchId)) {
+        setFeeBranchId(defaultBranchId);
+      }
+      if (!profitTargetBranchId || !branches.some(b => b.id === profitTargetBranchId)) {
+        setProfitTargetBranchId(defaultBranchId);
+      }
     }
   }, [branches, feeBranchId, profitTargetBranchId, selectedBranchId, role, user]);
 
@@ -341,6 +405,14 @@ export const Settings = () => {
 
   const handleApplyFeeConfig = async () => {
     if (!feeBranchId) return;
+    if (!feeBranchId) {
+      setFinanceErrorMsg('Please select a branch');
+      return;
+    }
+    if (feeGrades.length === 0) {
+      setFinanceErrorMsg('Please select at least one grade level');
+      return;
+    }
     setFinanceLoading(true);
     try {
       await settingsService.upsertBranchGradeFee({
@@ -350,6 +422,15 @@ export const Settings = () => {
         registrationFee: feeRegistration,
         busFee: feeBus,
       });
+      for (const grade of feeGrades) {
+        await settingsService.upsertBranchGradeFee({
+          branchId: feeBranchId,
+          gradeLevel: grade,
+          monthlyFee: feeMonthly,
+          registrationFee: feeRegistration,
+          busFee: feeBus,
+        });
+      }
       await loadFeeStructure();
       setFinanceSuccessMsg('Fee configuration applied');
       setTimeout(() => setFinanceSuccessMsg(''), 4000);
@@ -1291,16 +1372,18 @@ export const Settings = () => {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label htmlFor="fee-grade" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
-                          <select
-                            id="fee-grade"
-                            value={feeGrade}
-                            onChange={(e) => setFeeGrade(e.target.value)}
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
+                          <MultiSelectDropdown
+                            options={['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => ({ value: g, label: `Grade ${g}` }))}
+                            selectedValues={feeGrades}
+                            onChange={(val, checked) => {
+                              if (checked) setFeeGrades(prev => [...prev, val]);
+                              else setFeeGrades(prev => prev.filter(v => v !== val));
+                            }}
+                            placeholder="Select Grades"
                             disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
-                          </select>
+                            className="w-full"
+                          />
                         </div>
                         <div className="space-y-1">
                           <label htmlFor="fee-monthly" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
