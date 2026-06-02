@@ -395,7 +395,7 @@ export const ScheduleBuilder = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [periodsPerDay, startTime, endTime, maxConsecutive, distributeSubjects]);
+  }, [periodsPerDay, startTime, endTime, maxConsecutive, distributeSubjects, structureRows, classes]);
 
   // Approve a candidate
   const handleApprove = useCallback(async (candidateIndex: number) => {
