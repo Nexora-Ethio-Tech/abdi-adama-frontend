@@ -105,6 +105,8 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
             value={i18n.language}
             onChange={(e) => handleLanguageChange(e.target.value)}
             disabled={isExamLockedDown}
+            title="Change language"
+            aria-label="Select language"
             className={cn("bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:text-school-primary transition-colors", isExamLockedDown && "opacity-50 cursor-not-allowed")}
           >
             <option value="en">EN</option>
@@ -134,7 +136,9 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
 
           {/* Notifications */}
           <button
+            type="button"
             disabled={isExamLockedDown}
+            title="Notifications"
             className={cn("relative p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all", isExamLockedDown && "opacity-50 cursor-not-allowed")}
           >
             <Bell size={20} />
@@ -219,7 +223,9 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-slate-50 dark:bg-slate-950 w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-2xl relative animate-in zoom-in-95 duration-300 border border-white/20">
             <button
+              type="button"
               onClick={() => setShowCalendar(false)}
+              title="Close calendar"
               className="absolute top-6 right-6 z-[110] p-3 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
             >
               <X size={24} />

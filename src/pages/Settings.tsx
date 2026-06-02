@@ -238,11 +238,27 @@ export const Settings = () => {
     }
   }, [location.search, location.hash, tabs]);
 
-  const [selectedGrade, setSelectedGrade] = useState('1');
-  const [gradeConfigs, setGradeConfigs] = useState<Record<string, Array<{ id: string; label: string; maxWeight: number }>>>({});
+  // ─── Grading Systems (multi-system support) ──────────────────────────────
+  type GradingMethod = { id: string; label: string; maxWeight: number };
+  type GradingSystem = {
+    id: string;
+    name: string;
+    grades: string[]; // which grades this system applies to
+    methods: GradingMethod[];
+    published: boolean;
+  };
+  const [gradingSystems, setGradingSystems] = useState<GradingSystem[]>([]);
+  const [expandedSystemId, setExpandedSystemId] = useState<string | null>(null);
+  // Draft form for creating a new system
+  const [draftName, setDraftName] = useState('');
+  const [draftGrades, setDraftGrades] = useState<string[]>([]);
+  const [draftMethods, setDraftMethods] = useState<GradingMethod[]>([]);
+  const [draftNewLabel, setDraftNewLabel] = useState('');
+  const [draftNewWeight, setDraftNewWeight] = useState(10);
+  const [showNewSystemForm, setShowNewSystemForm] = useState(false);
+  // Legacy (keep for non-breaking compat with publish logic)
+  const [gradeConfigs, setGradeConfigs] = useState<Record<string, GradingMethod[]>>({});
   const [gradingLoading, setGradingLoading] = useState(false);
-  const [newMethodLabel, setNewMethodLabel] = useState('');
-  const [newMethodWeight, setNewMethodWeight] = useState(10);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -263,6 +279,65 @@ export const Settings = () => {
     }
   }, [activeTab, role, activeSubTab]);
 
+  const groupConfigsIntoSystems = (dbConfigs: Record<string, GradingMethod[]>): GradingSystem[] => {
+    const systemMap = new Map<string, { name: string; grades: string[]; methods: GradingMethod[] }>();
+    const grades = Object.keys(dbConfigs).sort((a, b) => parseInt(a) - parseInt(b));
+    
+    grades.forEach((grade) => {
+      const methods = dbConfigs[grade] || [];
+      if (methods.length === 0) return;
+      
+      const key = JSON.stringify(methods.map(m => ({ label: m.label, maxWeight: m.maxWeight })));
+      
+      if (systemMap.has(key)) {
+        systemMap.get(key)!.grades.push(grade);
+      } else {
+        systemMap.set(key, {
+          name: `Grade ${grade} Grading System`,
+          grades: [grade],
+          methods: JSON.parse(JSON.stringify(methods)),
+        });
+      }
+    });
+
+    const systems: GradingSystem[] = [];
+    if (systemMap.size === 0) {
+      systems.push({
+        id: 'system-default',
+        name: 'General Grading System',
+        grades: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
+        methods: [
+          { id: 'quiz-1', label: 'Quiz 1', maxWeight: 10 },
+          { id: 'mid-exam', label: 'Mid Exam', maxWeight: 30 },
+          { id: 'assignment', label: 'Assignment', maxWeight: 10 },
+          { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
+        ],
+        published: false
+      });
+    } else {
+      systemMap.forEach((sys) => {
+        systems.push({
+          id: `system-${Math.random().toString(36).substr(2, 9)}`,
+          name: sys.name,
+          grades: sys.grades,
+          methods: sys.methods,
+          published: true,
+        });
+      });
+    }
+    return systems;
+  };
+
+  const isValidGradingSystems = (val: any): val is GradingSystem[] => {
+    return Array.isArray(val) && val.length > 0 && val.every(s => 
+      s && 
+      typeof s.id === 'string' && 
+      typeof s.name === 'string' && 
+      Array.isArray(s.grades) && 
+      Array.isArray(s.methods)
+    );
+  };
+
   // Load grading configs from backend on mount
   useEffect(() => {
     if (role === 'school-admin') {
@@ -270,15 +345,32 @@ export const Settings = () => {
       getGradingConfigs()
         .then((dbConfigs) => {
           setGradeConfigs(dbConfigs || {});
-          try { localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(dbConfigs || {})); } catch {}
+          const reconstructed = groupConfigsIntoSystems(dbConfigs || {});
+          
+          const storedSystems = localStorage.getItem('abdi_adama_grading_systems');
+          if (storedSystems) {
+            try {
+              const parsed = JSON.parse(storedSystems);
+              if (isValidGradingSystems(parsed)) {
+                setGradingSystems(parsed);
+              } else {
+                setGradingSystems(reconstructed);
+              }
+            } catch {
+              setGradingSystems(reconstructed);
+            }
+          } else {
+            setGradingSystems(reconstructed);
+          }
         })
         .catch(() => {
-          // Fallback to localStorage if backend unavailable
-          const stored = localStorage.getItem('abdi_adama_grading_configs');
+          const stored = localStorage.getItem('abdi_adama_grading_systems');
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
-              setGradeConfigs(parsed);
+              if (isValidGradingSystems(parsed)) {
+                setGradingSystems(parsed);
+              }
             } catch { /* ignore */ }
           }
         })
@@ -286,12 +378,6 @@ export const Settings = () => {
     }
   }, [role]);
 
-  const updateGradeConfig = (newMethods: any[]) => {
-    setGradeConfigs((prev) => ({
-      ...prev,
-      [selectedGrade]: newMethods,
-    }));
-  };
 
   const saveGeneralSettings = async () => {
     setGeneralSaving(true);
@@ -422,11 +508,15 @@ export const Settings = () => {
     }
   };
 
+  const handleSaveDraftSystems = (updatedSystems: GradingSystem[]) => {
+    localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(updatedSystems));
+    setSuccessMessage('Grading systems saved locally as draft. Click Publish on any card to update teachers.');
+    setTimeout(() => setSuccessMessage(''), 5000);
+  };
+
   const handleSaveChanges = async () => {
     if (activeTab === 'Grading System') {
-      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      setSuccessMessage('Grading configurations saved locally as draft. Click Publish to push to all teachers.');
-      setTimeout(() => setSuccessMessage(''), 5000);
+      handleSaveDraftSystems(gradingSystems);
     } else if (activeTab === 'General' && role === 'super-admin') {
       await saveGeneralSettings();
     } else if (activeTab === 'Security' && role === 'super-admin' && activeSubTab === 'smtp') {
@@ -440,43 +530,94 @@ export const Settings = () => {
     }
   };
 
-  const handlePublishChanges = async () => {
-    const currentMethods = gradeConfigs[selectedGrade] || gradeConfigs['default'] || [];
+  const handlePublishSystem = async (systemId: string) => {
+    const system = gradingSystems.find((s) => s.id === systemId);
+    if (!system) return;
+
+    const totalWeight = system.methods.reduce((sum, m) => sum + m.maxWeight, 0);
+    if (totalWeight !== 100) {
+      setSuccessMessage(`Error: Total weight must be exactly 100% (currently ${totalWeight}%).`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+      return;
+    }
+
+    if (system.grades.length === 0) {
+      setSuccessMessage('Error: You must select at least one grade to publish this grading system.');
+      setTimeout(() => setSuccessMessage(''), 5000);
+      return;
+    }
+
     setGradingLoading(true);
-    try {
-      await publishGradingConfigs(selectedGrade, currentMethods);
-      // Also persist all grades locally
-      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      setSuccessMessage(`Grade ${selectedGrade} grading structure published! Teachers, Students & Parents can now see the updated format.`);
-    } catch (err: any) {
-      // Fallback: still save locally
-      localStorage.setItem('abdi_adama_grading_configs', JSON.stringify(gradeConfigs));
-      setSuccessMessage(`Published locally. (Backend: ${err?.response?.data?.message || err?.message || 'unavailable'})`);
-    } finally {
-      setGradingLoading(false);
-      setTimeout(() => setSuccessMessage(''), 6000);
+    let publishedCount = 0;
+    let failedGrades: string[] = [];
+
+    for (const grade of system.grades) {
+      try {
+        await publishGradingConfigs(grade, system.methods);
+        publishedCount++;
+      } catch (err) {
+        console.error(`Failed to publish grading config for Grade ${grade}`, err);
+        failedGrades.push(grade);
+      }
+    }
+
+    // Update status in local systems list
+    const updated = gradingSystems.map((s) =>
+      s.id === systemId ? { ...s, published: failedGrades.length === 0 } : s
+    );
+    setGradingSystems(updated);
+    localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(updated));
+
+    if (failedGrades.length === 0) {
+      setSuccessMessage(`Grading system "${system.name}" successfully published for Grade(s): ${system.grades.join(', ')}!`);
+    } else {
+      setSuccessMessage(`Published for ${publishedCount} grade(s). Failed for Grade(s): ${failedGrades.join(', ')}.`);
+    }
+    setGradingLoading(false);
+    setTimeout(() => setSuccessMessage(''), 6000);
+  };
+
+  const handleDeleteSystem = (systemId: string) => {
+    if (window.confirm('Are you sure you want to delete this grading system? This will not undo database changes until you re-publish other systems for the impacted grades.')) {
+      const updated = gradingSystems.filter((s) => s.id !== systemId);
+      setGradingSystems(updated);
+      localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(updated));
+      setSuccessMessage('Grading system deleted from drafts.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     }
   };
 
-  const addPresetMethod = (label: string, weight: number) => {
-    const currentMethods = JSON.parse(
-      JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || [])
-    );
-    const exists = currentMethods.some((m: any) => m.label.toLowerCase() === label.toLowerCase());
-    if (exists) {
-      const updated = currentMethods.map((m: any) =>
-        m.label.toLowerCase() === label.toLowerCase() ? { ...m, maxWeight: weight } : m
-      );
-      updateGradeConfig(updated);
-    } else {
-      currentMethods.push({
-        id: label.toLowerCase().replace(/\s+/g, '-'),
-        label: label,
-        maxWeight: weight,
-      });
-      updateGradeConfig(currentMethods);
+  const handleCreateSystem = () => {
+    if (!draftName.trim()) {
+      alert('Please enter a grading system name.');
+      return;
     }
+    if (draftGrades.length === 0) {
+      alert('Please select at least one grade level.');
+      return;
+    }
+    const newSystem: GradingSystem = {
+      id: `system-${Math.random().toString(36).substr(2, 9)}`,
+      name: draftName,
+      grades: [...draftGrades],
+      methods: [...draftMethods],
+      published: false,
+    };
+    const updated = [...gradingSystems, newSystem];
+    setGradingSystems(updated);
+    localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(updated));
+    
+    // Reset draft form
+    setDraftName('');
+    setDraftGrades([]);
+    setDraftMethods([]);
+    setShowNewSystemForm(false);
+    setExpandedSystemId(newSystem.id); // auto-expand newly created system
+    
+    setSuccessMessage('New grading system added to drafts.');
+    setTimeout(() => setSuccessMessage(''), 3000);
   };
+
 
   const ethiopianMonths = [
     { id: '1', ge: 'Meskerem', am: 'መስከረም' },
@@ -1598,192 +1739,448 @@ export const Settings = () => {
             {activeTab === 'Grading System' && (
               <SettingsPanel>
                 <div className="space-y-8 animate-in fade-in duration-300">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
                     <div>
-                      <label htmlFor="grade-level" className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider mb-1 block">Select Grade Level</label>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Configurations are batch-specific</p>
+                      <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Grading Systems</h4>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Configure assessment weights and grading formats for multiple grades</p>
                     </div>
-                    <select
-                      id="grade-level"
-                      title="Select grade level"
-                      aria-label="Select grade level"
-                      value={selectedGrade}
-                      onChange={(e) => setSelectedGrade(e.target.value)}
-                      className="px-6 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
-                        <option key={g} value={g}>Grade {g}</option>
-                      ))}
-                    </select>
+                    {!showNewSystemForm && (
+                      <button
+                        onClick={() => {
+                          setDraftName('');
+                          setDraftGrades([]);
+                          setDraftMethods([
+                            { id: 'quiz-1', label: 'Quiz 1', maxWeight: 10 },
+                            { id: 'mid-exam', label: 'Mid Exam', maxWeight: 30 },
+                            { id: 'assignment', label: 'Assignment', maxWeight: 10 },
+                            { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
+                          ]);
+                          setShowNewSystemForm(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest px-5 py-3 rounded-2xl flex items-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                      >
+                        <Plus size={16} />
+                        Add New System
+                      </button>
+                    )}
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-2">
-                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Active Assessment Methods</h4>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <span className={`text-[10px] font-black px-3 py-1 rounded-full ${(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) === 100
-                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
-                          : 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400 animate-pulse'
-                          }`}>
-                          Total Weight: {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%
-                        </span>
+                  {/* Create New System Form */}
+                  {showNewSystemForm && (
+                    <div className="bg-slate-50/50 dark:bg-slate-800/20 p-6 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6 animate-in slide-in-from-top duration-300">
+                      <div className="flex justify-between items-center border-b border-slate-105 dark:border-slate-800 pb-3">
+                        <h5 className="text-xs font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider">Create New Grading System</h5>
                         <button
-                          onClick={() => {
-                            const recommended = [
-                              { id: 'quiz-1', label: 'Quiz 1', maxWeight: 5 },
-                              { id: 'test-1', label: 'Test 1', maxWeight: 10 },
-                              { id: 'mid-exam', label: 'Mid Exam', maxWeight: 25 },
-                              { id: 'quiz-2', label: 'Quiz 2', maxWeight: 5 },
-                              { id: 'assignment', label: 'Assignment', maxWeight: 5 },
-                              { id: 'final-exam', label: 'Final Exam', maxWeight: 50 },
-                            ];
-                            updateGradeConfig(recommended);
-                          }}
-                          className="text-xs font-bold px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 rounded-full transition-all shadow-md shadow-blue-500/30 active:scale-95"
+                          onClick={() => setShowNewSystemForm(false)}
+                          className="text-slate-400 hover:text-slate-650 text-xs font-bold"
                         >
-                          Apply Recommended Template
+                          Cancel
+                        </button>
+                      </div>
+
+                      {/* Name Input */}
+                      <div className="space-y-1">
+                        <label htmlFor="draft-system-name" className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Name</label>
+                        <input
+                          id="draft-system-name"
+                          type="text"
+                          placeholder="e.g. Primary School (1-4) Grading"
+                          value={draftName}
+                          onChange={(e) => setDraftName(e.target.value)}
+                          className="w-full px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Grade Checkboxes */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Applies to Grades</label>
+                        <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                          {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => {
+                            const isChecked = draftGrades.includes(g);
+                            return (
+                              <label key={g} className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${isChecked ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 hover:bg-slate-550'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setDraftGrades([...draftGrades, g]);
+                                    } else {
+                                      setDraftGrades(draftGrades.filter(x => x !== g));
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                                <span>G{g}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Methods Setup */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assessment Components</label>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${draftMethods.reduce((sum, m) => sum + m.maxWeight, 0) === 100 ? 'bg-emerald-105 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            Total: {draftMethods.reduce((sum, m) => sum + m.maxWeight, 0)}%
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          {draftMethods.map((m, idx) => (
+                            <div key={idx} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
+                              <input
+                                type="text"
+                                value={m.label}
+                                placeholder="Method name"
+                                aria-label="Grading method name"
+                                onChange={(e) => {
+                                  const updated = [...draftMethods];
+                                  updated[idx].label = e.target.value;
+                                  setDraftMethods(updated);
+                                }}
+                                className="flex-1 bg-transparent border-none text-xs font-bold outline-none"
+                              />
+                              <input
+                                type="number"
+                                value={m.maxWeight}
+                                placeholder="Weight"
+                                aria-label="Maximum weight percentage"
+                                onChange={(e) => {
+                                  const updated = [...draftMethods];
+                                  updated[idx].maxWeight = parseInt(e.target.value) || 0;
+                                  setDraftMethods(updated);
+                                }}
+                                className="w-16 bg-slate-50 dark:bg-slate-800 text-center text-xs font-black py-1 rounded border border-slate-200 text-blue-600 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setDraftMethods(draftMethods.filter((_, i) => i !== idx))}
+                                title="Delete method"
+                                className="text-slate-400 hover:text-rose-500"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="Add component name..."
+                            value={draftNewLabel}
+                            onChange={(e) => setDraftNewLabel(e.target.value)}
+                            className="flex-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Weight %"
+                            value={draftNewWeight}
+                            onChange={(e) => setDraftNewWeight(parseInt(e.target.value) || 0)}
+                            className="w-20 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-center"
+                          />
+                          <button
+                            onClick={() => {
+                              if (!draftNewLabel) return;
+                              setDraftMethods([...draftMethods, {
+                                id: draftNewLabel.toLowerCase().replace(/\s+/g, '-'),
+                                label: draftNewLabel,
+                                maxWeight: draftNewWeight
+                              }]);
+                              setDraftNewLabel('');
+                            }}
+                            className="bg-slate-900 dark:bg-blue-600 text-white px-3 rounded-lg text-xs font-bold"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                        <button
+                          onClick={handleCreateSystem}
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:opacity-90 active:scale-95 shadow-md shadow-blue-500/20"
+                        >
+                          Save Grading System
                         </button>
                       </div>
                     </div>
-
-                    <div className="grid grid-cols-1 gap-3">
-                      {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).map((method, idx) => (
-                        <div key={method.id} className="flex items-center gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl group transition-all hover:border-blue-200">
-                          <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center text-slate-400 font-bold text-xs">
-                            {idx + 1}
-                          </div>
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              title="Assessment method name"
-                              aria-label="Assessment method name"
-                              placeholder="Enter assessment method"
-                              value={method.label}
-                              onChange={(e) => {
-                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                currentMethods[idx].label = e.target.value;
-                                updateGradeConfig(currentMethods);
-                              }}
-                              className="bg-transparent font-bold text-slate-800 dark:text-white outline-none w-full"
-                            />
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                              <input
-                                type="number"
-                                title="Assessment method weight in points"
-                                aria-label="Assessment method weight in points"
-                                placeholder="0"
-                                value={method.maxWeight}
-                                onChange={(e) => {
-                                  const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                  currentMethods[idx].maxWeight = parseInt(e.target.value) || 0;
-                                  updateGradeConfig(currentMethods);
-                                }}
-                                className="bg-transparent font-black text-blue-600 w-12 text-center outline-none"
-                              />
-                              <span className="text-[10px] font-black text-slate-400">PTS</span>
-                            </div>
-                            <button
-                              title="Delete assessment method"
-                              aria-label="Delete assessment method"
-                              onClick={() => {
-                                const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                                const filtered = currentMethods.filter((_: any, i: number) => i !== idx);
-                                updateGradeConfig(filtered);
-                              }}
-                              className="p-2 text-slate-400 hover:text-white hover:bg-rose-500 rounded-xl transition-all active:scale-95"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 space-y-6">
-                    <div>
-                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Suggested Assessments (Quick Add)</h5>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { label: 'Quiz 1', weight: 5 },
-                          { label: 'Test 1', weight: 10 },
-                          { label: 'Mid Exam', weight: 25 },
-                          { label: 'Quiz 2', weight: 5 },
-                          { label: 'Assignment', weight: 5 },
-                          { label: 'Final Exam', weight: 50 },
-                        ].map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => addPresetMethod(preset.label, preset.weight)}
-                            className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 rounded-xl hover:border-blue-500 hover:text-blue-600 hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2 shadow-sm active:scale-95"
-                          >
-                            <Plus size={14} className="text-blue-500" />
-                            {preset.label} <span className="text-[10px] font-black text-slate-400">({preset.weight}%)</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Add Custom Assessment Method</h5>
-                      <div className="flex flex-col md:flex-row gap-4">
-                        <input
-                          type="text"
-                          title="Custom assessment method name"
-                          aria-label="Custom assessment method name"
-                          placeholder="e.g. Class Activity, Project"
-                          value={newMethodLabel}
-                          onChange={(e) => setNewMethodLabel(e.target.value)}
-                          className="flex-1 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">Weight</span>
-                            <input
-                              type="number"
-                              title="Assessment weight percentage"
-                              aria-label="Assessment weight percentage"
-                              placeholder="0"
-                              value={newMethodWeight}
-                              onChange={(e) => setNewMethodWeight(parseInt(e.target.value) || 0)}
-                              className="w-12 bg-transparent font-bold text-center outline-none"
-                            />
-                            <span className="text-xs font-bold text-slate-400">%</span>
-                          </div>
-                          <button
-                            title="Add custom assessment method"
-                            aria-label="Add custom assessment method"
-                            onClick={() => {
-                              if (!newMethodLabel) return;
-                              const currentMethods = JSON.parse(JSON.stringify(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []));
-                              currentMethods.push({
-                                id: newMethodLabel.toLowerCase().replace(/\s+/g, '-'),
-                                label: newMethodLabel,
-                                maxWeight: newMethodWeight
-                              });
-                              updateGradeConfig(currentMethods);
-                              setNewMethodLabel('');
-                            }}
-                            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-2.5 rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 active:scale-95 flex items-center justify-center"
-                          >
-                            <Plus size={20} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0) !== 100 && (
-                    <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
-                      <AlertCircle size={20} className="flex-shrink-0" />
-                      <p className="text-xs font-medium">Warning: The total weight for Grade {selectedGrade} is currently <strong>{(gradeConfigs[selectedGrade] || gradeConfigs['default'] || []).reduce((acc, m) => acc + m.maxWeight, 0)}%</strong>. It should equal 100% for proper calculations.</p>
-                    </div>
                   )}
+
+                  {/* List of Saved Grading Systems */}
+                  <div className="space-y-4">
+                    {gradingSystems.map((system) => {
+                      const isExpanded = expandedSystemId === system.id;
+                      const methods = system.methods || [];
+                      const grades = system.grades || [];
+                      const totalWeight = methods.reduce((sum, m) => sum + (m?.maxWeight || 0), 0);
+
+                      return (
+                        <div key={system.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden transition-all shadow-sm">
+                          {/* Card Header (Expand/Collapse Toggle) */}
+                          <div
+                            onClick={() => setExpandedSystemId(isExpanded ? null : system.id)}
+                            className="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors select-none"
+                          >
+                            <div className="space-y-1">
+                              <h5 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                                {system.name}
+                                {system.published ? (
+                                  <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">Published</span>
+                                ) : (
+                                  <span className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">Draft</span>
+                                )}
+                              </h5>
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                Grades: {[...grades].sort((a,b) => parseInt(a)-parseInt(b)).join(', ') || 'None selected'} · {methods.length} components
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className={`text-[10px] font-black px-2 py-1 rounded-full ${totalWeight === 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {totalWeight}%
+                              </span>
+                              <div className={`p-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 transition-transform duration-305 ${isExpanded ? 'rotate-180' : ''}`}>
+                                <Plus size={16} />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details */}
+                          {isExpanded && (
+                            <div className="px-6 py-5 border-t border-slate-100 dark:border-slate-800 space-y-6 bg-slate-50/30 dark:bg-slate-800/10">
+                              {/* Edit System Name */}
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">System Name</label>
+                                <input
+                                  type="text"
+                                  value={system.name}
+                                  placeholder="Enter system name"
+                                  aria-label="Grading system name"
+                                  onChange={(e) => {
+                                    const updated = gradingSystems.map(s =>
+                                      s.id === system.id ? { ...s, name: e.target.value, published: false } : s
+                                    );
+                                    setGradingSystems(updated);
+                                  }}
+                                  className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+
+                              {/* Edit Grades */}
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Applies to Grades</label>
+                                <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-850">
+                                  {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => {
+                                    const isChecked = grades.includes(g);
+                                    return (
+                                      <label key={g} className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-bold cursor-pointer transition-all ${isChecked ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400' : 'border-slate-100 dark:border-slate-800 hover:border-slate-200 hover:bg-slate-550'}`}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={(e) => {
+                                            const updatedGrades = e.target.checked
+                                              ? [...grades, g]
+                                              : grades.filter(x => x !== g);
+                                            const updated = gradingSystems.map(s =>
+                                              s.id === system.id ? { ...s, grades: updatedGrades, published: false } : s
+                                            );
+                                            setGradingSystems(updated);
+                                          }}
+                                          className="hidden"
+                                        />
+                                        <span>G{g}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Edit Methods */}
+                              <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assessment Components</label>
+                                  <span className={`text-[10px] font-black px-3 py-1 rounded-full ${totalWeight === 100 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                    Total Weight: {totalWeight}%
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-2">
+                                  {methods.map((method, idx) => (
+                                    <div key={method.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-150 dark:border-slate-800 transition-all hover:border-blue-200 group">
+                                      <div className="w-8 h-8 bg-slate-50 dark:bg-slate-800 rounded-lg flex items-center justify-center text-[10px] text-slate-400 font-bold">
+                                        {idx + 1}
+                                      </div>
+                                      <input
+                                        type="text"
+                                        value={method.label}
+                                        placeholder="Method name"
+                                        aria-label="Grading method name"
+                                        onChange={(e) => {
+                                          const updatedMethods = [...methods];
+                                          updatedMethods[idx].label = e.target.value;
+                                          const updated = gradingSystems.map(s =>
+                                            s.id === system.id ? { ...s, methods: updatedMethods, published: false } : s
+                                          );
+                                          setGradingSystems(updated);
+                                        }}
+                                        className="flex-1 bg-transparent font-bold text-slate-800 dark:text-white outline-none text-xs"
+                                      />
+                                      <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-850 px-2 py-1 rounded-lg border border-slate-200">
+                                        <input
+                                          type="number"
+                                          value={method.maxWeight}
+                                          placeholder="0"
+                                          aria-label="Maximum weight percentage"
+                                          onChange={(e) => {
+                                            const updatedMethods = [...methods];
+                                            updatedMethods[idx].maxWeight = parseInt(e.target.value) || 0;
+                                            const updated = gradingSystems.map(s =>
+                                              s.id === system.id ? { ...s, methods: updatedMethods, published: false } : s
+                                            );
+                                            setGradingSystems(updated);
+                                          }}
+                                          className="bg-transparent font-black text-blue-600 w-12 text-center outline-none text-xs"
+                                        />
+                                        <span className="text-[9px] font-black text-slate-400">%</span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        title="Delete method"
+                                        onClick={() => {
+                                          const updatedMethods = system.methods.filter((_, i) => i !== idx);
+                                          const updated = gradingSystems.map(s =>
+                                            s.id === system.id ? { ...s, methods: updatedMethods, published: false } : s
+                                          );
+                                          setGradingSystems(updated);
+                                        }}
+                                        className="p-1.5 text-slate-400 hover:text-rose-500 rounded transition-colors"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Quick Presets for this system */}
+                                <div className="pt-2">
+                                  <span className="text-[9px] font-bold text-slate-400 uppercase block mb-2">Preset Quick Add</span>
+                                  <div className="flex flex-wrap gap-2">
+                                    {[
+                                      { label: 'Quiz 1', weight: 5 },
+                                      { label: 'Test 1', weight: 10 },
+                                      { label: 'Mid Exam', weight: 25 },
+                                      { label: 'Quiz 2', weight: 5 },
+                                      { label: 'Assignment', weight: 5 },
+                                      { label: 'Final Exam', weight: 50 },
+                                    ].map((preset) => (
+                                      <button
+                                        key={preset.label}
+                                        onClick={() => {
+                                          const exists = system.methods.some(m => m.label.toLowerCase() === preset.label.toLowerCase());
+                                          let updatedMethods = [...system.methods];
+                                          if (exists) {
+                                            updatedMethods = updatedMethods.map(m =>
+                                              m.label.toLowerCase() === preset.label.toLowerCase() ? { ...m, maxWeight: preset.weight } : m
+                                            );
+                                          } else {
+                                            updatedMethods.push({
+                                              id: preset.label.toLowerCase().replace(/\s+/g, '-'),
+                                              label: preset.label,
+                                              maxWeight: preset.weight
+                                            });
+                                          }
+                                          const updated = gradingSystems.map(s =>
+                                            s.id === system.id ? { ...s, methods: updatedMethods, published: false } : s
+                                          );
+                                          setGradingSystems(updated);
+                                        }}
+                                        className="px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[10px] font-bold rounded-lg hover:border-blue-500 hover:text-blue-600 transition-colors"
+                                      >
+                                        + {preset.label} ({preset.weight}%)
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Custom Component Adder */}
+                                <div className="flex gap-2 pt-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Add custom component name..."
+                                    id={`custom-comp-${system.id}`}
+                                    className="flex-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs"
+                                  />
+                                  <input
+                                    type="number"
+                                    placeholder="Weight"
+                                    id={`custom-weight-${system.id}`}
+                                    className="w-20 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-center"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const labelInput = document.getElementById(`custom-comp-${system.id}`) as HTMLInputElement;
+                                      const weightInput = document.getElementById(`custom-weight-${system.id}`) as HTMLInputElement;
+                                      const label = labelInput?.value;
+                                      const weight = parseInt(weightInput?.value) || 0;
+                                      if (!label) return;
+
+                                      const updatedMethods = [...system.methods, {
+                                        id: label.toLowerCase().replace(/\s+/g, '-'),
+                                        label,
+                                        maxWeight: weight
+                                      }];
+                                      const updated = gradingSystems.map(s =>
+                                        s.id === system.id ? { ...s, methods: updatedMethods, published: false } : s
+                                      );
+                                      setGradingSystems(updated);
+
+                                      if (labelInput) labelInput.value = '';
+                                      if (weightInput) weightInput.value = '';
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-xl text-xs font-bold"
+                                  >
+                                    Add Component
+                                  </button>
+                                </div>
+                              </div>
+
+                              {totalWeight !== 100 && (
+                                <div className="flex gap-3 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50 text-rose-600">
+                                  <AlertCircle size={20} className="flex-shrink-0" />
+                                  <p className="text-xs font-medium">Warning: The total weight for this system is currently <strong>{totalWeight}%</strong>. It must equal exactly 100% before publishing.</p>
+                                </div>
+                              )}
+
+                              {/* Card Action Buttons */}
+                              <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4">
+                                <button
+                                  onClick={() => handleDeleteSystem(system.id)}
+                                  className="text-rose-600 hover:text-rose-800 text-xs font-black uppercase tracking-wider flex items-center gap-1 bg-rose-50 dark:bg-rose-950/20 px-4 py-2 rounded-xl"
+                                >
+                                  <Trash2 size={14} />
+                                  Delete System
+                                </button>
+                                <button
+                                  onClick={() => handlePublishSystem(system.id)}
+                                  disabled={gradingLoading || totalWeight !== 100}
+                                  className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  <CheckCircle size={14} />
+                                  Publish System
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </SettingsPanel>
             )}
+
 
             {activeTab === 'Appearance' && (
               <SettingsPanel>
@@ -1824,12 +2221,12 @@ export const Settings = () => {
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               {activeTab === 'Grading System' && (
                 <button
-                  onClick={handlePublishChanges}
+                  onClick={handleSaveChanges}
                   disabled={gradingLoading}
-                  className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-60 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/30 active:scale-95"
+                  className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 disabled:opacity-60 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg active:scale-95"
                 >
-                  {gradingLoading ? <CheckCircle size={18} className="animate-spin" /> : <CheckCircle size={18} />}
-                  <span>{gradingLoading ? 'Publishing…' : 'Publish Changes'}</span>
+                  <Save size={18} />
+                  <span>Save Draft Systems</span>
                 </button>
               )}
               {(activeTab === 'General' || (activeTab === 'Security' && role === 'super-admin' && activeSubTab === 'smtp')) && (

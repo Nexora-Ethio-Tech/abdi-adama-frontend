@@ -256,10 +256,15 @@ export const Dashboard = () => {
                 </div>
                 <button
                   onClick={() => {
-                    setSelectedBranchId(branches[0]?.id || null);
-                    setSelectedBranch(branches[0] || null);
+                    if (branches && branches.length > 0) {
+                      setSelectedBranchId(branches[0].id);
+                      setSelectedBranch(branches[0]);
+                    } else {
+                      console.warn('No branches available to drill into');
+                    }
                   }}
-                  className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors"
+                  disabled={!branches || branches.length === 0}
+                  className="px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
                 >
                   {t('dashboard.drillBranch')}
                 </button>
