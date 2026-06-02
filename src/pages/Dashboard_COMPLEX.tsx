@@ -586,7 +586,7 @@ export const Dashboard = () => {
                 Calculate Ranks
               </button>
             )}
-             {((role as string) === 'school-admin' || isSuperAdmin) && (
+            {((role as string) === 'school-admin' || isSuperAdmin) && (
               <button
                 onClick={() => handleToggleGradesLock(!gradesLocked)}
                 className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${gradesLocked

@@ -282,13 +282,13 @@ export const Settings = () => {
   const groupConfigsIntoSystems = (dbConfigs: Record<string, GradingMethod[]>): GradingSystem[] => {
     const systemMap = new Map<string, { name: string; grades: string[]; methods: GradingMethod[] }>();
     const grades = Object.keys(dbConfigs).sort((a, b) => parseInt(a) - parseInt(b));
-    
+
     grades.forEach((grade) => {
       const methods = dbConfigs[grade] || [];
       if (methods.length === 0) return;
-      
+
       const key = JSON.stringify(methods.map(m => ({ label: m.label, maxWeight: m.maxWeight })));
-      
+
       if (systemMap.has(key)) {
         systemMap.get(key)!.grades.push(grade);
       } else {
@@ -329,11 +329,11 @@ export const Settings = () => {
   };
 
   const isValidGradingSystems = (val: any): val is GradingSystem[] => {
-    return Array.isArray(val) && val.length > 0 && val.every(s => 
-      s && 
-      typeof s.id === 'string' && 
-      typeof s.name === 'string' && 
-      Array.isArray(s.grades) && 
+    return Array.isArray(val) && val.length > 0 && val.every(s =>
+      s &&
+      typeof s.id === 'string' &&
+      typeof s.name === 'string' &&
+      Array.isArray(s.grades) &&
       Array.isArray(s.methods)
     );
   };
@@ -346,7 +346,7 @@ export const Settings = () => {
         .then((dbConfigs) => {
           setGradeConfigs(dbConfigs || {});
           const reconstructed = groupConfigsIntoSystems(dbConfigs || {});
-          
+
           const storedSystems = localStorage.getItem('abdi_adama_grading_systems');
           if (storedSystems) {
             try {
@@ -606,14 +606,14 @@ export const Settings = () => {
     const updated = [...gradingSystems, newSystem];
     setGradingSystems(updated);
     localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(updated));
-    
+
     // Reset draft form
     setDraftName('');
     setDraftGrades([]);
     setDraftMethods([]);
     setShowNewSystemForm(false);
     setExpandedSystemId(newSystem.id); // auto-expand newly created system
-    
+
     setSuccessMessage('New grading system added to drafts.');
     setTimeout(() => setSuccessMessage(''), 3000);
   };
@@ -1419,81 +1419,81 @@ export const Settings = () => {
 
                       {role === 'super-admin' && (
                         <div className="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div className="space-y-1">
-                          <label htmlFor="fee-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
-                          <select
-                            id="fee-branch"
-                            value={feeBranchId}
-                            onChange={(e) => setFeeBranchId(e.target.value)}
-                            disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                          </select>
+                          <div className="space-y-1">
+                            <label htmlFor="fee-branch" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Branch</label>
+                            <select
+                              id="fee-branch"
+                              value={feeBranchId}
+                              onChange={(e) => setFeeBranchId(e.target.value)}
+                              disabled={role !== 'super-admin'}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label htmlFor="fee-grade" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
+                            <select
+                              id="fee-grade"
+                              value={feeGrade}
+                              onChange={(e) => setFeeGrade(e.target.value)}
+                              disabled={role !== 'super-admin'}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                            </select>
+                          </div>
+                          <div className="space-y-1">
+                            <label htmlFor="fee-monthly" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
+                            <input
+                              id="fee-monthly"
+                              type="number"
+                              title="Monthly fee"
+                              aria-label="Monthly fee"
+                              value={feeMonthly}
+                              onChange={(e) => setFeeMonthly(Number(e.target.value))}
+                              disabled={role !== 'super-admin'}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label htmlFor="fee-registration" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
+                            <input
+                              id="fee-registration"
+                              type="number"
+                              title="Registration fee"
+                              aria-label="Registration fee"
+                              value={feeRegistration}
+                              onChange={(e) => setFeeRegistration(Number(e.target.value))}
+                              disabled={role !== 'super-admin'}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label htmlFor="fee-bus" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
+                            <input
+                              id="fee-bus"
+                              type="number"
+                              title="Bus fee"
+                              aria-label="Bus fee"
+                              value={feeBus}
+                              onChange={(e) => setFeeBus(Number(e.target.value))}
+                              disabled={role !== 'super-admin'}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                          <div className="flex items-end lg:col-span-5">
+                            <button
+                              type="button"
+                              onClick={handleApplyFeeConfig}
+                              disabled={financeLoading || !feeBranchId}
+                              className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none disabled:opacity-50"
+                            >
+                              <Plus size={16} />
+                              <span>Apply Fee Configuration</span>
+                            </button>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label htmlFor="fee-grade" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Grade</label>
-                          <select
-                            id="fee-grade"
-                            value={feeGrade}
-                            onChange={(e) => setFeeGrade(e.target.value)}
-                            disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
-                          </select>
-                        </div>
-                        <div className="space-y-1">
-                          <label htmlFor="fee-monthly" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Monthly Fee</label>
-                          <input
-                            id="fee-monthly"
-                            type="number"
-                            title="Monthly fee"
-                            aria-label="Monthly fee"
-                            value={feeMonthly}
-                            onChange={(e) => setFeeMonthly(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label htmlFor="fee-registration" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
-                          <input
-                            id="fee-registration"
-                            type="number"
-                            title="Registration fee"
-                            aria-label="Registration fee"
-                            value={feeRegistration}
-                            onChange={(e) => setFeeRegistration(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label htmlFor="fee-bus" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Bus Fee</label>
-                          <input
-                            id="fee-bus"
-                            type="number"
-                            title="Bus fee"
-                            aria-label="Bus fee"
-                            value={feeBus}
-                            onChange={(e) => setFeeBus(Number(e.target.value))}
-                            disabled={role !== 'super-admin'}
-                            className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div className="flex items-end lg:col-span-5">
-                          <button
-                            type="button"
-                            onClick={handleApplyFeeConfig}
-                            disabled={financeLoading || !feeBranchId}
-                            className="w-full bg-slate-900 dark:bg-blue-600 text-white py-4 sm:py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none disabled:opacity-50"
-                          >
-                            <Plus size={16} />
-                            <span>Apply Fee Configuration</span>
-                          </button>
-                        </div>
-                      </div>
                       )}
 
                       <div className="overflow-x-auto -mx-4 sm:mx-0 sm:rounded-[2rem] border-y sm:border border-slate-100 dark:border-slate-800 overflow-hidden">
@@ -1934,7 +1934,7 @@ export const Settings = () => {
                                 )}
                               </h5>
                               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                Grades: {[...grades].sort((a,b) => parseInt(a)-parseInt(b)).join(', ') || 'None selected'} · {methods.length} components
+                                Grades: {[...grades].sort((a, b) => parseInt(a) - parseInt(b)).join(', ') || 'None selected'} · {methods.length} components
                               </p>
                             </div>
                             <div className="flex items-center gap-4">

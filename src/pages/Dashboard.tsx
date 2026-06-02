@@ -211,11 +211,11 @@ export const Dashboard = () => {
         // Now report is the actual data object, not wrapped in response
         const report = branchReports.find(r => r?.branchId === branch.id);
         console.log('🏥 Branch Health for', branch.name, '- Report found:', !!report, report);
-        
+
         if (!report) {
           return null; // Skip branches without API data
         }
-        
+
         return {
           ...branch,
           students: report.totalStudents,
@@ -251,8 +251,8 @@ export const Dashboard = () => {
               </div>
               <div className="flex items-center gap-3">
                 <div className="px-4 py-3 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-sm">
-                   <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">{t('dashboard.selectedBranch')}</p>
-                   <p className="font-black text-white text-sm">{t('dashboard.none')}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">{t('dashboard.selectedBranch')}</p>
+                  <p className="font-black text-white text-sm">{t('dashboard.none')}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -283,30 +283,30 @@ export const Dashboard = () => {
                 <p className="text-sm text-amber-700 dark:text-amber-400">⚠️ Using mock data (API: {error})</p>
               </div>
             ) : null}
-            <StatCard 
-              icon={Users} 
-              label={t('dashboard.totalStudents')} 
-              value={dashboardStats?.totalStudents?.toLocaleString() || "0"} 
+            <StatCard
+              icon={Users}
+              label={t('dashboard.totalStudents')}
+              value={dashboardStats?.totalStudents?.toLocaleString() || "0"}
               trend={dashboardStats?.totalStudents > 0 ? "+4.3%" : undefined}
-              color="bg-blue-600" 
+              color="bg-blue-600"
             />
-            <StatCard 
-              icon={GraduationCap} 
-              label={t('dashboard.totalTeachers')} 
-              value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"} 
-              color="bg-purple-600" 
+            <StatCard
+              icon={GraduationCap}
+              label={t('dashboard.totalTeachers')}
+              value={dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || "0"}
+              color="bg-purple-600"
             />
-            <StatCard 
-              icon={Clock} 
-              label="Total Branches" 
-              value={dashboardStats?.totalBranches?.toString() || "0"} 
-              color="bg-orange-500" 
+            <StatCard
+              icon={Clock}
+              label="Total Branches"
+              value={dashboardStats?.totalBranches?.toString() || "0"}
+              color="bg-orange-500"
             />
-            <StatCard 
-              icon={TrendingUp} 
-              label="Pending Approvals" 
-              value={dashboardStats?.pendingUsers?.toString() || "0"} 
-              color="bg-emerald-600" 
+            <StatCard
+              icon={TrendingUp}
+              label="Pending Approvals"
+              value={dashboardStats?.pendingUsers?.toString() || "0"}
+              color="bg-emerald-600"
             />
           </div>
 
@@ -513,15 +513,13 @@ export const Dashboard = () => {
       )}
 
       {(isVP || isSuperAdmin) && (
-        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${
-          gradesLocked
+        <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors duration-300 ${gradesLocked
             ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
             : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-        }`}>
+          }`}>
           <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-full ${
-              gradesLocked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
-            }`}>
+            <div className={`p-3 rounded-full ${gradesLocked ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+              }`}>
               {gradesLocked ? <Lock size={24} /> : <Unlock size={24} />}
             </div>
             <div>
@@ -551,11 +549,10 @@ export const Dashboard = () => {
             {isSuperAdmin && (
               <button
                 onClick={() => handleToggleGradesLock(!gradesLocked)}
-                className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${
-                  gradesLocked
+                className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${gradesLocked
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-amber-600 hover:bg-amber-700 text-white'
-                }`}
+                  }`}
               >
                 {gradesLocked ? 'Open Insertion' : 'Close Insertion'}
               </button>
@@ -653,16 +650,14 @@ export const Dashboard = () => {
             <div key={notice.id} className="p-4 md:p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    notice.category === 'Logistics' ? 'bg-amber-100 text-amber-700' :
-                    notice.category === 'Finance' ? 'bg-emerald-100 text-emerald-700' :
-                    'bg-blue-100 text-blue-700'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${notice.category === 'Logistics' ? 'bg-amber-100 text-amber-700' :
+                      notice.category === 'Finance' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-blue-100 text-blue-700'
+                    }`}>
                     {notice.category}
                   </span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                    notice.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${notice.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'
+                    }`}>
                     {notice.priority}
                   </span>
                 </div>
@@ -670,7 +665,7 @@ export const Dashboard = () => {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-400 font-medium">{notice.time}</span>
                     {isAdmin && (
-                      <button 
+                      <button
                         onClick={() => deleteNotice(notice.id)}
                         className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors"
                         title="Delete Notice"
@@ -706,7 +701,7 @@ export const Dashboard = () => {
                 <ShieldAlert size={20} className="text-rose-600" />
                 Priority Watchlist
                 <div className={`transition-transform duration-300 ${watchlistExpanded ? 'rotate-90' : ''}`}>
-                   <ArrowRight size={18} className="text-slate-400" />
+                  <ArrowRight size={18} className="text-slate-400" />
                 </div>
               </button>
               <Link to="/analytics" className="text-xs font-bold text-blue-600 hover:underline uppercase tracking-widest">
@@ -961,13 +956,13 @@ export const Dashboard = () => {
             <form className="p-6 space-y-4" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
-                <input 
-                  name="title" 
-                  required 
-                  type="text" 
+                <input
+                  name="title"
+                  required
+                  type="text"
                   defaultValue={editingEvent?.title}
-                  placeholder="e.g. Parent-Teacher Meeting" 
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                  placeholder="e.g. Parent-Teacher Meeting"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -1001,12 +996,12 @@ export const Dashboard = () => {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Description (Optional)</label>
-                <textarea 
-                  name="description" 
-                  rows={3} 
+                <textarea
+                  name="description"
+                  rows={3}
                   defaultValue={editingEvent?.description || ''}
-                  placeholder="Event details..." 
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                  placeholder="Event details..."
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                 />
               </div>
               <div className="pt-4">
