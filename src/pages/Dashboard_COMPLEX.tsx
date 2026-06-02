@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
 import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 import classService from '../services/classService';
+import settingsService from '../services/settingsService';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -38,6 +39,20 @@ export const Dashboard = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
   const isSuperAdmin = role === 'super-admin';
+
+  const handleToggleGradesLock = async (newVal: boolean) => {
+    try {
+      await settingsService.updateSystemSettings({
+        grades_locked: newVal ? 'true' : 'false'
+      });
+      setGradesLocked(newVal);
+      setSuccessMessage(newVal ? 'Grade insertion is now locked' : 'Grade insertion is now open');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err: any) {
+      console.error('Failed to toggle grades lock', err);
+      setError(err.response?.data?.message || 'Failed to update grades lock state');
+    }
+  };
 
   // API Integration: Fetch real dashboard stats
   const [dashboardStats, setDashboardStats] = useState<any>(null);
@@ -566,10 +581,9 @@ export const Dashboard = () => {
                 Calculate Ranks
               </button>
             )}
-            {((role as string) === 'school-admin' || isSuperAdmin) && (
+             {((role as string) === 'school-admin' || isSuperAdmin) && (
               <button
-                disabled={isSuperAdmin}
-                onClick={() => setGradesLocked(!gradesLocked)}
+                onClick={() => handleToggleGradesLock(!gradesLocked)}
                 className={`w-full sm:w-auto px-6 py-2 rounded-lg font-bold transition-colors ${gradesLocked
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                   : 'bg-amber-600 hover:bg-amber-700 text-white'

@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, MapPin, Shield, AlertTriangle, Clock } from 'lucide-react';
+import { UserPlus, RefreshCw, Upload, Search, CheckCircle, AlertCircle, FileText, Info, Check, X, HeartPulse, Mail, MapPin, Shield, AlertTriangle, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,10 +12,12 @@ import {
   registerUser
 } from '../services/schoolAdminService';
 import api from '../services/api';
+import { EthiopianDatePicker } from './EthiopianDatePicker';
+import { ethiopianToGregorianIso, gregorianToEthiopian, formatEthiopianDateOnly } from '../utils/ethiopianCalendar';
 
 type RegistrationTab = 'new' | 'existing';
-type PipelineFilter = 'pending' | 'awaiting-finance' | 'completed';
-type AppStatus = 'pending' | 'declined' | 'approved' | 'awaiting-payment' | 'payment-confirmed';
+type PipelineFilter = 'pending' | 'exam-pending' | 'awaiting-finance' | 'completed';
+type AppStatus = 'pending' | 'declined' | 'approved' | 'awaiting-payment' | 'payment-confirmed' | 'exam-pending';
 
 interface PendingApp {
   id: string;
@@ -61,7 +63,7 @@ const mapApiApplicationToPendingApp = (app: any): PendingApp => ({
   address: app.address || '',
   previousSchool: app.previous_school || '',
   lastGrade: app.grade_applying || 'N/A',
-  date: app.created_at ? new Date(app.created_at).toLocaleDateString() : '',
+  date: app.created_at ? formatEthiopianDateOnly(new Date(app.created_at)) : '',
   status: app.status as AppStatus,
   bloodGroup: app.blood_group || '',
   allergies: app.allergies || '',
@@ -171,6 +173,9 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
     if (!formData.grade || !formData.grade.trim()) {
       errors.grade = 'Last Grade Completed is required';
     }
+    if (!formData.branchName || !formData.branchName.trim()) {
+      errors.branchName = 'Branch is required';
+    }
   }
 
   return errors;
@@ -181,7 +186,7 @@ const initialPendingApplications: PendingApp[] = [];
 export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role, registrationOpen } = useUser();
+  const { role, user, registrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -195,6 +200,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [fileName, setFileName] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [ethiopianDob, setEthiopianDob] = useState('');
   const [pendingApps, setPendingApps] = useState<PendingApp[]>(initialPendingApplications);
   const [viewingTranscript, setViewingTranscript] = useState<any>(null);
   const [transcriptUrl, setTranscriptUrl] = useState<string | null>(null);
@@ -215,6 +221,38 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [selectedAppForGrade, setSelectedAppForGrade] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [branchesList, setBranchesList] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBranchName, setSelectedBranchName] = useState('');
+  const [expandedAppIds, setExpandedAppIds] = useState<Record<string, boolean>>({});
+
+  // Fetch branches on component mount
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const response = await api.get('/school-admin/public/branches');
+        if (response.data.success && Array.isArray(response.data.data)) {
+          setBranchesList(response.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch branches list:', err);
+      }
+    };
+    fetchBranches();
+  }, []);
+
+  // Automatically select branch for logged in School Admin / Super Admin
+  useEffect(() => {
+    if (user && (user.role === 'school-admin' || user.role === 'super-admin')) {
+      if ((user as any).branchName && (user as any).branchName !== 'My Branch') {
+        setSelectedBranchName((user as any).branchName);
+      } else if (branchesList.length > 0 && (user as any).branchId) {
+        const adminBranch = branchesList.find(b => b.id === (user as any).branchId);
+        if (adminBranch) {
+          setSelectedBranchName(adminBranch.name);
+        }
+      }
+    }
+  }, [user, branchesList]);
 
   useEffect(() => {
     if (isAdminView) {
@@ -314,7 +352,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       phone: formData.get('phone'),
       address: formData.get('address'),
       previousSchool: formData.get('previousSchool'),
-      grade: formData.get('grade')
+      grade: formData.get('grade'),
+      branchName: formData.get('branchName')
     };
 
     const errors = validateRegistrationStep(registrationStep, currentStepData);
@@ -376,6 +415,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const allergies = formData.get('allergies') as string;
       const chronicConditions = formData.get('chronicConditions') as string;
       const medications = formData.get('medications') as string;
+      const branchName = formData.get('branchName') as string;
 
       // Validate all required fields for final submission
       const allFormData = {
@@ -387,7 +427,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         phone,
         address,
         previousSchool,
-        grade
+        grade,
+        branchName
       };
 
       const errors = {
@@ -425,6 +466,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       if (allergies?.trim()) submitData.append('allergies', allergies.trim());
       if (chronicConditions?.trim()) submitData.append('chronicConditions', chronicConditions.trim());
       if (medications?.trim()) submitData.append('medications', medications.trim());
+      submitData.append('branchName', branchName || '');
 
       // Add file if uploaded
       const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
@@ -482,6 +524,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         if (formRef.current) {
           formRef.current.reset();
         }
+        setEthiopianDob('');
         setRegistrationStep(1);
         setValidationErrors({});
         setTimeout(() => {
@@ -505,7 +548,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           setRegistrationStep(1);
         } else if (errorObj.parentName || errorObj.parentPhone || errorObj.phone || errorObj.address) {
           setRegistrationStep(2);
-        } else if (errorObj.previousSchool || errorObj.grade) {
+        } else if (errorObj.previousSchool || errorObj.grade || errorObj.branchName) {
           setRegistrationStep(3);
         }
       }
@@ -546,6 +589,26 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       setSubmitError(err.response?.data?.error?.message || err.message);
       setTimeout(() => setSubmitError(null), 5000);
     }
+  };
+
+  const handlePassAfterExam = async (appId: string) => {
+    try {
+      await updateApplicationStatus(appId, { status: 'exam-pending' });
+      setPendingApps(prev => prev.map(a => a.id === appId ? { ...a, status: 'exam-pending' as AppStatus } : a));
+      setSuccessMessage('Applicant moved to Pass After Exam queue.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setSubmitError(err.response?.data?.error?.message || err.message);
+      setTimeout(() => setSubmitError(null), 5000);
+    }
+  };
+
+  const handleExamPassToFinance = (appId: string) => {
+    const app = pendingApps.find(a => a.id === appId);
+    setSelectedAppForGrade(appId);
+    setSelectedGrade(app?.lastGrade || gradeOptions[0]);
+    setShowGradeModal(true);
   };
 
   const gradeOptions = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
@@ -623,6 +686,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
   const filteredPipelineApps = pendingApps.filter(app => {
     if (pipelineFilter === 'pending') return app.status === 'pending';
+    if (pipelineFilter === 'exam-pending') return app.status === 'exam-pending';
     if (pipelineFilter === 'awaiting-finance') return app.status === 'awaiting-payment';
     if (pipelineFilter === 'completed') return ['declined', 'registered'].includes(app.status);
     return false;
@@ -630,6 +694,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
   const pipelineCounts = {
     pending: pendingApps.filter(a => a.status === 'pending').length,
+    'exam-pending': pendingApps.filter(a => a.status === 'exam-pending').length,
     'awaiting-finance': pendingApps.filter(a => a.status === 'awaiting-payment').length,
     completed: pendingApps.filter(a => ['declined', 'registered'].includes(a.status)).length,
   };
@@ -711,6 +776,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <div className="flex flex-wrap gap-3">
               {([
                 { key: 'pending' as PipelineFilter, label: 'Pending', color: 'blue' },
+                { key: 'exam-pending' as PipelineFilter, label: 'Pass After Exam', color: 'amber' },
                 { key: 'awaiting-finance' as PipelineFilter, label: 'Awaiting Finance', color: 'purple' },
                 { key: 'completed' as PipelineFilter, label: 'Completed', color: 'slate' },
               ]).filter(tab => !isFinance || tab.key === 'awaiting-finance' || tab.key === 'completed').map(tab => (
@@ -735,107 +801,141 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <div className="grid grid-cols-1 gap-6">
               {filteredPipelineApps.map(app => (
                 <div key={app.id} className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-500 space-y-6 group">
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                  <div 
+                    onClick={() => {
+                      setExpandedAppIds(prev => ({
+                        ...prev,
+                        [app.id]: !prev[app.id]
+                      }));
+                    }}
+                    className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 cursor-pointer select-none"
+                  >
                     <div className="flex items-center gap-5">
                       <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center text-slate-400 dark:text-slate-600 group-hover:scale-110 group-hover:rotate-3 transition-transform">
                         <UserPlus size={32} />
                       </div>
                       <div>
-                        <h4 className="text-lg font-black text-slate-800 dark:text-white">{app.name}</h4>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Grade {app.lastGrade} • {app.date} • {app.email}</p>
-                        {app.removalReason && (
-                          <p className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-2">Returned to School Admin: {app.removalReason}</p>
+                        <h4 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2 hover:text-blue-600 transition-colors">
+                          {app.name}
+                          {expandedAppIds[app.id] ? (
+                            <ChevronUp size={18} className="text-blue-600 animate-bounce" />
+                          ) : (
+                            <ChevronDown size={18} className="text-slate-400" />
+                          )}
+                        </h4>
+                        {expandedAppIds[app.id] && (
+                          <>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mt-1">Grade {app.lastGrade} • {app.date} • {app.email}</p>
+                            {app.removalReason && (
+                              <p className="text-xs text-rose-600 dark:text-rose-400 font-bold mt-2">Returned to School Admin: {app.removalReason}</p>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${app.status === 'pending' ? 'bg-blue-100/50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800/50' :
+                      app.status === 'exam-pending' ? 'bg-amber-100/50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' :
                       app.status === 'awaiting-payment' ? 'bg-purple-100/50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50' :
                         app.status === 'declined' ? 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50' :
                           'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                       }`}>
-                      {app.status.replace('-', ' ')}
+                      {app.status === 'exam-pending' ? 'Pass After Exam' : app.status.replace(/-/g, ' ')}
                     </span>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p><p className="font-bold dark:text-slate-200">{displayValue(app.dob)}</p></div>
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p><p className="font-bold dark:text-slate-200">{displayValue(app.gender)}</p></div>
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Grade Applying</p><p className="font-bold dark:text-slate-200">Grade {displayValue(app.lastGrade)}</p></div>
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Fayda ID</p><p className="font-bold dark:text-slate-200 font-mono text-[11px]">{displayValue(app.digitalId)}</p></div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Parent / Guardian</p><p className="font-bold dark:text-slate-200">{displayValue(app.parentName)}</p></div>
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</p><p className="font-bold dark:text-slate-200">{displayValue(app.phone)}</p></div>
-                      <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Address</p><p className="font-bold dark:text-slate-200">{displayValue(app.address)}</p></div>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Previous School</p><p className="font-bold dark:text-slate-200">{displayValue(app.previousSchool)}</p></div>
-                      <div><p className="text-[10px] font-bold text-slate-400 uppercase">Email</p><p className="font-bold dark:text-slate-200 break-all">{displayValue(app.email)}</p></div>
-                      <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Transcript</p><p className="font-bold dark:text-slate-200">{app.transcriptFileName ? `${app.transcriptFileName}${app.transcriptFileSize ? ` (${(app.transcriptFileSize / 1024).toFixed(0)} KB)` : ''}` : '—'}</p></div>
-                    </div>
-
-                    {(app.bloodGroup || app.allergies || app.chronicConditions || app.medications) && (
-                      <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><HeartPulse size={12} /> Medical Information</p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Blood Group</span><p className="font-bold dark:text-slate-200">{displayValue(app.bloodGroup)}</p></div>
-                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Allergies</span><p className="font-bold dark:text-slate-200">{displayValue(app.allergies)}</p></div>
-                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Chronic Conditions</span><p className="font-bold dark:text-slate-200">{displayValue(app.chronicConditions)}</p></div>
-                          <div><span className="text-[10px] text-slate-500 font-bold uppercase">Medications</span><p className="font-bold dark:text-slate-200">{displayValue(app.medications)}</p></div>
+                  {expandedAppIds[app.id] && (
+                    <>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Date of Birth</p><p className="font-bold dark:text-slate-200">{app.dob ? formatEthiopianDateOnly(app.dob) : '—'}</p></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Gender</p><p className="font-bold dark:text-slate-200">{displayValue(app.gender)}</p></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Grade Applying</p><p className="font-bold dark:text-slate-200">Grade {displayValue(app.lastGrade)}</p></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Fayda ID</p><p className="font-bold dark:text-slate-200 font-mono text-[11px]">{displayValue(app.digitalId)}</p></div>
                         </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Parent / Guardian</p><p className="font-bold dark:text-slate-200">{displayValue(app.parentName)}</p></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Contact Phone</p><p className="font-bold dark:text-slate-200">{displayValue(app.phone)}</p></div>
+                          <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Address</p><p className="font-bold dark:text-slate-200">{displayValue(app.address)}</p></div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Previous School</p><p className="font-bold dark:text-slate-200">{displayValue(app.previousSchool)}</p></div>
+                          <div><p className="text-[10px] font-bold text-slate-400 uppercase">Email</p><p className="font-bold dark:text-slate-200 break-all">{displayValue(app.email)}</p></div>
+                          <div className="md:col-span-2"><p className="text-[10px] font-bold text-slate-400 uppercase">Transcript</p><p className="font-bold dark:text-slate-200">{app.transcriptFileName ? `${app.transcriptFileName}${app.transcriptFileSize ? ` (${(app.transcriptFileSize / 1024).toFixed(0)} KB)` : ''}` : '—'}</p></div>
+                        </div>
+
+                        {(app.bloodGroup || app.allergies || app.chronicConditions || app.medications) && (
+                          <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2"><HeartPulse size={12} /> Medical Information</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                              <div><span className="text-[10px] text-slate-500 font-bold uppercase">Blood Group</span><p className="font-bold dark:text-slate-200">{displayValue(app.bloodGroup)}</p></div>
+                              <div><span className="text-[10px] text-slate-500 font-bold uppercase">Allergies</span><p className="font-bold dark:text-slate-200">{displayValue(app.allergies)}</p></div>
+                              <div><span className="text-[10px] text-slate-500 font-bold uppercase">Chronic Conditions</span><p className="font-bold dark:text-slate-200">{displayValue(app.chronicConditions)}</p></div>
+                              <div><span className="text-[10px] text-slate-500 font-bold uppercase">Medications</span><p className="font-bold dark:text-slate-200">{displayValue(app.medications)}</p></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {app.notes && (
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 text-xs">
+                            <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Notes</p>
+                            <p className="text-blue-900 dark:text-blue-200 font-medium">{app.notes}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
 
-                    {app.notes && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-800/30 text-xs">
-                        <p className="text-[10px] font-bold text-blue-600 uppercase mb-1">Notes</p>
-                        <p className="text-blue-900 dark:text-blue-200 font-medium">{app.notes}</p>
+                      {/* Action Buttons per Status */}
+                      <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
+                        {(app.status === 'pending' || app.transcriptFileName) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              app.transcriptFileName && setViewingTranscript(app);
+                            }}
+                            disabled={!app.transcriptFileName}
+                            className="px-5 py-2.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                          >
+                            <FileText size={16} /> View Transcript
+                          </button>
+                        )}
+                        {app.status === 'pending' && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); handleDecline(app.id); }} className="px-5 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><X size={16} /> Decline</button>
+                            <button onClick={(e) => { e.stopPropagation(); handlePassAfterExam(app.id); }} className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20 active:scale-95"><Clock size={16} /> Pass After Exam</button>
+                            <button onClick={(e) => { e.stopPropagation(); handlePass(app.id); }} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass</button>
+                          </>
+                        )}
+                        {app.status === 'exam-pending' && (
+                          <>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 flex items-center gap-1.5 mr-2"><Clock size={14} /> Awaiting Entrance Exam</span>
+                            <button onClick={(e) => { e.stopPropagation(); handleDecline(app.id); }} className="px-5 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><X size={16} /> Decline</button>
+                            <button onClick={(e) => { e.stopPropagation(); handleExamPassToFinance(app.id); }} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20 active:scale-95"><Check size={16} /> Move to Finance</button>
+                          </>
+                        )}
+                        {app.status === 'awaiting-payment' && (
+                          isFinance ? (
+                            <>
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedAppForFee(app);
+                                setShowFeeModal(true);
+                              }} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass (Paid)</button>
+                              <button onClick={(e) => { e.stopPropagation(); handlePaymentResult(app.id, false); }} className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"><X size={16} /> Fail (Unpaid)</button>
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold text-purple-600 flex items-center gap-1.5"><MapPin size={14} /> Waiting for finance clerk to confirm payment</span>
+                          )
+                        )}
+                        {app.status === 'declined' && (
+                          <span className="text-xs font-bold text-rose-500">Application closed</span>
+                        )}
+                        {app.status === 'payment-confirmed' && (
+                          <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><CheckCircle size={14} /> Officially enrolled</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-
-
-                  {/* Action Buttons per Status */}
-                  <div className="flex flex-wrap items-center gap-3 pt-6 border-t border-slate-50 dark:border-slate-800">
-                    {(app.status === 'pending' || app.transcriptFileName) && (
-                      <button
-                        onClick={() => app.transcriptFileName && setViewingTranscript(app)}
-                        disabled={!app.transcriptFileName}
-                        className="px-5 py-2.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40 disabled:cursor-not-allowed rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"
-                      >
-                        <FileText size={16} /> View Transcript
-                      </button>
-                    )}
-                    {app.status === 'pending' && (
-                      <>
-                        <button onClick={() => handleDecline(app.id)} className="px-5 py-2.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all"><X size={16} /> Decline</button>
-                        <button onClick={() => handlePass(app.id)} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass</button>
-                      </>
-                    )}
-                    {app.status === 'awaiting-payment' && (
-                      isFinance ? (
-                        <>
-                          <button onClick={() => {
-                            setSelectedAppForFee(app);
-                            setShowFeeModal(true);
-                          }} className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"><Check size={16} /> Pass (Paid)</button>
-                          <button onClick={() => handlePaymentResult(app.id, false)} className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-rose-500/20 active:scale-95"><X size={16} /> Fail (Unpaid)</button>
-                        </>
-                      ) : (
-                        <span className="text-xs font-bold text-purple-600 flex items-center gap-1.5"><MapPin size={14} /> Waiting for finance clerk to confirm payment</span>
-                      )
-                    )}
-                    {app.status === 'declined' && (
-                      <span className="text-xs font-bold text-rose-500">Application closed</span>
-                    )}
-                    {app.status === 'payment-confirmed' && (
-                      <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5"><CheckCircle size={14} /> Officially enrolled</span>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
               ))}
               {filteredPipelineApps.length === 0 && (
@@ -851,8 +951,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto">
               <Shield size={32} />
             </div>
-            <h3 className="text-xl font-black text-slate-800 dark:text-white">Registration is Currently Closed</h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">The school is not accepting new applications at this time. Please check back later or contact the administration office.</p>
+            <h3 className="text-xl font-black text-slate-800 dark:text-white">Online applications are currently closed</h3>
+            <p className="text-sm text-slate-500 max-w-md mx-auto">Please contact the school administration or check back later for registration updates.</p>
           </div>
         ) : (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -913,11 +1013,14 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                     {validationErrors.digital_id && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.digital_id}</p>}
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth <span className="text-rose-500">*</span></label>
-                    <input required name="dob" type="date" title="Date of Birth" aria-label="Date of Birth" className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.dob
-                      ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                      : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                      }`} />
+                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Date of Birth (Ethiopian Calendar) <span className="text-rose-500">*</span></label>
+                    <EthiopianDatePicker
+                      value={ethiopianDob}
+                      onChange={(val) => setEthiopianDob(val)}
+                      placeholder="e.g. 2010-01-01"
+                      className={validationErrors.dob ? 'border-rose-300 dark:border-rose-700 focus:ring-rose-500' : ''}
+                    />
+                    <input type="hidden" name="dob" value={ethiopianDob ? ethiopianToGregorianIso(ethiopianDob) : ''} />
                     {validationErrors.dob && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.dob}</p>}
                   </div>
                   <div className="space-y-1">
@@ -1103,6 +1206,58 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   {fileError && (
                     <p className="text-sm text-rose-600 font-bold text-center flex items-center justify-center gap-1 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl py-2 px-4">
                       <AlertTriangle size={14} /> {fileError}
+                    </p>
+                  )}
+                </div>
+
+                {/* Branch Selection Section */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Branch <span className="text-rose-500">*</span></label>
+                  {user && (user.role === 'school-admin' || user.role === 'super-admin') ? (
+                    <div className="relative">
+                      <select
+                        name="branchName"
+                        value={selectedBranchName}
+                        onChange={(e) => setSelectedBranchName(e.target.value)}
+                        disabled={user.role === 'school-admin'}
+                        className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none text-slate-500 font-semibold cursor-not-allowed"
+                      >
+                        <option value="">Select Branch</option>
+                        {branchesList.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </select>
+                      <input type="hidden" name="branchName" value={selectedBranchName} />
+                    </div>
+                  ) : (
+                    <select
+                      name="branchName"
+                      required
+                      value={selectedBranchName}
+                      onChange={(e) => {
+                        setSelectedBranchName(e.target.value);
+                        if (e.target.value) {
+                          setValidationErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.branchName;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.branchName
+                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
+                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
+                        }`}
+                    >
+                      <option value="">Select Branch</option>
+                      {branchesList.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {validationErrors.branchName && (
+                    <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                      <AlertTriangle size={12} /> {validationErrors.branchName}
                     </p>
                   )}
                 </div>
@@ -1380,6 +1535,14 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   >
                     <CheckCircle size={18} />
                     Pass — Accept
+                  </button>
+
+                  <button
+                    onClick={() => { handlePassAfterExam(viewingTranscript.id); setViewingTranscript(null); }}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-amber-100 dark:shadow-none transition-all flex items-center justify-center gap-2"
+                  >
+                    <Clock size={18} />
+                    Pass After Exam
                   </button>
 
                   <button
