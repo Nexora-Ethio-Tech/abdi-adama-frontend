@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
 import classService from '../services/classService';
-import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher, toggleRegistration } from '../services/schoolAdminService';
+import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
 import { StudentRegistration } from '../components/StudentRegistration';
 import * as sectionService from '../services/sectionService';

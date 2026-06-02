@@ -739,8 +739,20 @@ export const Settings = () => {
                           setPasswordSuccess(false);
 
                           // Validation
-                          if (passwordForm.newPassword.length < 8) {
-                            setPasswordError('New password must be at least 8 characters long');
+                          if (passwordForm.newPassword.length < 5) {
+                            setPasswordError('New password must be at least 5 characters long');
+                            return;
+                          }
+                          if (!/[A-Z]/.test(passwordForm.newPassword)) {
+                            setPasswordError('New password must contain at least one uppercase letter');
+                            return;
+                          }
+                          if (!/[a-z]/.test(passwordForm.newPassword)) {
+                            setPasswordError('New password must contain at least one lowercase letter');
+                            return;
+                          }
+                          if (!/[0-9]/.test(passwordForm.newPassword)) {
+                            setPasswordError('New password must contain at least one number');
                             return;
                           }
                           if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -794,7 +806,7 @@ export const Settings = () => {
                               onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                               className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                               required
-                              minLength={8}
+                              minLength={5}
                               disabled={passwordLoading}
                             />
                           </div>
@@ -808,7 +820,7 @@ export const Settings = () => {
                               onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
                               className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
                               required
-                              minLength={8}
+                              minLength={5}
                               disabled={passwordLoading}
                             />
                           </div>
@@ -819,8 +831,8 @@ export const Settings = () => {
                           <p className="text-xs font-bold text-blue-800 dark:text-blue-200 mb-2">Password Requirements:</p>
                           <ul className="space-y-1 text-xs text-blue-700 dark:text-blue-300">
                             <li className="flex items-center gap-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${passwordForm.newPassword.length >= 8 ? 'bg-green-500' : 'bg-slate-300'}`} />
-                              At least 8 characters long
+                              <div className={`w-1.5 h-1.5 rounded-full ${passwordForm.newPassword.length >= 5 ? 'bg-green-500' : 'bg-slate-300'}`} />
+                              At least 5 characters long
                             </li>
                             <li className="flex items-center gap-2">
                               <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
@@ -833,10 +845,6 @@ export const Settings = () => {
                             <li className="flex items-center gap-2">
                               <div className={`w-1.5 h-1.5 rounded-full ${/[0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
                               Contains number
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <div className={`w-1.5 h-1.5 rounded-full ${/[^A-Za-z0-9]/.test(passwordForm.newPassword) ? 'bg-green-500' : 'bg-slate-300'}`} />
-                              Contains special character
                             </li>
                           </ul>
                         </div>
@@ -860,14 +868,10 @@ export const Settings = () => {
                         </button>
                       </form>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4">
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
                           <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Use strong passwords</p>
-                          <p className="text-xs text-slate-500">Combine letters, numbers, and special characters.</p>
-                        </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Change regularly</p>
-                          <p className="text-xs text-slate-500">Update your password every 3–6 months.</p>
+                          <p className="text-xs text-slate-500">Combine letters, numbers, and special characters to ensure account safety.</p>
                         </div>
                       </div>
                     </div>
