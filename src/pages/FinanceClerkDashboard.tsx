@@ -6,6 +6,7 @@ import payrollService, { type EmployeePayrollProfile } from '../services/payroll
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 import AssetList from '../components/AssetList';
+import { getTodayEthiopianDate, getCurrentEthiopianMonth, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 type ManualTransaction = {
   id: string;
@@ -94,14 +95,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     studentId: '',
     amount: 0,
     type: ['Monthly Tuition'],
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayEthiopianDate(),
   });
   const [transactionData, setTransactionData] = useState({
     category: 'expense' as 'expense' | 'income',
     type: 'Materials Bought',
     amount: 0,
     details: '',
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayEthiopianDate(),
   });
   const [manualTransactions, setManualTransactions] = useState<ManualTransaction[]>(() => {
     try {
@@ -283,17 +284,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           return k;
         }));
         const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
-        setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: new Date().toISOString().split('T')[0], month: d.month });
+        setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: getTodayEthiopianDate(), month: d.month });
       }).catch((err) => {
         setError(err.response?.data?.error?.message || 'Failed to fetch outstanding fees');
         setSelectedPaymentTypes([]);
-        setPaymentData({ studentId: student.id, amount: 0, type: [], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
+        setPaymentData({ studentId: student.id, amount: 0, type: [], date: getTodayEthiopianDate(), month: getCurrentEthiopianMonth() });
       }).finally(() => {
         setIsLoadingOutstanding(false);
       });
     } else {
       setSelectedPaymentTypes(['Monthly Tuition']);
-      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: new Date().toISOString().split('T')[0], month: new Date().toISOString().slice(0, 7) });
+      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: getTodayEthiopianDate(), month: getCurrentEthiopianMonth() });
     }
     setShowPaymentModal(true);
   };
@@ -453,7 +454,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       studentId: '',
       amount: 0,
       type: ['Monthly Tuition'],
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayEthiopianDate(),
     });
     setPaymentAmounts({});
     setSelectedStudent(null);
@@ -466,7 +467,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       type: 'Materials Bought',
       amount: 0,
       details: '',
-      date: new Date().toISOString().split('T')[0],
+      date: getTodayEthiopianDate(),
     });
   };
 
@@ -549,9 +550,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   };
 
   const confirmStaffPayment = (userId: string) => {
+    const now = new Date();
     const updated = {
       ...confirmedStaffPayments,
-      [userId]: { date: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString() }
+      [userId]: { date: formatEthiopianLabel(now) + ' ' + now.toLocaleTimeString() }
     };
     setConfirmedStaffPayments(updated);
     localStorage.setItem('confirmed_staff_payments', JSON.stringify(updated));
@@ -1171,7 +1173,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       </div>
                       <div>
                         <p className="font-bold text-slate-900 dark:text-white text-sm">{tx.student_name}</p>
-                        <p className="text-xs text-slate-500">{tx.type} • {new Date(tx.date).toLocaleDateString()}</p>
+                        <p className="text-xs text-slate-500">{tx.type} • {formatEthiopianLabel(tx.date)}</p>
                       </div>
                     </div>
                     <div className="text-right">

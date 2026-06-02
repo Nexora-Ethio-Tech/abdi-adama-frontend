@@ -285,7 +285,7 @@ export const AuditorFinance = () => {
           Amount: Number(payment.amount),
           Type: payment.type,
           'Verified By': payment.verified_by,
-          'Created At': new Date(payment.created_at).toLocaleString(),
+          'Created At': formatEthiopianLabel(payment.created_at),
           'Branch ID': payment.branch_id
         }))
       }
@@ -746,7 +746,7 @@ export const AuditorFinance = () => {
                       <td className="px-6 py-3.5">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(payment.date)}</p>
                         <div className="flex gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-slate-400">{new Date(payment.date).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-slate-400">{formatEthiopianLabel(payment.date)}</span>
                           <span className="text-[10px] text-slate-400/80">&bull;</span>
                           <span className="text-[10px] text-slate-400">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>

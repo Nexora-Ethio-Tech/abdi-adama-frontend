@@ -3,6 +3,7 @@ import { Landmark, Calendar, FileText, Printer, Shield, ChevronDown, ChevronUp, 
 import payrollService, { PayrollItem, StaffNotification } from '../services/payrollService';
 import loanService, { Loan } from '../services/loanService';
 import { useUser } from '../context/UserContext';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 export const MyFinance = () => {
   const { user } = useUser();
@@ -133,7 +134,8 @@ export const MyFinance = () => {
                     return (
                       <div className="space-y-1">
                         <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${percent}%` }} />
+                          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
+                          <div className="h-full bg-blue-500 rounded-full transition-all" style={{width: `${percent}%`}} />
                         </div>
                         <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
                           <span>{percent}% Repaid</span>
@@ -187,7 +189,7 @@ export const MyFinance = () => {
                       <div className="flex-1 pr-4">
                         <p className="font-bold text-slate-800 dark:text-white text-xs">{n.title}</p>
                         <p className="text-[10px] text-slate-500 font-medium leading-relaxed mt-0.5">{n.message}</p>
-                        <span className="text-[8px] text-slate-400 font-bold block mt-1">{new Date(n.created_at).toLocaleDateString()}</span>
+                        <span className="text-[8px] text-slate-400 font-bold block mt-1">{formatEthiopianLabel(n.created_at)}</span>
                       </div>
                       
                       {!n.is_read && (
@@ -238,7 +240,7 @@ export const MyFinance = () => {
                             </div>
                             <div>
                               <p className="font-black text-slate-800 dark:text-white text-sm uppercase tracking-tight">{slip.month} {slip.year}</p>
-                              <span className="text-[9px] text-slate-400 font-bold block mt-0.5">Finalized on: {new Date(slip.finalized_at).toLocaleDateString()}</span>
+                              <span className="text-[9px] text-slate-400 font-bold block mt-0.5">Finalized on: {formatEthiopianLabel(slip.finalized_at)}</span>
                             </div>
                           </div>
 

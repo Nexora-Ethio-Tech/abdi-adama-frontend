@@ -62,6 +62,7 @@ import {
   gregorianToECYear,
   isYearAccessible,
   isSemesterAccessible,
+  formatEthiopianLabel,
 } from '../utils/ethiopianCalendar';
 
 export const ParentPortal = () => {
@@ -815,7 +816,7 @@ export const ParentPortal = () => {
                               </span>
                             </div>
                             <span className="text-xs text-slate-400 font-bold">
-                              📅 {new Date(notice.timestamp).toLocaleDateString()} at {new Date(notice.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              📅 {formatEthiopianLabel(notice.timestamp)} at {new Date(notice.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                           <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 transition-colors">
@@ -860,7 +861,7 @@ export const ParentPortal = () => {
                               )}
                             </div>
                             <span className="text-xs text-slate-400 font-bold">
-                              📅 {new Date(update.created_at).toLocaleDateString()} at {new Date(update.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              📅 {formatEthiopianLabel(update.created_at)} at {new Date(update.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
                           <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2 group-hover:text-indigo-600 transition-colors">
@@ -1399,7 +1400,7 @@ export const ParentPortal = () => {
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {attendanceRecords.slice(0, 10).map((record) => (
                         <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{formatEthiopianLabel(record.date)}</td>
                           <td className="px-8 py-5">
                             <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${record.status === 'present'
                               ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
@@ -1624,7 +1625,7 @@ export const ParentPortal = () => {
                           {healthProfile.dob && (
                             <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-800">
                               <p className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-2">Date of Birth</p>
-                              <p className="text-lg font-black text-blue-600 dark:text-blue-400">{new Date(healthProfile.dob).toLocaleDateString()}</p>
+                              <p className="text-lg font-black text-blue-600 dark:text-blue-400">{formatEthiopianLabel(healthProfile.dob)}</p>
                             </div>
                           )}
                           {healthProfile.gender && (
@@ -1671,7 +1672,7 @@ export const ParentPortal = () => {
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-6 text-xs font-bold text-slate-500 dark:text-slate-400">
-                            <span>📅 {new Date(visit.date).toLocaleDateString()}</span>
+                            <span>📅 {formatEthiopianLabel(visit.date)}</span>
                             <span>⏰ {visit.time}</span>
                             <span>👤 {visit.logged_by_name || 'Clinic Admin'}</span>
                             {visit.parent_notified && <span className="text-emerald-600">✓ Parent Notified</span>}

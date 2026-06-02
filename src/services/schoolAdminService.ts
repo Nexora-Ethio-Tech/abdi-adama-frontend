@@ -108,11 +108,6 @@ export interface Application {
   documents?: string[];
 }
 
-export interface BranchOption {
-  id: string;
-  name: string;
-}
-
 export interface UpdateApplicationStatusData {
   status: string;
   gradeApplying?: string;
@@ -197,11 +192,6 @@ export const createPendingApplication = async (data: any) => {
     console.error('Error submitting application:', error.response?.data || error.message);
     throw error;
   }
-};
-
-export const getBranches = async (): Promise<BranchOption[]> => {
-  const response = await axios.get(`${API_BASE_URL}/school-admin/public/branches`);
-  return response.data?.data || response.data || [];
 };
 
 export const getPendingApplications = async (): Promise<Application[]> => {
@@ -617,9 +607,4 @@ export const publishGradingConfigs = async (
 ): Promise<any> => {
   const response = await api.post('/school-admin/grading-configs', { gradeLevel, configs });
   return response.data;
-};
-
-export const toggleRegistration = async (open: boolean): Promise<any> => {
-  const response = await api.patch('/school-admin/system-settings/registration', { open });
-  return response.data.data;
 };

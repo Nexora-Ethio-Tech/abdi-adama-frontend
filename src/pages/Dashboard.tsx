@@ -7,6 +7,7 @@ import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
 import { getDashboard as getSchoolAdminDashboard, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
+import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -479,7 +480,7 @@ export const Dashboard = () => {
                   })()}
                 </span>
                 <span className="text-blue-300">•</span>
-                <span className="text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                <span className="text-sm">{formatEthiopianLabel(new Date())}</span>
               </p>
             </div>
             <div className="hidden md:block">
@@ -797,7 +798,12 @@ export const Dashboard = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">Post New Notice</h3>
-              <button onClick={() => setShowNoticeModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button
+                type="button"
+                title="Close notice modal"
+                onClick={() => setShowNoticeModal(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -821,7 +827,11 @@ export const Dashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Category</label>
-                  <select name="category" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <select
+                    name="category"
+                    title="Select notice category"
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
                     <option value="Academic">Academic</option>
                     <option value="Logistics">Logistics</option>
                     <option value="Finance">Finance</option>
@@ -829,7 +839,11 @@ export const Dashboard = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Priority</label>
-                  <select name="priority" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                  <select
+                    name="priority"
+                    title="Select notice priority level"
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  >
                     <option value="Normal">Normal</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
@@ -842,7 +856,13 @@ export const Dashboard = () => {
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
-                <input name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <input
+                  name="expiresAt"
+                  type="date"
+                  title="Set notice expiry date"
+                  placeholder="Select expiry date"
+                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
@@ -907,10 +927,15 @@ export const Dashboard = () => {
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h3>
-              <button onClick={() => {
-                setShowEventModal(false);
-                setEditingEvent(null);
-              }} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button
+                type="button"
+                title="Close event modal"
+                onClick={() => {
+                  setShowEventModal(false);
+                  setEditingEvent(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -929,18 +954,21 @@ export const Dashboard = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
-                  <input 
-                    name="date" 
-                    required 
-                    type="date" 
+                  <input
+                    name="date"
+                    required
+                    type="date"
+                    title="Select event date"
+                    placeholder="Select date"
                     defaultValue={editingEvent?.date}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-500 uppercase">Type</label>
-                  <select 
-                    name="type" 
+                  <select
+                    name="type"
+                    title="Select event type"
                     required
                     defaultValue={editingEvent?.type}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"

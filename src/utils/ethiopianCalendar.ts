@@ -215,3 +215,31 @@ export function formatEthiopianLabel(dateInput: string | Date | null): string {
   return `${day} ${ETHIOPIAN_MONTHS_LABELS[month - 1]} ${year} E.C.`;
 }
 
+/**
+ * Get today's date as an Ethiopian Calendar ISO string (YYYY-MM-DD format).
+ * Replaces: new Date().toISOString().split('T')[0]
+ */
+export function getTodayEthiopianDate(): string {
+  const today = new Date();
+  const { year, month, day } = gregorianToEthiopian(today);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/**
+ * Get current month as Ethiopian Calendar ISO string (YYYY-MM format).
+ * Replaces: new Date().toISOString().slice(0, 7)
+ */
+export function getCurrentEthiopianMonth(): string {
+  const today = new Date();
+  const { year, month } = gregorianToEthiopian(today);
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+/**
+ * Format any date as Ethiopian date display string (e.g., "1 Meskerem 2018 E.C.")
+ * Replaces: new Date(...).toLocaleDateString()
+ */
+export function formatEthiopianDateOnly(dateInput: string | Date | null): string {
+  return formatEthiopianLabel(dateInput);
+}
+

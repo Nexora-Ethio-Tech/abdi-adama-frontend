@@ -9,9 +9,7 @@ import {
   updateApplicationStatus,
   createPendingApplication,
   createPublicPendingApplication,
-  getBranches,
-  registerUser,
-  toggleRegistration
+  registerUser
 } from '../services/schoolAdminService';
 import api from '../services/api';
 
@@ -85,11 +83,6 @@ interface ValidationErrors {
   [key: string]: string;
 }
 
-interface BranchOption {
-  id: string;
-  name: string;
-}
-
 function formatPhoneNumber(phone: string | null | undefined): string {
   // Guard against null/undefined
   const raw = (phone || '').toString();
@@ -148,9 +141,6 @@ function validateRegistrationStep(step: number, formData: any): ValidationErrors
     if (!formData.name || !formData.name.trim()) {
       errors.name = 'Full Name is required';
     }
-    if (!formData.branchName || !formData.branchName.trim()) {
-      errors.branchName = 'Branch Name is required';
-    }
     if (formData.digital_id && formData.digital_id.trim()) {
       if (!/^\d{16}$/.test(formData.digital_id.trim())) {
         errors.digital_id = 'Fayda Alias Number must be exactly 16 digits';
@@ -191,7 +181,7 @@ const initialPendingApplications: PendingApp[] = [];
 export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRegistrationProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { role, registrationOpen, setRegistrationOpen } = useUser();
+  const { role, registrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -200,8 +190,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [registrationStep, setRegistrationStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [branches, setBranches] = useState<BranchOption[]>([]);
-  const [loadingBranches, setLoadingBranches] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -227,23 +215,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [showGradeModal, setShowGradeModal] = useState(false);
   const [selectedAppForGrade, setSelectedAppForGrade] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
-  const [isTogglingRegistration, setIsTogglingRegistration] = useState(false);
-
-  const handleToggleRegistration = async () => {
-    try {
-      setIsTogglingRegistration(true);
-      const newState = !registrationOpen;
-      await toggleRegistration(newState);
-      setRegistrationOpen(newState);
-      setSuccessMessage(`Registration is now ${newState ? 'open' : 'closed'}`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
-      setSubmitError(err.response?.data?.message || 'Failed to toggle registration status');
-      setTimeout(() => setSubmitError(null), 5000);
-    } finally {
-      setIsTogglingRegistration(false);
-    }
-  };
 
   useEffect(() => {
     if (isAdminView) {
@@ -264,22 +235,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       fetchApps();
     }
   }, [isAdminView]);
-
-  useEffect(() => {
-    const loadBranches = async () => {
-      try {
-        setLoadingBranches(true);
-        const list = await getBranches();
-        setBranches(list || []);
-      } catch (err) {
-        console.error('Failed to fetch branches:', err);
-      } finally {
-        setLoadingBranches(false);
-      }
-    };
-
-    loadBranches();
-  }, []);
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -352,7 +307,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     const formData = new FormData(form);
     const currentStepData = {
       name: formData.get('name'),
-      branchName: formData.get('branchName'),
       digital_id: formData.get('digital_id'),
       dob: formData.get('dob'),
       gender: formData.get('gender'),
@@ -410,7 +364,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     try {
       const formData = new FormData(e.currentTarget);
       const name = formData.get('name') as string;
-      const branchName = formData.get('branchName') as string;
       const digital_id = formData.get('digital_id') as string;
       const dob = formData.get('dob') as string;
       const gender = formData.get('gender') as string;
@@ -427,7 +380,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       // Validate all required fields for final submission
       const allFormData = {
         name,
-        branchName,
         digital_id,
         dob,
         gender,
@@ -460,7 +412,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       // Create FormData for file upload (only append non-empty values)
       const submitData = new FormData();
       submitData.append('name', toTitleCase(name) || '');
-      submitData.append('branchName', toTitleCase(branchName) || '');
       submitData.append('digital_id', digital_id?.trim() || '');
       submitData.append('dob', dob || '');
       submitData.append('gender', gender || '');
@@ -552,7 +503,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       if (errorObj) {
         if (errorObj.name || errorObj.digital_id || errorObj.dob || errorObj.gender) {
           setRegistrationStep(1);
-        } else if (errorObj.branchName || errorObj.parentName || errorObj.parentPhone || errorObj.phone || errorObj.address) {
+        } else if (errorObj.parentName || errorObj.parentPhone || errorObj.phone || errorObj.address) {
           setRegistrationStep(2);
         } else if (errorObj.previousSchool || errorObj.grade) {
           setRegistrationStep(3);
@@ -734,10 +685,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
           <div className="space-y-5">
             {/* Registration Window Toggle */}
             {!isFinance && (
-              <div 
-                onClick={handleToggleRegistration}
-                className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between cursor-pointer ${isTogglingRegistration ? 'opacity-50 pointer-events-none' : ''} ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'}`}
-              >
+              <div className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${registrationOpen ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10' : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'}`}>
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl text-white ${registrationOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
                     <Shield size={18} />
@@ -940,25 +888,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
                         }`} />
                     {validationErrors.name && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.name}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Branch Name <span className="text-rose-500">*</span></label>
-                    <select
-                      required
-                      name="branchName"
-                      defaultValue=""
-                      className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.branchName
-                        ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
-                        : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`}>
-                      <option value="">{loadingBranches ? 'Loading branches...' : 'Select branch'}</option>
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.name}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                    {validationErrors.branchName && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.branchName}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Fayda Alias Number (FAN) <span className="text-slate-400 font-medium">(optional)</span></label>

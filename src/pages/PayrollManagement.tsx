@@ -730,6 +730,7 @@ export const PayrollManagement = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Ethiopic Month</label>
                   <select
+                    title="Select Ethiopic Month"
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     value={exportMonth}
                     onChange={(e) => setExportMonth(e.target.value)}
@@ -743,6 +744,8 @@ export const PayrollManagement = () => {
                   <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Ethiopic Year</label>
                   <input
                     type="number"
+                    title="Enter Ethiopic Year"
+                    placeholder="e.g. 2017"
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                     value={exportYear}
                     onChange={(e) => setExportYear(e.target.value)}

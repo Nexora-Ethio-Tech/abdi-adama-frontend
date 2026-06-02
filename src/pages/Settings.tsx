@@ -9,6 +9,7 @@ import { getGradingConfigs, publishGradingConfigs } from '../services/schoolAdmi
 import settingsService, { type BranchGradeFee, type BranchProfitSummary, type MonthlyProfitTarget } from '../services/settingsService';
 import { authService } from '../services/authService';
 import { SettingsSubTabs, SettingsPanel } from '../components/settings/SettingsSubTabs';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
 import { mockGradingConfigs } from '../data/mockData';
 
@@ -1135,7 +1136,7 @@ export const Settings = () => {
                               const audit = financeAuditLog.find(a => a.setting_key === 'daily_penalty_rate');
                               return audit ? (
                                 <p className="text-[9px] text-slate-400 font-semibold mt-2">
-                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {formatEthiopianLabel(audit.changed_at)}
                                 </p>
                               ) : null;
                             })()}
@@ -1170,7 +1171,7 @@ export const Settings = () => {
                               const audit = financeAuditLog.find(a => a.setting_key === 'max_loan_months');
                               return audit ? (
                                 <p className="text-[9px] text-slate-400 font-semibold mt-2">
-                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {formatEthiopianLabel(audit.changed_at)}
                                 </p>
                               ) : null;
                             })()}
@@ -1205,7 +1206,7 @@ export const Settings = () => {
                               const audit = financeAuditLog.find(a => a.setting_key === 'loan_deduction_percentage');
                               return audit ? (
                                 <p className="text-[9px] text-slate-400 font-semibold mt-2">
-                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {new Date(audit.changed_at).toLocaleDateString()}
+                                  Last updated by {audit.changed_by_name || audit.changed_by_username || 'System'} on {formatEthiopianLabel(audit.changed_at)}
                                 </p>
                               ) : null;
                             })()}
@@ -1254,7 +1255,7 @@ export const Settings = () => {
                                   <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value} ETB/Units` : 'N/A'}</td>
                                   <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value} ETB/Units</td>
                                   <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
-                                  <td className="px-6 py-3 font-medium text-slate-400">{new Date(log.changed_at).toLocaleString()}</td>
+                                  <td className="px-6 py-3 font-medium text-slate-400">{formatEthiopianLabel(log.changed_at)}</td>
                                 </tr>
                               ))
                             )}

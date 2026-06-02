@@ -3,6 +3,7 @@ import { Search, Landmark, FileText, X, Plus, AlertCircle, RefreshCw, CheckCircl
 import loanService, { Loan } from '../services/loanService';
 import payrollService, { EmployeePayrollProfile } from '../services/payrollService';
 import { useUser } from '../context/UserContext';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 export const LoanManagement = () => {
   const { role } = useUser();
@@ -344,7 +345,7 @@ export const LoanManagement = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 font-semibold text-slate-400">
-                      {new Date(l.issued_at).toLocaleDateString()}
+                      {formatEthiopianLabel(l.issued_at)}
                     </td>
                     {(activeTab === 'active' || activeTab === 'approved' || activeTab === 'pending') && (
                       <td className="px-6 py-4 text-right space-y-2">
@@ -412,6 +413,8 @@ export const LoanManagement = () => {
                   </div>
                 </div>
                 <button
+                  type="button"
+                  title="Close loan modal"
                   onClick={() => setIsModalOpen(false)}
                   className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
                 >
@@ -433,7 +436,8 @@ export const LoanManagement = () => {
                   <label className="text-sm font-bold text-slate-500 uppercase">Select Employee *</label>
                   
                   <div className="flex gap-2">
-                    <select 
+                    <select
+                      title="Filter employees by role (Staff or Student)"
                       className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={loanRoleFilter}
                       onChange={(e) => {

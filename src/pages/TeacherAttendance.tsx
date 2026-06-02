@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Check, X, Users, ChevronRight, Save, Loader2, ArrowLeft, Calendar, Search, Clock, ShieldAlert } from 'lucide-react';
 import teacherService, { markAttendance, getMyClasses, getClassAttendance } from '../services/teacherService';
+import { getTodayEthiopianDate } from '../utils/ethiopianCalendar';
 
 export const TeacherAttendance = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<any>(null);
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayEthiopianDate());
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late' | 'excused'>>({});
   const [loading, setLoading] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -216,6 +217,8 @@ export const TeacherAttendance = () => {
             <span>Attendance Date:</span>
             <input
               type="date"
+              title="Select attendance date"
+              placeholder="Select attendance date"
               value={selectedDate}
               onChange={(e) => handleDateChange(e.target.value)}
               className="bg-slate-50 dark:bg-slate-800 border-none rounded-lg px-2.5 py-1 text-slate-700 dark:text-slate-200 text-sm font-semibold focus:ring-2 focus:ring-indigo-500 cursor-pointer"

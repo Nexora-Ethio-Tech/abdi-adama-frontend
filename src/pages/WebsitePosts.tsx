@@ -1,5 +1,6 @@
 import { useStore } from '../context/useStore';
 import { useState, useRef } from 'react';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { Megaphone, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -55,7 +56,7 @@ export const WebsitePosts = () => {
                   {post.type === 'image' ? (
                     <img src={post.mediaUrl} alt="Post media" className="w-full h-full object-cover" />
                   ) : (
-                    <iframe src={post.mediaUrl} className="w-full h-full pointer-events-none" />
+                    <iframe src={post.mediaUrl} title="Post media content" className="w-full h-full pointer-events-none" />
                   )}
                 </div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
@@ -63,7 +64,7 @@ export const WebsitePosts = () => {
                 </p>
                 <div className="mt-auto pt-4 flex justify-between items-center border-t border-slate-100 dark:border-slate-800">
                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                     {new Date(post.timestamp).toLocaleDateString()}
+                     {formatEthiopianLabel(post.timestamp)}
                    </span>
                 </div>
               </div>
@@ -77,7 +78,7 @@ export const WebsitePosts = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">{t('websitePosts.addModalTitle')}</h3>
-              <button onClick={() => setShowPostModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button type="button" title="Close add post modal" onClick={() => setShowPostModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -118,6 +119,7 @@ export const WebsitePosts = () => {
                 <label className="text-[10px] font-bold text-slate-500 uppercase">{t('websitePosts.mediaType')}</label>
                 <select
                   name="type"
+                  title="Select media type (image or video)"
                   required
                   value={selectedType}
                   onChange={(ev) => setSelectedType(ev.target.value as 'image' | 'video')}
@@ -136,13 +138,14 @@ export const WebsitePosts = () => {
                       name="mediaFile"
                       accept="image/*"
                       type="file"
+                      title="Select image file to upload"
                       className="w-full text-sm"
                     />
                     <div className="text-xs text-slate-400 mt-1">Or paste an image URL below</div>
-                    <input name="mediaUrl" type="url" placeholder="https://example.com/image.jpg (optional)" className="w-full mt-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                    <input name="mediaUrl" type="url" title="Enter media URL" placeholder="https://example.com/image.jpg (optional)" className="w-full mt-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
                   </>
                 ) : (
-                  <input name="mediaUrl" required type="url" placeholder="https://example.com/video.mp4" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
+                  <input name="mediaUrl" required type="url" title="Enter video URL" placeholder="https://example.com/video.mp4" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500 transition-all" />
                 )}
               </div>
               <div className="space-y-1">

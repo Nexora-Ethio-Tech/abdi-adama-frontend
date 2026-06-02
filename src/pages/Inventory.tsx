@@ -2,6 +2,7 @@
 import { Package, Search, Filter, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -203,7 +204,7 @@ export const Inventory = () => {
                   <td className="px-6 py-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
                     {(Number(item.value) * Number(item.amount || 0)).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{new Date(item.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{formatEthiopianLabel(item.created_at)}</td>
                 </tr>
               ))}
             </tbody>

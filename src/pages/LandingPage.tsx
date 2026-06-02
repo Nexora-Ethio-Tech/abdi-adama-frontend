@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
 import { StudentRegistration } from '../components/StudentRegistration';
 import { Chatbot } from '../components/Chatbot';
@@ -444,7 +445,7 @@ export const LandingPage = () => {
                   )}
                   <div className="absolute top-4 left-4">
                     <span className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-black uppercase tracking-widest rounded-full text-school-primary shadow-sm">
-                      {new Date(post.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {formatEthiopianLabel(post.timestamp)}
                     </span>
                   </div>
                 </div>

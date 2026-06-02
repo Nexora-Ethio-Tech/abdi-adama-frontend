@@ -184,6 +184,7 @@ export const TeacherAttendanceModal = ({ open, teacher, onClose }: TeacherAttend
                   Ethiopian Month
                 </label>
                 <select
+                  title="Select Ethiopian month for attendance"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="w-full min-w-[180px] px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium outline-none focus:ring-2 focus:ring-indigo-500"
@@ -198,6 +199,7 @@ export const TeacherAttendanceModal = ({ open, teacher, onClose }: TeacherAttend
                   Ethiopian Year
                 </label>
                 <select
+                  title="Select Ethiopian year for attendance"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   className="w-full min-w-[140px] px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium outline-none focus:ring-2 focus:ring-indigo-500"

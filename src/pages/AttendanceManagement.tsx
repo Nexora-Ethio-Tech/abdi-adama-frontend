@@ -4,13 +4,14 @@ import * as attendanceService from '../services/attendanceService';
 import classService from '../services/classService';
 import studentService from '../services/studentService';
 import { exportToCSV } from '../utils/exportUtils';
+import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 export const AttendanceManagement = () => {
   const [classes, setClasses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<attendanceService.AttendanceRecord[]>([]);
   const [selectedClass, setSelectedClass] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayEthiopianDate());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localAttendance, setLocalAttendance] = useState<Record<string, 'Present' | 'Absent' | 'Late' | 'Excused'>>({});
@@ -176,6 +177,7 @@ export const AttendanceManagement = () => {
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">Select Class</label>
             <select
+              title="Select class for attendance management"
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -191,6 +193,8 @@ export const AttendanceManagement = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
             <input
               type="date"
+              title="Select attendance date"
+              placeholder="Select date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"

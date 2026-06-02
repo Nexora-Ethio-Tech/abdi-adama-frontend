@@ -1,6 +1,7 @@
 
 import { Book, Search, Plus, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface BookType {
   id: string;
@@ -234,6 +235,8 @@ export const Library = () => {
         </div>
         <div className="flex gap-2">
           <button
+            type="button"
+            title="Refresh library data"
             onClick={fetchData}
             className="p-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 transition-colors"
           >
@@ -397,8 +400,8 @@ export const Library = () => {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{loan.book_title}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-slate-500 uppercase font-bold">Due: {new Date(loan.due_date).toLocaleDateString()}</p>
-                      {loan.returned_at && <p className="text-sm text-emerald-600 uppercase font-bold mt-1">Returned: {new Date(loan.returned_at).toLocaleDateString()}</p>}
+                      <p className="text-sm text-slate-500 uppercase font-bold">Due: {formatEthiopianLabel(loan.due_date)}</p>
+                      {loan.returned_at && <p className="text-sm text-emerald-600 uppercase font-bold mt-1">Returned: {formatEthiopianLabel(loan.returned_at)}</p>}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1.5 rounded-full text-xs font-bold uppercase ${loan.returned_at ? 'bg-emerald-100 text-emerald-700' :
@@ -485,6 +488,7 @@ export const Library = () => {
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Borrower Type</label>
                   <select
+                    title="Select borrower type (Student or Staff)"
                     value={issueData.borrower_type}
                     onChange={(e) => {
                       setIssueData({ ...issueData, borrower_type: e.target.value, borrower_id: '' });
@@ -522,6 +526,8 @@ export const Library = () => {
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Due Date</label>
                 <input
                   type="date"
+                  title="Set book due date"
+                  placeholder="Select due date"
                   value={issueData.due_date}
                   onChange={(e) => setIssueData({ ...issueData, due_date: e.target.value })}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-sm"
@@ -566,6 +572,8 @@ export const Library = () => {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold">Add New Book</h3>
               <button
+                type="button"
+                title="Close add book modal"
                 onClick={() => setShowAddBookModal(false)}
                 className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
               >
@@ -621,6 +629,8 @@ export const Library = () => {
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Number of Copies</label>
                   <input
                     type="number"
+                    title="Set the number of book copies available"
+                    placeholder="Enter number of copies"
                     value={addBookData.quantity}
                     onChange={(e) => setAddBookData({ ...addBookData, quantity: Math.max(1, parseInt(e.target.value) || 1) })}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"

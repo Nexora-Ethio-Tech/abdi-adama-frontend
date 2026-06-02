@@ -10,6 +10,7 @@ import subjectService from '../services/subjectService';
 import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '../services/vicePrincipalService';
 import { Star, Trophy, RefreshCcw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TeacherAttendanceModal } from '../components/TeacherAttendanceModal';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 const MultiSelectDropdown = ({
   options,
@@ -436,7 +437,7 @@ export const Teachers = () => {
             <div class="value">${user.status}</div>
           </div>
           <div class="footer">
-            Printed on ${new Date().toLocaleDateString()} · Keep this document confidential
+            Printed on ${formatEthiopianLabel(new Date())} · Keep this document confidential
           </div>
         </body>
       </html>

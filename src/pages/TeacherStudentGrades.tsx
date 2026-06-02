@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { ArrowLeft, Award, TrendingUp, BookOpen } from 'lucide-react';
 import { getStudentAllGrades } from '../services/teacherService';
 
@@ -230,7 +231,7 @@ export const TeacherStudentGrades = () => {
                           </td>
                           <td className="py-3 text-sm text-gray-600">{grade.weight}%</td>
                           <td className="py-3 text-sm text-gray-600">
-                            {new Date(grade.createdAt).toLocaleDateString()}
+                            {formatEthiopianLabel(grade.createdAt)}
                           </td>
                         </tr>
                       ))}
@@ -294,7 +295,7 @@ export const TeacherStudentGrades = () => {
                           </td>
                           <td className="py-3 text-sm text-gray-600">{grade.weight}%</td>
                           <td className="py-3 text-sm text-gray-600">
-                            {new Date(grade.createdAt).toLocaleDateString()}
+                            {formatEthiopianLabel(grade.createdAt)}
                           </td>
                         </tr>
                       ))}

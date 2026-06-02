@@ -1,5 +1,6 @@
 import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Wallet } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -146,7 +147,7 @@ export const FinanceStaff = () => {
             <div class="value">${user.status}</div>
           </div>
           <div class="footer">
-            Printed on ${new Date().toLocaleDateString()} · Keep this document confidential
+            Printed on ${formatEthiopianLabel(new Date())} · Keep this document confidential
           </div>
         </body>
       </html>
@@ -353,7 +354,12 @@ export const FinanceStaff = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New Finance Clerk</h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button
+                type="button"
+                title="Close add finance clerk modal"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -363,6 +369,7 @@ export const FinanceStaff = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Full Name</label>
                 <input
                   type="text"
+                  title="Finance clerk full name"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -393,7 +400,14 @@ export const FinanceStaff = () => {
                 />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
-                  <input type="text" value={formData.emergencyContactName} onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input
+                    type="text"
+                    title="Emergency contact person's name"
+                    placeholder="Enter emergency contact name"
+                    value={formData.emergencyContactName}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
                 <PhoneInput
                   label="Emergency Contact Phone"
@@ -403,7 +417,12 @@ export const FinanceStaff = () => {
                 />
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Education Status</label>
-                  <select value={formData.educationLevel} onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                  <select
+                    title="Select education level"
+                    value={formData.educationLevel}
+                    onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
                     <option value="">Select level</option>
                     <option value="Diploma">Diploma</option>
                     <option value="Degree">Degree</option>
@@ -413,19 +432,47 @@ export const FinanceStaff = () => {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Specialty / Course</label>
-                  <input type="text" value={formData.specialty} onChange={(e) => setFormData({ ...formData, specialty: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input
+                    type="text"
+                    title="Finance clerk specialty or course"
+                    placeholder="Enter specialty or course"
+                    value={formData.specialty}
+                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
-                  <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input
+                    type="date"
+                    title="Select date of birth"
+                    placeholder="Select date of birth"
+                    value={formData.dob}
+                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-bold text-slate-500 uppercase">Previous School</label>
-                  <input type="text" value={formData.previousSchool} onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input
+                    type="text"
+                    title="Previous educational institution"
+                    placeholder="Enter previous school name"
+                    value={formData.previousSchool}
+                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-bold text-slate-500 uppercase">Experience (Years)</label>
-                  <input type="text" value={formData.experienceYears} onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
+                  <input
+                    type="text"
+                    title="Years of professional experience"
+                    placeholder="Enter years of experience"
+                    value={formData.experienceYears}
+                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
                 </div>
               </div>
 

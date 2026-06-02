@@ -2,6 +2,7 @@
 import { ChevronLeft, ChevronRight, Plus, Tag } from 'lucide-react';
 import { mockEvents } from '../data/mockData';
 import { useState } from 'react';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 export const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date(2026, 3, 1)); // April 2026
@@ -11,7 +12,7 @@ export const Calendar = () => {
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const monthName = currentDate.toLocaleString('default', { month: 'long' });
+  const ethMonthLabel = `${formatEthiopianLabel(new Date(year, month, 1)).split(' ').slice(1, 3).join(' ')} E.C.`;
 
   const days = Array.from({ length: daysInMonth(year, month) }, (_, i) => i + 1);
   const emptyDays = Array.from({ length: firstDayOfMonth(year, month) }, (_, i) => i);
@@ -38,15 +39,19 @@ export const Calendar = () => {
         <div className="lg:col-span-3 space-y-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{monthName} {year}</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{ethMonthLabel}</h3>
               <div className="flex gap-2">
                 <button
+                  type="button"
+                  title="Go to previous month"
                   onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
                   className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button
+                  type="button"
+                  title="Go to next month"
                   onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
                   className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >
@@ -101,8 +106,8 @@ export const Calendar = () => {
               {mockEvents.filter(e => e.date.startsWith(`${year}-${String(month+1).padStart(2, '0')}`)).map(event => (
                 <div key={event.id} className="flex gap-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
                   <div className="text-center px-3 border-r border-slate-200 dark:border-slate-700">
-                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{event.date.split('-')[2]}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">{monthName.slice(0, 3)}</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{formatEthiopianLabel(event.date).split(' ')[0]}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">{formatEthiopianLabel(event.date).split(' ')[1].slice(0, 3)}</p>
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{event.title}</p>

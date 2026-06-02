@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Lock, Unlock, BookOpen, Calendar, User } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface GradeLock {
   gradeLevel?: string;
@@ -119,13 +120,7 @@ export const VPGradeLocks = () => {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    {lock.lastModified ? new Date(lock.lastModified).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : 'N/A'}
+                    {lock.lastModified ? `${formatEthiopianLabel(lock.lastModified)} ${new Date(lock.lastModified).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'N/A'}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-center">

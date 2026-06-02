@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Filter, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import financeService from '../services/financeService';
+import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface AuditLog {
   id: string;
@@ -66,7 +67,7 @@ const AuditLogs: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `audit-logs-${getTodayEthiopianDate()}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -138,6 +139,7 @@ const AuditLogs: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Direction</label>
               <select
+                title="Filter by transaction direction (Money In or Money Out)"
                 value={filters.direction || ''}
                 onChange={(e) => handleFilterChange('direction', e.target.value || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -151,6 +153,7 @@ const AuditLogs: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <select
+                title="Filter by transaction category (Fees, Staff, Inventory, or Other)"
                 value={filters.category || ''}
                 onChange={(e) => handleFilterChange('category', e.target.value || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -167,6 +170,7 @@ const AuditLogs: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount (ETB)</label>
               <input
                 type="number"
+                title="Minimum transaction amount filter"
                 value={filters.minAmount || ''}
                 onChange={(e) => handleFilterChange('minAmount', e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="0"
@@ -178,6 +182,7 @@ const AuditLogs: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount (ETB)</label>
               <input
                 type="number"
+                title="Maximum transaction amount filter"
                 value={filters.maxAmount || ''}
                 onChange={(e) => handleFilterChange('maxAmount', e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="999999"
@@ -189,6 +194,8 @@ const AuditLogs: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
                 type="date"
+                title="Filter by start date"
+                placeholder="Select start date"
                 value={filters.startDate || ''}
                 onChange={(e) => handleFilterChange('startDate', e.target.value || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -199,6 +206,8 @@ const AuditLogs: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
                 type="date"
+                title="Filter by end date"
+                placeholder="Select end date"
                 value={filters.endDate || ''}
                 onChange={(e) => handleFilterChange('endDate', e.target.value || undefined)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -247,7 +256,7 @@ const AuditLogs: React.FC = () => {
                   {logs.map((log) => (
                     <tr key={log.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(log.timestamp).toLocaleString()}
+                        {formatEthiopianLabel(log.timestamp)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {log.action}
@@ -298,6 +307,8 @@ const AuditLogs: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
+                title="Go to previous page"
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -335,6 +346,8 @@ const AuditLogs: React.FC = () => {
               </div>
 
               <button
+                type="button"
+                title="Go to next page"
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

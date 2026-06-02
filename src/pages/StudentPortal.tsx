@@ -2,6 +2,7 @@
 import { BookOpen, Award, Clock, Star, Trophy, Loader2, Megaphone, Bell, User, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import {
   getStudentDashboard,
   getTeacherOfWeek,
@@ -222,7 +223,7 @@ export const StudentPortal = () => {
                         </div>
                         <h4 className="text-base font-bold text-white">{notice.title}</h4>
                       </div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{new Date(notice.timestamp).toLocaleDateString()}</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{formatEthiopianLabel(notice.timestamp)}</span>
                     </div>
                     <p className="text-sm leading-relaxed text-slate-300 mb-4">{notice.content}</p>
                     {notice.source === 'Driver' && (notice as any).driverName ? (
