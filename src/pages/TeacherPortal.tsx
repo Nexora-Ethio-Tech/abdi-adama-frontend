@@ -639,10 +639,10 @@ export const TeacherPortal = () => {
                     <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
                       <span
                         className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved'
-                            ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
-                            : plan.status === 'Revision Required'
-                              ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
-                              : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                          ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                          : plan.status === 'Revision Required'
+                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
+                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
                           }`}
                       >
                         {plan.status}

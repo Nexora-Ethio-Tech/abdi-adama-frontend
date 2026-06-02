@@ -456,11 +456,10 @@ export const PayrollManagement = () => {
                             {Number(r.total_net).toLocaleString()} ETB
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${
-                              r.status === 'draft'
+                            <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-xl ${r.status === 'draft'
                                 ? 'bg-amber-50 dark:bg-amber-950/20 text-amber-600'
                                 : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600'
-                            }`}>
+                              }`}>
                               {r.status}
                             </span>
                           </td>
