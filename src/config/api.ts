@@ -6,7 +6,7 @@ const getApiBaseUrl = () => {
   let url = envUrl;
   // Ensure URL has protocol
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'http://' + url;
+    url = 'https://' + url;
   }
   // Append /api if not already present
   if (!url.endsWith('/api')) {
