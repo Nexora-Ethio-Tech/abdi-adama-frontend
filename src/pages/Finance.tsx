@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useCallback } from 'react';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+const API = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
 
 const getToken = () => localStorage.getItem('abdi_adama_token') || '';
 

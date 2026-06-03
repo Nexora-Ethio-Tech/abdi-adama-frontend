@@ -62,7 +62,7 @@ export const Clinic = () => {
 
   // Normalize API URL - ensure it has protocol and no /api suffix
   const getApiUrl = () => {
-    let url = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    let url = import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001';
     // Remove /api suffix if present
     if (url.endsWith('/api')) {
       url = url.slice(0, -4);

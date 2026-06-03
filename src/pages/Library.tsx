@@ -61,7 +61,7 @@ export const Library = () => {
     quantity: 1
   });
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+  const API_URL = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
 
   const fetchData = async () => {
     setLoading(true);

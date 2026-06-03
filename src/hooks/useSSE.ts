@@ -18,7 +18,7 @@ export const useSSE = () => {
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+    const API_URL = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
 
     try {
       // Connect to SSE stream (pass token via query parameter since EventSource doesn't support headers)

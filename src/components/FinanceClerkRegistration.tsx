@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Clock, Check, X, CreditCard, Eye, EyeOff, Download } from 'lucide-react';
 import financeClerkService from '../services/financeService';
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api$/, '');
+const API = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
 
 const getToken = () => localStorage.getItem('abdi_adama_token') || '';
 
