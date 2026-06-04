@@ -9,9 +9,13 @@ import { dashboardService } from '../services/dashboardService';
 import { getDashboard as getSchoolAdminDashboard, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import settingsService from '../services/settingsService';
+import { userService } from '../services/userService';
 
-const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
-  <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
+const StatCard = ({ icon: Icon, label, value, trend, color, onClick }: any) => (
+  <div 
+    onClick={onClick}
+    className={`bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all duration-300 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-slate-200 dark:hover:border-slate-700' : ''}`}
+  >
     <div className="flex items-center justify-between mb-4">
       <div className={`${color} p-2 md:p-3 rounded-lg text-white`}>
         <Icon size={20} className="md:w-6 md:h-6" />
@@ -62,6 +66,60 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [branchReportLoading, setBranchReportLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pending Approvals Modal states and fetch logic
+  const [showPendingModal, setShowPendingModal] = useState(false);
+  const [pendingUsersList, setPendingUsersList] = useState<any[]>([]);
+  const [fetchingPending, setFetchingPending] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+  const fetchPendingUsers = async () => {
+    setFetchingPending(true);
+    setPendingError(null);
+    try {
+      const response = await userService.getAllUsers({ status: 'Pending' });
+      const list = response.data || response || [];
+      const filtered = list.filter((u: any) => 
+        ['auditor', 'school-admin', 'vice-principal'].includes(u.role)
+      );
+      setPendingUsersList(filtered);
+    } catch (err: any) {
+      console.error('Failed to fetch pending users:', err);
+      setPendingError(err.message || 'Failed to load pending users');
+    } finally {
+      setFetchingPending(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showPendingModal) {
+      fetchPendingUsers();
+    }
+  }, [showPendingModal]);
+
+  const handlePendingUserStatus = async (userId: string, newStatus: 'Approved' | 'Revoked') => {
+    setUpdatingUserId(userId);
+    try {
+      await userService.updateUserStatus(userId, newStatus);
+      setSuccessMessage(`User status updated to ${newStatus}`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+      await fetchPendingUsers();
+      
+      // Refresh dashboard count
+      if (role === 'super-admin') {
+        const response = await dashboardService.getSuperAdminDashboard();
+        if (response.success) {
+          setDashboardStats(response.data);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to update status', err);
+      alert(err.response?.data?.message || 'Failed to update status');
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -221,8 +279,12 @@ export const Dashboard = () => {
           students: report.totalStudents,
           teachers: report.totalTeachers,
           attendance: report.attendanceRate?.toFixed(1),
-          finance: report.netProfit > 0 ? 'Stable' : 'Attention',
-          risk: report.attendanceRate < 85 ? 'Attendance' : 'Normal'
+          finance: report.yearlyTarget > 0
+            ? `${report.financialHealthPct?.toFixed(0)}% of target`
+            : 'No target set',
+          financialHealthPct: report.financialHealthPct ?? 100,
+          isHighRisk: report.isHighRisk ?? false,
+          risk: report.isHighRisk ? 'High Risk' : 'Normal'
         };
       })
       .filter((branch): branch is NonNullable<typeof branch> => Boolean(branch)); // Remove null entries
@@ -232,10 +294,9 @@ export const Dashboard = () => {
       const monitoredBranches = branchHealth.length || dashboardStats?.totalBranches || branches.length;
       const teacherCount = dashboardStats?.usersByRole?.find((r: any) => r.role === 'teacher')?.count || 0;
       const totalStudentsCount = dashboardStats?.totalStudents || 0;
-      const avgAttendance = branchHealth.length > 0
-        ? (branchHealth.reduce((sum: number, branch) => sum + Number(branch.attendance || 0), 0) / branchHealth.length).toFixed(1)
-        : 'N/A';
-      const branchesNeedingAttention = branchHealth.filter((branch) => Number(branch.attendance || 0) < 85 || branch.risk !== 'Normal').length;
+      const teacherAttendance = dashboardStats?.teacherAttendanceRate ?? 0;
+      const studentAttendance = dashboardStats?.studentAttendanceRate ?? 0;
+      const branchesNeedingAttention = branchHealth.filter((b) => b.isHighRisk).length;
 
       return (
         <div className="space-y-8">
@@ -307,6 +368,7 @@ export const Dashboard = () => {
               label="Pending Approvals"
               value={dashboardStats?.pendingUsers?.toString() || "0"}
               color="bg-emerald-600"
+              onClick={() => setShowPendingModal(true)}
             />
           </div>
 
@@ -329,12 +391,16 @@ export const Dashboard = () => {
                   <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{teacherCount.toLocaleString()}</p>
                 </div>
                 <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
-                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Average Attendance</p>
-                  <p className="text-2xl font-black text-slate-900 dark:text-slate-100">{avgAttendance}%</p>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Teacher Attendance</p>
+                  <p className={`text-2xl font-black ${Number(teacherAttendance) >= 80 ? 'text-emerald-600' : Number(teacherAttendance) >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                    {loading ? '...' : `${teacherAttendance}%`}
+                  </p>
                 </div>
                 <div className="rounded-3xl border border-slate-100 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-950">
-                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Branches Needing Attention</p>
-                  <p className={`text-2xl font-black ${branchesNeedingAttention > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{branchesNeedingAttention}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Student Attendance</p>
+                  <p className={`text-2xl font-black ${Number(studentAttendance) >= 80 ? 'text-emerald-600' : Number(studentAttendance) >= 60 ? 'text-amber-600' : 'text-rose-600'}`}>
+                    {loading ? '...' : `${studentAttendance}%`}
+                  </p>
                 </div>
               </div>
             </div>
@@ -410,8 +476,175 @@ export const Dashboard = () => {
               </div>
             </div>
 
+            {/* Branches Needing Attention */}
+            {branchesNeedingAttention > 0 && (
+              <div className="bg-white dark:bg-slate-900 rounded-3xl border border-amber-200 dark:border-amber-800/40 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-amber-100 dark:border-amber-800/30 flex items-center justify-between bg-amber-50/50 dark:bg-amber-950/10">
+                  <div>
+                    <h3 className="text-lg font-bold text-amber-800 dark:text-amber-300">⚠️ Branches Needing Attention</h3>
+                    <p className="text-sm text-amber-600 dark:text-amber-400">Branches collecting less than 70% of their yearly financial target.</p>
+                  </div>
+                  <span className="text-xs font-black uppercase tracking-widest text-amber-700 bg-amber-100 dark:bg-amber-900/40 px-3 py-1 rounded-full">
+                    {branchesNeedingAttention} branch{branchesNeedingAttention !== 1 ? 'es' : ''}
+                  </span>
+                </div>
+                <div className="divide-y divide-amber-50 dark:divide-amber-900/20">
+                  {branchHealth.filter(b => b.isHighRisk).map((branch) => (
+                    <div key={branch.id} className="p-4 flex items-center justify-between hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex items-center justify-center font-black text-sm">
+                          {branch.name?.[0] || '?'}
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 dark:text-slate-100">{branch.name}</p>
+                          <p className="text-xs text-slate-500">{branch.location || ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-xs text-slate-400">Financial Health</p>
+                          <p className="font-black text-rose-600">{branch.financialHealthPct?.toFixed(0) ?? '0'}% of target</p>
+                        </div>
+                        <button
+                          onClick={() => { setSelectedBranchId(branch.id); setSelectedBranch(branch); }}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-colors"
+                        >
+                          Review
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-          </div>
+          </div>{/* end grid grid-cols-1 gap-6 */}
+
+          {/* Pending Approvals Modal */}
+          {showPendingModal && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+                {/* Header */}
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-950/20">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-xl">
+                      <Clock size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">Pending Approvals</h3>
+                      <p className="text-xs text-slate-500">Auditors, School Admins, and Vice Principals waiting for activation.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowPendingModal(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    aria-label="Close modal"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 overflow-y-auto flex-1 bg-slate-50/30 dark:bg-slate-950/10">
+                  {fetchingPending ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <div className="inline-block w-10 h-10 border-4 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
+                      <p className="text-sm text-slate-500 mt-4">Fetching pending applications...</p>
+                    </div>
+                  ) : pendingError ? (
+                    <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-2xl p-4 text-center">
+                      <p className="text-sm text-rose-800 dark:text-rose-200">{pendingError}</p>
+                      <button
+                        onClick={fetchPendingUsers}
+                        className="mt-3 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-colors"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  ) : pendingUsersList.length === 0 ? (
+                    <div className="text-center py-16">
+                      <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle size={32} />
+                      </div>
+                      <h4 className="font-bold text-slate-800 dark:text-slate-100 text-lg">All caught up!</h4>
+                      <p className="text-sm text-slate-500 mt-1 max-w-sm mx-auto">No pending accounts of type Auditor, School Admin, or Vice Principal require approval at this time.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {pendingUsersList.map((pendingUser) => (
+                        <div
+                          key={pendingUser.id}
+                          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                        >
+                          <div className="space-y-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm">
+                                  {pendingUser.name?.charAt(0).toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-snug">{pendingUser.name}</h4>
+                                  <p className="text-xs text-slate-400 font-mono mt-0.5">{pendingUser.digital_id || pendingUser.digitalId || '—'}</p>
+                                </div>
+                              </div>
+                              <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                {pendingUser.role}
+                              </span>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-50 dark:border-slate-800 pt-3">
+                              <div className="flex justify-between">
+                                <span>Email:</span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300 break-all">{pendingUser.email}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Registered:</span>
+                                <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                  {pendingUser.created_at ? new Date(pendingUser.created_at).toLocaleDateString() : '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-3 mt-5 pt-4 border-t border-slate-50 dark:border-slate-800">
+                            <button
+                              disabled={updatingUserId !== null}
+                              onClick={() => handlePendingUserStatus(pendingUser.id, 'Revoked')}
+                              className="flex-1 py-2 px-3 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold text-xs transition-colors disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              disabled={updatingUserId !== null}
+                              onClick={() => handlePendingUserStatus(pendingUser.id, 'Approved')}
+                              className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            >
+                              {updatingUserId === pendingUser.id ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <CheckCircle size={14} />
+                              )}
+                              Approve
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex justify-end bg-slate-50/50 dark:bg-slate-950/20">
+                  <button
+                    onClick={() => setShowPendingModal(false)}
+                    className="px-6 py-2.5 bg-slate-900 dark:bg-slate-800 text-white font-bold rounded-xl text-xs hover:bg-slate-800 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
