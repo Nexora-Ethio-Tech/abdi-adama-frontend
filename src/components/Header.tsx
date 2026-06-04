@@ -221,17 +221,17 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
       {/* Calendar Modal */}
       {showCalendar && (
         <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-50 dark:bg-slate-950 w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-2xl relative animate-in zoom-in-95 duration-300 border border-white/20">
+          <div className="bg-slate-50 dark:bg-slate-950 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-300 border border-white/20">
             <button
               type="button"
               onClick={() => setShowCalendar(false)}
               title="Close calendar"
-              className="absolute top-6 right-6 z-[110] p-3 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
+              className="absolute top-4 right-4 z-[110] p-2 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-xl shadow-md transition-all hover:scale-105 active:scale-95"
             >
-              <X size={24} />
+              <X size={20} />
             </button>
-            <div className="p-8 md:p-12">
-              <Calendar />
+            <div className="p-4 md:p-6">
+              <Calendar compact={true} />
             </div>
           </div>
         </div>

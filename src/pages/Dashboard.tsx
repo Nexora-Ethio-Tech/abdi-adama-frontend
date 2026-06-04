@@ -7,7 +7,8 @@ import { useStore } from '../context/useStore';
 import { useTranslation } from 'react-i18next';
 import { dashboardService } from '../services/dashboardService';
 import { getDashboard as getSchoolAdminDashboard, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
-import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { getTodayEthiopianDate, formatEthiopianLabel, gregorianToEthiopian, ethiopianToGregorianIso } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import settingsService from '../services/settingsService';
 import { userService } from '../services/userService';
 
@@ -42,6 +43,7 @@ export const Dashboard = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
+  const [eventEthDate, setEventEthDate] = useState('');
   const isSuperAdmin = role === 'super-admin';
 
   const handleToggleGradesLock = async (newVal: boolean) => {
@@ -165,14 +167,20 @@ export const Dashboard = () => {
   const handleCreateEvent = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const gregDate = ethiopianToGregorianIso(eventEthDate);
+    if (!gregDate) {
+      setError('Please select a valid Ethiopian date.');
+      return;
+    }
     try {
       await createEvent({
         title: formData.get('title') as string,
-        date: formData.get('date') as string,
+        date: gregDate,
         type: formData.get('type') as string,
         description: formData.get('description') as string || undefined
       });
       setShowEventModal(false);
+      setEventEthDate('');
       refreshEvents();
       setSuccessMessage('Event created successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -185,15 +193,21 @@ export const Dashboard = () => {
     e.preventDefault();
     if (!editingEvent) return;
     const formData = new FormData(e.currentTarget);
+    const gregDate = ethiopianToGregorianIso(eventEthDate);
+    if (!gregDate) {
+      setError('Please select a valid Ethiopian date.');
+      return;
+    }
     try {
       await updateEvent(editingEvent.id, {
         title: formData.get('title') as string,
-        date: formData.get('date') as string,
+        date: gregDate,
         type: formData.get('type') as string,
         description: formData.get('description') as string || undefined
       });
       setShowEventModal(false);
       setEditingEvent(null);
+      setEventEthDate('');
       refreshEvents();
       setSuccessMessage('Event updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -976,6 +990,7 @@ export const Dashboard = () => {
               <button
                 onClick={() => {
                   setEditingEvent(null);
+                  setEventEthDate(getTodayEthiopianDate());
                   setShowEventModal(true);
                 }}
                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors"
@@ -1013,6 +1028,12 @@ export const Dashboard = () => {
                         <button
                           onClick={() => {
                             setEditingEvent(event);
+                            if (event.date) {
+                              const ethD = gregorianToEthiopian(new Date(event.date));
+                              setEventEthDate(`${ethD.year}-${String(ethD.month).padStart(2,'0')}-${String(ethD.day).padStart(2,'0')}`);
+                            } else {
+                              setEventEthDate(getTodayEthiopianDate());
+                            }
                             setShowEventModal(true);
                           }}
                           className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
@@ -1180,6 +1201,7 @@ export const Dashboard = () => {
                 onClick={() => {
                   setShowEventModal(false);
                   setEditingEvent(null);
+                  setEventEthDate('');
                 }}
                 className="text-slate-400 hover:text-slate-600 transition-colors"
               >
@@ -1200,15 +1222,12 @@ export const Dashboard = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Date</label>
-                  <input
-                    name="date"
-                    required
-                    type="date"
-                    title="Select event date"
-                    placeholder="Select date"
-                    defaultValue={editingEvent?.date}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Date (Ethiopian)</label>
+                  <EthiopianDatePicker
+                    value={eventEthDate}
+                    onChange={setEventEthDate}
+                    placeholder="YYYY-MM-DD"
+                    className="w-full"
                   />
                 </div>
                 <div className="space-y-1">

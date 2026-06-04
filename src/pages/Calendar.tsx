@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { ChevronLeft, ChevronRight, Plus, Tag, Trash2, Edit, X, Calendar as CalendarIcon } from 'lucide-react';
 import { gregorianToEthiopian, ethiopianToGregorianIso } from '../utils/ethiopianCalendar';
 import { dashboardService } from '../services/dashboardService';
@@ -31,7 +32,7 @@ function gregIsoForEthDay(y: number, m: number, d: number) {
   return ethiopianToGregorianIso(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`);
 }
 
-export const Calendar = () => {
+export const Calendar = ({ compact = false }: { compact?: boolean }) => {
   const { user, role } = useUser();
   const canManage = role === 'super-admin' || role === 'school-admin';
 
@@ -105,15 +106,22 @@ export const Calendar = () => {
   // Modal helpers
   const openCreate = () => {
     setEditingEvent(null);
-    setForm({ title: '', date: '', type: 'Academic', description: '', branchId: '' });
+    const todayEth = gregorianToEthiopian(new Date());
+    const todayEthStr = `${todayEth.year}-${String(todayEth.month).padStart(2,'0')}-${String(todayEth.day).padStart(2,'0')}`;
+    setForm({ title: '', date: todayEthStr, type: 'Academic', description: '', branchId: '' });
     setFormError('');
     setShowModal(true);
   };
   const openEdit = (ev: any) => {
     setEditingEvent(ev);
+    let ethDateStr = '';
+    if (ev.date) {
+      const ethD = gregorianToEthiopian(new Date(ev.date));
+      ethDateStr = `${ethD.year}-${String(ethD.month).padStart(2,'0')}-${String(ethD.day).padStart(2,'0')}`;
+    }
     setForm({
       title: ev.title ?? '',
-      date: ev.date?.slice(0, 10) ?? '',
+      date: ethDateStr,
       type: ev.type ?? 'Academic',
       description: ev.description ?? '',
       branchId: ev.branch_id ?? '',
@@ -127,12 +135,17 @@ export const Calendar = () => {
       setFormError('Title and date are required.');
       return;
     }
+    const gregDate = ethiopianToGregorianIso(form.date);
+    if (!gregDate) {
+      setFormError('Please select a valid Ethiopian date.');
+      return;
+    }
     setSaving(true);
     setFormError('');
     try {
       const payload = {
         title: form.title.trim(),
-        date: form.date,
+        date: gregDate,
         type: form.type,
         description: form.description.trim() || undefined,
         branchId: form.branchId || null,
@@ -162,52 +175,52 @@ export const Calendar = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={compact ? "space-y-3" : "space-y-6"}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className={`flex flex-col md:flex-row md:items-center justify-between ${compact ? 'gap-2' : 'gap-4'}`}>
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Academic Calendar</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Ethiopian calendar — all school events and holidays.</p>
+          <h2 className={`${compact ? 'text-lg' : 'text-2xl'} font-bold text-slate-800 dark:text-slate-100`}>Academic Calendar</h2>
+          {!compact && <p className="text-slate-500 dark:text-slate-400 text-sm">Ethiopian calendar — all school events and holidays.</p>}
         </div>
         {canManage && (
           <button
             onClick={openCreate}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-bold text-sm shadow-lg shadow-blue-200 dark:shadow-none"
+            className={`bg-blue-600 hover:bg-blue-700 text-white ${compact ? 'px-3 py-1.5 rounded-lg text-xs' : 'px-4 py-2 rounded-xl text-sm'} flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-200 dark:shadow-none`}
           >
-            <Plus size={18} />
+            <Plus size={16} />
             Add Event
           </button>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 ${compact ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} ${compact ? 'gap-4' : 'gap-6'}`}>
         {/* Calendar Grid */}
-        <div className="lg:col-span-3">
+        <div className={compact ? "lg:col-span-2" : "lg:col-span-3"}>
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             {/* Month navigation */}
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className={`border-b border-slate-100 dark:border-slate-800 flex items-center justify-between ${compact ? 'p-3' : 'p-4'}`}>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   title="Previous month"
                   onClick={prevMonth}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className={`hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={compact ? 18 : 20} />
                 </button>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                  <h3 className={`font-bold text-slate-800 dark:text-slate-100 ${compact ? 'text-sm' : 'text-lg'}`}>
                     {ETH_MONTHS[ecMonth - 1]} {ecYear} E.C.
                   </h3>
-                  <p className="text-xs text-slate-400">Ethiopian Calendar</p>
+                  {!compact && <p className="text-xs text-slate-400">Ethiopian Calendar</p>}
                 </div>
                 <button
                   type="button"
                   title="Next month"
                   onClick={nextMonth}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className={`hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors ${compact ? 'p-1.5' : 'p-2'}`}
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={compact ? 18 : 20} />
                 </button>
               </div>
               <button
@@ -221,14 +234,14 @@ export const Calendar = () => {
             {/* Day headers */}
             <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800">
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                <div key={d} className="py-3 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">{d}</div>
+                <div key={d} className={`text-center font-bold text-slate-400 uppercase tracking-wider ${compact ? 'py-1.5 text-[10px]' : 'py-3 text-xs'}`}>{d}</div>
               ))}
             </div>
 
             {/* Day grid */}
             <div className="grid grid-cols-7">
               {emptyLeading.map((_, i) => (
-                <div key={`e-${i}`} className="h-24 md:h-28 border-b border-r border-slate-50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-800/10" />
+                <div key={`e-${i}`} className={`border-b border-r border-slate-50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-800/10 ${compact ? 'h-11 md:h-12' : 'h-24 md:h-28'}`} />
               ))}
               {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
                 const dayEvents = getEventsForDay(day);
@@ -236,11 +249,11 @@ export const Calendar = () => {
                 return (
                   <div
                     key={day}
-                    className={`h-24 md:h-28 border-b border-r border-slate-100 dark:border-slate-800 p-1.5 group transition-colors ${
+                    className={`border-b border-r border-slate-100 dark:border-slate-800 p-1 group transition-colors ${
                       today ? 'bg-blue-50 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
+                    } ${compact ? 'h-11 md:h-12' : 'h-24 md:h-28'}`}
                   >
-                    <span className={`text-sm font-bold inline-flex w-7 h-7 items-center justify-center rounded-full ${
+                    <span className={`font-bold inline-flex items-center justify-center rounded-full ${compact ? 'text-xs w-5 h-5' : 'text-sm w-7 h-7'} ${
                       today
                         ? 'bg-blue-600 text-white'
                         : 'text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors'
@@ -248,18 +261,18 @@ export const Calendar = () => {
                       {day}
                     </span>
                     <div className="mt-0.5 space-y-0.5 overflow-hidden">
-                      {dayEvents.slice(0, 2).map(ev => (
+                      {dayEvents.slice(0, compact ? 1 : 2).map(ev => (
                         <div
                           key={ev.id}
                           title={ev.title}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-bold truncate cursor-pointer ${EVENT_COLORS[ev.type] ?? EVENT_COLORS.Event}`}
+                          className={`rounded font-bold truncate cursor-pointer ${compact ? 'px-1 py-0.2 text-[8px]' : 'px-1.5 py-0.5 text-[10px]'} ${EVENT_COLORS[ev.type] ?? EVENT_COLORS.Event}`}
                           onClick={() => canManage && openEdit(ev)}
                         >
                           {ev.title}
                         </div>
                       ))}
-                      {dayEvents.length > 2 && (
-                        <p className="text-[10px] text-slate-400 font-bold px-1">+{dayEvents.length - 2} more</p>
+                      {dayEvents.length > (compact ? 1 : 2) && (
+                        <p className={`text-slate-400 font-bold px-1 ${compact ? 'text-[7px]' : 'text-[10px]'}`}>+{dayEvents.length - (compact ? 1 : 2)}</p>
                       )}
                     </div>
                   </div>
@@ -277,7 +290,7 @@ export const Calendar = () => {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-5">
+        <div className={compact ? "space-y-3" : "space-y-5"}>
           {/* Legend */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Event Types</h4>
@@ -371,18 +384,12 @@ export const Calendar = () => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Date (Gregorian) *</label>
-                <input
-                  type="date"
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Date (Ethiopian Calendar) *</label>
+                <EthiopianDatePicker
                   value={form.date}
-                  onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-shadow"
+                  onChange={val => setForm(f => ({ ...f, date: val }))}
+                  placeholder="YYYY-MM-DD"
                 />
-                {form.date && (
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Ethiopian: {(() => { try { const e = gregorianToEthiopian(new Date(form.date)); return `${e.day} ${ETH_MONTHS[e.month-1]} ${e.year} E.C.`; } catch { return ''; } })()}
-                  </p>
-                )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Type</label>
