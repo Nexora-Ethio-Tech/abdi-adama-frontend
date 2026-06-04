@@ -1,11 +1,11 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock, Edit2, Loader2 } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher } from '../services/schoolAdminService';
+import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher, updateUser, resetUserPIN } from '../services/schoolAdminService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
 
 export const LibrarianStaff = () => {
@@ -38,6 +38,12 @@ export const LibrarianStaff = () => {
   const [actionMenu, setActionMenu] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ show: boolean; action: 'approve' | 'revoke' | 'delete'; staff: any }>({ show: false, action: 'approve', staff: null });
   const [processing, setProcessing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<any | null>(null);
+  const [editFormData, setEditFormData] = useState({ name: '', email: '' });
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchLibrarianStaff();
@@ -93,6 +99,54 @@ export const LibrarianStaff = () => {
       alert(err.response?.data?.error?.message || 'Action failed');
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const openEditModal = (staff: any) => {
+    setEditingStaff(staff);
+    setEditFormData({
+      name: staff.name || '',
+      email: staff.email || ''
+    });
+    setGeneratedPassword(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStaff) return;
+    setSubmitting(true);
+    try {
+      await updateUser(editingStaff.userId, {
+        name: editFormData.name,
+        email: editFormData.email
+      });
+      alert('Librarian details updated successfully!');
+      setShowEditModal(false);
+      setEditingStaff(null);
+      fetchLibrarianStaff();
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to update librarian');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!editingStaff) return;
+    setResettingPassword(true);
+    try {
+      const result = await resetUserPIN(editingStaff.userId);
+      const newPIN = result?.newPIN;
+      if (newPIN) {
+        setGeneratedPassword(newPIN);
+      } else {
+        alert('Password reset succeeded');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error?.message || 'Failed to reset password');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -350,6 +404,13 @@ export const LibrarianStaff = () => {
                               Revoke
                             </button>
                           ) : null}
+                          <button
+                            onClick={() => openEditModal(staff)}
+                            className="p-1.5 text-slate-600 hover:bg-slate-50 dark:hover:bg-slate-950/30 rounded-lg transition-colors"
+                            title="Edit User"
+                          >
+                            <Edit2 size={16} />
+                          </button>
                           <button
                             onClick={() => setConfirmAction({ show: true, action: 'delete', staff })}
                             className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
@@ -627,6 +688,87 @@ export const LibrarianStaff = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editingStaff && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg"><Edit2 size={20} /></div>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Librarian</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+                title="Close edit modal"
+                aria-label="Close edit modal"
+              ><X size={20} /></button>
+            </div>
+            <form onSubmit={handleEdit} className="p-6 space-y-4">
+              <div>
+                <label htmlFor="edit-name" className="text-xs font-bold text-slate-500 uppercase">Full Name</label>
+                <input
+                  id="edit-name"
+                  type="text"
+                  required
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="edit-email" className="text-xs font-bold text-slate-500 uppercase">Email Address</label>
+                <input
+                  id="edit-email"
+                  type="email"
+                  required
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex flex-col gap-3 border-t border-b border-slate-100 dark:border-slate-800 py-4 my-2">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 uppercase">Password Reset</label>
+                    <p className="text-xs text-slate-500">Generate a new 4-digit PIN for this staff member.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetPassword}
+                    disabled={resettingPassword}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {resettingPassword ? 'Generating...' : 'Reset Password'}
+                  </button>
+                </div>
+                {generatedPassword && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      New password generated: <span className="font-mono text-base font-bold text-slate-900 dark:text-white ml-1">{generatedPassword}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
+                  disabled={submitting}>
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 bg-blue-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50"
+                  disabled={submitting}>
+                  {submitting ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                  <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
