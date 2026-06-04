@@ -3,6 +3,7 @@ import { getAssets, createAsset, updateAsset, type Asset } from '../services/ass
 import { useStore } from '../context/useStore';
 import { useUser } from '../context/UserContext';
 import { X, Plus, MapPin, Sparkles, AlertCircle, Edit3, MinusCircle } from 'lucide-react';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 const initialFormState = {
   name: '',
@@ -223,7 +224,7 @@ const AssetList = () => {
                     {Number(a.value).toLocaleString()} ETB
                   </td>
                   <td className="px-4 py-4 text-center text-xs text-slate-400 rounded-r-[1.25rem]">
-                    {new Date(a.created_at).toLocaleDateString()}
+                    {formatEthiopianLabel(a.created_at)}
                   </td>
                   <td className="px-4 py-4 text-center">
                     <div className="inline-flex flex-wrap items-center justify-end gap-2">
@@ -260,19 +261,21 @@ const AssetList = () => {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm p-4 md:items-center">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-black/5">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 text-white">
+          <div className="w-full max-w-2xl rounded-[2rem] bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-black/5 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-5 text-white shrink-0">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-100">Inventory</p>
                 <h3 className="mt-1 text-2xl font-black tracking-tight">{selectedAsset ? 'Edit Inventory Item' : 'Add Inventory Item'}</h3>
                 <p className="mt-1 text-sm text-emerald-50/90">
                   {selectedAsset ? `Update the asset details for ${currentBranchName}.` : `Record an asset for ${currentBranchName}.`}
-                </p>              </div>
+                </p>
+              </div>
               <button onClick={() => setShowModal(false)} className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20">
-                <X className="w-5 h-5" />              </button>
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="p-6 md:p-8">
+            <div className="p-6 md:p-8 overflow-y-auto flex-1">
               {error && (
                 <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200">
                   {error}
@@ -379,8 +382,8 @@ const AssetList = () => {
 
       {showReduceModal && selectedAsset && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm p-4 md:items-center">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[2rem] bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-black/5">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-5 text-white">
+          <div className="w-full max-w-2xl rounded-[2rem] bg-white dark:bg-slate-950 shadow-2xl ring-1 ring-black/5 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-rose-600 to-pink-600 px-6 py-5 text-white shrink-0">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-100">Inventory Adjustment</p>
                 <h3 className="mt-1 text-2xl font-black tracking-tight">Reduce Quantity</h3>
@@ -391,7 +394,7 @@ const AssetList = () => {
               </button>
             </div>
 
-            <div className="p-6 md:p-8">
+            <div className="p-6 md:p-8 overflow-y-auto flex-1">
               {error && (
                 <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800 dark:border-rose-900/40 dark:bg-rose-900/20 dark:text-rose-200">
                   {error}
