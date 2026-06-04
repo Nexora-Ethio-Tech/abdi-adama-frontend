@@ -8,6 +8,8 @@ import { exportToCSV } from '../utils/exportUtils';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useCallback } from 'react';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
+import { ethiopianToGregorianIso, gregorianToEthiopian, formatEthiopianLabel, getTodayEthiopianDate, getEthiopianYear } from '../utils/ethiopianCalendar';
 
 const API = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
 
@@ -34,11 +36,6 @@ interface AuditLogItem extends PaymentLog {
   actionLabel: string;
 }
 
-type SummaryWithApproval = (typeof mockFinances.summaries)[number] & {
-  approvedBy: string;
-  timestamp: string;
-};
-
 type NetProfitSummary = {
   totalIn: number;
   totalOut: number;
@@ -48,26 +45,13 @@ type NetProfitSummary = {
 const formatDateTime = (value: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
+  const label = formatEthiopianLabel(parsed);
+  const timeStr = parsed.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'
   });
+  return `${label} · ${timeStr}`;
 };
-
-const toInputDateTimeValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
-
-// Minimal mock used for typings when original mock data is not present after merge
-const mockFinances: { summaries: any[] } = { summaries: [] };
 
 export const Finance = () => {
   const navigate = useNavigate();
@@ -78,14 +62,14 @@ export const Finance = () => {
   const isClerk = role === 'finance-clerk';
   const canCreateTransaction = isClerk;
 
-  const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+  const todayEth = getTodayEthiopianDate();
+  const currentECYear = getEthiopianYear(new Date());
 
   const [showForm, setShowForm] = useState(false);
   const [selectedHistory, setSelectedHistory] = useState<{ name: string, logs: PaymentLog[] } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [fromDateTime, setFromDateTime] = useState(toInputDateTimeValue(startOfYear));
-  const [toDateTime, setToDateTime] = useState(toInputDateTimeValue(now));
+  const [fromDateTime, setFromDateTime] = useState(`${currentECYear}-01-01`);
+  const [toDateTime, setToDateTime] = useState(todayEth);
   const [netProfitSummary, setNetProfitSummary] = useState<NetProfitSummary | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [enrollmentQueue, setEnrollmentQueue] = useState<any[]>([]);
@@ -95,6 +79,7 @@ export const Finance = () => {
   const [activeView, setActiveView] = useState<'main' | 'audit' | 'registration'>('main');
   const [dbSummary, setDbSummary] = useState<any>(null);
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
+  const [dbAuditLogs, setDbAuditLogs] = useState<AuditLogItem[]>([]);
   const [txCategory, setTxCategory] = useState('Student Fee');
   const [customCategory, setCustomCategory] = useState('');
   const [auditFilter, setAuditFilter] = useState<'In' | 'Out'>('In');
@@ -110,12 +95,14 @@ export const Finance = () => {
   const fetchData = useCallback(async () => {
     if (!isAdmin) return; // finance-clerk uses /finance-dashboard, not this page
     try {
-      const [sumRes, txRes] = await Promise.all([
+      const [sumRes, txRes, auditRes] = await Promise.all([
         fetch(`${API}/api/finance/summary`, { headers: authHeaders() }),
-        fetch(`${API}/api/finance/transactions`, { headers: authHeaders() })
+        fetch(`${API}/api/finance/transactions`, { headers: authHeaders() }),
+        fetch(`${API}/api/finance/audit`, { headers: authHeaders() })
       ]);
       if (sumRes.ok) setDbSummary(await sumRes.json());
       if (txRes.ok) setDbTransactions(await txRes.json());
+      if (auditRes.ok) setDbAuditLogs(await auditRes.json());
     } catch (err) {
       console.error('Failed to fetch finance data', err);
     }
@@ -124,24 +111,19 @@ export const Finance = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const matchesRange = (timestamp: string) => {
+    if (!timestamp) return true;
     const current = new Date(timestamp);
-    const from = new Date(fromDateTime);
-    const to = new Date(toDateTime);
-    if (Number.isNaN(current.getTime()) || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    const fromGregStr = ethiopianToGregorianIso(fromDateTime);
+    const toGregStr = ethiopianToGregorianIso(toDateTime);
+    const from = fromGregStr ? new Date(fromGregStr + 'T00:00:00') : null;
+    const to = toGregStr ? new Date(toGregStr + 'T23:59:59') : null;
+    if (!from || !to || Number.isNaN(current.getTime()) || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
       return true;
     }
     return current >= from && current <= to;
   };
 
-  const summariesWithApproval: SummaryWithApproval[] = [];
-
-  const feeAuditLogs: AuditLogItem[] = [];
-
-  const opsAuditLogs: AuditLogItem[] = [];
-
-  const allAuditLogs = [...feeAuditLogs, ...opsAuditLogs].sort((a, b) =>
-    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  const allAuditLogs = dbAuditLogs;
 
   const sectionOptions = Array.from(new Set(allAuditLogs.map(log => log.section))).sort();
 
@@ -160,23 +142,20 @@ export const Finance = () => {
     );
   });
 
-  const filteredSummaries = summariesWithApproval.filter((summary) => {
+  const filteredTransactions = dbTransactions.filter((tx) => {
     const matchesSearch =
-      summary.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      summary.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      summary.approvedBy.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesRange(summary.timestamp) && matchesSearch;
+      tx.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tx.verified_by.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesRange(tx.date) && matchesSearch;
   });
 
-
-
   const calculateNetProfit = () => {
-    const totalIn = filteredSummaries
-      .filter(summary => summary.type === 'Income')
-      .reduce((sum, summary) => sum + summary.amount, 0);
-    const totalOut = filteredSummaries
-      .filter(summary => summary.type === 'Expense')
-      .reduce((sum, summary) => sum + summary.amount, 0);
+    const totalIn = filteredTransactions
+      .filter(tx => tx.type === 'Income' || tx.type.startsWith('Payment'))
+      .reduce((sum, tx) => sum + Number(tx.amount), 0);
+    const totalOut = filteredTransactions
+      .filter(tx => tx.type === 'Expense')
+      .reduce((sum, tx) => sum + Number(tx.amount), 0);
 
     setNetProfitSummary({
       totalIn,
@@ -195,13 +174,13 @@ export const Finance = () => {
         Timestamp: log.timestamp,
         Amount: log.direction === 'In' ? 'Income' : 'Expense'
       }))
-      : filteredSummaries.map(s => ({
-        Category: s.category,
-        Description: s.description,
-        ApprovedBy: s.approvedBy,
-        Date: s.date,
-        Type: s.type,
-        Amount: s.amount
+      : filteredTransactions.map(tx => ({
+        Category: tx.type,
+        Description: tx.student_name,
+        ApprovedBy: tx.verified_by,
+        Date: tx.date,
+        Type: tx.type,
+        Amount: tx.amount
       }));
 
     exportToCSV(dataToExport, activeView === 'audit' ? 'Finance_Audit_Log' : 'Finance_Ledger');
@@ -328,23 +307,19 @@ export const Finance = () => {
           </div>
         </div>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full lg:w-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full lg:w-[480px]">
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase">{t('finance.from')}</label>
-              <input
-                type="datetime-local"
+              <EthiopianDatePicker
                 value={fromDateTime}
-                onChange={(e) => setFromDateTime(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={setFromDateTime}
               />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase">To</label>
-              <input
-                type="datetime-local"
+              <EthiopianDatePicker
                 value={toDateTime}
-                onChange={(e) => setToDateTime(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 dark:text-white rounded-lg text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={setToDateTime}
               />
             </div>
           </div>
@@ -723,13 +698,13 @@ export const Finance = () => {
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                 {isAdmin ? (
-                  dbTransactions.map((tx) => (
+                  filteredTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type === 'Income' || tx.type.startsWith('Payment') ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -742,7 +717,7 @@ export const Finance = () => {
                       </td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
@@ -750,13 +725,13 @@ export const Finance = () => {
                     </tr>
                   ))
                 ) : (
-                  dbTransactions.map((tx) => (
+                  filteredTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type === 'Income' || tx.type.startsWith('Payment') ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -764,7 +739,7 @@ export const Finance = () => {
                       <td className="px-6 py-4 text-slate-600">{tx.student_name}</td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
@@ -772,7 +747,7 @@ export const Finance = () => {
                     </tr>
                   ))
                 )}
-                {dbTransactions.length === 0 && (
+                {filteredTransactions.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-sm font-semibold text-slate-400">
                       No transactions found in the database.

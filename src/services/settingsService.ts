@@ -33,6 +33,7 @@ export interface BranchProfitSummary {
   student_income: number;
   student_transaction_count: number;
   staff_payout: number;
+  staff_payout_is_projected: boolean;
   payroll_status: string | null;
   suggested_target: number;
   actual_net_profit: number;

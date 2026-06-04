@@ -25,6 +25,12 @@ const trafficColor = (value: number) => {
   return { bg: 'bg-rose-50 dark:bg-rose-900/10', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-400', dot: 'bg-rose-500', label: 'Critical' };
 };
 
+const feeTrafficColor = (value: number) => {
+  if (value >= 95) return { bg: 'bg-emerald-50 dark:bg-emerald-900/10', border: 'border-emerald-200 dark:border-emerald-800', text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500', label: 'Healthy' };
+  if (value >= 80) return { bg: 'bg-amber-50 dark:bg-amber-900/10', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500', label: 'Attention' };
+  return { bg: 'bg-rose-50 dark:bg-rose-900/10', border: 'border-rose-200 dark:border-rose-800', text: 'text-rose-700 dark:text-rose-400', dot: 'bg-rose-500', label: 'Critical' };
+};
+
 type BranchAnalyticsRow = {
   id: string;
   name: string;
@@ -47,6 +53,8 @@ type AnalyticsResponse = {
     currentStudents: number;
     lastMonthStudents: number;
     enrollmentGrowth: number;
+    yearlyStudentCollections: number;
+    yearlyStaffPayments: number;
     overdueCount?: number;
     overdueAmount?: number;
   };
@@ -79,7 +87,7 @@ export const Analytics = () => {
   }, [selectedBranchId]);
 
   const overview = analytics?.overview;
-  const feeColor = trafficColor(overview?.feePercent || 0);
+  const feeColor = feeTrafficColor(overview?.feePercent || 0);
   const studentAttColor = trafficColor(overview?.studentAttendance || 0);
   const branchPerformance = selectedBranchId && analytics?.selectedBranch
     ? [analytics.selectedBranch]
@@ -169,7 +177,7 @@ export const Analytics = () => {
       )}
 
       {/* The "Big Three" Traffic Light Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Financial Health */}
         <div className={`${feeColor.bg} ${feeColor.border} border-2 rounded-[2.5rem] p-8 transition-all hover:shadow-xl group`}>
           <div className="flex items-center justify-between mb-6">
@@ -182,43 +190,53 @@ export const Analytics = () => {
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Money In</p>
               <h3 className="text-4xl font-black text-slate-800 dark:text-white">{((overview?.feeCollected || 0) / 1000000).toFixed(1)}M <span className="text-base font-bold text-slate-400">ETB</span></h3>
           <div className="mt-6 space-y-3">
-            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+            <button 
+              onClick={() => {
+                const element = document.getElementById('branch-collection-status');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="w-full flex justify-between items-center text-[10px] font-black uppercase tracking-widest hover:text-blue-600 transition-colors text-left"
+            >
               <span className="text-slate-400">Collection Rate</span>
-                  <span className={feeColor.text}>{overview?.feePercent || 0}%</span>
-            </div>
+              <span className={feeColor.text}>{overview?.feePercent || 0}%</span>
+            </button>
             <div className="h-3 bg-white/50 dark:bg-slate-800/50 rounded-full overflow-hidden border border-slate-100 dark:border-slate-800">
               <div
-                    className={`h-full rounded-full transition-all duration-1000 ${(overview?.feePercent || 0) >= 90 ? 'bg-emerald-500' : (overview?.feePercent || 0) >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                    className={`h-full rounded-full transition-all duration-1000 ${(overview?.feePercent || 0) >= 95 ? 'bg-emerald-500' : (overview?.feePercent || 0) >= 80 ? 'bg-amber-500' : 'bg-rose-500'}`}
                     style={{ width: `${overview?.feePercent || 0}%` }}
               />
             </div>
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic tracking-wide">Missing Payments: {(((overview?.feeExpected || 0) - (overview?.feeCollected || 0)) / 1000).toFixed(0)}K ETB</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic tracking-wide">Missing Payments: {Math.max(0, ((overview?.feeExpected || 0) - (overview?.feeCollected || 0)) / 1000).toFixed(0)}K ETB</p>
           </div>
         </div>
 
         {/* Daily Pulse */}
-        <div className={`${studentAttColor.bg} ${studentAttColor.border} border-2 rounded-[2.5rem] p-8 transition-all hover:shadow-xl group`}>
+        <div className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 border-2 rounded-[2.5rem] p-8 transition-all hover:shadow-xl group">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${studentAttColor.dot} animate-pulse`} />
-              <span className={`text-[10px] font-black uppercase tracking-widest ${studentAttColor.text}`}>{studentAttColor.label}</span>
+              <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Yearly Cashflow Pulse</span>
             </div>
-            <Users size={24} className={`${studentAttColor.text} group-hover:scale-110 transition-transform`} />
+            <Users size={24} className="text-slate-400 group-hover:scale-110 transition-transform" />
           </div>
           <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2">Daily Pulse</p>
-          <div className="flex items-end gap-6 mt-2">
+          <div className="grid grid-cols-2 gap-6 mt-4">
             <div>
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Students</p>
-              <h3 className="text-4xl font-black text-slate-800 dark:text-white">{overview?.studentAttendance || 0}<span className="text-lg text-slate-400">%</span></h3>
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Students</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-2">Collected This Year</p>
+              <h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white">
+                {Number(overview?.yearlyStudentCollections || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">ETB</span>
+              </h3>
             </div>
-            <div className="pb-1 border-l border-slate-200 dark:border-slate-800 pl-6">
-              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Staff</p>
-              <h3 className="text-2xl font-black text-slate-800 dark:text-slate-300">{overview?.staffAttendance || 0}<span className="text-sm text-slate-400">%</span></h3>
+            <div className="border-l border-slate-100 dark:border-slate-800 pl-6">
+              <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Staff</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-2">Paid This Year</p>
+              <h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white">
+                {Number(overview?.yearlyStaffPayments || 0).toLocaleString()} <span className="text-[10px] font-bold text-slate-400">ETB</span>
+              </h3>
             </div>
-          </div>
-          <div className="mt-6 flex gap-3">
-            <div className={`flex-1 h-2.5 rounded-full ${(overview?.studentAttendance || 0) >= 90 ? 'bg-emerald-400' : (overview?.studentAttendance || 0) >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
-            <div className={`flex-1 h-2.5 rounded-full ${(overview?.staffAttendance || 0) >= 90 ? 'bg-emerald-400' : (overview?.staffAttendance || 0) >= 75 ? 'bg-amber-400' : 'bg-rose-400'}`} />
           </div>
         </div>
       </div>
@@ -245,7 +263,7 @@ export const Analytics = () => {
       </div>
 
       {/* Simplified Branch Performance */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm p-8 transition-all duration-500">
+      <div id="branch-collection-status" className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm p-8 transition-all duration-500">
         <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-8">Branch Collection Status</h3>
         <div className="space-y-8">
           {branchPerformance.map((branch, i) => {

@@ -102,6 +102,13 @@ export const Settings = () => {
   const [profitTargetAmount, setProfitTargetAmount] = useState('500000');
   const [profitSummary, setProfitSummary] = useState<BranchProfitSummary | null>(null);
   const [profitSummaryLoading, setProfitSummaryLoading] = useState(false);
+  // Manual overrides for student income and staff payout (editable by super admin)
+  const [manualStudentIncome, setManualStudentIncome] = useState<string>('');
+  const [manualStaffPayout, setManualStaffPayout] = useState<string>('');
+  const [studentIncomeEdited, setStudentIncomeEdited] = useState(false);
+  const [staffPayoutEdited, setStaffPayoutEdited] = useState(false);
+  // Lock target editing after 4th of each Gregorian month
+  const isTargetSettingLocked = (() => { const d = new Date().getDate(); return d > 4; })();
   const [smtpSettings, setSmtpSettings] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_from: '' });
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
@@ -209,10 +216,16 @@ export const Settings = () => {
         ethiopianMonth: Number(profitTargetMonth),
       });
       setProfitSummary(summary);
+      // Populate manual overrides only if user hasn't edited them yet
+      if (!studentIncomeEdited) setManualStudentIncome(String(Math.round(summary.student_income)));
+      if (!staffPayoutEdited) setManualStaffPayout(String(Math.round(summary.staff_payout)));
+      // Compute suggested target from (possibly overridden) values
+      const income = studentIncomeEdited ? Number(manualStudentIncome) : Math.round(summary.student_income);
+      const payout = staffPayoutEdited ? Number(manualStaffPayout) : Math.round(summary.staff_payout);
       setProfitTargetAmount(
         summary.saved_target != null
           ? String(summary.saved_target)
-          : String(Math.round(summary.suggested_target))
+          : String(income + payout)
       );
     } catch (err) {
       console.error('Failed to load profit summary:', err);
@@ -220,7 +233,7 @@ export const Settings = () => {
     } finally {
       setProfitSummaryLoading(false);
     }
-  }, [profitTargetBranchId, profitTargetMonth, role]);
+  }, [profitTargetBranchId, profitTargetMonth, role, studentIncomeEdited, staffPayoutEdited, manualStudentIncome, manualStaffPayout]);
 
   useEffect(() => {
     if ((role === 'super-admin' || role === 'school-admin') && profitTargetBranchId && activeTab === 'Financial Policy') {
@@ -1679,63 +1692,123 @@ export const Settings = () => {
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider py-6 text-center">Loading branch financials…</p>
                         ) : profitSummary ? (
                           <>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                              Period mapped to <strong>{profitSummary.monthName} {profitSummary.gregYear}</strong> (Gregorian) ·{' '}
-                              {profitSummary.student_transaction_count} student payment{profitSummary.student_transaction_count === 1 ? '' : 's'} recorded
-                              {profitSummary.payroll_status
-                                ? ` · Payroll: ${profitSummary.payroll_status}`
-                                : ' · No payroll run for this month yet'}
-                            </p>
+                            {/* Period info & lock notice */}
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-[10px] text-slate-500 font-medium">
+                                Period mapped to <strong>{profitSummary.monthName} {profitSummary.gregYear}</strong> (Gregorian) ·{' '}
+                                {profitSummary.student_transaction_count} student payment{profitSummary.student_transaction_count === 1 ? '' : 's'} recorded
+                                {profitSummary.payroll_status
+                                  ? ` · Payroll: ${profitSummary.payroll_status}`
+                                  : ' · No payroll run yet'}
+                              </p>
+                              {isTargetSettingLocked && (
+                                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
+                                  🔒 Locked — editable up to 4th of month only
+                                </span>
+                              )}
+                            </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-                                <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Student income</p>
-                                <p className="text-xl font-black text-emerald-800 dark:text-emerald-300 mt-1">
-                                  {profitSummary.student_income.toLocaleString()} ETB
-                                </p>
-                                <p className="text-[10px] text-emerald-600/80 mt-1">Sum of fee collections</p>
+                            {/* Editable Student Income */}
+                            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40 space-y-2">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                  <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest">Student Income</p>
+                                  <p className="text-[10px] text-emerald-600/80">Pagume → Sene (10-month window) · Fees, bus, registration &amp; other payments</p>
+                                </div>
+                                {studentIncomeEdited && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setStudentIncomeEdited(false); setManualStudentIncome(String(Math.round(profitSummary.student_income))); }}
+                                    className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 hover:underline uppercase tracking-wider"
+                                  >↩ Reset to auto</button>
+                                )}
                               </div>
-                              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40">
-                                <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest">Staff payout</p>
-                                <p className="text-xl font-black text-rose-800 dark:text-rose-300 mt-1">
-                                  {profitSummary.staff_payout.toLocaleString()} ETB
-                                </p>
-                                <p className="text-[10px] text-rose-600/80 mt-1">Net pay + employer pension</p>
+                              <input
+                                id="manual-student-income"
+                                type="number"
+                                disabled={isTargetSettingLocked}
+                                value={manualStudentIncome}
+                                onChange={(e) => { setManualStudentIncome(e.target.value); setStudentIncomeEdited(true); setProfitTargetAmount(String(Number(e.target.value) + Number(manualStaffPayout))); }}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                              />
+                              {!studentIncomeEdited && (
+                                <p className="text-[9px] text-emerald-600/70 italic">Auto-fetched from finance records · edit to override</p>
+                              )}
+                            </div>
+
+                            {/* Editable Staff Payout */}
+                            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/40 space-y-2">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div>
+                                  <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                                    Staff Payout — All Roles
+                                    {profitSummary.staff_payout_is_projected && (
+                                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[8px] font-black">PROJECTED</span>
+                                    )}
+                                  </p>
+                                  <p className="text-[10px] text-rose-600/80">Full year · Net salary + employer pension (11%) for all staff</p>
+                                </div>
+                                {staffPayoutEdited && (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setStaffPayoutEdited(false); setManualStaffPayout(String(Math.round(profitSummary.staff_payout))); }}
+                                    className="text-[9px] font-black text-rose-700 dark:text-rose-400 hover:underline uppercase tracking-wider"
+                                  >↩ Reset to auto</button>
+                                )}
                               </div>
-                              <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
-                                <p className="text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Suggested target</p>
-                                <p className="text-xl font-black text-blue-800 dark:text-blue-300 mt-1">
-                                  {profitSummary.suggested_target.toLocaleString()} ETB
-                                </p>
-                                <p className="text-[10px] text-blue-600/80 mt-1">Income − staff payout</p>
-                              </div>
+                              <input
+                                id="manual-staff-payout"
+                                type="number"
+                                disabled={isTargetSettingLocked}
+                                value={manualStaffPayout}
+                                onChange={(e) => { setManualStaffPayout(e.target.value); setStaffPayoutEdited(true); setProfitTargetAmount(String(Number(manualStudentIncome) + Number(e.target.value))); }}
+                                className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-rose-400 disabled:opacity-60 disabled:cursor-not-allowed"
+                              />
+                              {!staffPayoutEdited && profitSummary.staff_payout_is_projected && (
+                                <p className="text-[9px] text-amber-600/80 italic">⚠ No payroll run found — value projected from salary profiles</p>
+                              )}
+                              {!staffPayoutEdited && !profitSummary.staff_payout_is_projected && (
+                                <p className="text-[9px] text-rose-600/70 italic">Auto-fetched from finalized payroll · edit to override</p>
+                              )}
+                            </div>
+
+                            {/* Suggested Target = Income + Payout */}
+                            <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                              <p className="text-[9px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">Suggested Target</p>
+                              <p className="text-2xl font-black text-blue-800 dark:text-blue-300 mt-1">
+                                {(Number(manualStudentIncome || 0) + Number(manualStaffPayout || 0)).toLocaleString()} <span className="text-sm font-bold">ETB</span>
+                              </p>
+                              <p className="text-[10px] text-blue-600/80 mt-1">Student Income + Staff Payout (total monthly school budget obligation)</p>
                             </div>
 
                             {role === 'super-admin' ? (
                               <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
                                 <div className="space-y-1">
-                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Your target profit (ETB)</label>
+                                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Final Target Amount (ETB)</label>
                                   <input
+                                    id="profit-target-amount"
                                     type="number"
-                                    placeholder={String(Math.round(profitSummary.suggested_target))}
+                                    disabled={isTargetSettingLocked}
+                                    placeholder={String(Number(manualStudentIncome || 0) + Number(manualStaffPayout || 0))}
                                     value={profitTargetAmount}
                                     onChange={(e) => setProfitTargetAmount(e.target.value)}
-                                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
                                   />
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   <button
                                     type="button"
-                                    onClick={() => setProfitTargetAmount(String(Math.round(profitSummary.suggested_target)))}
-                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600"
+                                    disabled={isTargetSettingLocked}
+                                    onClick={() => setProfitTargetAmount(String(Number(manualStudentIncome || 0) + Number(manualStaffPayout || 0)))}
+                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     Use suggested
                                   </button>
                                   <button
                                     type="button"
                                     onClick={handleSetProfitTarget}
-                                    disabled={financeLoading || !profitTargetBranchId}
-                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
+                                    disabled={financeLoading || !profitTargetBranchId || isTargetSettingLocked}
+                                    className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800 dark:hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
                                     <Save size={14} />
                                     Save target
@@ -1744,7 +1817,7 @@ export const Settings = () => {
                               </div>
                             ) : (
                               <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-                                <p className="text-sm font-bold">Target profit (ETB): {Number(profitTargetAmount || profitSummary.saved_target || Math.round(profitSummary.suggested_target)).toLocaleString()}</p>
+                                <p className="text-sm font-bold">Target (ETB): {Number(profitTargetAmount || profitSummary.saved_target || (Number(manualStudentIncome || 0) + Number(manualStaffPayout || 0))).toLocaleString()}</p>
                               </div>
                             )}
 
@@ -1787,6 +1860,7 @@ export const Settings = () => {
                           <p className="text-xs text-slate-400 py-4">Select a branch to load financial data.</p>
                         )}
                       </div>
+
 
                       {profitTargets.filter((t) => t.branch_id === profitTargetBranchId).length > 0 && (
                         <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
