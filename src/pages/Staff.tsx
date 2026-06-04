@@ -234,20 +234,27 @@ export const Staff = () => {
       setErrorModal({ show: true, message: 'Please enter a valid email address' });
       return;
     }
+
+    // Format name: Capitalize first letter of each word, rest lowercase
+    const formattedName = createForm.name
+      .trim()
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
+      
+    if (!formattedName) {
+      setErrorModal({ show: true, message: 'Name is required' });
+      return;
+    }
+
     setCreating(true);
     try {
       // Backend has conflicting validation - dedicated endpoints shouldn't require role field
       const data: any = {
-        name: createForm.name,
+        name: formattedName,
         email: createForm.email,
-        branchId: createForm.branchId
+        branchId: createForm.role === 'auditor' ? null : (currentUserRole === 'super-admin' && selectedBranchId ? selectedBranchId : createForm.branchId)
       };
-
-      // Only add password if provided (trimmed)
-      const trimmedPassword = createForm.password.trim();
-      if (trimmedPassword) {
-        data.password = trimmedPassword;
-      }
 
       console.log('📤 Sending data:', data);
       console.log('🎯 Endpoint:', createForm.role);
@@ -436,7 +443,14 @@ export const Staff = () => {
                 <select
                   id="role-select"
                   value={createForm.role}
-                  onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
+                  onChange={(e) => {
+                    const newRole = e.target.value;
+                    setCreateForm({
+                      ...createForm,
+                      role: newRole,
+                      branchId: newRole === 'auditor' ? '' : createForm.branchId
+                    });
+                  }}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -452,7 +466,20 @@ export const Staff = () => {
                   id="name-input"
                   type="text"
                   value={createForm.name}
-                  onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                  onChange={(e) => {
+                    // Reject numbers, symbols, and other special characters. Allow unicode letters & spaces.
+                    const cleaned = e.target.value.replace(/[^\p{L}\s]/gu, '');
+                    setCreateForm({ ...createForm, name: cleaned });
+                  }}
+                  onBlur={(e) => {
+                    // Capitalize first letter of each word, rest lowercase
+                    const formatted = e.target.value
+                      .trim()
+                      .split(/\s+/)
+                      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                      .join(' ');
+                    setCreateForm({ ...createForm, name: formatted });
+                  }}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
@@ -470,40 +497,30 @@ export const Staff = () => {
                 />
               </div>
 
-              <div>
-                <label htmlFor="branch-select" className="text-xs font-bold text-slate-500 uppercase">Branch</label>
-                {currentUserRole === 'super-admin' && selectedBranchId ? (
-                  <div className="w-full mt-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200">
-                    {selectedBranch?.name || branches.find((branch) => branch.id === selectedBranchId)?.name || 'Selected Branch'}
-                    <input type="hidden" value={selectedBranchId} />
-                  </div>
-                ) : (
-                  <select
-                    id="branch-select"
-                    value={createForm.branchId}
-                    onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
-                    className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select Branch</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>{branch.name}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="password-input" className="text-xs font-bold text-slate-500 uppercase">Password (Optional)</label>
-                <input
-                  id="password-input"
-                  type="password"
-                  value={createForm.password}
-                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Leave blank for auto-generated"
-                />
-              </div>
+              {createForm.role !== 'auditor' && (
+                <div>
+                  <label htmlFor="branch-select" className="text-xs font-bold text-slate-500 uppercase">Branch</label>
+                  {currentUserRole === 'super-admin' && selectedBranchId ? (
+                    <div className="w-full mt-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-200">
+                      {selectedBranch?.name || branches.find((branch) => branch.id === selectedBranchId)?.name || 'Selected Branch'}
+                      <input type="hidden" value={selectedBranchId} />
+                    </div>
+                  ) : (
+                    <select
+                      id="branch-select"
+                      value={createForm.branchId}
+                      onChange={(e) => setCreateForm({ ...createForm, branchId: e.target.value })}
+                      className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select Branch</option>
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.id}>{branch.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
               <div className="pt-4 flex gap-3">
                 <button

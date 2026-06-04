@@ -1475,15 +1475,29 @@ export const Settings = () => {
                                 <td colSpan={5} className="text-center py-6 text-slate-400 font-bold uppercase text-[10px] tracking-wider">No change activities audited yet.</td>
                               </tr>
                             ) : (
-                              financeAuditLog.slice(0, 10).map((log) => (
-                                <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                                  <td className="px-6 py-3 font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">{log.setting_key.replace(/_/g, ' ')}</td>
-                                  <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value} ETB/Units` : 'N/A'}</td>
-                                  <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value} ETB/Units</td>
-                                  <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
-                                  <td className="px-6 py-3 font-medium text-slate-400">{formatEthiopianLabel(log.changed_at)}</td>
-                                </tr>
-                              ))
+                              (() => {
+                                const getSettingUnit = (key: string): string => {
+                                  const etbKeys = ['student_registration_fee', 'student_late_penalty_rate', 'daily_penalty_rate'];
+                                  const pctKeys = ['loan_deduction_percentage'];
+                                  const rawKeys = ['student_payment_deadline', 'staff_salary_deadline', 'max_loan_months', 'max_loan_duration'];
+                                  if (etbKeys.includes(key)) return ' ETB';
+                                  if (pctKeys.includes(key)) return '%';
+                                  if (rawKeys.includes(key)) return '';
+                                  return '';
+                                };
+                                return financeAuditLog.slice(0, 10).map((log) => {
+                                  const unit = getSettingUnit(log.setting_key);
+                                  return (
+                                    <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                                      <td className="px-6 py-3 font-bold uppercase tracking-tight text-blue-600 dark:text-blue-400">{log.setting_key.replace(/_/g, ' ')}</td>
+                                      <td className="px-6 py-3 font-medium text-slate-400">{log.old_value !== null ? `${log.old_value}${unit}` : 'N/A'}</td>
+                                      <td className="px-6 py-3 font-bold text-slate-800 dark:text-white">{log.new_value}{unit}</td>
+                                      <td className="px-6 py-3 font-medium">{log.changed_by_name || log.changed_by_username || 'Super Admin'}</td>
+                                      <td className="px-6 py-3 font-medium text-slate-400">{formatEthiopianLabel(log.changed_at)}</td>
+                                    </tr>
+                                  );
+                                });
+                              })()
                             )}
                           </tbody>
                         </table>

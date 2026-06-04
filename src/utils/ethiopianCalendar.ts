@@ -19,12 +19,7 @@
 
 /** Return the Ethiopian Calendar year for a given JS Date. */
 export function getEthiopianYear(date: Date = new Date()): number {
-  const month = date.getMonth() + 1; // 1-based
-  const day = date.getDate();
-  const gYear = date.getFullYear();
-  // After Enkutatash (Sep 11), Ethiopian year = Gregorian year − 7
-  if (month > 9 || (month === 9 && day >= 11)) return gYear - 7;
-  return gYear - 8;
+  return gregorianToEthiopian(date).year;
 }
 
 /** Return the current Ethiopian Calendar year. */
@@ -151,13 +146,11 @@ export function gregorianToEthiopian(date: Date | string): { year: number; month
   const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
   
   const r = (jdn - 1723856) % 1461;
-  const ethYear = Math.floor((jdn - 1723856) / 1461) * 4 + Math.floor(r / 365) + 1;
-  const ethMonth = Math.floor((r % 365) / 30) + 1;
-  const ethDay = ((r % 365) % 30) + 1;
+  const n = (r % 365) + 365 * Math.floor(r / 1460);
   
-  if (r === 1460) {
-    return { year: ethYear - 1, month: 13, day: 6 };
-  }
+  const ethYear = 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
+  const ethMonth = Math.floor(n / 30) + 1;
+  const ethDay = (n % 30) + 1;
   
   return { year: ethYear, month: ethMonth, day: ethDay };
 }
@@ -170,7 +163,7 @@ export function ethiopianToGregorianIso(ethDateStr: string): string {
   if (!parts) return '';
   const { year, month, day } = parts;
   
-  const era = 1723856;
+  const era = 1724220;
   const jdn = era + 365 * (year - 1) + Math.floor(year / 4) + 30 * (month - 1) + day;
   
   const j = jdn + 32044;
