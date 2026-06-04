@@ -34,6 +34,7 @@ export interface StudentFeeInfo {
   fee_approval_status: 'none' | 'pending' | 'approved' | 'rejected';
   fee_notes: string | null;
   requested_aid_amount?: number | null;
+  collection_status?: 'in_collections' | 'cleared' | 'overdue' | null;
 }
 
 export interface TransportStudentInfo {

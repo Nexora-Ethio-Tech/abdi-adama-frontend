@@ -189,6 +189,22 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         }
       }
 
+      if (outstandingData) {
+        const penaltyFee = (outstandingData.fees || []).find((f: any) => f.feeType === 'penalty');
+        const penaltyOutstanding = Number(penaltyFee?.remaining || 0);
+        if (penaltyOutstanding > 0) {
+          const penaltyPaymentItem = items.find(it => it.feeType === 'penalty');
+          const penaltyPaidAmount = penaltyPaymentItem ? penaltyPaymentItem.amount : 0;
+          const otherFeesPaid = items.some(it => it.feeType !== 'penalty' && it.amount > 0);
+
+          if (otherFeesPaid && penaltyPaidAmount < penaltyOutstanding) {
+            setError('You must fully pay the outstanding penalty fee before paying other fees.');
+            setTimeout(() => setError(null), 5000);
+            return;
+          }
+        }
+      }
+
       const payloadData = { studentId: paymentData.studentId, items, month: paymentData.month, date: paymentData.date, reference: (paymentData as any).reference };
       console.log('💳 [FinanceClerk] Recording payment:', payloadData);
       await financeClerkService.recordPayment(payloadData);
@@ -1492,6 +1508,19 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                             <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
                               {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
                             </span>
+                            {student.collection_status === 'cleared' ? (
+                              <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Paid ✓
+                              </span>
+                            ) : student.collection_status === 'overdue' ? (
+                              <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Overdue
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
+                                Unpaid
+                              </span>
+                            )}
                             {student.fee_approval_status === 'pending' && (
                               <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
                                 Pending Approval
@@ -1517,7 +1546,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
-                              onClick={() => openPaymentModal(student)}
+                               onClick={() => openPaymentModal(student)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
                             >
                               Record Payment
@@ -1546,6 +1575,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         <span className={`px-2 py-1 text-[10px] rounded-full font-bold uppercase tracking-wider ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
                           {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
                         </span>
+                        {student.collection_status === 'cleared' ? (
+                          <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase">Paid ✓</span>
+                        ) : student.collection_status === 'overdue' ? (
+                          <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-[9px] font-bold uppercase">Overdue</span>
+                        ) : (
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Unpaid</span>
+                        )}
                         {student.fee_approval_status === 'pending' && <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Pending</span>}
                         {student.fee_approval_status === 'approved' && <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase">Approved</span>}
                         {student.fee_approval_status === 'rejected' && <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-[9px] font-bold uppercase">Rejected</span>}
@@ -1900,6 +1936,25 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   )}
                 </div>
               </div>
+              {outstandingData && (() => {
+                const penaltyFee = (outstandingData.fees || []).find((f: any) => f.feeType === 'penalty');
+                const penaltyRemaining = Number(penaltyFee?.remaining || 0);
+                if (penaltyRemaining > 0) {
+                  const penaltySelected = selectedPaymentTypes.includes('Penalty Fee');
+                  const penaltyInputAmount = Number(paymentAmounts['penalty'] ?? penaltyRemaining);
+                  const isPenaltyFullyPaid = penaltySelected && penaltyInputAmount >= penaltyRemaining;
+                  const payingOtherFees = selectedPaymentTypes.some(t => t !== 'Penalty Fee');
+                  
+                  if (payingOtherFees && !isPenaltyFullyPaid) {
+                    return (
+                      <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-2">
+                        <span>⚠️ Penalty Fee must be paid in full to settle other fees.</span>
+                      </div>
+                    );
+                  }
+                }
+                return null;
+              })()}
               {outstandingData && (
                 <div className="space-y-2 p-4 rounded-3xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                   <div className="flex items-center justify-between text-sm text-slate-700 dark:text-slate-300">
