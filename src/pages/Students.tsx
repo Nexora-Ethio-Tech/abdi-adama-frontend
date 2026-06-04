@@ -162,11 +162,18 @@ export const Students = () => {
   };
 
   const selectAllFiltered = () => {
-    if (selectedStudentIds.size === filtered.length) {
-      setSelectedStudentIds(new Set());
+    const unassignedFiltered = filtered.filter(s => !s.section);
+    if (unassignedFiltered.length === 0) return;
+
+    const allUnassignedSelected = unassignedFiltered.every(s => selectedStudentIds.has(s.id));
+    const newSelected = new Set(selectedStudentIds);
+    
+    if (allUnassignedSelected) {
+      unassignedFiltered.forEach(s => newSelected.delete(s.id));
     } else {
-      setSelectedStudentIds(new Set(filtered.map(s => s.id)));
+      unassignedFiltered.forEach(s => newSelected.add(s.id));
     }
+    setSelectedStudentIds(newSelected);
   };
 
   const openBulkAssignModal = async () => {
@@ -215,17 +222,21 @@ export const Students = () => {
 
     const targetGrade = bulkTargetGrade || (filterGrade ? `Grade ${filterGrade}` : '');
     const selectedStudentIdsForGrade = students
-      .filter((student) => selectedStudentIds.has(student.id) && getGradeNumber(student.grade) === getGradeNumber(targetGrade))
+      .filter((student) => 
+        selectedStudentIds.has(student.id) && 
+        getGradeNumber(student.grade) === getGradeNumber(targetGrade) &&
+        !student.section
+      )
       .map((student) => student.id);
 
     if (selectedStudentIdsForGrade.length === 0) {
-      showToast('No selected students match the target grade. Please choose the correct grade and try again.', 'error');
+      showToast('No selected unassigned students match the target grade.', 'error');
       return;
     }
 
     const ignoredCount = selectedStudentIds.size - selectedStudentIdsForGrade.length;
     if (ignoredCount > 0) {
-      showToast(`${selectedStudentIdsForGrade.length} student(s) from ${targetGrade} will be assigned. ${ignoredCount} selected student(s) were skipped because they are in a different grade.`, 'success');
+      showToast(`${selectedStudentIdsForGrade.length} student(s) from ${targetGrade} will be assigned. ${ignoredCount} selected student(s) were skipped because they are in a different grade or already assigned to a section.`, 'success');
     }
 
     const selectedSections = availableSections.filter(section => selectedBulkSectionIds.has(section.id));
@@ -679,10 +690,14 @@ export const Students = () => {
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
                       <input
                         type="checkbox"
-                        checked={selectedStudentIds.size === filtered.length && filtered.length > 0}
+                        checked={
+                          filtered.length > 0 &&
+                          filtered.filter(s => !s.section).length > 0 &&
+                          filtered.filter(s => !s.section).every(s => selectedStudentIds.has(s.id))
+                        }
                         onChange={selectAllFiltered}
                         className="rounded cursor-pointer"
-                        title="Select all visible students"
+                        title="Select all visible unassigned students"
                         aria-label="Select all students"
                       />
                     </th>
