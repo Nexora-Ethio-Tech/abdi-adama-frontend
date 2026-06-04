@@ -25,7 +25,13 @@ api.interceptors.response.use(
     const originalRequest = error.config;
 
     // If 401 and not already retried, try refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // But skip this entirely for auth endpoints — a 401 from /auth/login means wrong credentials,
+    // not an expired session. Trying to refresh there causes an infinite redirect loop.
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/refresh-token') ||
+      originalRequest.url?.includes('/auth/logout');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
@@ -40,7 +46,7 @@ api.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, logout user
+        // Refresh failed — clear session and redirect to login
         localStorage.removeItem('abdi_adama_token');
         localStorage.removeItem('abdi_adama_refresh_token');
         localStorage.removeItem('abdi_adama_user');
