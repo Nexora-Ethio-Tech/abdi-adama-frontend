@@ -490,13 +490,12 @@ export const Settings = () => {
   };
 
   const handleApplyFeeConfig = async () => {
-    if (!feeBranchId) return;
     if (!feeBranchId) {
       setFinanceErrorMsg('Please select a branch');
       return;
     }
-    if (feeGrades.length === 0) {
-      setFinanceErrorMsg('Please select at least one grade level');
+    if (!feeGrade) {
+      setFinanceErrorMsg('Please select a grade level');
       return;
     }
     setFinanceLoading(true);
@@ -508,17 +507,8 @@ export const Settings = () => {
         registrationFee: feeRegistration,
         busFee: feeBus,
       });
-      for (const grade of feeGrades) {
-        await settingsService.upsertBranchGradeFee({
-          branchId: feeBranchId,
-          gradeLevel: grade,
-          monthlyFee: feeMonthly,
-          registrationFee: feeRegistration,
-          busFee: feeBus,
-        });
-      }
       await loadFeeStructure();
-      setFinanceSuccessMsg('Fee configuration applied');
+      setFinanceSuccessMsg('Fee configuration applied for Grade ' + feeGrade);
       setTimeout(() => setFinanceSuccessMsg(''), 4000);
     } catch (err: any) {
       setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to save fee configuration');
@@ -528,11 +518,15 @@ export const Settings = () => {
   };
 
   const handleDeleteFeeConfig = async (id: string) => {
+    if (!window.confirm('Delete this fee configuration? This cannot be undone.')) return;
     try {
       await settingsService.deleteBranchGradeFee(id);
-      await loadFeeStructure();
+      setFinanceSuccessMsg('Fee configuration removed.');
+      setTimeout(() => setFinanceSuccessMsg(''), 3000);
     } catch (err: any) {
       setFinanceErrorMsg(err.response?.data?.error?.message || 'Failed to delete fee configuration');
+    } finally {
+      await loadFeeStructure();
     }
   };
 
@@ -1210,8 +1204,8 @@ export const Settings = () => {
                       {/* Student Registration Fee */}
                       <div className="p-5 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/80 rounded-3xl space-y-3 flex flex-col justify-between">
                         <div>
-                          <label htmlFor="student-registration-fee" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Student Registration Fee (ETB)</label>
-                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">Global registration amount used by finance when approving new applications.</p>
+                          <label htmlFor="student-registration-fee" className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Global Application Registration Fee (ETB)</label>
+                          <p className="text-[10px] text-slate-400 font-medium leading-relaxed mb-3">System-wide fallback registration fee used when no per-grade fee is set in the Fee Structure tab. Finance clerks use this when approving new student applications.</p>
                           {role === 'super-admin' ? (
                             <input
                               id="student-registration-fee"
@@ -1508,8 +1502,8 @@ export const Settings = () => {
                   {showSubSection('fee-structure') && (
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure</h4>
-                        <p className="text-xs text-slate-500 font-medium">Per branch and grade level.</p>
+                        <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1">Fee Structure <span className="text-blue-600">(Per Grade Override)</span></h4>
+                        <p className="text-xs text-slate-500 font-medium">Set monthly, registration, and bus fees per branch and grade level. These override the global fallback set in the <strong>Student Fees</strong> tab.</p>
                       </div>
 
                       {role === 'super-admin' && (
@@ -1552,12 +1546,12 @@ export const Settings = () => {
                             />
                           </div>
                           <div className="space-y-1">
-                            <label htmlFor="fee-registration" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration</label>
+                            <label htmlFor="fee-registration" className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Registration Fee (Per Grade)</label>
                             <input
                               id="fee-registration"
                               type="number"
-                              title="Registration fee"
-                              aria-label="Registration fee"
+                              title="Registration fee per grade"
+                              aria-label="Registration fee per grade"
                               value={feeRegistration}
                               onChange={(e) => setFeeRegistration(Number(e.target.value))}
                               disabled={role !== 'super-admin'}
@@ -1598,7 +1592,7 @@ export const Settings = () => {
                               <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
                               <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Grade Level</th>
                               <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Monthly</th>
-                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Registration</th>
+                              <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Reg. Fee (Per Grade)</th>
                               <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Bus Fee</th>
                               <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Action</th>
                             </tr>
