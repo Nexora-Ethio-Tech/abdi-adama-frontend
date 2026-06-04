@@ -190,6 +190,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const { role, user, registrationOpen, setRegistrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
+    if (isAdminView) return false;
+    return localStorage.getItem('has_submitted_application') === 'true';
+  });
 
   const [activeTab, setActiveTab] = useState<RegistrationTab>('new');
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>(isFinance ? 'awaiting-finance' : 'pending');
@@ -198,6 +202,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -408,12 +413,16 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       return;
     }
 
+    if (isSubmitting) return; // Guard against double-submission
+
     setValidationErrors({});
 
     if (!registrationOpen) {
       setSubmitError('Registration is closed. New applications cannot be submitted at this time.');
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const formData = new FormData(e.currentTarget);
@@ -542,6 +551,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         setEthiopianDob('');
         setRegistrationStep(1);
         setValidationErrors({});
+        localStorage.setItem('has_submitted_application', 'true');
+        setAlreadySubmitted(true);
         setTimeout(() => {
           setSuccessMessage(null);
           navigate('/');
@@ -575,6 +586,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         setSubmitError(errorMessage);
         setTimeout(() => setSubmitError(null), 5000);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -973,6 +986,19 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <h3 className="text-xl font-black text-slate-800 dark:text-white">Online applications are currently closed</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto">Please contact the school administration or check back later for registration updates.</p>
           </div>
+        ) : alreadySubmitted ? (
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-12 text-center space-y-6">
+            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100 dark:border-emerald-900">
+              <CheckCircle size={32} />
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-xl font-black text-slate-850 dark:text-white">Application Already Submitted</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                We have already received your admission application. To ensure a fair process, applicants are allowed to submit only one application.
+              </p>
+            </div>
+            <p className="text-xs text-slate-400 dark:text-slate-500">If you believe this is an error or need to update your details, please contact school administration.</p>
+          </div>
         ) : (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
@@ -1302,9 +1328,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 ) : (
                   <button
                     type="submit"
-                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg"
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Submit Application
+                    {isSubmitting ? (
+                      <>
+                        <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Submitting…
+                      </>
+                    ) : (
+                      'Submit Application'
+                    )}
                   </button>
                 )}
               </div>
