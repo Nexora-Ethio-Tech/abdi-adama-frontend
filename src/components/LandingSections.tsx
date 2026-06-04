@@ -283,17 +283,17 @@ type TeamMember = {
 };
 
 const fetchUsers = async () => {
-    try {
-      const school_admins = await userService.getAllUsersGuest({ role: "school-admin", status: "", branchId: "" });
-      const vice_principals = await userService.getAllUsersGuest({ role: "vice-principal", status: "", branchId: "" });
-      const auditors = await userService.getAllUsersGuest({ role: "auditor", status: "", branchId: "" });
-      const response = [...school_admins.data, ...vice_principals.data, ...auditors.data];
-      return response;
-    } catch (err) {
-      console.error('❌ Error fetching users:', err);
-      return [];
-    }
-  };
+  try {
+    const school_admins = await userService.getAllUsersGuest({ role: "school-admin", status: "", branchId: "" });
+    const vice_principals = await userService.getAllUsersGuest({ role: "vice-principal", status: "", branchId: "" });
+    const auditors = await userService.getAllUsersGuest({ role: "auditor", status: "", branchId: "" });
+    const response = [...school_admins.data, ...vice_principals.data, ...auditors.data];
+    return response;
+  } catch (err) {
+    console.error('❌ Error fetching users:', err);
+    return [];
+  }
+};
 
 
 export const TeamSection = () => {

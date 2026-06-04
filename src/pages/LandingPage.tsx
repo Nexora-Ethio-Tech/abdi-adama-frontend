@@ -33,6 +33,7 @@ import {
 
 import { useTranslation } from 'react-i18next';
 import NavBar from './LandingOld/NavBar';
+import { branchService } from '../services/branchService';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -57,8 +58,32 @@ export const LandingPage = () => {
 
   const [scrolled, setScrolled] = useState(false);
 
+  const fetchBranches = async () => {
+    try {
+      const branches = await branchService.getAllBranchesGuest();
+      return branches;
+    } catch (err) {
+      console.error('❌ Error fetching branches:', err);
+      return [];
+    }
+  };
+  
+  interface BranchInfo {
+    name: string;
+    address: string;
+    email: string;
+  }
+
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
+    const init = async () => {
+      const branches = await fetchBranches();
+      console.log("Branches fetched: ", branches.data);
+      setBranches(branches.data);
+    };
+    init();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -510,12 +535,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 perspective-2000">
-            {[
-              { name: t('landing.branches.kebele10'), location: t('landing.branches.adama'), desc: t('landing.branches.kebele10Desc') },
-              { name: t('landing.branches.mogoro'), location: t('landing.branches.adama'), desc: t('landing.branches.mogoroDesc') },
-              { name: t('landing.branches.village180'), location: t('landing.branches.adama'), desc: t('landing.branches.village180Desc') },
-              { name: t('landing.branches.awash'), location: t('landing.branches.awash'), desc: t('landing.branches.awashDesc') }
-            ].map((branch, i) => (
+            {branches.map((branch, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 50, rotateX: -30 }}
@@ -529,9 +549,9 @@ export const LandingPage = () => {
                   <MapPin size={24} />
                 </div>
                 <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{branch.name}</h4>
-                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">{branch.location}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{branch.desc}</p>
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(branch.name + ' ' + branch.location)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all">{t('landing.branches.viewMap')} <ArrowRight size={12} /></a>
+                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">{branch.address}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{branch.email}</p>
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(branch.name + ' ' + branch.address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all">{t('landing.branches.viewMap')} <ArrowRight size={12} /></a>
               </motion.div>
             ))}
           </div>
