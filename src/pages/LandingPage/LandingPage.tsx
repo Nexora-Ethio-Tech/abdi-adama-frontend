@@ -21,15 +21,15 @@ function ScrollToTop() {
 }
 
 function LandingInner() {
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
 
-  // Force light mode on initial load of landing page if user hasn't explicitly set a preference
+  // Ensure there is a default theme stored on initial load if no preference exists
   useEffect(() => {
     const saved = localStorage.getItem('theme');
     if (!saved) {
-      setTheme('light');
+      localStorage.setItem('theme', 'light');
     }
-  }, [setTheme]);
+  }, []);
 
   return (
     <div className="min-h-screen antialiased selection:bg-amber-500/20 font-sans w-full bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50 transition-colors duration-300">

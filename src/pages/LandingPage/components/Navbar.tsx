@@ -16,7 +16,7 @@ export default function Navbar() {
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     const previous = scrollY.getPrevious();
-    if (mobileMenuOpen) return;
+    if (mobileMenuOpen || previous === undefined) return;
 
     if (latest > previous && latest > 50) {
       setHidden(true);
