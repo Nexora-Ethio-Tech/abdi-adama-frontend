@@ -57,4 +57,16 @@ export const userService = {
     const response = await api.get(`${API_ENDPOINTS.GET_BRANCH_USERS}?${params}`);
     return response.data;
   },
+
+  // Update user details (Super Admin)
+  updateUser: async (userId: string, data: { name?: string; email?: string }) => {
+    const response = await api.patch(API_ENDPOINTS.UPDATE_USER(userId), data);
+    return response.data;
+  },
+
+  // Reset user PIN (Super Admin)
+  resetUserPIN: async (userId: string) => {
+    const response = await api.post(API_ENDPOINTS.RESET_USER_PIN(userId));
+    return response.data;
+  },
 };

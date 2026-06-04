@@ -31,8 +31,10 @@ export const API_ENDPOINTS = {
   CREATE_AUDITOR: '/super-admin/create-auditor',
   GET_ALL_USERS: '/super-admin/users',
   GET_USER: (id: string) => `/super-admin/users/${id}`,
+  UPDATE_USER: (id: string) => `/super-admin/users/${id}`,
   UPDATE_USER_STATUS: (id: string) => `/super-admin/users/${id}/status`,
   DELETE_USER: (id: string) => `/super-admin/users/${id}`,
+  RESET_USER_PIN: (id: string) => `/super-admin/users/${id}/reset-pin`,
   
   // School Admin
   REGISTER_USER: '/school-admin/register-user',
