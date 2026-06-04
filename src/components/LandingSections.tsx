@@ -10,6 +10,8 @@ import type { Easing } from 'framer-motion';
 const ease: Easing = 'easeOut';
 const fadeUp = { initial: { opacity: 0, y: 60 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: '-80px' }, transition: { duration: 0.7, ease } };
 const stagger = (i: number) => ({ ...fadeUp, transition: { ...fadeUp.transition, delay: i * 0.12 } });
+import { branchService } from '../services/branchService';
+import { userService } from '../services/userService';
 
 /* ═══════════════════════════════════════════════════════════════
    1. WHAT SETS US APART — 4 Pillars
@@ -94,7 +96,7 @@ export const VisionMissionSection = () => (
 /* ═══════════════════════════════════════════════════════════════
    3. COMMUNITY VALUES — Students / Parents / Teachers
    ═══════════════════════════════════════════════════════════════ */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const communityData = {
   students: { emoji: '🌟', title: 'Our Students', subtitle: 'Inspired to Learn, Prepared to Lead', traits: ['Passionate Learners driven by curiosity', 'Ethical & Reflective with strong moral character', 'Resilient — turning challenges into opportunities', 'Confident Communicators who lead with purpose', 'Collaborative team players who celebrate diversity', 'Boldly Innovative — striving for excellence daily'] },
@@ -264,33 +266,77 @@ export const SchoolLifeSection = ({ id }: { id?: string }) => (
 /* ═══════════════════════════════════════════════════════════════
    6. OUR TEAM — Leadership Placeholders
    ═══════════════════════════════════════════════════════════════ */
-const team = [
+/* const team = [
   { name: 'Ato Girma Lemi', role: 'Founder & Owner', img: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop' },
   { name: 'W/ro Tigist Abera', role: 'Director — Kebele 10', img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop' },
   { name: 'Ato Dawit Mengistu', role: 'Director — Mogoro', img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop' },
   { name: 'W/ro Hana Solomon', role: 'Vice Director — 180 Village', img: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop' },
   { name: 'Ato Yonas Bekele', role: 'Director — Awash', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop' },
 ];
+ */
 
-export const TeamSection = () => (
-  <section className="py-32 bg-white dark:bg-slate-950 overflow-hidden">
-    <div className="max-w-7xl mx-auto px-6">
-      <motion.div {...fadeUp} className="section-header">
-        <span className="section-subtitle">Leadership</span>
-        <h2 className="section-title">Our Team</h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto mt-4">The dedicated leaders behind the Abdi Adama School network.</p>
-      </motion.div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-        {team.map((t, i) => (
-          <motion.div key={i} {...stagger(i)} whileHover={{ y: -10 }} className="text-center group">
-            <div className="w-32 h-32 mx-auto rounded-full overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 group-hover:border-school-primary transition-colors duration-500 mb-4">
-              <img src={t.img} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            </div>
-            <h4 className="font-black text-slate-900 dark:text-white text-sm">{t.name}</h4>
-            <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">{t.role}</p>
-          </motion.div>
-        ))}
+type TeamMember = {
+  name: string;
+  role: string;
+  img: string;
+  branch?: string;
+};
+
+const fetchUsers = async () => {
+    try {
+      const school_admins = await userService.getAllUsersGuest({ role: "school-admin", status: "", branchId: "" });
+      const vice_principals = await userService.getAllUsersGuest({ role: "vice-principal", status: "", branchId: "" });
+      const auditors = await userService.getAllUsersGuest({ role: "auditor", status: "", branchId: "" });
+      const response = [...school_admins.data, ...vice_principals.data, ...auditors.data];
+      return response;
+    } catch (err) {
+      console.error('❌ Error fetching users:', err);
+      return [];
+    }
+  };
+
+
+export const TeamSection = () => {
+  const [team, setTeam] = useState<TeamMember[]>([]);
+
+  useEffect(() => {
+    console.log('🚀 Fetching branches and users for TeamSection...');
+    const init = async () => {
+      const users = await fetchUsers();
+      const usersFormatted = users.map((u: any) => ({
+        name: u.name,
+        role: u.role,
+        branch: u.branch_name,
+        img: u.profile_image || 'https://static.vecteezy.com/system/resources/thumbnails/022/014/184/small/user-icon-member-login-isolated-vector.jpg'
+      }));
+      setTeam(usersFormatted);
+      console.log('✅ Users fetched successfully:', users);
+    };
+
+    init();
+  }, []);
+
+  return (
+    <section className="py-32 bg-white dark:bg-slate-950 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        <motion.div {...fadeUp} className="section-header">
+          <span className="section-subtitle">Leadership</span>
+          <h2 className="section-title">Our Team</h2>
+          <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto mt-4">The dedicated leaders behind the Abdi Adama School network.</p>
+        </motion.div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+          {team.map((t, i) => (
+            <motion.div key={i} {...stagger(i)} whileHover={{ y: -10 }} className="text-center group">
+              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 group-hover:border-school-primary transition-colors duration-500 mb-4">
+                <img src={t.img} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+              </div>
+              <h4 className="font-black text-slate-900 dark:text-white text-sm">{t.name}</h4>
+              <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">{t.role}</p>
+              <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">Branch: {t.branch}</p>
+            </motion.div>
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  )
+};

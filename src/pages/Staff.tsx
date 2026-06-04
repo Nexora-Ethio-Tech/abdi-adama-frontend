@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2, AlertCircle, UserCheck, UserPlus, ShieldAlert, Users, Building2, X } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertCircle, UserCheck, UserPlus, ShieldAlert, Users, Building2, X, Camera } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUser, type UserRole } from '../context/UserContext';
@@ -18,7 +18,10 @@ export const Staff = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [branches, setBranches] = useState<any[]>([]);
-  const [createForm, setCreateForm] = useState({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
+  
+  // Added profileImage for Base64 string
+  const [createForm, setCreateForm] = useState({ role: 'school-admin', name: '', email: '', branchId: '', password: '', profileImage: '' });
+  
   const [creating, setCreating] = useState(false);
   const [successModal, setSuccessModal] = useState<{ show: boolean; data: any }>({ show: false, data: null });
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; userId: string; userName: string }>({ show: false, userId: '', userName: '' });
@@ -129,7 +132,6 @@ export const Staff = () => {
     );
   }
 
-
   const fetchBranches = async () => {
     try {
       const response = await branchService.getAllBranches();
@@ -155,12 +157,6 @@ export const Staff = () => {
       const response = await userService.getAllUsers(filters);
       const resolvedBranches = branchList || branches;
 
-      // 🔐 SECURITY: Super Admin can ONLY see users they create:
-      // - Super Admins (system-level)
-      // - Auditors (system-level)
-      // - School Admins (created by Super Admin, assigned to branches)
-      // - Vice Principals (created by Super Admin)
-      // School Admin creates: Teachers, Students, Finance Clerks, Drivers, Parents
       const SUPER_ADMIN_MANAGEABLE_ROLES = ['super-admin', 'auditor', 'school-admin', 'vice-principal'];
 
       const transformed = (response.data || [])
@@ -226,24 +222,48 @@ export const Staff = () => {
     }
   };
 
+  // Convert File to Base64 String
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorModal({ show: true, message: 'Image size must be less than 5MB' });
+        e.target.value = '';
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCreateForm(prev => ({ ...prev, profileImage: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Validate email before submitting
+    
     const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
     if (!isValidEmail(createForm.email)) {
       setErrorModal({ show: true, message: 'Please enter a valid email address' });
       return;
     }
+
+    if (!createForm.profileImage) {
+      setErrorModal({ show: true, message: 'Please upload a profile image for the staff member' });
+      return;
+    }
+
     setCreating(true);
     try {
-      // Backend has conflicting validation - dedicated endpoints shouldn't require role field
       const data: any = {
         name: createForm.name,
         email: createForm.email,
-        branchId: createForm.branchId
+        branchId: createForm.branchId,
+        profileImage: createForm.profileImage // Sending Base64 string to Database
       };
 
-      // Only add password if provided (trimmed)
       const trimmedPassword = createForm.password.trim();
       if (trimmedPassword) {
         data.password = trimmedPassword;
@@ -264,7 +284,7 @@ export const Staff = () => {
       console.log('✅ User created:', response);
       const payload = response?.data?.user != null ? response.data : response;
       setShowCreateModal(false);
-      setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '' });
+      setCreateForm({ role: 'school-admin', name: '', email: '', branchId: '', password: '', profileImage: '' });
       setSuccessModal({
         show: true,
         data: {
@@ -276,8 +296,6 @@ export const Staff = () => {
       fetchUsers(branchList);
     } catch (err: any) {
       console.error('❌ Error creating user:', err);
-      console.error('❌ Error response:', err.response?.data);
-      console.error('❌ Full error details:', JSON.stringify(err.response?.data, null, 2));
       const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create user';
       setShowCreateModal(false);
       setErrorModal({ show: true, message: errorMsg });
@@ -353,10 +371,22 @@ export const Staff = () => {
                   staffList.map((staff) => (
                     <tr key={staff.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all">
                       <td className="px-6 py-4">
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
-                          <p className="text-xs text-slate-500">{staff.email}</p>
-                          <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                            {/* Assuming the API returns profileImage, profile_picture or similar eventually */}
+                            {staff.profileImage || staff.profile_picture ? (
+                              <img src={staff.profileImage || staff.profile_picture} alt={staff.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-slate-500 dark:text-slate-400 font-bold text-sm">
+                                {staff.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
+                            <p className="text-xs text-slate-500">{staff.email}</p>
+                            <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -431,6 +461,31 @@ export const Staff = () => {
             </div>
 
             <form className="p-6 space-y-4" onSubmit={handleCreateUser}>
+              
+              {/* Image Upload Input */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Profile Image</label>
+                <div className="mt-2 flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden shrink-0">
+                    {createForm.profileImage ? (
+                      <img src={createForm.profileImage} alt="Profile preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="text-slate-400" size={24} />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 cursor-pointer"
+                      required={!createForm.profileImage}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Required. Maximum size: 5MB.</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="role-select" className="text-xs font-bold text-slate-500 uppercase">Role</label>
                 <select

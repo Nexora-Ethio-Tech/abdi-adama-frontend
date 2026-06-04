@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../config/api';
 
 export const userService = {
   // Create School Admin
-  createSchoolAdmin: async (data: { name: string; email: string; branchId: string; password?: string }) => {
+  createSchoolAdmin: async (data: { name: string; email: string; branchId: string; password?: string, profileImage?: string }) => {
     const response = await api.post(API_ENDPOINTS.CREATE_SCHOOL_ADMIN, data);
     return response.data;
   },
@@ -24,6 +24,12 @@ export const userService = {
   getAllUsers: async (filters: { role?: string; status?: string; branchId?: string } = {}) => {
     const params = new URLSearchParams(filters as Record<string, string>).toString();
     const response = await api.get(`${API_ENDPOINTS.GET_ALL_USERS}?${params}`);
+    return response.data;
+  },
+
+  getAllUsersGuest: async (filters: { role?: string; status?: string; branchId?: string } = {}) => {
+    const params = new URLSearchParams(filters as Record<string, string>).toString();
+    const response = await api.get(`/guest/users?${params}`);
     return response.data;
   },
 
