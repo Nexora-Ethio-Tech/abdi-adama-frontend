@@ -309,7 +309,7 @@ export const FinanceStaff = () => {
                   <td className="px-6 py-4">
                     {isAdmin && (
                       <div className="flex items-center gap-2">
-                        {staff.status === 'Pending' ? (
+                        {(staff.status === 'Pending' || staff.status === 'Revoked') ? (
                           <button
                             onClick={() => setConfirmAction({ show: true, action: 'approve', staff })}
                             className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"

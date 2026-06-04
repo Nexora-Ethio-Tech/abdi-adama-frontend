@@ -384,7 +384,7 @@ export const Staff = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {staff.status === 'Pending' && (
+                          {(staff.status === 'Pending' || staff.status === 'Revoked') && (
                             <button
                               onClick={() => handleUpdateStatus(staff.id, 'Approved')}
                               className="px-3 py-1 bg-green-600 text-white rounded text-xs font-bold hover:bg-green-700"
