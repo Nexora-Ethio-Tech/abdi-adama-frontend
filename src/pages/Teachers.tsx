@@ -11,6 +11,7 @@ import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '..
 import { Star, Trophy, RefreshCcw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TeacherAttendanceModal } from '../components/TeacherAttendanceModal';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
 const MultiSelectDropdown = ({
   options,
@@ -460,7 +461,10 @@ export const Teachers = () => {
       hasError = true;
     }
 
-    if (formData.emergencyContactPhone && !/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
+    if (!formData.emergencyContactPhone) {
+      setEmergencyPhoneError('Emergency contact phone is required');
+      hasError = true;
+    } else if (!/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
       setEmergencyPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
       hasError = true;
     }
@@ -599,7 +603,8 @@ export const Teachers = () => {
 
       {activeTab === 'teachers' ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-          <table className="w-full text-left">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Teacher</th>
@@ -715,6 +720,7 @@ export const Teachers = () => {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
@@ -766,8 +772,8 @@ export const Teachers = () => {
               )}
             </div>
           </div>
-
-          <table className="w-full text-left">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
             <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Rank</th>
@@ -853,6 +859,7 @@ export const Teachers = () => {
               )}
             </tbody>
           </table>
+          </div>
 
           {!leaderboardLoading && filteredLeaderboardData.length > LEADERBOARD_ITEMS_PER_PAGE && (
             <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
@@ -914,7 +921,8 @@ export const Teachers = () => {
                   type="text"
                   required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                  onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, name: c }); }}
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Ato Bekele Tesfaye"
                 />
@@ -960,8 +968,10 @@ export const Teachers = () => {
                   <label className="text-xs font-bold text-slate-500 uppercase">Emergency Contact Name</label>
                   <input
                     type="text"
+                    required
                     value={formData.emergencyContactName}
-                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, emergencyContactName: c }); }}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Contact person"
                   />
@@ -992,38 +1002,41 @@ export const Teachers = () => {
                   <input
                     type="text"
                     title="Specialty or course taught"
+                    required
                     value={formData.specialty}
-                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, specialty: c }); }}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Math, English, Biology..."
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-500 uppercase">Date of Birth</label>
-                  <input
-                    type="date"
-                    title="Staff member date of birth"
+                  <EthiopianDatePicker
                     value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={(val) => setFormData({ ...formData, dob: val })}
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-bold text-slate-500 uppercase">Previous School</label>
                   <input
                     type="text"
+                    required
                     value={formData.previousSchool}
-                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, previousSchool: c }); }}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Optional"
+                    placeholder="Previous School"
                   />
                 </div>
                 <div className="space-y-1 sm:col-span-2">
                   <label className="text-xs font-bold text-slate-500 uppercase">Experience (Years)</label>
                   <input
                     type="text"
+                    inputMode="numeric"
+                    required
                     value={formData.experienceYears}
-                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value.replace(/[^0-9]/g, '') })}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g. 5"
                   />

@@ -1,6 +1,7 @@
 import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
@@ -173,7 +174,10 @@ export const DriverStaff = () => {
       hasError = true;
     }
 
-    if (formData.emergencyContactPhone && !/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
+    if (!formData.emergencyContactPhone) {
+      setEmergencyPhoneError('Emergency contact phone is required');
+      hasError = true;
+    } else if (!/^[79]\d{8}$/.test(formData.emergencyContactPhone)) {
       setEmergencyPhoneError('Phone must start with 9 or 7 and be exactly 9 digits');
       hasError = true;
     }
@@ -391,11 +395,13 @@ export const DriverStaff = () => {
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
                 <input
                   type="text"
+                  title="Driver full name"
+                  required
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                  onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, name: c }); }}
                   placeholder="e.g. John Doe"
                   className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-                  required
                 />
               </div>
               <div>
@@ -422,8 +428,10 @@ export const DriverStaff = () => {
                     type="text"
                     title="Emergency contact person's name"
                     placeholder="Enter emergency contact name"
+                    required
                     value={formData.emergencyContactName}
-                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, emergencyContactName: c }); }}
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -454,20 +462,18 @@ export const DriverStaff = () => {
                     type="text"
                     title="Driver specialty or course"
                     placeholder="Enter specialty or course"
+                    required
                     value={formData.specialty}
-                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, specialty: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, specialty: c }); }}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Date of Birth</label>
-                  <input
-                    type="date"
-                    title="Select date of birth"
-                    placeholder="Select date of birth"
+                  <EthiopianDatePicker
                     value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    onChange={(val) => setFormData({ ...formData, dob: val })}
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -476,8 +482,10 @@ export const DriverStaff = () => {
                     type="text"
                     title="Previous educational institution"
                     placeholder="Enter previous school name"
+                    required
                     value={formData.previousSchool}
-                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, previousSchool: e.target.value.replace(/[^a-zA-Z\u00C0-\u024F\s'-]/g, '') })}
+                    onBlur={(e) => { const c = e.target.value.trim().split(/\s+/).filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '); setFormData({ ...formData, previousSchool: c }); }}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
@@ -485,10 +493,12 @@ export const DriverStaff = () => {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Experience (Years)</label>
                   <input
                     type="text"
+                    inputMode="numeric"
                     title="Years of professional experience"
                     placeholder="Enter years of experience"
+                    required
                     value={formData.experienceYears}
-                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, experienceYears: e.target.value.replace(/[^0-9]/g, '') })}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
