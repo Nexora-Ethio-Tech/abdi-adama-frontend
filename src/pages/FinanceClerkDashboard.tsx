@@ -14,12 +14,12 @@ const ETHIOPIAN_MONTHS = [
   'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
 ];
 
-// Generate selectable Ethiopian months: 3 past → current → 4 future
+// Generate selectable Ethiopian months: 12 past → current → 12 future
 function getSelectableMonths() {
   const current = getCurrentEthiopianMonth(); // e.g. "2018-09"
   const [cy, cm] = current.split('-').map(Number);
   const list: { value: string; label: string }[] = [];
-  for (let offset = -3; offset <= 4; offset++) {
+  for (let offset = -12; offset <= 12; offset++) {
     let m = cm + offset;
     let y = cy;
     while (m <= 0) { m += 13; y -= 1; }
