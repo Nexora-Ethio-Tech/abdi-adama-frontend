@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.jpg";
 import { useTranslation } from "react-i18next";
 
@@ -9,7 +9,7 @@ export default function NavBar({ scrolled }: { scrolled: boolean }) {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const navItems = [
-        { key: "home", label: t("nav.home") },
+        { key: "", label: t("nav.home") },
         { key: "about", label: t("nav.about") },
         { key: "programs", label: t("nav.programs") },
         { key: "school-life", label: "School Life" },
@@ -56,13 +56,13 @@ export default function NavBar({ scrolled }: { scrolled: boolean }) {
                     <div className="hidden lg:flex items-center gap-6">
                         <div className="flex items-center gap-8">
                             {navItems.map((item) => (
-                                <a
+                                <Link
                                     key={item.key}
-                                    href={`#${item.key}`}
+                                    to={`/${item.key}`}
                                     className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-school-primary transition-colors"
                                 >
                                     {item.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
 
@@ -151,14 +151,14 @@ export default function NavBar({ scrolled }: { scrolled: boolean }) {
                     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-xl p-4">
                         <div className="flex flex-col">
                             {navItems.map((item) => (
-                                <a
+                                <Link
                                     key={item.key}
-                                    href={`#${item.key}`}
+                                    to={`/${item.key}`}
                                     onClick={() => setMobileOpen(false)}
                                     className="py-3 text-sm font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-school-primary border-b border-slate-200 dark:border-slate-800 last:border-0"
                                 >
                                     {item.label}
-                                </a>
+                                </Link>
                             ))}
                         </div>
 
