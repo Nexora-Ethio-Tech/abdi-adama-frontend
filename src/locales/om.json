@@ -35,7 +35,8 @@
     "analytics": "Xiinxala",
     "websitePosts": "Maxxansoota Weebsaayitii",
     "auditorDashboard": "Daashboordii Odiitaraa",
-    "specialStudents": "Barattoota Addaa"
+    "specialStudents": "Barattoota Addaa",
+    "schoolLife": "Jireenya Mana Barumsaa"
   },
   "landing": {
     "heroTitle": "Sanyii",
@@ -81,7 +82,9 @@
       "introHighlight": "ciminaa waliin walargu!",
       "introDesc1": "Mana Barumsaa Abdii Adaamaatti, sammuu dargaggootaa guddisuu fi barataan hundi dandeettii isaa guutuu akka ga'u gargaaruuf kutanneerra. Barsiisonni keenya muuxannoo qaban barumsa qulqullina qabu duudhaalee namoota itti gaafatamummaa fi ofitti amanamummaa qaban bocan waliin walqabsiisuun naannoo deeggarsaa fi hirmaachisaa ta'e ni uumu.",
       "introDesc2": "Barnootaan, aartii ykn ispoortiin, barattoonni keenya dandeettii isaanii akka qoratanii fi dandeettii milkaa'ina egereef isaan qopheessu akka guddifatan ni jajjabeeffamu.",
-      "watchFull": "Dhiyeessa Guutuu Daawwadhu"
+      "watchFull": "Dhiyeessa Guutuu Daawwadhu",
+      "schoolTourTitle": "DAAWACHAA MANA BARUMSAA",
+      "schoolTourDesc": "Mooraa fi tajaajiloota keenya daawwadhaa"
     },
     "programs": {
       "subtitle": "Imala Barnootaa",
@@ -141,7 +144,216 @@
     "communitySubtitle": "Jireenya Abdi Adaamaatti",
     "communityTitle": "Hawaasa Keenya Mil'adhaa",
     "yearsLeadership": "Waggoota Geggeessummaa Barnootaa",
-    "nurturingMinds": "Bara 2005 (1998 E.C.) irraa eegalee sammuuwwan ifoo ta'an of-eeggannoo fi kaayyoon horachuu."
+    "nurturingMinds": "Bara 2005 (1998 E.C.) irraa eegalee sammuuwwan ifoo ta'an of-eeggannoo fi kaayyoon horachuu.",
+    "sections": {
+      "pillars": {
+        "subtitle": "Wanti Nu Adda Taasisu",
+        "title": "Utubaawwan Cimina Keenyaa Arfan",
+        "desc": "Mana Barumsaa Abdi Adaamaatti, nuti hin barsiisnu qofa; ni jijjiirra. Falaasamni barnoota keenyaa adda ta'e utubaawwan ijoo afran irratti ijaarame.",
+        "items": [
+          {
+            "title": "Amanamummaa",
+            "desc": "Wanta sirrii ta'e yeroo hunda raawwachuu. Walqunnamtii hunda keessatti amanamummaa fi itti gaafatamummaa ni jajjabeessina. Amalli kan madaalamu yeroo namni tokkoyyuu isin hin arginetti wanta isin raawwattanini."
+          },
+          {
+            "title": "Gaggeessummaa",
+            "desc": "Dandeettii keessaa guddisuu. Barattoonni dandeettii isaanii akka baasan, sagalee isaanii akka argatan, ofitti amanamummaa akka ijaaratanii fi warra kaan akka kakaasan ni gargaarra."
+          },
+          {
+            "title": "Milkaa'ina",
+            "desc": "Ilaalcha waliigalaa. Milkaa'ina kan ibsinu kutannoo fi dandeettii guutuu nama tokkoo hordofuudhaan — qabxii GPA qofaan miti."
+          },
+          {
+            "title": "Barumsa Umrii Guutuu",
+            "desc": "Fedhii beekumsaa qabaachuu. Sirni barnootaa keenya inni qorannoorratti hundaa'e sammuutti qabachuu bira darbee yaada kalaqaa fi uumuu ni jajjabeessa."
+          }
+        ]
+      },
+      "vision": {
+        "subtitle": "Mul'ata Keenya",
+        "title": "Kaayyoo Keenya",
+        "desc": "Muuxannoo barumsaa jaarraa 21ffaa sadarkaa duraa ta'e, cimina barnootaa fi kaayyoo naamusaa walmadaalchisuun hawaasa keenya humneessuu. Interpariinaroota, kalaqtoota fi hayyoota Itoophiyaa boruu guddisuuf ni hojjenna — kalaqaan, uumuu fi amanamummaan akka gaggeessan isaan qopheessina.",
+        "missionSubtitle": "Ergaa Keenya",
+        "missionDesc": "Itoophiyaa keessatti ibsaa cimina barnootaa taanee dhaabbachuu. Manni Barumsaa Abdi Adaamaa dhaabbata barumsa irratti xiyyeeffate, kan aadaa, duudhaa fi aadaa Itoophiyaa keessatti hundee cimaa qabatee barnoota sadarkaa addunyaa kan ulaagaa biyyaalessaa caalu kennu dha.",
+        "features": [
+          {
+            "label": "Cimina Barnootaa",
+            "desc": "Sirna barnootaa ulaagaa addunyaa guutu kennuu"
+          },
+          {
+            "label": "Eenyummaa Aadaa",
+            "desc": "Dhaala Itoophiyaa akka bu'uura guddinaatti kabajuu"
+          },
+          {
+            "label": "Dandeettiiwwan Egereef Qophaa'an",
+            "desc": "Dhaloota saayintistootaa fi gaggeessitootaa itti aanu leenjisuu"
+          },
+          {
+            "label": "Gaggeessummaa Naamusaa",
+            "desc": "Milkaa'inni yeroo hunda duudhaalee naamusaa cimaan akka gaggeeffamu mirkaneessuu"
+          }
+        ]
+      },
+      "community": {
+        "subtitle": "Hawaasa Abdi Adaamaa",
+        "title": "Duudhaalee Keenya",
+        "desc": "Ciminni keenya ummata keenya — sirna ikoo jiraataa fi kaayyoodhaan gaggeeffamu kan barattoonni, warrii fi barsiisonni itti tokkooman.",
+        "quote": "\"Tokkummaadhaan — akka barattoota, warra fi barsiisotaatti — nuti mana barumsaa qofa hin ijaarru; egeree Itoophiyaa ni ijaarra.\"",
+        "tabs": {
+          "students": {
+            "tab": "Barattoota Keenya",
+            "title": "Barattoota Keenya",
+            "subtitle": "Barachuuf Kan Kaka'an, Gaggeessuuf Kan Qophaa'an",
+            "traits": [
+              "Barattoota miira cimaa qaban kanneen fedhii beekumsaatiin oofaman",
+              "Naamusaa fi of-ilaaltota amala naamusaa cimaa qaban",
+              "Kutattoota — rakkoolee gara carraatti kan jijjiiran",
+              "Wal-qunnamtoota ofitti amanamummaa qaban kanneen kaayyoodhaan gaggeessan",
+              "Taphattoota garee waliin hojjetan kanneen adda addummaa kabajan",
+              "Kalaqtoota ija jabeeyyii — guyyuu ciminaaf kan tattaafatan"
+            ]
+          },
+          "parents": {
+            "tab": "Warra Keenya",
+            "title": "Warra Keenya",
+            "subtitle": "Hiriyoota Imala Barnootaa Keessatti",
+            "traits": [
+              "Kan kabajaman fi dhaga'aman — hubannoon keessan bu'uura keenya",
+              "Odeeffannoo ifa fi yeroo yeroon kennamuun kan beeksisaman",
+              "Mucaan keessan naannoo sadarkaa addunyaa keessa episodic keessa akka jiru kan amanan",
+              "Hirmoota dammaqoo jireenya mana barumsaa keessatti akka ta'an kan simataman",
+              "Hiriyoota dhugaa guddina barnoota mucaa keessanii keessatti"
+            ]
+          },
+          "teachers": {
+            "tab": "Barsiisota Keenya",
+            "title": "Barsiisota Keenya",
+            "subtitle": "Gorsitoota, Fakkeenyota, fi Mul'attoota",
+            "traits": [
+              "Duudhaadhaan kan gaggeeffaman, rimeessaa fi amanamummaa gadi fagoowwaliin",
+              "Dammaqoo fi miira cimaa qaban — barumsa akka nama harkisu kan taasisan",
+              "Tarkaanfatoota fi kalaqtoota maloota jaarraa 21ffaatiin",
+              "Gadi fageenyaan kan kunuunsan — hariiroo amantaa ijaaran",
+              "Hawaatiwwan — ciminaa gadiitti matumaa kan hin quufne"
+            ]
+          }
+        }
+      },
+      "promise": {
+        "subtitle": "Waadaa Keenya",
+        "title": "Warragoota Hundaaf",
+        "desc": "Mucaa keessan nuuf kennuudhaan, qabeenya keessan isa guddaa eegumsa keenya jala keessu. Itti gaafatamummaa kana kabaja guddaan fudhanna.",
+        "items": [
+          {
+            "title": "Amantaa & Nageenya",
+            "desc": "Naannoo nagaa fi deeggarsa qabu, bakka mucaan hundi itti argamu, dhaga'amu fi kabajamu."
+          },
+          {
+            "title": "Barumsa Jaarraa 21ffaa",
+            "desc": "Yaada Qeeqaa, Kalaqa, Walta'iinsa, fi Walqunnamtii — 4Cswwan."
+          },
+          {
+            "title": "Dhuunfaa Kabajuu",
+            "desc": "Tooftaalee adda addaa kanneen ciminaa fi akkaataa barumsaa mucaa hundaa kabajan."
+          },
+          {
+            "title": "Walqunnamtii Ifa Ta'e",
+            "desc": "Odeeffannoo ifa fi yeroo yeroon kennamu kan sadarkaa hundatti isin beeksisu."
+          },
+          {
+            "title": "Guddina Waliigalaa",
+            "desc": "Nageenya hawaasummaa, miiraa fi qaamaa milkaa'ina barnootaa cinaatti."
+          },
+          {
+            "title": "Cimina Barnootaan Alaa",
+            "desc": "Ispoortii, aartii, gaggeessummaa, fi tajaajila hawaasaa kanneen namoota guutuu ta'an oomishan."
+          }
+        ]
+      },
+      "schoolLife": {
+        "subtitle": "Jireenya Mana Barumsaa",
+        "title": "Kutaa Barnootaatiin Alatti",
+        "uniform": {
+          "title": "Uffata Mana Barumsaa",
+          "desc": "Uffanni keenya seera uffannaa qofa miti — eenyummaa gamtaa keenya, sadarkaa olaanaa fi hirmaachisuuf kutannoo keenya calaqqisiisa. Barattoonni yeroo kaayyoodhaan uffatan, kaayyoodhaan baratu.",
+          "items": [
+            {
+              "label": "Tokkummaa & Walqixxummaa",
+              "desc": "Dhiibbaa hawaasummaa bira darbuun, duudhaalee waliinii irratti xiyyeeffachuu"
+            },
+            {
+              "label": "Xiyyeeffannoo",
+              "desc": "Yaada faffacaasuu xiqqeessuu, milkaa'ina barnootaa guddisuu"
+            },
+            {
+              "label": "Ogummaa",
+              "desc": "Addunyaa fuulduraaf boonsaa fi naamusaa barsiisuu"
+            },
+            {
+              "label": "Mallattoo Boonsaa",
+              "desc": "Ambaasaaddaroota amanamummaa fi ciminaa"
+            }
+          ]
+        },
+        "transport": {
+          "title": "Geejjiba Mana Barumsaa",
+          "desc": "Guyyaan mana barumsaa milkaa'aan bilbila jalqabaa dura eegala. Tajaajilli geejjibaa keenya inni duraa nageenya, mijaawummaa, fi yeroo kabajuu barataa hundaa dursa kenna.",
+          "items": [
+            "Konkolaattota ammayyaa kanneen amala nageenyaa olaanaa qabanii fi hojjettoota leenji'an",
+            "Sagantaalee amansiisaa barattoonni haara'anii fi yeroon akka ga'an mirkaneessan",
+            "Sarboota tarsiimawaa bakkeewwan adda addaa tajaajilan",
+            "Of-danda'uu, yeroo kabajuu, fi naamusaa hawaasummaa ijaaruu"
+          ]
+        },
+        "facilities": {
+          "title": "Tajaajiloota Keenya",
+          "items": [
+            {
+              "title": "Dirree Kubbaa Miilaa",
+              "desc": "Dirree ogummaadhaan eegamu kan barumsa qaamaa, leenjii, fi dorgommiif oolu"
+            },
+            {
+              "title": "Dirree Kubbaa Kaachoo",
+              "desc": "Dirree waggaa guutuu tajaajilu kan ijaarsa dandeettii fi dorgommii manoota gidduuf oolu"
+            },
+            {
+              "title": "Bakkeewwan Magariisa",
+              "desc": "Margaa fi iddoo ashaakiltii bal'aa barumsa alaa fi qophiiwwan hawaasaaf oolu"
+            }
+          ]
+        }
+      },
+      "team": {
+        "subtitle": "Gaggeessummaa",
+        "title": "Garee Keenya",
+        "desc": "Gaggeessitoota kutatoo networkii Mana Barumsaa Abdi Adaamaa duuba jiran.",
+        "members": [
+          {
+            "name": "Obbo Girmaa Lammii",
+            "role": "Hundeessaa fi Abbaa Qabeenyaa"
+          },
+          {
+            "name": "Aadde Tigisti Abbaraa",
+            "role": "Daarektara — Kebele 10"
+          },
+          {
+            "name": "Obbo Daawit Mangistuu",
+            "role": "Daarektara — Mogoro"
+          },
+          {
+            "name": "Aadde Haanaa Solomoon",
+            "role": "Itti Aantuu Daarektaraa — Ganda 180"
+          },
+          {
+            "name": "Obbo Yonaas Baqqalaa",
+            "role": "Daarektara — Awaash"
+          }
+        ]
+      }
+    },
+    "admissionClosed": "Galmeen Cufameera",
+    "studentQuote": "\"Manni Barumsaa Abdi Adaamaa dandeettii koo guutuu akkan hubadhu carraa naaf kenneera.\"",
+    "studentAuthor": "— Firdoos Muusaa, Qabxii Olaanaa Kan Fide"
   },
   "login": {
     "title": "Baga Nagaan Deebitan",
@@ -170,7 +382,9 @@
   "header": {
     "search": "Barbaadi...",
     "guest": "Keessummaa",
-    "branch": "Damee:"
+    "branch": "Damee:",
+    "changePassword": "Iccitii Jijjiiri",
+    "signOut": "Ba'i"
   },
   "sidebar": {
     "activeRole": "Gahee Ammaa",

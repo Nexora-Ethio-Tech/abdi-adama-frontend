@@ -55,7 +55,7 @@ export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (sh
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('landing.media.introVideo')}</span>
                             </div>
                             <h3 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight mb-6">
-                                {t('landing.media.introTitle')} meets <span className="text-gradient">{t('landing.media.introHighlight')}</span>
+                                {t('landing.media.introTitle')} <span className="text-gradient">{t('landing.media.introHighlight')}</span>
                             </h3>
                             <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                                 {t('landing.media.introDesc1')}
@@ -105,8 +105,8 @@ export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (sh
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent opacity-40 pointer-events-none" />
                                 <div className="absolute bottom-6 left-6 right-6 pointer-events-none">
                                     <div className="bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/20">
-                                        <h4 className="text-white font-black uppercase tracking-widest text-xs mb-1">SCHOOL TOUR</h4>
-                                        <p className="text-white/70 text-[10px] font-medium">Take a look at our campus and facilities</p>
+                                        <h4 className="text-white font-black uppercase tracking-widest text-xs mb-1">{t('landing.media.schoolTourTitle')}</h4>
+                                        <p className="text-white/70 text-[10px] font-medium">{t('landing.media.schoolTourDesc')}</p>
                                     </div>
                                 </div>
                             </motion.div>

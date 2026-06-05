@@ -82,7 +82,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
           </h1>
           {selectedBranch && role === 'super-admin' && (
             <span className="hidden sm:inline-block bg-school-primary/10 text-school-primary px-3 py-1 rounded-full text-xs font-bold border border-school-primary/20">
-              Branch: {selectedBranch.name}
+              {t('header.branch')} {selectedBranch.name}
             </span>
           )}
         </div>
@@ -198,7 +198,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
                         <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
                           <Lock size={15} />
                         </span>
-                        Change Password
+                        {t('header.changePassword')}
                       </button>
                     )}
                     <button
@@ -208,7 +208,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
                       <span className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center shrink-0">
                         <LogOut size={15} />
                       </span>
-                      Sign Out
+                      {t('header.signOut')}
                     </button>
                   </div>
                 </div>

@@ -12,7 +12,7 @@ export default function NavBar({ scrolled }: { scrolled: boolean }) {
         { key: "", label: t("nav.home") },
         { key: "about", label: t("nav.about") },
         { key: "programs", label: t("nav.programs") },
-        { key: "school-life", label: "School Life" },
+        { key: "school-life", label: t("nav.schoolLife") },
         { key: "branches", label: t("nav.branches") },
     ];
 

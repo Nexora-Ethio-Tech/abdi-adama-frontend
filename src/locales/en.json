@@ -35,7 +35,8 @@
     "analytics": "Analytics",
     "websitePosts": "Website Posts",
     "auditorDashboard": "Dashboard",
-    "specialStudents": "Special Students"
+    "specialStudents": "Special Students",
+    "schoolLife": "School Life"
   },
   "landing": {
     "heroTitle": "Planting Seeds of",
@@ -81,7 +82,9 @@
       "introHighlight": "excellence!",
       "introDesc1": "At Abdi Adama School, we are committed to nurturing young minds and helping every student reach their full potential. Our experienced teachers provide a supportive and engaging environment, combining quality education with values that shape responsible and confident individuals.",
       "introDesc2": "Whether in academics, arts, or sports, our students are encouraged to explore their talents and develop skills that prepare them for future success.",
-      "watchFull": "Watch Full Presentation"
+      "watchFull": "Watch Full Presentation",
+      "schoolTourTitle": "SCHOOL TOUR",
+      "schoolTourDesc": "Take a look at our campus and facilities"
     },
     "programs": {
       "subtitle": "Educational Journey",
@@ -141,7 +144,215 @@
     "communitySubtitle": "Life at Abdi Adama",
     "communityTitle": "Experience Our Community",
     "yearsLeadership": "Years of Academic Leadership",
-    "nurturingMinds": "Nurturing bright minds with care and purpose since 2005."
+    "nurturingMinds": "Nurturing bright minds with care and purpose since 2005.",
+    "sections": {
+      "pillars": {
+        "subtitle": "What Sets Us Apart",
+        "title": "The Four Pillars of Our Excellence",
+        "desc": "At Abdi Adama School, we don't just teach; we transform. Our distinct educational philosophy is built upon four core pillars.",
+        "items": [
+          {
+            "title": "Integrity",
+            "desc": "Doing what is right, always. We foster honesty and accountability in every interaction. Character is defined by what you do when no one is watching."
+          },
+          {
+            "title": "Leadership",
+            "desc": "Cultivating the potential within. We empower students to take initiative, find their voice, build confidence, and inspire others."
+          },
+          {
+            "title": "Success",
+            "desc": "A holistic mindset. We define success by resilience and the pursuit of one's full potential — not just a GPA."
+          },
+          {
+            "title": "Lifelong Learning",
+            "desc": "Staying curious. Our inquiry-based curriculum moves beyond rote memorization to encourage creative thinking and innovation."
+          }
+        ]
+      },
+      "vision": {
+        "subtitle": "Our Vision",
+        "desc": "To empower our community through a premier 21st-century learning experience that balances academic rigor with ethical purpose. We strive to cultivate Ethiopia's future entrepreneurs, inventors, and scholars — equipping them to lead with innovation, creativity, and integrity.",
+        "missionSubtitle": "Our Mission",
+        "missionDesc": "To stand as a beacon of educational excellence in Ethiopia. Abdi Adama School is a dedicated, learning-centered institution providing world-class education that exceeds national standards while remaining deeply rooted in the rich culture, values, and traditions of Ethiopia.",
+        "features": [
+          {
+            "label": "Academic Excellence",
+            "desc": "Delivering a curriculum that meets global benchmarks"
+          },
+          {
+            "label": "Cultural Identity",
+            "desc": "Celebrating Ethiopian heritage as a foundation for growth"
+          },
+          {
+            "label": "Future-Ready Skills",
+            "desc": "Training the next generation of scientists and leaders"
+          },
+          {
+            "label": "Ethical Leadership",
+            "desc": "Ensuring success is always guided by strong moral values"
+          }
+        ]
+      },
+      "community": {
+        "subtitle": "The Abdi Adama Community",
+        "title": "Our Values",
+        "desc": "Our strength is our people — a vibrant, purpose-driven ecosystem where students, parents, and educators unite.",
+        "quote": "\"Together — as students, parents, and teachers — we don't just build a school; we build the future of Ethiopia.\"",
+        "tabs": {
+          "students": {
+            "tab": "Our Students",
+            "title": "Our Students",
+            "subtitle": "Inspired to Learn, Prepared to Lead",
+            "traits": [
+              "Passionate Learners driven by curiosity",
+              "Ethical & Reflective with strong moral character",
+              "Resilient — turning challenges into opportunities",
+              "Confident Communicators who lead with purpose",
+              "Collaborative team players who celebrate diversity",
+              "Boldly Innovative — striving for excellence daily"
+            ]
+          },
+          "parents": {
+            "tab": "Our Parents",
+            "title": "Our Parents",
+            "subtitle": "Partners in the Educational Journey",
+            "traits": [
+              "Valued & Heard — your insights are our cornerstone",
+              "Informed through transparent, regular updates",
+              "Confident your child is in a world-class environment",
+              "Welcomed as active participants in school life",
+              "True Partners in your child's academic evolution"
+            ]
+          },
+          "teachers": {
+            "tab": "Our Teachers",
+            "title": "Our Teachers",
+            "subtitle": "Mentors, Role Models, and Visionaries",
+            "traits": [
+              "Values-Driven with deep empathy and integrity",
+              "Dynamic & Enthusiastic — making learning infectious",
+              "Progressive & Innovative with 21st-century methods",
+              "Deeply Caring — building trusting relationships",
+              "Ambitious — never settling for less than excellence"
+            ]
+          }
+        }
+      },
+      "promise": {
+        "subtitle": "Our Promise",
+        "title": "To Every Parent",
+        "desc": "By entrusting us with your child, you place your greatest treasure in our care. We accept this responsibility with profound respect.",
+        "items": [
+          {
+            "title": "Trust & Safety",
+            "desc": "A safe, supportive sanctuary where every child is seen, heard, and valued."
+          },
+          {
+            "title": "21st-Century Learning",
+            "desc": "Critical Thinking, Creativity, Collaboration, and Communication — the 4Cs."
+          },
+          {
+            "title": "Celebrating the Individual",
+            "desc": "Tailored approaches honoring each student's unique strengths and learning style."
+          },
+          {
+            "title": "Open Communication",
+            "desc": "Transparent, regular updates keeping you informed every step of the way."
+          },
+          {
+            "title": "Holistic Growth",
+            "desc": "Social, emotional, and physical well-being alongside academic triumphs."
+          },
+          {
+            "title": "Extracurricular Excellence",
+            "desc": "Sports, arts, leadership, and community service cultivating well-rounded individuals."
+          }
+        ]
+      },
+      "schoolLife": {
+        "subtitle": "School Life",
+        "title": "Beyond the Classroom",
+        "uniform": {
+          "title": "School Uniform",
+          "desc": "Our uniform is more than a dress code — it reflects our collective identity, high standards, and commitment to inclusion. When students dress with purpose, they learn with purpose.",
+          "items": [
+            {
+              "label": "Unity & Equality",
+              "desc": "Moving past social pressures, focusing on shared values"
+            },
+            {
+              "label": "Focus",
+              "desc": "Minimizing distractions, maximizing academic achievement"
+            },
+            {
+              "label": "Professionalism",
+              "desc": "Instilling pride and discipline for the world ahead"
+            },
+            {
+              "label": "Badge of Pride",
+              "desc": "Ambassadors of integrity and excellence"
+            }
+          ]
+        },
+        "transport": {
+          "title": "School Transport",
+          "desc": "A successful school day begins before the first bell. Our premier transport service prioritizes safety, comfort, and punctuality of every student.",
+          "items": [
+            "Modern fleet with advanced safety features and trained staff",
+            "Reliable schedules ensuring students arrive refreshed and on time",
+            "Strategic routes serving a wide variety of locations",
+            "Building independence, punctuality, and social etiquette"
+          ]
+        },
+        "facilities": {
+          "title": "Our Facilities",
+          "items": [
+            {
+              "title": "Football Pitch",
+              "desc": "Professionally maintained pitch for PE, training, and tournaments"
+            },
+            {
+              "title": "Basketball Courts",
+              "desc": "Year-round courts for skill-building and inter-house competitions"
+            },
+            {
+              "title": "Green Spaces",
+              "desc": "Expansive lawns and gardens for outdoor learning and community events"
+            }
+          ]
+        }
+      },
+      "team": {
+        "subtitle": "Leadership",
+        "title": "Our Team",
+        "desc": "The dedicated leaders behind the Abdi Adama School network.",
+        "members": [
+          {
+            "name": "Ato Girma Lemi",
+            "role": "Founder & Owner"
+          },
+          {
+            "name": "W/ro Tigist Abera",
+            "role": "Director — Kebele 10"
+          },
+          {
+            "name": "Ato Dawit Mengistu",
+            "role": "Director — Mogoro"
+          },
+          {
+            "name": "W/ro Hana Solomon",
+            "role": "Vice Director — 180 Village"
+          },
+          {
+            "name": "Ato Yonas Bekele",
+            "role": "Director — Awash"
+          }
+        ]
+      }
+    },
+    "admissionClosed": "Admission Closed",
+    "studentQuote": "\"Abdi Adama School gave me the chance to discover my potential.\"",
+    "studentAuthor": "— Firdos Musa, Top Scorer"
   },
   "login": {
     "title": "Welcome Back",
@@ -170,7 +381,9 @@
   "header": {
     "search": "Search...",
     "guest": "Guest",
-    "branch": "Branch:"
+    "branch": "Branch:",
+    "changePassword": "Change Password",
+    "signOut": "Sign Out"
   },
   "sidebar": {
     "activeRole": "Active Role",

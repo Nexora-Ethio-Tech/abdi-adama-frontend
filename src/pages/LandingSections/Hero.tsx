@@ -130,7 +130,7 @@ export default function Hero() {
                                         : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-400'
                                         }`}
                                 >
-                                    {registrationOpen ? t('landing.applyBtn') : 'Admission Closed'}
+                                    {registrationOpen ? t('landing.applyBtn') : t('landing.admissionClosed', 'Admission Closed')}
                                     {registrationOpen && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                                     {!registrationOpen && <Lock size={16} />}
                                 </button>
@@ -148,8 +148,8 @@ export default function Hero() {
                                     <div className="flex items-center gap-2 mb-2">
                                         {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="fill-amber-400 text-amber-400" />)}
                                     </div>
-                                    <p className="text-lg font-bold leading-tight">"Abdi Adama School gave me the chance to discover my potential."</p>
-                                    <p className="text-xs font-black uppercase tracking-widest text-school-primary mt-2">— Firdos Musa, Top Scorer</p>
+                                    <p className="text-lg font-bold leading-tight">{t('landing.studentQuote', '"Abdi Adama School gave me the chance to discover my potential."')}</p>
+                                    <p className="text-xs font-black uppercase tracking-widest text-school-primary mt-2">{t('landing.studentAuthor', '— Firdos Musa, Top Scorer')}</p>
                                 </div>
                             </div>
                             <div className="absolute -top-10 -right-10 w-40 h-40 bg-school-secondary/20 rounded-full blur-3xl animate-pulse" />
