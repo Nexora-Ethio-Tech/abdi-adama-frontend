@@ -38,8 +38,6 @@ import { branchService } from '../services/branchService';
 import Hero from './LandingSections/Hero';
 
 const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: { showAdmission: boolean, scrolled: boolean, displaySchoolName: string, setShowAdmission: (show: boolean) => void }) => {
-  const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
 
 
   if (showAdmission) {
@@ -115,10 +113,29 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
 
 
       {/* ═══ NEW SECTIONS FROM SCHOOL OWNER ═══ */}
+      <Chatbot />
+    </div>
+  );
+};
 
+export const LandingPage = () => {
+  const [showAdmission, setShowAdmission] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const { schoolName, schoolMotto, registrationOpen } = useUser();
+  const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
 
-
-      {/* Footer */}
+  const displaySchoolName = schoolName.english;
+  return (
+    <>
+      <NavBar scrolled={scrolled} />
+      <Routes>
+        <Route path="/" element={<Home showAdmission={showAdmission} scrolled={scrolled} displaySchoolName={displaySchoolName} setShowAdmission={setShowAdmission} />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/programs" element={<Programs setShowAdmission={setShowAdmission} />} />
+        <Route path="/school-life" element={<SchoolLife setShowAdmission={setShowAdmission} />} />
+        <Route path="/branches" element={<Branches setScrolled={setScrolled} />} />
+      </Routes>
       <footer className="bg-white dark:bg-slate-950 pt-24 pb-12 border-t border-slate-100 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
@@ -160,17 +177,6 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
                 ))}
               </div>
             </div>
-
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white mb-6">{t('landing.footer.staffAccess')}</h4>
-              <button
-                onClick={() => navigate('/login')}
-                className="flex items-center gap-3 px-6 py-3 bg-slate-50 dark:bg-slate-900 text-slate-400 hover:text-school-primary rounded-xl text-[10px] font-black uppercase tracking-widest border border-transparent hover:border-school-primary/20 transition-all w-full"
-              >
-                <LogIn size={16} />
-                {t('landing.footer.staffPortal')}
-              </button>
-            </div>
           </div>
 
           <div className="pt-12 border-t border-slate-100 dark:border-slate-800 text-center space-y-4">
@@ -178,28 +184,6 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
           </div>
         </div>
       </footer>
-
-      <Chatbot />
-    </div>
-  );
-};
-
-export const LandingPage = () => {
-  const [showAdmission, setShowAdmission] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const { schoolName, schoolMotto, registrationOpen } = useUser();
-
-  const displaySchoolName = schoolName.english;
-  return (
-    <>
-      <NavBar scrolled={scrolled} />
-      <Routes>
-        <Route path="/" element={<Home showAdmission={showAdmission} scrolled={scrolled} displaySchoolName={displaySchoolName} setShowAdmission={setShowAdmission} />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/programs" element={<Programs setShowAdmission={setShowAdmission} />} />
-        <Route path="/school-life" element={<SchoolLife setShowAdmission={setShowAdmission} />} />
-        <Route path="/branches" element={<Branches setScrolled={setScrolled} />} />
-      </Routes>
     </>
   );
 }

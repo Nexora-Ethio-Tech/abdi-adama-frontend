@@ -1,4 +1,3 @@
-import { formatEthiopianLabel } from '../../utils/ethiopianCalendar';
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
 import { PillarsSection, VisionMissionSection, CommunitySection, PromiseSection, SchoolLifeSection, TeamSection } from '../../components/LandingSections';
 import {
@@ -31,74 +30,17 @@ import { useNavigate } from 'react-router-dom';
 
 
 
-export default function SchoolLife({setShowAdmission}: {setShowAdmission: (show  : boolean) => void}) {
-    const { publicPosts } = useStore();
+export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (show: boolean) => void }) {
     const { t, i18n } = useTranslation();
     const { schoolName, schoolMotto, registrationOpen } = useUser();
     const navigate = useNavigate();
 
     return (
         <>
-            <PillarsSection />
-            <VisionMissionSection />
-            <CommunitySection />
-            <PromiseSection />
             <SchoolLifeSection id="school-life" />
-            <TeamSection />
-
-            {/* Updates / Posts Section */}
-            {
-                publicPosts.length > 0 && (
-                    <section id="updates" className="py-24 bg-slate-50 dark:bg-slate-900">
-                        <div className="max-w-7xl mx-auto px-6 mb-12">
-                            <div className="section-header !text-left !mb-0 flex items-center justify-between">
-                                <div>
-                                    <span className="section-subtitle">{t('landing.stayInformed')}</span>
-                                    <h2 className="section-title">{t('landing.updates.title')}</h2>
-                                </div>
-                                <div className="hidden sm:flex gap-2">
-                                    <button type="button" aria-label="Scroll updates left" onClick={() => { const el = document.querySelector('.updates-scroll'); if (el) el.scrollBy({ left: -420, behavior: 'smooth' }); }} className="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-school-primary hover:border-school-primary transition-colors">
-                                        <ArrowLeft size={20} />
-                                    </button>
-                                    <button type="button" aria-label="Scroll updates right" onClick={() => { const el = document.querySelector('.updates-scroll'); if (el) el.scrollBy({ left: 420, behavior: 'smooth' }); }} className="w-10 h-10 rounded-full bg-school-primary text-white flex items-center justify-center shadow-lg hover:bg-school-primary/90 transition-colors">
-                                        <ArrowRight size={20} />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="updates-scroll pl-6 md:pl-[calc(50vw-40rem+1.5rem)] pb-8 overflow-x-auto flex snap-x snap-mandatory hide-scrollbar gap-6 pr-6">
-                            {publicPosts.map((post) => (
-                                <div key={post.id} className="snap-start shrink-0 w-[85vw] sm:w-[400px] bg-white dark:bg-slate-950 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden group hover:-translate-y-2 transition-all duration-500 flex flex-col">
-                                    <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                                        {post.type === 'image' ? (
-                                            <img src={post.mediaUrl} alt="Update" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                        ) : (
-                                            <iframe src={post.mediaUrl} title="Update media" className="w-full h-full pointer-events-none" />
-                                        )}
-                                        <div className="absolute top-4 left-4">
-                                            <span className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-black uppercase tracking-widest rounded-full text-school-primary shadow-sm">
-                                                {formatEthiopianLabel(post.timestamp)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium line-clamp-3">
-                                            {post.description}
-                                        </p>
-                                        <div className="mt-auto pt-6 flex items-center gap-2 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest group-hover:text-school-primary transition-colors cursor-pointer w-fit">
-                                            {t('landing.readMore')} <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                )
-            }
 
             {/* Media & Life Section */}
-            <section id="media" className="py-24 bg-white dark:bg-slate-950">
+            <section id="media" className="py-24 bg-white dark:bg-slate-950 flex justify-center">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="section-header">
                         <span className="section-subtitle">{t('landing.communitySubtitle')}</span>
@@ -203,14 +145,6 @@ export default function SchoolLife({setShowAdmission}: {setShowAdmission: (show 
                             {registrationOpen ? <CheckCircle2 size={24} /> : <Lock size={20} />}
                         </motion.button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate('/login')}
-                            className="px-12 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all border-4 border-slate-900/5 dark:border-white/5"
-                        >
-                            {t('landing.cta.parentLogin')}
-                        </motion.button>
                     </div>
                 </motion.div>
                 <div className="absolute top-1/2 left-0 w-[500px] h-[500px] bg-school-primary/10 blur-[150px] -translate-y-1/2" />
