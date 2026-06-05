@@ -907,7 +907,6 @@ export const Dashboard = () => {
                     if (input) input.value = gregorianDate;
                   }}
                   placeholder="Select Ethiopian date"
-                  title="Set notice expiry date using Ethiopian calendar"
                 />
                 <input
                   name="expiresAt"

@@ -44,6 +44,7 @@ export const Dashboard = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
   const [eventEthDate, setEventEthDate] = useState('');
+  const [noticeExpiryEthDate, setNoticeExpiryEthDate] = useState('');
   const isSuperAdmin = role === 'super-admin';
 
   const handleToggleGradesLock = async (newVal: boolean) => {
@@ -921,7 +922,7 @@ export const Dashboard = () => {
                       </button>
                     )}
                   </div>
-                  {notice.expiresAt && <span className="text-[10px] text-rose-400 italic font-medium">Expires: {notice.expiresAt}</span>}
+                  {notice.expiresAt && <span className="text-[10px] text-rose-400 italic font-medium">Expires: {formatEthiopianLabel(notice.expiresAt)}</span>}
                 </div>
               </div>
               <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{notice.title}</h4>
@@ -1069,7 +1070,7 @@ export const Dashboard = () => {
               <button
                 type="button"
                 title="Close notice modal"
-                onClick={() => setShowNoticeModal(false)}
+                onClick={() => { setShowNoticeModal(false); setNoticeExpiryEthDate(''); }}
                 className="text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X size={20} />
@@ -1083,10 +1084,11 @@ export const Dashboard = () => {
                 content: formData.get('content') as string,
                 priority: formData.get('priority') as any,
                 category: formData.get('category') as any,
-                expiresAt: formData.get('expiresAt') as string,
+                expiresAt: formData.get('expiresAt') as string || undefined,
                 audience: ['super-admin', 'school-admin', 'vice-principal', 'teacher', 'student', 'parent']
               });
               setShowNoticeModal(false);
+              setNoticeExpiryEthDate('');
             }}>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
@@ -1123,14 +1125,16 @@ export const Dashboard = () => {
                 <textarea name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
-                <input
-                  name="expiresAt"
-                  type="date"
-                  title="Set notice expiry date"
-                  placeholder="Select expiry date"
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date (Ethiopian Calendar)</label>
+                <EthiopianDatePicker
+                  value={noticeExpiryEthDate}
+                  onChange={(gregorianIso) => {
+                    setNoticeExpiryEthDate(gregorianIso);
+                  }}
+                  placeholder="Select Ethiopian expiry date"
+                  className="w-full"
                 />
+                <input name="expiresAt" type="hidden" value={noticeExpiryEthDate} />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
