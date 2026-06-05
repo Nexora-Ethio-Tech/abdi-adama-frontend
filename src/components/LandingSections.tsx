@@ -284,37 +284,76 @@ type TeamMember = {
 
 const fetchUsers = async () => {
   try {
-    const school_admins = await userService.getAllUsersGuest({ role: "school-admin", status: "", branchId: "" });
-    const vice_principals = await userService.getAllUsersGuest({ role: "vice-principal", status: "", branchId: "" });
-    const auditors = await userService.getAllUsersGuest({ role: "auditor", status: "", branchId: "" });
-    const response = [...school_admins.data, ...vice_principals.data, ...auditors.data];
-    return response;
+    // Run all requests in parallel safely
+    const results = await Promise.allSettled([
+      userService.getAllUsersGuest({ role: "school-admin", status: "", branchId: "" }),
+      userService.getAllUsersGuest({ role: "vice-principal", status: "", branchId: "" }),
+      userService.getAllUsersGuest({ role: "auditor", status: "", branchId: "" })
+    ]);
+
+    // Extract data only from successful promises, defaulting to an empty array if failed
+    const school_admins = results[0].status === 'fulfilled' ? results[0].value?.data || [] : [];
+    const vice_principals = results[1].status === 'fulfilled' ? results[1].value?.data || [] : [];
+    const auditors = results[2].status === 'fulfilled' ? results[2].value?.data || [] : [];
+
+    const combinedData = [...school_admins, ...vice_principals, ...auditors];
+
+    // Check if we got absolutely nothing back (entire server down)
+    const completelyFailed = results.every(r => r.status === 'rejected');
+
+    return {
+      success: !completelyFailed,
+      data: combinedData,
+      error: completelyFailed ? "Server is unreachable" : null
+    };
+
   } catch (err) {
-    console.error('❌ Error fetching users:', err);
-    return [];
+    console.error('❌ Unexpected error fetching users:', err);
+    return { success: false, data: [], error: err };
   }
 };
 
 
 export const TeamSection = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     console.log('🚀 Fetching branches and users for TeamSection...');
+    let isMounted = true;
+
     const init = async () => {
-      const users = await fetchUsers();
-      const usersFormatted = users.map((u: any) => ({
-        name: u.name,
-        role: u.role,
-        branch: u.branch_name,
-        img: u.profile_image || 'https://static.vecteezy.com/system/resources/thumbnails/022/014/184/small/user-icon-member-login-isolated-vector.jpg'
-      }));
-      setTeam(usersFormatted);
-      console.log('✅ Users fetched successfully:', users);
+      const result = await fetchUsers();
+
+      if (isMounted) {
+        // Safely default to an empty array if result or result.data is nullish
+        const rawUsers = result?.data || [];
+
+        const usersFormatted = rawUsers.map((u) => ({
+          name: u?.name || 'Unknown',
+          role: u?.role || 'Staff',
+          branch: u?.branch_name || 'N/A',
+          img: u?.profile_image || 'https://static.vecteezy.com/system/resources/thumbnails/022/014/184/small/user-icon-member-login-isolated-vector.jpg'
+        }));
+
+        setTeam(usersFormatted);
+        console.log('✅ Users processed successfully:', usersFormatted);
+
+        if (result && !result.success) {
+          setError(true);
+          console.warn("⚠️ Could not reach user directory server.");
+        }
+      }
     };
 
     init();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  if (error) return null;
 
   return (
     <section className="py-32 bg-white dark:bg-slate-950 overflow-hidden">
@@ -338,5 +377,5 @@ export const TeamSection = () => {
         </div>
       </div>
     </section>
-  )
+  );
 };
