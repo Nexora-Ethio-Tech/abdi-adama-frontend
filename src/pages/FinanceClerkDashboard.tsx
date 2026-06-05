@@ -302,8 +302,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setSelectedPaymentTypes([]);
     financeClerkService.getStudentOutstanding(student.id, month).then((d) => {
       setOutstandingData(d);
+      // Pagume = Ethiopian month 13 (e.g. "2018-13").
+      // During Pagume the annual Registration Fee is billable, so include it.
+      // For every other month the registration fee is handled via the Registrations
+      // tab admission workflow, so hide it here to avoid accidental double-charging.
+      const isPagume = month.endsWith('-13');
       const validFees = (d.fees || []).filter((f: any) => {
-        if (f.feeType === 'registration') return false;
+        if (f.feeType === 'registration' && !isPagume) return false;
         if (f.feeType === 'bus' && !d.usesTransport) return false;
         if (Number(f.remaining || 0) <= 0) return false;
         return true;
@@ -316,6 +321,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         if (k === 'monthly') return 'Monthly Tuition';
         if (k === 'bus') return 'Bus Fee';
         if (k === 'penalty') return 'Penalty Fee';
+        if (k === 'registration') return 'Registration Fee';
         return k;
       }));
       const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
