@@ -1,12 +1,12 @@
 
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Layout } from './layout/Layout';
-import { LandingPage } from './pages/LandingPage';
+//import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { useUser, type UserRole } from './context/UserContext';
 import { Suspense, lazy, type ReactNode } from 'react';
-//import LandingPage from './pages/LandingPage/LandingPage';
+import LandingPage from './pages/LandingPage/LandingPage';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
 const Students = lazy(() => import('./pages/Students').then((m) => ({ default: m.Students })));
