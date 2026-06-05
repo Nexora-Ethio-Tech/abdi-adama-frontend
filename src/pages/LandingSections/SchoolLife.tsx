@@ -183,7 +183,7 @@ export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (sh
             )}
 
             {/* Media & Life Section */}
-            <section id="media" className="py-24 bg-white dark:bg-slate-950">
+            <section id="media" className="py-24 bg-white dark:bg-slate-950 flex justify-center">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="section-header">
                         <span className="section-subtitle">{t('landing.communitySubtitle')}</span>
@@ -288,14 +288,6 @@ export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (sh
                             {registrationOpen ? <CheckCircle2 size={24} /> : <Lock size={20} />}
                         </motion.button>
 
-                        <motion.button
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate('/login')}
-                            className="px-12 py-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-[2rem] font-black uppercase tracking-widest text-sm shadow-xl hover:bg-slate-800 dark:hover:bg-slate-100 transition-all border-4 border-slate-900/5 dark:border-white/5"
-                        >
-                            {t('landing.cta.parentLogin')}
-                        </motion.button>
                     </div>
                 </motion.div>
                 <div className="absolute top-1/2 left-0 w-[500px] h-[500px] bg-school-primary/10 blur-[150px] -translate-y-1/2" />

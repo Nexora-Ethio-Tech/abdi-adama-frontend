@@ -98,7 +98,7 @@ export default function Branches({ setScrolled }: { setScrolled: (scrolled: bool
                     <h2 className="section-title">{t('landing.branches.title')}</h2>
                 </div>
 
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 perspective-2000">
+                <div className="grid md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-6 perspective-2000">
                     {isLoading ? (
                         // Skeleton Layout matching the real card structure
                         Array.from({ length: 4 }).map((_, i) => (
