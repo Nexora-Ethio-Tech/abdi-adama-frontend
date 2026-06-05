@@ -7,7 +7,7 @@ import FinalCTA from "./components/FinalCTA";
 
 export default function HomePage() {
   return (
-    <div className="bg-zinc-950 font-sans text-zinc-50 selection:bg-amber-500/20 selection:text-white antialiased">
+    <div className="font-sans antialiased">
 
       <main>
         <Hero />

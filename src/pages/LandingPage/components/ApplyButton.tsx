@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { StudentRegistration } from "../../../components/StudentRegistration";
 import { useUser } from "../../../context/UserContext";
 import logo from "../../../assets/logo.jpg";
+import { useTheme } from "../../../context/ThemeContext";
 
 interface ApplyButtonProps {
   /** Optional extra Tailwind classes for the trigger button */
@@ -13,6 +14,7 @@ export default function ApplyButtonSection({ className = "" }: ApplyButtonProps)
   const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { registrationOpen } = useUser();
+  const { theme } = useTheme();
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -67,8 +69,8 @@ export default function ApplyButtonSection({ className = "" }: ApplyButtonProps)
             <div className="flex flex-col items-center text-center py-12 space-y-5">
               <div className="w-20 h-20 bg-rose-50 dark:bg-rose-950/30 text-rose-500 rounded-full flex items-center justify-center border border-rose-100 dark:border-rose-900">
                 <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div className="space-y-2">
@@ -99,11 +101,11 @@ export default function ApplyButtonSection({ className = "" }: ApplyButtonProps)
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`group relative inline-flex items-center justify-center gap-2.5 rounded-full font-sans font-medium text-sm tracking-wide transition-all duration-300 cursor-pointer ${
-          registrationOpen
-            ? "bg-white text-zinc-950 hover:bg-zinc-100 hover:scale-[1.01] shadow-xl shadow-white/[0.01]"
-            : "bg-zinc-800/60 text-zinc-400 border border-zinc-700/50"
-        } ${className || "px-8 py-4"}`}
+        className={`group relative inline-flex items-center justify-center gap-2.5 rounded-full font-sans font-medium text-sm tracking-wide transition-all duration-300 hover:scale-[1.01] shadow-xl ${theme === 'dark'
+            ? 'bg-white text-zinc-950 hover:bg-zinc-100 shadow-white/[0.01]'
+            : 'bg-zinc-900 text-white hover:bg-zinc-800 shadow-zinc-900/10'
+          } ${className || "px-8 py-4"
+          }`}
       >
         <span>{registrationOpen ? "Apply Now" : "Admissions Closed"}</span>
         {registrationOpen ? (
@@ -115,8 +117,8 @@ export default function ApplyButtonSection({ className = "" }: ApplyButtonProps)
           </svg>
         ) : (
           <svg className="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         )}
       </button>

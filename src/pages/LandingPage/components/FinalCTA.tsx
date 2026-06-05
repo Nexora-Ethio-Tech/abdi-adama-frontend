@@ -18,7 +18,7 @@ export default function FinalCTA() {
   return (
     <section 
       ref={ref} 
-      className="h-screen w-full bg-zinc-950 flex items-center justify-center p-4 md:p-8"
+      className="h-screen w-full bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center p-4 md:p-8 transition-colors duration-300"
     >
       <motion.div
         style={{ opacity, scale }}
@@ -35,18 +35,18 @@ export default function FinalCTA() {
         </div>
 
         {/* RIGHT CTA SIDE */}
-        <div className="h-full w-full flex flex-col justify-center p-6 sm:p-10 md:p-12 lg:p-16 bg-zinc-900 relative overflow-hidden">
+        <div className="h-full w-full flex flex-col justify-center p-6 sm:p-10 md:p-12 lg:p-16 bg-zinc-800 dark:bg-zinc-900 relative overflow-hidden">
           {/* Decorative background element */}
-          <div className="absolute top-[-50%] right-[-50%] w-[100%] h-[100%] rounded-full bg-zinc-800/30 blur-3xl pointer-events-none"></div>
+          <div className="absolute top-[-50%] right-[-50%] w-[100%] h-[100%] rounded-full bg-zinc-700/30 dark:bg-zinc-800/30 blur-3xl pointer-events-none"></div>
 
           <div className="relative z-10">
-            <h2 className="text-xs font-semibold tracking-[0.25em] text-zinc-400 uppercase mb-2">
+            <h2 className="text-xs font-semibold tracking-[0.25em] text-zinc-300 dark:text-zinc-400 uppercase mb-2">
               {translations.cta.badge}
             </h2>
             <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight tracking-tight mb-4">
               {translations.cta.titleLine1} <br/> {translations.cta.titleLine2}
             </h3>
-            <p className="text-zinc-400 text-sm sm:text-base font-light mb-6 max-w-sm leading-relaxed">
+            <p className="text-zinc-300 dark:text-zinc-400 text-sm sm:text-base font-light mb-6 max-w-sm leading-relaxed">
               {translations.cta.desc}
             </p>
             <ApplyButtonSection className="px-4 py-2 text-xs md:text-sm" />

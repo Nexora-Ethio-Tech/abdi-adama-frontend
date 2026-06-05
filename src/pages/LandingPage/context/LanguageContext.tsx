@@ -60,10 +60,13 @@ export interface TranslationSchema {
     role: string;
   };
   stats: {
+    badge: string;
     title: string;
     items: StatItemData[];
   };
   programs: {
+    desc: string;
+    title: string;
     items: ProgramItem[];
     label: string;
   };
@@ -207,6 +210,7 @@ const translations: Record<Language, TranslationSchema> = {
         { value: "18", label: "Clubs & Activities", final: "+" },
         { value: "4", label: "School Branches", final: "" },
       ],
+      badge: ""
     },
     programs: {
       items: [
@@ -227,6 +231,8 @@ const translations: Record<Language, TranslationSchema> = {
         },
       ],
       label: "Program",
+      desc: "",
+      title: ""
     },
     studentBook: {
       title: "Student Achievements",
@@ -412,6 +418,7 @@ const translations: Record<Language, TranslationSchema> = {
         { value: "18", label: "ክበባት እና እንቅስቃሴዎች", final: "+" },
         { value: "4", label: "የትምህርት ቤት ቅርንጫፎች", final: "" },
       ],
+      badge: ""
     },
     programs: {
       items: [
@@ -432,6 +439,8 @@ const translations: Record<Language, TranslationSchema> = {
         },
       ],
       label: "ፕሮግራም",
+      desc: "",
+      title: ""
     },
     studentBook: {
       title: "የተማሪዎች ስኬት",
@@ -617,6 +626,7 @@ const translations: Record<Language, TranslationSchema> = {
         { value: "18", label: "Kilaabota & Sochiiwwan", final: "+" },
         { value: "4", label: "Dammeewwan Mana Barumsaa", final: "" },
       ],
+      badge: ""
     },
     programs: {
       items: [
@@ -637,6 +647,8 @@ const translations: Record<Language, TranslationSchema> = {
         },
       ],
       label: "Sagantaa",
+      desc: "",
+      title: ""
     },
     studentBook: {
       title: "Milkaa'ina Barattootaa",
