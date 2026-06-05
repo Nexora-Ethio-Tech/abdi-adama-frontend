@@ -76,8 +76,8 @@ export default function About() {
                                 <Heart className="mb-4 text-white/80" size={32} />
                                 <p className="text-lg font-bold leading-tight">{t('landing.nurturingMinds')}</p>
                             </div>
-                            <div className="h-64 rounded-3xl overflow-hidden shadow-2xl border-2 border-white dark:border-slate-800 group">
-                                <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=2070&auto=format&fit=crop" alt="Campus Life" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                            <div className="h-64 rounded-3xl overflow-hidden shadow-2xl border-none border-white dark:border-slate-800 group">
+                                <img src="https://www.abdiadama.com/assets/images/choose-us-image-01.png" alt="Campus Life" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                             </div>
                         </div>
                     </motion.div>

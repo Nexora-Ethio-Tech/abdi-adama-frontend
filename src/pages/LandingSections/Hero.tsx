@@ -1,5 +1,5 @@
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
-import classroomImg from '../../assets/students_classroom.png';
+import classroomImg from '../../../public/kindergarden.png';
 import {
     ArrowRight,
     LogIn,
@@ -132,13 +132,6 @@ export default function Hero() {
                                 {registrationOpen && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                                 {!registrationOpen && <Lock size={16} />}
                             </button>
-                            <button
-                                onClick={() => navigate('/login')}
-                                className="px-10 py-5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-800 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center gap-3"
-                            >
-                                {t('landing.portalBtn')}
-                                <LogIn size={18} />
-                            </button>
                         </div>
                     </div>
 
@@ -146,10 +139,10 @@ export default function Hero() {
                         style={{ rotateX: smoothRotateX, rotateY: smoothRotateY, scale }}
                         className="relative hidden lg:block perspective-1000"
                     >
-                        <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-900 aspect-[4/5] group preserve-3d">
+                        <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-900 aspect-[4/5] group preserve-3">
                             <img src={classroomImg} alt="Students" className="w-full h-full object-cover slow-zoom" />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
-                            <div className="absolute bottom-10 left-10 right-10 text-white">
+                            <div className="absolute bottom-10 left-10 right-10 text-white bg-zinc-800/90 rounded-xl p-5">
                                 <div className="flex items-center gap-2 mb-2">
                                     {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="fill-amber-400 text-amber-400" />)}
                                 </div>

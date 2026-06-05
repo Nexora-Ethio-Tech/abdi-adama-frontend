@@ -130,9 +130,11 @@ export const CommunitySection = () => {
           </div>
           <div className="space-y-4">
             {d.traits.map((t, i) => (
-              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }} className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <CheckCircle2 size={18} className="text-school-primary shrink-0 mt-0.5" />
-                <span className="text-sm text-slate-700 dark:text-slate-300 font-medium">{t}</span>
+              <motion.div key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }} className="flex justify-center items-center w-full gap-3 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <>
+                  <CheckCircle2 size={18} className="text-school-primary shrink-0 mt-0.5" />
+                  <span className="text-sm text-slate-700 dark:text-slate-300 font-medium text-center">{t}</span>
+                </>
               </motion.div>
             ))}
           </div>
@@ -192,8 +194,24 @@ export const SchoolLifeSection = ({ id }: { id?: string }) => (
       <div className="space-y-16">
         {/* Uniform */}
         <motion.div {...fadeUp} className="grid lg:grid-cols-2 gap-10 items-center">
-          <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800 aspect-[4/3]">
-            <img src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&auto=format&fit=crop" alt="School Uniform" className="w-full h-full object-cover hover:scale-105 transition-transform duration-700" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto p-4">
+            {/* Image 1 */}
+            <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800 h-[500px] group">
+              <img
+                src="https://www.abdiadama.com/assets/images/uniformlast.jpg"
+                alt="School Uniform - Option 1"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+            </div>
+
+            {/* Image 2 */}
+            <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800 h-[450px] group">
+              <img
+                src="https://www.abdiadama.com/assets/images/secondary.jpg"
+                alt="School Uniform - Option 2"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+            </div>
           </div>
           <div className="space-y-6">
             <div className="flex items-center gap-3"><Shirt size={28} className="text-school-primary" /><h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">School Uniform</h3></div>
@@ -316,20 +334,21 @@ const fetchUsers = async () => {
 
 export const TeamSection = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [error, setError] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true); // Added loading state
 
   useEffect(() => {
     console.log('🚀 Fetching branches and users for TeamSection...');
     let isMounted = true;
 
     const init = async () => {
+      setIsLoading(true);
       const result = await fetchUsers();
 
       if (isMounted) {
         // Safely default to an empty array if result or result.data is nullish
         const rawUsers = result?.data || [];
 
-        const usersFormatted = rawUsers.map((u) => ({
+        const usersFormatted = rawUsers.map((u: any) => ({
           name: u?.name || 'Unknown',
           role: u?.role || 'Staff',
           branch: u?.branch_name || 'N/A',
@@ -337,11 +356,10 @@ export const TeamSection = () => {
         }));
 
         setTeam(usersFormatted);
+        setIsLoading(false);
         console.log('✅ Users processed successfully:', usersFormatted);
-        setError(false);
 
         if (result && !result.success) {
-          setError(true);
           console.warn("⚠️ Could not reach user directory server.");
         }
       }
@@ -354,8 +372,6 @@ export const TeamSection = () => {
     };
   }, []);
 
-  if (error) return null;
-
   return (
     <section className="py-32 bg-white dark:bg-slate-950 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
@@ -364,17 +380,36 @@ export const TeamSection = () => {
           <h2 className="section-title">Our Team</h2>
           <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto mt-4">The dedicated leaders behind the Abdi Adama School network.</p>
         </motion.div>
+
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-          {team.map((t, i) => (
-            <motion.div key={i} {...stagger(i)} whileHover={{ y: -10 }} className="text-center group">
-              <div className="w-32 h-32 mx-auto rounded-full overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 group-hover:border-school-primary transition-colors duration-500 mb-4">
-                <img src={t.img} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+          {isLoading ? (
+            // Skeleton Loading State
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={`team-skeleton-${i}`} className="text-center animate-pulse">
+                {/* Profile Circle Skeleton */}
+                <div className="w-32 h-32 mx-auto rounded-full bg-slate-200 dark:bg-slate-800 border-4 border-white dark:border-slate-800 mb-4" />
+
+                {/* Name Skeleton */}
+                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded mx-auto w-3/4 mb-2" />
+
+                {/* Role & Branch Skeletons */}
+                <div className="h-3 bg-slate-100 dark:bg-slate-900 rounded mx-auto w-1/2 mb-1" />
+                <div className="h-3 bg-slate-100 dark:bg-slate-900 rounded mx-auto w-2/3" />
               </div>
-              <h4 className="font-black text-slate-900 dark:text-white text-sm">{t.name}</h4>
-              <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">{t.role}</p>
-              <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">Branch: {t.branch}</p>
-            </motion.div>
-          ))}
+            ))
+          ) : (
+            // Real Data State
+            team.map((t, i) => (
+              <motion.div key={i} {...stagger(i)} whileHover={{ y: -10 }} className="text-center group">
+                <div className="w-32 h-32 mx-auto rounded-full overflow-hidden shadow-xl border-4 border-white dark:border-slate-800 group-hover:border-school-primary transition-colors duration-500 mb-4">
+                  <img src={t.img} alt={t.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                </div>
+                <h4 className="font-black text-slate-900 dark:text-white text-sm">{t.name}</h4>
+                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">{t.role}</p>
+                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mt-1">Branch: {t.branch}</p>
+              </motion.div>
+            ))
+          )}
         </div>
       </div>
     </section>

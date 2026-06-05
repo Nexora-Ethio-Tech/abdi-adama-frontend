@@ -18,11 +18,7 @@ export default function NavBar({ scrolled }: { scrolled: boolean }) {
 
     return (
         <nav
-            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-                scrolled
-                    ? "bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-lg"
-                    : "bg-transparent"
-            }`}
+            className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-lg`}
         >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
                 <div className="flex items-center justify-between">
