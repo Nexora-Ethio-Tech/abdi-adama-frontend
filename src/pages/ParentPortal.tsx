@@ -80,6 +80,7 @@ export const ParentPortal = () => {
   const [selectedSemester, setSelectedSemester] = useState(() => formatSemester(getCurrentSemester()));
   const [selectedYear, setSelectedYear] = useState(() => ecYearToGregorian(getCurrentECYear()));
   const [courses, setCourses] = useState<any[]>([]);
+  const [gradingMethods, setGradingMethods] = useState<Array<{ id: string; label: string; maxWeight: number }>>([]);
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -322,6 +323,7 @@ export const ParentPortal = () => {
     if (!isSemesterAccessible(selectedYear, semNumCheck as 1 | 2)) {
       setGradesError('Grades for this academic period are not yet accessible. Please select a current or past year and semester.');
       setCourses([]);
+      setGradingMethods([]);
       setSelectedCourse(null);
       return;
     }
@@ -336,6 +338,8 @@ export const ParentPortal = () => {
           if (cancelled) return;
           const c = d?.courses || [];
           setCourses(c);
+          const methods = d?.gradingMethods || [];
+          setGradingMethods(methods);
           if (c.length > 0) {
             setSelectedCourse((prev: any) => {
               if (preserveSelection && prev) {
@@ -351,6 +355,7 @@ export const ParentPortal = () => {
           if (cancelled) return;
           setGradesError(e.message || 'Failed to fetch child courses.');
           setCourses([]);
+          setGradingMethods([]);
           setSelectedCourse(null);
         })
         .finally(() => {
@@ -1051,19 +1056,50 @@ export const ParentPortal = () => {
               {/* Grading area: only visible after a course is selected */}
               {selectedCourse ? (
                 <div className="bg-slate-950/95 dark:bg-slate-950/95 rounded-[2rem] overflow-hidden shadow-lg border border-slate-800">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
-                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Quiz</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
-                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Test</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
-                    <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Midterm</div><div className="text-lg font-black text-slate-300 mt-1">30%</div></div>
-                    <div className="p-4"><div className="text-xs font-bold uppercase text-slate-400">Final</div><div className="text-lg font-black text-slate-300 mt-1">50%</div></div>
-                  </div>
+                  {gradingMethods.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-sm text-slate-200">
+                        <tbody>
+                          <tr className="border-b border-slate-800">
+                            <th className="px-6 py-4 text-left font-black uppercase tracking-widest text-slate-400">Assessment Component</th>
+                            {gradingMethods.map((method) => (
+                              <th key={method.id} className="min-w-[140px] px-6 py-4 text-left font-black uppercase tracking-widest text-slate-300">
+                                {method.label}
+                                <span className="block text-[10px] text-slate-500 font-bold mt-0.5">({method.maxWeight}%)</span>
+                              </th>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td className="px-6 py-4 text-left font-black uppercase tracking-widest text-slate-400">Student Score</td>
+                            {gradingMethods.map((method) => {
+                              const gradeVal = selectedCourse.grades?.[method.id];
+                              return (
+                                <td key={method.id} className="px-6 py-4 text-left font-bold text-slate-100 text-lg">
+                                  {gradeVal !== null && gradeVal !== undefined ? Number(gradeVal).toFixed(1) : '--'}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
+                        <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Quiz</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
+                        <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Test</div><div className="text-lg font-black text-slate-300 mt-1">10%</div></div>
+                        <div className="p-4 border-r border-slate-800"><div className="text-xs font-bold uppercase text-slate-400">Midterm</div><div className="text-lg font-black text-slate-300 mt-1">30%</div></div>
+                        <div className="p-4"><div className="text-xs font-bold uppercase text-slate-400">Final</div><div className="text-lg font-black text-slate-300 mt-1">50%</div></div>
+                      </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
-                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.quiz_10 ?? '--'}</div></div>
-                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.assignment_10 ?? '--'}</div></div>
-                    <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.mid_30 ?? '--'}</div></div>
-                    <div className="p-4"><div className="text-3xl font-black text-slate-100">{selectedCourse.final_50 ?? '--'}</div></div>
-                  </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-0 border-b border-slate-800">
+                        <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.quiz_10 ?? '--'}</div></div>
+                        <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.assignment_10 ?? '--'}</div></div>
+                        <div className="p-4 border-r border-slate-800"><div className="text-3xl font-black text-slate-100">{selectedCourse.mid_30 ?? '--'}</div></div>
+                        <div className="p-4"><div className="text-3xl font-black text-slate-100">{selectedCourse.final_50 ?? '--'}</div></div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="bg-slate-900/50 p-6 border-t border-slate-800">
                     <div className="flex items-center justify-between">
