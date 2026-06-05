@@ -1,9 +1,19 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+    // Load environment variables (Vite prefixes env vars with VITE_)
+    const env = loadEnv(mode, process.cwd(), '');
+    // Prefer an explicit proxy target for dev; fall back to VITE_API_URL
+    const API_PROXY_TARGET = env.VITE_API_PROXY || env.VITE_API_URL || 'https://api.abdi-adama.com:5001';
+
+    return {
     plugins: [react()],
 
     // Build configuration
@@ -56,7 +66,7 @@ export default defineConfig({
         strictPort: false,
         proxy: {
             '/api': {
-                target: 'https://api.abdi-adama.com:5001',
+                target: API_PROXY_TARGET,
                 changeOrigin: true,
                 secure: false,
                 rewrite: (path) => path // Keep /api prefix
@@ -88,6 +98,7 @@ export default defineConfig({
         include: ['react', 'react-dom', 'react-router-dom', 'zustand', 'framer-motion']
     },
 
-    // Base path - set to './' for relative paths (important for deployment)
-    base: './'
+        // Base path - set to './' for relative paths (important for deployment)
+        base: './'
+    };
 });

@@ -309,7 +309,9 @@ export const Staff = () => {
       const data: any = {
         name: formattedName,
         email: createForm.email,
-        branchId: createForm.role === 'auditor' ? null : (currentUserRole === 'super-admin' && selectedBranchId ? selectedBranchId : createForm.branchId)
+        ...(createForm.role !== 'auditor' && {
+          branchId: currentUserRole === 'super-admin' && selectedBranchId ? selectedBranchId : createForm.branchId
+        })
       };
 
       console.log('📤 Sending data:', data);

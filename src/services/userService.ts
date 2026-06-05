@@ -15,7 +15,7 @@ export const userService = {
   },
 
   // Create Auditor
-  createAuditor: async (data: { name: string; email: string; branchId: string }) => {
+  createAuditor: async (data: { name: string; email: string; branchId?: string }) => {
     const response = await api.post(API_ENDPOINTS.CREATE_AUDITOR, data);
     return response.data;
   },

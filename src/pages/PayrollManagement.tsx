@@ -341,18 +341,7 @@ export const PayrollManagement = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          {/* Only the Auditor generates payroll */}
-          {role === 'auditor' && (
-            <button
-              type="button"
-              onClick={() => setIsGenerating(true)}
-              className="bg-slate-900 dark:bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
-            >
-              <Plus size={16} />
-              Generate Monthly Payroll
-            </button>
-          )}
-          {/* Both Auditor and Super Admin can do custom export */}
+          {/* Both Auditor and Super Admin can generate financial reports */}
           {(role === 'auditor' || role === 'super-admin') && (
             <button
               type="button"
@@ -360,7 +349,7 @@ export const PayrollManagement = () => {
               className="bg-emerald-600 dark:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-emerald-700 transition-all flex items-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none"
             >
               <Download size={16} />
-              Custom Export
+              Generate Financial Report
             </button>
           )}
         </div>
@@ -758,6 +747,21 @@ export const PayrollManagement = () => {
             </div>
 
             <div className="space-y-6">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Branch Filter</label>
+                <select
+                  title="Select branch to filter report"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-200 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(e.target.value)}
+                >
+                  <option value="">All Branches</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-450 dark:text-slate-400 uppercase tracking-widest block mb-1.5">Ethiopic Month</label>
