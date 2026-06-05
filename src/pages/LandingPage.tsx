@@ -88,7 +88,7 @@ export const LandingPage = () => {
   }
 
   const [branches, setBranches] = useState<BranchInfo[]>([]);
-  const [error, setError] = useState(false)
+  const [error, setError] = useState(true)
   const DEFAULT_BRANCH_IMAGE = "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop";
 
   useEffect(() => {
@@ -106,7 +106,7 @@ export const LandingPage = () => {
       if (isMounted) {
         const branchData = result?.data || [];
         console.log("Branches fetched successfully: ", branchData);
-
+        setError(false);
         setBranches(branchData.data);
 
         // Handle the error state gracefully in the UI

@@ -316,7 +316,7 @@ const fetchUsers = async () => {
 
 export const TeamSection = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState(true);
 
   useEffect(() => {
     console.log('🚀 Fetching branches and users for TeamSection...');
@@ -338,6 +338,7 @@ export const TeamSection = () => {
 
         setTeam(usersFormatted);
         console.log('✅ Users processed successfully:', usersFormatted);
+        setError(false);
 
         if (result && !result.success) {
           setError(true);
