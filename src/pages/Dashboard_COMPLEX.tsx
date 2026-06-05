@@ -9,6 +9,8 @@ import { dashboardService } from '../services/dashboardService';
 import { getDashboard as getSchoolAdminDashboard, getBranchTeachers, getBranchUsers, getAtRiskStudents, getUpcomingEvents, createEvent, updateEvent, deleteEvent, type AtRiskStudent, type Event } from '../services/schoolAdminService';
 import classService from '../services/classService';
 import settingsService from '../services/settingsService';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
 const StatCard = ({ icon: Icon, label, value, trend, color }: any) => (
   <div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -714,7 +716,7 @@ export const Dashboard = () => {
                       </button>
                     )}
                   </div>
-                  {notice.expiresAt && <span className="text-[10px] text-rose-400 italic font-medium">Expires: {notice.expiresAt}</span>}
+                  {notice.expiresAt && <span className="text-[10px] text-rose-400 italic font-medium">Expires: {formatEthiopianLabel(notice.expiresAt)}</span>}
                 </div>
               </div>
               <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{notice.title}</h4>
@@ -896,8 +898,22 @@ export const Dashboard = () => {
                 <textarea id="notice-content" name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
               </div>
               <div className="space-y-1">
-                <label htmlFor="notice-expiry" className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date</label>
-                <input id="notice-expiry" name="expiresAt" type="date" className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                <label htmlFor="notice-expiry" className="text-[10px] font-bold text-slate-500 uppercase">Expiry Date (Ethiopian Calendar)</label>
+                <EthiopianDatePicker
+                  value=""
+                  onChange={(gregorianDate) => {
+                    // Set the hidden input for form submission
+                    const input = document.querySelector('input[name="expiresAt"]') as HTMLInputElement;
+                    if (input) input.value = gregorianDate;
+                  }}
+                  placeholder="Select Ethiopian date"
+                  title="Set notice expiry date using Ethiopian calendar"
+                />
+                <input
+                  name="expiresAt"
+                  type="hidden"
+                  defaultValue=""
+                />
               </div>
               <div className="pt-4">
                 <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">

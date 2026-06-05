@@ -8,6 +8,29 @@ import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 import AssetList from '../components/AssetList';
 import { getTodayEthiopianDate, getCurrentEthiopianMonth, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
+// Ethiopian month names (index 0 = month 1 "Meskerem")
+const ETHIOPIAN_MONTHS = [
+  'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+  'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
+];
+
+// Generate selectable Ethiopian months: 3 past → current → 4 future
+function getSelectableMonths() {
+  const current = getCurrentEthiopianMonth(); // e.g. "2018-09"
+  const [cy, cm] = current.split('-').map(Number);
+  const list: { value: string; label: string }[] = [];
+  for (let offset = -3; offset <= 4; offset++) {
+    let m = cm + offset;
+    let y = cy;
+    while (m <= 0) { m += 13; y -= 1; }
+    while (m > 13) { m -= 13; y += 1; }
+    const value = `${y}-${String(m).padStart(2, '0')}`;
+    const label = `${ETHIOPIAN_MONTHS[m - 1]} ${y} E.C.`;
+    list.push({ value, label });
+  }
+  return list;
+}
+
 type ManualTransaction = {
   id: string;
   category: 'expense' | 'income';
@@ -70,6 +93,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [selectedPaymentTypes, setSelectedPaymentTypes] = useState<string[]>(['Monthly Tuition']);
   const [outstandingData, setOutstandingData] = useState<any | null>(null);
   const [paymentAmounts, setPaymentAmounts] = useState<Record<string, number>>({});
+  const [paymentMonth, setPaymentMonth] = useState<string>(getCurrentEthiopianMonth());
 
   // Student List Pagination
   const [studentPage, setStudentPage] = useState(1);
@@ -270,47 +294,56 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   const [isLoadingOutstanding, setIsLoadingOutstanding] = useState(false);
 
-  const openPaymentModal = (student?: StudentFeeInfo) => {
+  // Fetch outstanding for a specific student + month and update modal state
+  const fetchOutstandingForMonth = (student: StudentFeeInfo, month: string) => {
+    setIsLoadingOutstanding(true);
     setOutstandingData(null);
     setPaymentAmounts({});
+    setSelectedPaymentTypes([]);
+    financeClerkService.getStudentOutstanding(student.id, month).then((d) => {
+      setOutstandingData(d);
+      const validFees = (d.fees || []).filter((f: any) => {
+        if (f.feeType === 'registration') return false;
+        if (f.feeType === 'bus' && !d.usesTransport) return false;
+        if (Number(f.remaining || 0) <= 0) return false;
+        return true;
+      });
+      const defaults = validFees.map((f: any) => f.feeType);
+      const amounts: Record<string, number> = {};
+      validFees.forEach((f: any) => { amounts[f.feeType] = Number(f.remaining || 0); });
+      setPaymentAmounts(amounts);
+      setSelectedPaymentTypes(defaults.map((k: string) => {
+        if (k === 'monthly') return 'Monthly Tuition';
+        if (k === 'bus') return 'Bus Fee';
+        if (k === 'penalty') return 'Penalty Fee';
+        return k;
+      }));
+      const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
+      setPaymentData(prev => ({ ...prev, studentId: student.id, amount: totalDue, type: defaults, date: getTodayEthiopianDate(), month }));
+    }).catch((err) => {
+      setError(err.response?.data?.error?.message || 'Failed to fetch outstanding fees');
+      setSelectedPaymentTypes([]);
+      setPaymentData(prev => ({ ...prev, studentId: student.id, amount: 0, type: [], date: getTodayEthiopianDate(), month }));
+    }).finally(() => setIsLoadingOutstanding(false));
+  };
+
+  const handlePaymentMonthChange = (newMonth: string) => {
+    setPaymentMonth(newMonth);
+    if (selectedStudent) fetchOutstandingForMonth(selectedStudent, newMonth);
+    else setPaymentData(prev => ({ ...prev, month: newMonth }));
+  };
+
+  const openPaymentModal = (student?: any, preferredMonth?: string) => {
+    setOutstandingData(null);
+    setPaymentAmounts({});
+    const currentMonth = preferredMonth || getCurrentEthiopianMonth();
+    setPaymentMonth(currentMonth);
     if (student) {
       setSelectedStudent(student);
-      setIsLoadingOutstanding(true);
-      // fetch outstanding for current month
-      financeClerkService.getStudentOutstanding(student.id).then((d) => {
-        setOutstandingData(d);
-        // select all fee items with remaining > 0 by default, except filtered ones
-        const validFees = (d.fees || []).filter((f: any) => {
-          if (f.feeType === 'registration') return false;
-          if (f.feeType === 'bus' && !d.usesTransport) return false;
-          if (Number(f.remaining || 0) <= 0) return false;
-          return true;
-        });
-        
-        const defaults = validFees.map((f: any) => f.feeType);
-        const amounts: Record<string, number> = {};
-        validFees.forEach((f: any) => {
-          amounts[f.feeType] = Number(f.remaining || 0);
-        });
-        setPaymentAmounts(amounts);
-        setSelectedPaymentTypes(defaults.map((k: string) => {
-          if (k === 'monthly') return 'Monthly Tuition';
-          if (k === 'bus') return 'Bus Fee';
-          if (k === 'penalty') return 'Penalty Fee';
-          return k;
-        }));
-        const totalDue = defaults.reduce((acc: number, key: string) => acc + Number(amounts[key] || 0), 0);
-        setPaymentData({ studentId: student.id, amount: totalDue, type: defaults, date: getTodayEthiopianDate(), month: d.month });
-      }).catch((err) => {
-        setError(err.response?.data?.error?.message || 'Failed to fetch outstanding fees');
-        setSelectedPaymentTypes([]);
-        setPaymentData({ studentId: student.id, amount: 0, type: [], date: getTodayEthiopianDate(), month: getCurrentEthiopianMonth() });
-      }).finally(() => {
-        setIsLoadingOutstanding(false);
-      });
+      fetchOutstandingForMonth(student, currentMonth);
     } else {
       setSelectedPaymentTypes(['Monthly Tuition']);
-      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: getTodayEthiopianDate(), month: getCurrentEthiopianMonth() });
+      setPaymentData({ studentId: '', amount: 0, type: ['Monthly Tuition'], date: getTodayEthiopianDate(), month: currentMonth });
     }
     setShowPaymentModal(true);
   };
@@ -577,11 +610,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   // openPaymentHistory removed per updated UX (history not needed)
 
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Collection tab: ONLY show students who are Pending (in_collections) or Paid (cleared).
+  // Overdue students are exclusively shown in the Overdue tab.
+  const filteredStudents = students.filter(student => {
+    if (student.collection_status === 'overdue') return false;
+    const q = searchTerm.toLowerCase();
+    return (
+      student.name.toLowerCase().includes(q) ||
+      student.digital_id.toLowerCase().includes(q) ||
+      student.id.toLowerCase().includes(q)
+    );
+  });
 
   const filteredOverdueStudents = overdueStudents.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -793,7 +832,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
           >
-            All Students ({students.length})
+            All Students ({students.filter(s => s.collection_status !== 'overdue').length})
           </button>
           <button
             onClick={() => setActiveTab('registrations')}
@@ -1467,16 +1506,26 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Student</th>
                     <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Grade</th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Monthly Fee</th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Bus Fee</th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Penalty</th>
-                    <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                    {activeTab === 'overdue' ? (
+                      <>
+                        <th className="px-6 py-4 text-left text-xs font-black text-rose-500 uppercase tracking-widest">Monthly Unpaid</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-rose-500 uppercase tracking-widest">Bus Unpaid</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-rose-500 uppercase tracking-widest">Penalty Unpaid</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-rose-700 uppercase tracking-widest">Total Unpaid</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Monthly Fee</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Bus Fee</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Penalty</th>
+                        <th className="px-6 py-4 text-left text-xs font-black text-slate-500 uppercase tracking-widest">Status</th>
+                      </>
+                    )}
                     <th className="px-6 py-4 text-right text-xs font-black text-slate-500 uppercase tracking-widest">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {paginatedStudents.map((student) => {
-                    const _totalDue = (student.monthly_fee || 0) + (student.bus_fee || 0) + (student.penalty_fee || 0);
                     return (
                       <tr key={student.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-6 py-4">
@@ -1490,63 +1539,84 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                             Grade {student.grade}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                          {(student.monthly_fee || 0).toLocaleString()} ETB
-                        </td>
-                        <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
-                          {(student.bus_fee || 0).toLocaleString()} ETB
-                        </td>
-                        <td className="px-6 py-4">
-                          {student.penalty_fee > 0 ? (
-                            <span className="text-sm font-bold text-red-600">{(student.penalty_fee || 0).toLocaleString()} ETB</span>
-                          ) : (
-                            <span className="text-sm text-slate-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
-                            <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
-                              {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
-                            </span>
-                            {student.collection_status === 'cleared' ? (
-                              <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Paid ✓
-                              </span>
-                            ) : student.collection_status === 'overdue' ? (
-                              <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Overdue
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Unpaid
-                              </span>
-                            )}
-                            {student.fee_approval_status === 'pending' && (
-                              <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Pending Approval
-                              </span>
-                            )}
-                            {student.fee_approval_status === 'approved' && (
-                              <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Approved
-                              </span>
-                            )}
-                            {student.fee_approval_status === 'rejected' && (
-                              <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">
-                                Rejected
-                              </span>
-                            )}
-                            {student.fee_notes && (
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 italic max-w-xs">
-                                {student.fee_notes}
-                              </p>
-                            )}
-                          </div>
-                        </td>
+
+                        {activeTab === 'overdue' ? (
+                          <>
+                            {/* Overdue tab: show exact unpaid amounts */}
+                            <td className="px-6 py-4">
+                              {Number(student.monthly_unpaid) > 0 ? (
+                                <span className="text-sm font-bold text-rose-600 dark:text-rose-400">{Number(student.monthly_unpaid).toLocaleString()} ETB</span>
+                              ) : <span className="text-sm text-slate-400">–</span>}
+                            </td>
+                            <td className="px-6 py-4">
+                              {Number(student.bus_unpaid) > 0 ? (
+                                <span className="text-sm font-bold text-rose-600 dark:text-rose-400">{Number(student.bus_unpaid).toLocaleString()} ETB</span>
+                              ) : <span className="text-sm text-slate-400">{student.is_bus_user ? '0 ETB' : 'N/A'}</span>}
+                            </td>
+                            <td className="px-6 py-4">
+                              {Number(student.penalty_unpaid) > 0 ? (
+                                <span className="text-sm font-bold text-red-700 dark:text-red-400">{Number(student.penalty_unpaid).toLocaleString()} ETB</span>
+                              ) : <span className="text-sm text-slate-400">–</span>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-black text-red-700 dark:text-red-400">{Number(student.total_unpaid || 0).toLocaleString()} ETB</span>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            {/* Collection tab: show fee amounts + status */}
+                            <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                              {(student.monthly_fee || 0).toLocaleString()} ETB
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-slate-900 dark:text-white">
+                              {(student.bus_fee || 0).toLocaleString()} ETB
+                            </td>
+                            <td className="px-6 py-4">
+                              {student.penalty_fee > 0 ? (
+                                <span className="text-sm font-bold text-red-600">{(student.penalty_fee || 0).toLocaleString()} ETB</span>
+                              ) : (
+                                <span className="text-sm text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                <span className={`px-2 py-1 text-xs rounded-full font-bold inline-block w-fit ${student.fee_status === 'reduced' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}`}>
+                                  {student.fee_status === 'reduced' ? 'Reduced' : 'Standard'}
+                                </span>
+                                {student.collection_status === 'cleared' ? (
+                                  <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">
+                                    Paid ✓
+                                  </span>
+                                ) : student.collection_status === 'overdue' ? (
+                                  <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">
+                                    Overdue
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">
+                                    Pending
+                                  </span>
+                                )}
+                                {student.fee_approval_status === 'pending' && (
+                                  <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs font-bold inline-block w-fit">Pending Approval</span>
+                                )}
+                                {student.fee_approval_status === 'approved' && (
+                                  <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-xs font-bold inline-block w-fit">Approved</span>
+                                )}
+                                {student.fee_approval_status === 'rejected' && (
+                                  <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-xs font-bold inline-block w-fit">Rejected</span>
+                                )}
+                                {student.fee_notes && (
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 italic max-w-xs">{student.fee_notes}</p>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
+
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
-                               onClick={() => openPaymentModal(student)}
+                              onClick={() => openPaymentModal(student, activeTab === 'overdue' ? (student.overdue_months?.[0] || undefined) : undefined)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
                             >
                               Record Payment
@@ -1563,7 +1633,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             {/* Mobile Cards View */}
             <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
               {paginatedStudents.map((student) => {
-                const _totalDue = (student.monthly_fee || 0) + (student.bus_fee || 0) + (student.penalty_fee || 0);
+                const isOverdueTab = activeTab === 'overdue';
+                const displayTuition = isOverdueTab ? Number(student.monthly_unpaid || 0) : Number(student.monthly_fee || 0);
+                const displayBus = isOverdueTab ? Number(student.bus_unpaid || 0) : Number(student.bus_fee || 0);
+                const displayPenalty = isOverdueTab ? Number(student.penalty_unpaid || 0) : Number(student.penalty_fee || 0);
+                const displayRegistration = isOverdueTab ? Number(student.registration_unpaid || 0) : 0;
+                const totalUnpaid = isOverdueTab ? Number(student.total_unpaid || 0) : (displayTuition + displayBus + displayPenalty);
+
                 return (
                   <div key={student.id} className="p-4 space-y-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <div className="flex justify-between items-start">
@@ -1580,7 +1656,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         ) : student.collection_status === 'overdue' ? (
                           <span className="px-2 py-1 bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 rounded-full text-[9px] font-bold uppercase">Overdue</span>
                         ) : (
-                          <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Unpaid</span>
+                          <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Pending</span>
                         )}
                         {student.fee_approval_status === 'pending' && <span className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-[9px] font-bold uppercase">Pending</span>}
                         {student.fee_approval_status === 'approved' && <span className="px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-full text-[9px] font-bold uppercase">Approved</span>}
@@ -1588,25 +1664,43 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Tuition</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{(student.monthly_fee || 0).toLocaleString()}</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bus</p>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{(student.bus_fee || 0).toLocaleString()}</p>
-                      </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center border border-transparent data-[has-penalty=true]:border-rose-200 dark:data-[has-penalty=true]:border-rose-900/50 data-[has-penalty=true]:bg-rose-50 dark:data-[has-penalty=true]:bg-rose-900/10" data-has-penalty={student.penalty_fee > 0}>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Penalty</p>
-                        <p className={`text-sm font-black ${student.penalty_fee > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500'}`}>
-                          {student.penalty_fee > 0 ? (student.penalty_fee || 0).toLocaleString() : '-'}
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          {isOverdueTab ? 'Tuition Unpaid' : 'Tuition'}
                         </p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{displayTuition.toLocaleString()}</p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          {isOverdueTab ? 'Bus Unpaid' : 'Bus'}
+                        </p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">
+                          {isOverdueTab && !student.is_bus_user ? 'N/A' : displayBus.toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          {isOverdueTab ? 'Penalty Unpaid' : 'Penalty'}
+                        </p>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{displayPenalty.toLocaleString()}</p>
+                      </div>
+                      {isOverdueTab && displayRegistration > 0 && (
+                        <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center col-span-2">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Registration Unpaid</p>
+                          <p className="text-sm font-black text-slate-900 dark:text-white">{displayRegistration.toLocaleString()}</p>
+                        </div>
+                      )}
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center col-span-2">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+                          {isOverdueTab ? 'Total Unpaid' : 'Total'}
+                        </p>
+                        <p className="text-sm font-black text-red-600 dark:text-red-400">{totalUnpaid.toLocaleString()} ETB</p>
                       </div>
                     </div>
 
                     <button
-                      onClick={() => openPaymentModal(student)}
+                      onClick={() => openPaymentModal(student, isOverdueTab ? (student.overdue_months?.[0] || undefined) : undefined)}
                       className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
                     >
                       Record Payment
@@ -1851,6 +1945,25 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   />
                 </div>
               )}
+              {/* Billing Month Selector */}
+              <div>
+                <label htmlFor="payment-billing-month" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Billing Month *
+                </label>
+                <select
+                  id="payment-billing-month"
+                  value={paymentMonth}
+                  onChange={(e) => handlePaymentMonthChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  {getSelectableMonths().map((m) => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  Select the month you are paying for. Future months are allowed for advance payments.
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Payment Types *</label>
                 <div className="grid grid-cols-1 gap-2">
