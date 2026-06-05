@@ -181,6 +181,18 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             }));
             setBranches(apiBranches);
           }
+        } else if (user.role === 'auditor') {
+          const { default: api } = await import('../services/api');
+          // Auditor: Fetch all branches using auditor endpoint
+          const res = await api.get('/auditor/branches');
+          if (res.data.success && Array.isArray(res.data.data)) {
+            const apiBranches = res.data.data.map((b: any) => ({
+              id: b.id,
+              name: b.name,
+              location: b.address || b.location || 'N/A'
+            }));
+            setBranches(apiBranches);
+          }
         } else if ((user as any).branchId) {
           // Branch-level users: Use their assigned branch from profile (avoids 403 routes)
           setBranches([{

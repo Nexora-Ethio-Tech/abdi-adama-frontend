@@ -83,6 +83,10 @@ export interface PayrollItem {
   pension_employer: number;
   total_deductions: number;
   net_pay: number;
+  /** Actual amount disbursed — sourced from finance_transactions for the payroll month */
+  actual_paid: number;
+  /** 'paid' if actual_paid > 0, otherwise 'unpaid' */
+  payment_status: 'paid' | 'unpaid';
 }
 
 export interface StaffNotification {

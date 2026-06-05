@@ -264,17 +264,26 @@ export const PayrollManagement = () => {
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-red-500">Income Tax</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-red-500">Pension 7%</th>
                   <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-slate-450">Employer 11%</th>
-                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-emerald-500 bg-emerald-50/20">Net Payout</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Computed Net</th>
+                  <th className="px-5 py-4 text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50/30 dark:bg-emerald-900/10">Actual Paid</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/30">
                 {items.map((i) => {
                   const allowanceTotal = Number(i.transport_allowance) + Number(i.housing_allowance) + Number(i.position_allowance);
+                  const isPaid = i.payment_status === 'paid' || Number(i.actual_paid) > 0;
                   return (
-                    <tr key={i.id} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/10">
+                    <tr key={i.id} className={`hover:bg-slate-50/30 dark:hover:bg-slate-800/10 ${!isPaid ? 'bg-amber-50/30 dark:bg-amber-900/5' : ''}`}>
                       <td className="px-5 py-3.5">
-                        <p className="font-bold text-slate-800 dark:text-white">{i.employee_name}</p>
-                        <span className="text-[8px] font-bold text-slate-400">{i.employee_digital_id} &bull; {i.employee_role}</span>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-white">{i.employee_name}</p>
+                            <span className="text-[8px] font-bold text-slate-400">{i.employee_digital_id} &bull; {i.employee_role}</span>
+                          </div>
+                          {!isPaid && (
+                            <span className="text-[7px] font-black uppercase tracking-widest bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 whitespace-nowrap">Not Paid</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5 font-bold">{Number(i.basic_salary).toLocaleString()} ETB</td>
                       <td className="px-5 py-3.5">
@@ -295,7 +304,20 @@ export const PayrollManagement = () => {
                       <td className="px-5 py-3.5 text-rose-500 font-bold">-{Number(i.income_tax).toLocaleString()} ETB</td>
                       <td className="px-5 py-3.5 text-rose-500 font-bold">-{Number(i.pension_employee).toLocaleString()} ETB</td>
                       <td className="px-5 py-3.5 font-medium text-slate-400">+{Number(i.pension_employer).toLocaleString()} ETB</td>
-                      <td className="px-5 py-3.5 font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/10">{Number(i.net_pay).toLocaleString()} ETB</td>
+                      <td className="px-5 py-3.5 font-bold text-slate-500 dark:text-slate-400">{Number(i.net_pay).toLocaleString()} ETB</td>
+                      <td className="px-5 py-3.5 bg-emerald-50/20 dark:bg-emerald-900/10">
+                        {isPaid ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-black text-emerald-600 dark:text-emerald-400">{Number(i.actual_paid).toLocaleString()} ETB</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-500">&#10003; Verified Paid</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-black text-amber-600 dark:text-amber-400">—</span>
+                            <span className="text-[7px] font-black uppercase tracking-widest text-amber-500">Awaiting Payment</span>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
