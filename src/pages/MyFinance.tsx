@@ -4,7 +4,6 @@ import payrollService, { PayrollItem, StaffNotification } from '../services/payr
 import loanService, { Loan } from '../services/loanService';
 import { useUser } from '../context/UserContext';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
-import styles from './MyFinance.module.css';
 
 export const MyFinance = () => {
   const { user } = useUser();
@@ -135,7 +134,8 @@ export const MyFinance = () => {
                     return (
                       <div className="space-y-1">
                         <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div className={`${styles.progressBarFill}`} style={{ '--progress-width': `${percent}%` } as any} />
+                          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
+                          <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${percent}%` }} />
                         </div>
                         <div className="flex justify-between text-[9px] font-bold text-slate-400 uppercase">
                           <span>{percent}% Repaid</span>

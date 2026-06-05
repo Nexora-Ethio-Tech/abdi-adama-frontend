@@ -108,17 +108,28 @@ export const VPGradeManagement = () => {
     const semNum = semToUse === 'First Semester' ? 1 : 2;
 
     try {
+      console.log(`[VPGradeManagement] Fetching data for section: ${section.id}, Year: ${yearToUse}, Semester: ${semNum} (${semToUse})`);
+      
       const [studentsData, coursesData, gradesData] = await Promise.all([
         vicePrincipalService.getStudentsBySection(section.id),
         vicePrincipalService.getCoursesBySection(section.id),
         vicePrincipalService.getSectionGrades(section.id, yearToUse, semNum)
       ]);
 
+      console.log(`[VPGradeManagement] Data fetched successfully - Students: ${studentsData.length}, Courses: ${coursesData.length}, Grades: ${gradesData.grades?.length || 0}`);
+      
       setStudents(studentsData);
       setCourses(coursesData);
       setStudentGrades(gradesData.grades);
+      
+      // Check if data was fetched from a different semester
+      if (gradesData.queriedSemester !== gradesData.availableDataSemester && gradesData.availableDataSemester) {
+        const semesterName = gradesData.availableDataSemester === 1 ? 'First Semester' : 'Second Semester';
+        showToast(`Note: Showing grades from ${semesterName} (no data for ${semToUse})`, 'success');
+      }
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to fetch section data';
+      console.error(`[VPGradeManagement] Error fetching section data:`, err);
       showToast(message, 'error');
     } finally {
       setLoadingSectionData(false);
