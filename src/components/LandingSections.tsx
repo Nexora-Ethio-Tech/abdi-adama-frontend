@@ -311,10 +311,9 @@ const fetchUsers = async () => {
 
     // Extract data only from successful promises, defaulting to an empty array if failed
     const school_admins = results[0].status === 'fulfilled' ? results[0].value?.data || [] : [];
-    const vice_principals = results[1].status === 'fulfilled' ? results[1].value?.data || [] : [];
-    const auditors = results[2].status === 'fulfilled' ? results[2].value?.data || [] : [];
 
-    const combinedData = [...school_admins, ...vice_principals, ...auditors];
+
+    const combinedData = [...school_admins];
 
     // Check if we got absolutely nothing back (entire server down)
     const completelyFailed = results.every(r => r.status === 'rejected');
