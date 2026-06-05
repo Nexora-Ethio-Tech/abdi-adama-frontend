@@ -359,27 +359,35 @@ export const StudentCourses = () => {
                     )}
                     {gradingMethods.length > 0 ? (
                       <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-sm text-slate-200">
-                          <tbody>
-                            <tr className="border-b border-slate-800">
-                              <th className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Assessment Component</th>
-                              {gradingMethods.map((method) => (
-                                <th key={method.id} className="min-w-[140px] px-5 py-4 text-left font-black uppercase tracking-widest text-slate-300">
-                                  {method.label}
-                                </th>
-                              ))}
-                            </tr>
-                            <tr>
-                              <td className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Student Score</td>
-                              {gradingMethods.map((method) => {
-                                const gradeVal = selectedCourse.grades?.[method.id];
-                                return (
-                                  <td key={method.id} className="px-5 py-4 text-left font-bold text-slate-100">
-                                    {gradeVal !== null && gradeVal !== undefined ? Number(gradeVal).toFixed(1) : '--'}
-                                  </td>
-                                );
-                              })}
-                            </tr>
+                      <table className="w-full border-collapse text-sm text-slate-200" style={{ minWidth: `${200 + gradingMethods.length * 140}px` }}>
+                        <tbody>
+                          <tr className="border-b border-slate-800">
+                            <th className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Assessment Component</th>
+                            {gradingMethods.map((method) => (
+                              <th key={method.id} className="min-w-[140px] px-5 py-4 text-left font-black uppercase tracking-widest text-slate-300">
+                                {method.label}
+                                <span className="block text-[10px] text-slate-500 font-bold mt-0.5">({method.maxWeight}%)</span>
+                              </th>
+                            ))}
+                            <th className="min-w-[140px] px-5 py-4 text-right font-black uppercase tracking-widest text-slate-300">
+                              Total
+                              <span className="block text-[10px] text-slate-500 font-bold mt-0.5">(100%)</span>
+                            </th>
+                          </tr>
+                          <tr>
+                            <td className="px-5 py-4 text-left font-black uppercase tracking-widest text-slate-400">Student Score</td>
+                            {gradingMethods.map((method) => {
+                              const gradeVal = selectedCourse.grades?.[method.id];
+                              return (
+                                <td key={method.id} className="px-5 py-4 text-left font-bold text-slate-100 text-lg">
+                                  {gradeVal !== null && gradeVal !== undefined ? Number(gradeVal).toFixed(1) : '--'}
+                                </td>
+                              );
+                            })}
+                            <td className="px-5 py-4 text-right font-black text-emerald-400 text-xl">
+                              {getSubmittedTotal(selectedCourse) !== null ? Number(getSubmittedTotal(selectedCourse)).toFixed(1) : '--'}
+                            </td>
+                          </tr>
                           </tbody>
                         </table>
                       </div>
