@@ -11,7 +11,6 @@ import { authService } from '../services/authService';
 import { SettingsSubTabs, SettingsPanel } from '../components/settings/SettingsSubTabs';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { SUPER_ADMIN_SUBTABS, getDefaultSubTab, getSubTabLabel } from './settings/subtabConfig';
-import { mockGradingConfigs } from '../data/mockData';
 
 const MultiSelectDropdown = ({
   options,
@@ -416,29 +415,18 @@ export const Settings = () => {
   };
 
   // Load grading configs from backend on mount
+  // Always use fresh DB data as source of truth; localStorage is only a draft fallback
   useEffect(() => {
     if (role === 'school-admin') {
       setGradingLoading(true);
       getGradingConfigs()
         .then((dbConfigs) => {
           setGradeConfigs(dbConfigs || {});
+          // Always reconstruct from the live DB data so teachers see exactly what was published
           const reconstructed = groupConfigsIntoSystems(dbConfigs || {});
-
-          const storedSystems = localStorage.getItem('abdi_adama_grading_systems');
-          if (storedSystems) {
-            try {
-              const parsed = JSON.parse(storedSystems);
-              if (isValidGradingSystems(parsed)) {
-                setGradingSystems(parsed);
-              } else {
-                setGradingSystems(reconstructed);
-              }
-            } catch {
-              setGradingSystems(reconstructed);
-            }
-          } else {
-            setGradingSystems(reconstructed);
-          }
+          setGradingSystems(reconstructed);
+          // Sync localStorage so future sessions start with the real published state
+          localStorage.setItem('abdi_adama_grading_systems', JSON.stringify(reconstructed));
         })
         .catch(() => {
           const stored = localStorage.getItem('abdi_adama_grading_systems');

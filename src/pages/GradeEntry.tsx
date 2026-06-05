@@ -4,7 +4,6 @@ import { Save, Lock, ArrowLeft, ChevronRight, Users, Loader2, AlertCircle, Check
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, TeacherClass, ClassStudent } from '../services/teacherService';
-import { mockGradingConfigs } from '../data/mockData';
 import {
   getCurrentECYear,
   ecYearToGregorian,
@@ -80,13 +79,15 @@ export const GradeEntry = () => {
       .finally(() => setLoadingStudents(false));
 
     // Load grading methods for this grade level, then prefill existing grades
-    const gradeLevel = cls.gradeLevel || cls.name?.replace(/\D/g, '') || 'default';
+    const gradeLevel = cls.gradeLevel || (cls as any).grade_level || cls.name?.replace(/\D/g, '') || 'default';
     getGradingConfigsForGrade(gradeLevel)
       .then(async (methods) => {
-        const finalMethods = methods.length > 0
-          ? methods
-          : (mockGradingConfigs[gradeLevel] || mockGradingConfigs['default'] || []);
-        setGradingMethods(finalMethods);
+        if (methods.length === 0) {
+          setSaveError(`No grading configuration found for Grade ${gradeLevel}. Please ask your admin to configure it in Settings.`);
+          setGradingMethods([]);
+        } else {
+          setGradingMethods(methods);
+        }
 
         // Prefill existing grades for this course
         try {
@@ -105,9 +106,9 @@ export const GradeEntry = () => {
           setLockedMethods(locks);
         } catch { /* no prefill */ }
       })
-      .catch(() => {
-        const fallback = mockGradingConfigs[gradeLevel] || mockGradingConfigs['default'] || [];
-        setGradingMethods(fallback);
+      .catch((err) => {
+        setSaveError(`Could not load grading components: ${err?.message || 'Unknown error'}. Please try again.`);
+        setGradingMethods([]);
       })
       .finally(() => setLoadingMethods(false));
   }, []);
@@ -266,7 +267,7 @@ export const GradeEntry = () => {
                     <Users size={24} />
                   </div>
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 dark:text-white">{cls.name}{cls.section ? ` — Section ${cls.section}` : ''}</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">{cls.name}{cls.section ? ` — ${cls.section}` : ''}</h3>
                 <p className="text-sm text-slate-500 mb-6">{cls.enrolledStudents ?? '—'} Students Enrolled</p>
 
                 <div className="space-y-2">
