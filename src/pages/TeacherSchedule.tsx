@@ -23,8 +23,8 @@ const DAY_BADGE_THEMES: Record<string, string> = {
   Monday: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-900/50',
   Tuesday: 'bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-100 dark:border-violet-900/50',
   Wednesday: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50',
-  Thursday: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50',
-  Friday: 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-900/50',
+  Thursday: 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/50',
+  Friday: 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 border-cyan-100 dark:border-cyan-900/50',
 };
 
 export const TeacherSchedule = () => {
@@ -136,7 +136,7 @@ export const TeacherSchedule = () => {
                       // Filter periods for this subject and day
                       const daySlots = schedule.filter(s => s.subject === subject && s.day === day)
                         .slice()
-                        .sort((a, b) => (a.period_number || a.time_slot || '').toString().localeCompare((b.period_number || b.time_slot || '').toString()));
+                        .sort((a, b) => Number(a.period_number || 0) - Number(b.period_number || 0));
 
                       return (
                         <td key={day} className="px-6 py-5">
@@ -153,13 +153,8 @@ export const TeacherSchedule = () => {
                                     <span>{getPeriodLabel(slot.period_number)}</span>
                                   </div>
                                   <div className="text-[10px] opacity-75 font-semibold">
-                                    {slot.class_name} {slot.section ? `(${slot.section})` : ''}
+                                    {slot.class_name}
                                   </div>
-                                  {slot.time_slot && (
-                                    <div className="text-[9px] opacity-60 font-mono mt-0.5">
-                                      {slot.time_slot}
-                                    </div>
-                                  )}
                                 </div>
                               ))}
                             </div>
