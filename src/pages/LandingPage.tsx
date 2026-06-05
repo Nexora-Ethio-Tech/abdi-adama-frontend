@@ -68,14 +68,16 @@ export const LandingPage = () => {
       return [];
     }
   };
-  
+
   interface BranchInfo {
     name: string;
     address: string;
     email: string;
+    profile_image?: string;
   }
 
   const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const DEFAULT_BRANCH_IMAGE = "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?q=80&w=1200&auto=format&fit=crop";
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -206,8 +208,8 @@ export const LandingPage = () => {
                   onClick={() => registrationOpen && setShowAdmission(true)}
                   disabled={!registrationOpen}
                   className={`px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm transition-all flex items-center gap-3 group shine ${registrationOpen
-                      ? 'bg-school-primary hover:bg-school-primary/90 text-white shadow-2xl shadow-school-primary/30'
-                      : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-400'
+                    ? 'bg-school-primary hover:bg-school-primary/90 text-white shadow-2xl shadow-school-primary/30'
+                    : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed border-2 border-dashed border-slate-400'
                     }`}
                 >
                   {registrationOpen ? t('landing.applyBtn') : 'Admission Closed'}
@@ -544,15 +546,54 @@ export const LandingPage = () => {
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: i * 0.15 }}
                 whileHover={{ scale: 1.05, rotateY: 5 }}
-                className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl hover:shadow-2xl transition-all duration-500 preserve-3d"
+                className="group overflow-hidden bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl hover:shadow-2xl transition-all duration-500 preserve-3d"
               >
-                <div className="w-12 h-12 bg-school-primary/10 rounded-2xl flex items-center justify-center text-school-primary mb-6 shadow-inner">
-                  <MapPin size={24} />
+                {/* Branch Image */}
+                <div className="relative h-52 overflow-hidden">
+                  <img
+                    src={branch.profile_image || DEFAULT_BRANCH_IMAGE}
+                    alt={branch.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+                  {/* Floating Location Icon */}
+                  <div className="absolute top-4 left-4 w-12 h-12 bg-white/90 backdrop-blur-md rounded-2xl flex items-center justify-center text-school-primary shadow-lg">
+                    <MapPin size={24} />
+                  </div>
+
+                  {/* Branch Name on Image */}
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <h4 className="text-xl font-black text-white tracking-tight">
+                      {branch.name}
+                    </h4>
+                  </div>
                 </div>
-                <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{branch.name}</h4>
-                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">{branch.address}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{branch.email}</p>
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(branch.name + ' ' + branch.address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all">{t('landing.branches.viewMap')} <ArrowRight size={12} /></a>
+
+                {/* Content */}
+                <div className="p-6">
+                  <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">
+                    {branch.address}
+                  </p>
+
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6 break-all">
+                    {branch.email}
+                  </p>
+
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(
+                      `${branch.name} ${branch.address}`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all"
+                  >
+                    {t("landing.branches.viewMap")}
+                    <ArrowRight size={12} />
+                  </a>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -581,8 +622,8 @@ export const LandingPage = () => {
               onClick={() => registrationOpen && setShowAdmission(true)}
               disabled={!registrationOpen}
               className={`px-12 py-6 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center gap-4 transition-all ${registrationOpen
-                  ? 'bg-school-primary text-white shadow-2xl shadow-school-primary/40 hover:bg-school-primary/90 shine'
-                  : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed grayscale'
+                ? 'bg-school-primary text-white shadow-2xl shadow-school-primary/40 hover:bg-school-primary/90 shine'
+                : 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed grayscale'
                 }`}
             >
               {registrationOpen ? t('landing.cta.startAdmission') : 'Admission Closed'}

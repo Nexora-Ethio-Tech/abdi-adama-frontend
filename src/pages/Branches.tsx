@@ -1,5 +1,4 @@
-
-import { Building2, MapPin, Users, GraduationCap, ChevronRight, Plus, ArrowLeft, X, Check, Loader2, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Building2, MapPin, Users, GraduationCap, ChevronRight, Plus, ArrowLeft, X, Check, Loader2, AlertCircle, Edit, Trash2, Upload } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -23,7 +22,8 @@ export const Branches = () => {
     code: '',
     phone: '',
     email: '',
-    address: ''
+    address: '',
+    profile_image: '' 
   });
 
   // Edit branch state
@@ -73,6 +73,26 @@ export const Branches = () => {
     navigate('/');
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if the file is larger than 5 MB
+    const maxSize = 5 * 1024 * 1024; // 5 MB in bytes
+    if (file.size > maxSize) {
+      alert('The image size exceeds the 5 MB limit. Please select a smaller image.');
+      e.target.value = ''; // Reset the input
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setBranchForm((prev) => ({ ...prev, profile_image: base64String }));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
@@ -81,7 +101,7 @@ export const Branches = () => {
       console.log('✅ Branch created:', response);
       alert('Branch created successfully!');
       setShowAddModal(false);
-      setBranchForm({ name: '', code: '', phone: '', email: '', address: '' });
+      setBranchForm({ name: '', code: '', phone: '', email: '', address: '', profile_image: '' });
       // Refresh branches
       const refreshResponse = await branchService.getAllBranches();
       if (refreshResponse.success) {
@@ -258,8 +278,8 @@ export const Branches = () => {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                   <Building2 size={20} />
@@ -272,6 +292,26 @@ export const Branches = () => {
             </div>
 
             <form className="p-6 space-y-4" onSubmit={handleCreateBranch}>
+              {/* Added Image Upload Field */}
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase">Branch Image (Max 5MB)</label>
+                <div className="mt-1 flex items-center gap-4">
+                  {branchForm.profile_image && (
+                    <img 
+                      src={branchForm.profile_image} 
+                      alt="Branch preview" 
+                      className="w-16 h-16 rounded-lg object-cover border border-slate-200 shadow-sm"
+                    />
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 cursor-pointer"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Branch Name</label>
                 <input
@@ -332,7 +372,7 @@ export const Branches = () => {
                 />
               </div>
 
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex gap-3 sticky bottom-0">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
@@ -355,10 +395,11 @@ export const Branches = () => {
         </div>
       )}
 
+      {/* Edit Modal (Omitted changes to focus on create requirement) */}
       {showEditModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
                   <Edit size={20} />
