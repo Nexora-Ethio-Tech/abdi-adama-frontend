@@ -335,12 +335,18 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                       {canManage && (
                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <button
+                            type="button"
+                            title="Edit event"
+                            aria-label="Edit event"
                             onClick={() => openEdit(ev)}
                             className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition-colors"
                           >
                             <Edit size={13} />
                           </button>
                           <button
+                            type="button"
+                            title="Delete event"
+                            aria-label="Delete event"
                             onClick={() => handleDelete(ev.id)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition-colors"
                           >
@@ -365,7 +371,13 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
               <h3 className="font-bold text-slate-800 dark:text-slate-100">
                 {editingEvent ? 'Edit Event' : 'Add New Event'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <button
+                type="button"
+                title="Close modal"
+                aria-label="Close modal"
+                onClick={() => setShowModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
@@ -392,8 +404,10 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Type</label>
+                <label htmlFor="event-type-select" className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Type</label>
                 <select
+                  id="event-type-select"
+                  title="Event type"
                   value={form.type}
                   onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-blue-500 outline-none"

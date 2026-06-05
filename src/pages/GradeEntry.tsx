@@ -192,7 +192,7 @@ export const GradeEntry = () => {
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message || 'Failed to save grades. Please try again.');
+      setSaveError(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to save grades. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -219,9 +219,10 @@ export const GradeEntry = () => {
                 try {
                   await submitCourseGrades(selectedCourseId, method.id);
                   newLocks.add(method.id);
-                } catch (err) {
+                } catch (err: any) {
                   // If already submitted and locked, just add to locks and continue
-                  if (err?.response?.data?.message?.includes('already been submitted')) {
+                  const errMsg = err?.response?.data?.error?.message || err?.response?.data?.message || '';
+                  if (errMsg.includes('already been submitted')) {
                     newLocks.add(method.id);
                   } else {
                     throw err;
@@ -234,7 +235,7 @@ export const GradeEntry = () => {
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message || 'Failed to submit and lock grades. Please try again.');
+      setSaveError(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to submit and lock grades. Please try again.');
     } finally {
       setSubmittingGrades(false);
     }

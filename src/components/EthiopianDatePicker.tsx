@@ -12,6 +12,7 @@ interface EthiopianDatePickerProps {
   onChange: (val: string) => void;
   placeholder?: string;
   className?: string;
+  title?: string;
 }
 
 export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
@@ -19,6 +20,7 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
   onChange,
   placeholder = 'YYYY-MM-DD',
   className = ''
+  , title
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -113,6 +115,7 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
         <input
           type="text"
           placeholder={placeholder}
+          title={title}
           value={value}
           onChange={handleInputChange}
           onClick={() => setIsOpen(true)}
@@ -126,6 +129,8 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
         {value && (
           <button
             type="button"
+            title="Clear selected date"
+            aria-label="Clear selected date"
             onClick={() => onChange('')}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
           >
@@ -140,6 +145,8 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
+              title="Previous month"
+              aria-label="Previous month"
               onClick={handlePrevMonth}
               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400"
             >
@@ -168,6 +175,8 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
 
             <button
               type="button"
+              title="Next month"
+              aria-label="Next month"
               onClick={handleNextMonth}
               className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400"
             >
