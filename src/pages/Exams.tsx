@@ -11,7 +11,7 @@ import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
 import {
   getAvailableExams, createExam, getTeacherExams, saveTeacherExam, publishTeacherExam,
-  deleteTeacherExam, updateTeacherExam, getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams
+  deleteTeacherExam, updateTeacherExam, getGradesForExams, getCoursesByGradeForExams, getTeacherCoursesForExams, getTeacherExamById
 } from '../services/examService';
 import type { PublishedExam } from '../services/examService';
 import type { Exam, ExamCategory } from '../data/examData';
@@ -354,7 +354,16 @@ const Exams = () => {
                     </div>
                     <div className="flex gap-2 pt-1">
                       <button
-                        onClick={() => { setEditingExam(exam); setCreationType('Exam'); setShowCreateForm(true); }}
+                        onClick={async () => { 
+                          try {
+                            const fullExam = await getTeacherExamById(exam.id);
+                            setEditingExam(fullExam); 
+                            setCreationType('Exam'); 
+                            setShowCreateForm(true); 
+                          } catch (err: any) {
+                            alert(err?.message || 'Failed to load full exam details');
+                          }
+                        }}
                         className="flex-1 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
                       >
                         <FileText size={12} /> Edit
@@ -751,6 +760,9 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
   const [subjectId, setSubjectId] = useState<string>(editingExam?.subject_id || '');
   const [gradeId, setGradeId] = useState<string>('');
   const [sectionId, setSectionId] = useState<string>(editingExam?.section_id || ''); // classId to save as section_id
+  const [showScore, setShowScore] = useState<boolean>(editingExam?.show_score !== false);
+  const [isGraded, setIsGraded] = useState<boolean>(!!editingExam?.is_graded);
+  const [assessmentType, setAssessmentType] = useState<string>(editingExam?.assessment_type || 'quiz-1');
   const [gradesForExam, setGradesForExam] = useState<any[]>([]);
   const [sectionsForGrade, setSectionsForGrade] = useState<any[]>([]);
   const [coursesForSection, setCoursesForSection] = useState<any[]>([]);
@@ -802,9 +814,19 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
     isDocumentOnly: false
   });
 
-  const [questions, setQuestions] = useState<FlexibleQuestion[]>([
-    { id: '1', text: '', type: 'options', options: [{ id: 'a', text: '' }, { id: 'b', text: '' }], correctOptionId: 'a' }
-  ]);
+  const [questions, setQuestions] = useState<FlexibleQuestion[]>(() => {
+    if (editingExam?.questions && editingExam.questions.length > 0) {
+      return editingExam.questions.map((q: any) => ({
+        id: String(q.id || Date.now() + Math.random()),
+        text: q.question_text || q.text || '',
+        type: q.question_type || q.type || 'options',
+        options: (typeof q.options_json === 'string' ? JSON.parse(q.options_json) : q.options_json) || q.options || [],
+        correctOptionId: q.correct_answer || q.correctOptionId || null,
+        points: q.points || 1
+      }));
+    }
+    return [{ id: '1', text: '', type: 'options', options: [{ id: 'a', text: '' }, { id: 'b', text: '' }], correctOptionId: 'a' }];
+  });
 
   const addQuestion = (parentId?: string) => {
     const newQuestion: FlexibleQuestion = {
@@ -931,6 +953,9 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
             subjectId: subjectId || undefined,
             classId: sectionId || undefined,
             questions: examQuestions,
+            showScore,
+            isGraded,
+            assessmentType: isGraded ? assessmentType : null,
           });
           examId = updated?.id || editingExam.id;
         } else {
@@ -944,7 +969,10 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
             instructions: String(instructions || ''),
             gradeId,
             subjectId: subjectId || undefined,
-            questions: examQuestions
+            questions: examQuestions,
+            showScore,
+            isGraded,
+            assessmentType: isGraded ? assessmentType : null,
           });
           examId = created?.id;
         }
@@ -1095,6 +1123,67 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
               <div className="space-y-1 col-span-full">
                 <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Instructions for Students</label>
                 <textarea rows={3} className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent dark:text-white" value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="Instructions for students..." />
+              </div>
+
+              <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">Show Score to Students</label>
+                    <p className="text-xs text-slate-500">Allow students to see their score and percentage immediately after submission.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowScore(!showScore)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      showScore ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        showScore ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">Is Graded Exam?</label>
+                    <p className="text-xs text-slate-500">Automatically sync results to student gradebook under an assessment type.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsGraded(!isGraded)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      isGraded ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        isGraded ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {isGraded && (
+                  <div className="space-y-1 col-span-full md:col-span-1">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Assessment Type (Gradebook Category)</label>
+                    <select
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
+                      value={assessmentType}
+                      onChange={e => setAssessmentType(e.target.value)}
+                    >
+                      <option value="quiz-1" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Quiz 1</option>
+                      <option value="quiz-2" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Quiz 2</option>
+                      <option value="test-1" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Test 1</option>
+                      <option value="mid-exam" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Mid-Term Exam</option>
+                      <option value="mid-assignment" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Mid-Term Assignment</option>
+                      <option value="assignment" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Assignment</option>
+                      <option value="final-exam" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Final Exam</option>
+                    </select>
+                  </div>
+                )}
               </div>
             </>
           )}
