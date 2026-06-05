@@ -166,7 +166,7 @@ export const VPGradeManagement = () => {
       student.name,
       ...courses.map((course) => student.grades[course.id]?.score ?? ''),
       student.total !== undefined && student.total !== null ? student.total.toFixed(2) : '',
-      student.average !== undefined && student.average !== null ? student.average.toFixed(2) : '',
+      student.average !== undefined && student.average !== null ? `${student.average.toFixed(2)}%` : '',
       student.rank ?? ''
     ]);
 
@@ -526,12 +526,12 @@ export const VPGradeManagement = () => {
                         {student.total ? student.total.toFixed(2) : '-'}
                       </td>
                       <td className="px-4 py-4 text-center font-semibold text-slate-800 dark:text-white">
-                        {student.average ? student.average.toFixed(2) : '-'}
+                        {student.average ? `${student.average.toFixed(2)}%` : '-'}
                       </td>
                       <td className="px-4 py-4 text-center">
                         {student.rank ? (
                           <span className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full text-sm font-bold">
-                            #{student.rank}
+                            {student.rank}
                           </span>
                         ) : (
                           <span className="text-slate-400 dark:text-slate-500 text-sm">-</span>
