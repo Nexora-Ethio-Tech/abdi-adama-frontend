@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 
 import { useTranslation } from 'react-i18next';
+import NavBar from './LandingOld/NavBar';
+import { branchService } from '../services/branchService';
 
 export const LandingPage = () => {
   const navigate = useNavigate();
@@ -57,8 +59,32 @@ export const LandingPage = () => {
 
   const [scrolled, setScrolled] = useState(false);
 
+  const fetchBranches = async () => {
+    try {
+      const branches = await branchService.getAllBranchesGuest();
+      return branches;
+    } catch (err) {
+      console.error('❌ Error fetching branches:', err);
+      return [];
+    }
+  };
+  
+  interface BranchInfo {
+    name: string;
+    address: string;
+    email: string;
+  }
+
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
+    const init = async () => {
+      const branches = await fetchBranches();
+      console.log("Branches fetched: ", branches.data);
+      setBranches(branches.data);
+    };
+    init();
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -105,45 +131,7 @@ export const LandingPage = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 overflow-x-hidden">
       {/* Premium Navbar */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 px-6 py-4 ${scrolled ? 'bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl shadow-lg' : 'bg-transparent'}`}>
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <img src={logo} alt="Logo" className="w-14 h-14 rounded-2xl shadow-lg transition-transform group-hover:scale-110" />
-            <div>
-              <span className="text-xl font-black text-slate-900 dark:text-white tracking-tighter block leading-none">ABDI ADAMA</span>
-              <span className="text-xs font-black text-school-primary uppercase tracking-widest">School</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden lg:flex items-center gap-8">
-              {['home', 'about', 'programs', 'school-life', 'branches'].map((item) => (
-                <a key={item} href={`#${item}`} className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-school-primary transition-colors">{item === 'school-life' ? 'School Life' : t(`nav.${item}`)}</a>
-              ))}
-            </div>
-            <select
-              aria-label="Select language"
-              value={i18n.language}
-              onChange={(e) => {
-                i18n.changeLanguage(e.target.value);
-                localStorage.setItem('abdi_adama_language', e.target.value);
-              }}
-              className="bg-transparent text-xs font-bold text-slate-500 dark:text-slate-400 outline-none cursor-pointer hover:text-school-primary transition-colors"
-            >
-              <option value="en">EN</option>
-              <option value="am">AM</option>
-              <option value="om">OM</option>
-            </select>
-            <button
-              onClick={() => navigate('/login')}
-              className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg"
-            >
-              {t('nav.signIn')}
-            </button>
-          </div>
-        </div>
-      </nav>
-
+      <NavBar scrolled={scrolled} />
       {/* Hero Section */}
       <section id="home" className="relative min-h-screen flex items-center pt-20 overflow-hidden bg-slate-50 dark:bg-slate-950">
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -548,12 +536,7 @@ export const LandingPage = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 perspective-2000">
-            {[
-              { name: t('landing.branches.kebele10'), location: t('landing.branches.adama'), desc: t('landing.branches.kebele10Desc') },
-              { name: t('landing.branches.mogoro'), location: t('landing.branches.adama'), desc: t('landing.branches.mogoroDesc') },
-              { name: t('landing.branches.village180'), location: t('landing.branches.adama'), desc: t('landing.branches.village180Desc') },
-              { name: t('landing.branches.awash'), location: t('landing.branches.awash'), desc: t('landing.branches.awashDesc') }
-            ].map((branch, i) => (
+            {branches.map((branch, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 50, rotateX: -30 }}
@@ -567,9 +550,9 @@ export const LandingPage = () => {
                   <MapPin size={24} />
                 </div>
                 <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">{branch.name}</h4>
-                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">{branch.location}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{branch.desc}</p>
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(branch.name + ' ' + branch.location)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all">{t('landing.branches.viewMap')} <ArrowRight size={12} /></a>
+                <p className="text-[10px] font-black text-school-primary uppercase tracking-widest mb-4 px-3 py-1 bg-school-primary/5 rounded-full w-fit">{branch.address}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{branch.email}</p>
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(branch.name + ' ' + branch.address)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black text-school-primary uppercase tracking-widest hover:gap-3 transition-all">{t('landing.branches.viewMap')} <ArrowRight size={12} /></a>
               </motion.div>
             ))}
           </div>

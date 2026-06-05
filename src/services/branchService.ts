@@ -35,6 +35,11 @@ export const branchService = {
     return response.data;
   },
 
+  getAllBranchesGuest: async () => {
+    const response = await api.get('/guest/branches');
+    return response.data;
+  },
+
   // Get branch by ID
   getBranchById: async (branchId: string) => {
     const response = await api.get(`/super-admin/branches/${branchId}`);
