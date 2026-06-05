@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Filter, ChevronLeft, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
-import financeService from '../services/financeService';
+import auditorService from '../services/auditorService';
 import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface AuditLog {
@@ -23,6 +23,7 @@ interface AuditLogFilters {
   maxAmount?: number;
   startDate?: string;
   endDate?: string;
+  branchId?: string;
 }
 
 const AuditLogs: React.FC = () => {
@@ -48,13 +49,43 @@ const AuditLogs: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const data = await (financeService as any).getAllAuditLogs(filters);
-      setLogs(data.logs);
-      setCurrentPage(data.pagination.currentPage);
-      setTotalPages(data.pagination.totalPages);
-      setTotalRecords(data.pagination.totalRecords);
+      // Use auditorService.getAuditTrail — maps to /auditor/audit-trail
+      const branchId = localStorage.getItem('auditor_selected_branch') || undefined;
+      const raw = await auditorService.getAuditTrail({
+        branchId,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        category: filters.category,
+        direction: filters.direction,
+      });
+
+      // Map AuditTrailEntry → AuditLog
+      const mapped: AuditLog[] = raw.map((entry: any) => ({
+        id: entry.id,
+        timestamp: entry.timestamp,
+        action: entry.action_label || entry.category || 'Payment',
+        actionType: (entry.direction || '').toLowerCase() === 'in' ? 'Money In' : (entry.direction || '').toLowerCase() === 'out' ? 'Money Out' : 'Money In',
+        category: entry.category || 'Fees',
+        performedBy: {
+          name: entry.modified_by || entry.approver_name || 'Finance Clerk',
+          role: 'finance_clerk',
+        },
+        amount: entry.amount ? Number(entry.amount) : undefined,
+        description: entry.student_name || entry.section || '',
+      }));
+
+      // Client-side pagination (audit-trail doesn't paginate server-side)
+      const page = filters.page || 1;
+      const limit = filters.limit || 20;
+      const start = (page - 1) * limit;
+      const paginated = mapped.slice(start, start + limit);
+
+      setLogs(paginated);
+      setCurrentPage(page);
+      setTotalRecords(mapped.length);
+      setTotalPages(Math.max(1, Math.ceil(mapped.length / limit)));
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.response?.data?.error?.message || err.message || 'Failed to load audit logs');
     } finally {
       setLoading(false);
     }
@@ -63,7 +94,21 @@ const AuditLogs: React.FC = () => {
   const handleExport = async () => {
     try {
       setExporting(true);
-      const blob = await (financeService as any).exportAuditLogs(filters);
+      const branchId = localStorage.getItem('auditor_selected_branch') || undefined;
+      const raw = await auditorService.getAuditTrail({
+        branchId,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        category: filters.category,
+        direction: filters.direction,
+      });
+
+      // Build CSV manually
+      const header = 'ID,Timestamp,Action,Type,Category,Performed By,Description\n';
+      const rows = raw.map((e: any) =>
+        `"${e.id}","${e.timestamp}","${e.action_label || ''}","${e.direction || ''}","${e.category || 'Fees'}","${e.modified_by || ''}","${(e.student_name || e.section || '').replace(/"/g, '""')}"`
+      ).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -73,11 +118,12 @@ const AuditLogs: React.FC = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.response?.data?.error?.message || err.message || 'Export failed');
     } finally {
       setExporting(false);
     }
   };
+
 
   const handleFilterChange = (key: keyof AuditLogFilters, value: any) => {
     setFilters((prev: AuditLogFilters) => ({ ...prev, [key]: value, page: 1 }));
@@ -145,8 +191,8 @@ const AuditLogs: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="">All</option>
-                <option value="Money In">Money In</option>
-                <option value="Money Out">Money Out</option>
+                <option value="In">Money In</option>
+                <option value="Out">Money Out</option>
               </select>
             </div>
 

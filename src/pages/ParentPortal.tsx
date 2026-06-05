@@ -1058,7 +1058,7 @@ export const ParentPortal = () => {
                 <div className="bg-slate-950/95 dark:bg-slate-950/95 rounded-[2rem] overflow-hidden shadow-lg border border-slate-800">
                   {gradingMethods.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-sm text-slate-200">
+                      <table className="w-full border-collapse text-sm text-slate-200" style={{ minWidth: `${200 + gradingMethods.length * 140}px` }}>
                         <tbody>
                           <tr className="border-b border-slate-800">
                             <th className="px-6 py-4 text-left font-black uppercase tracking-widest text-slate-400">Assessment Component</th>
@@ -1068,6 +1068,10 @@ export const ParentPortal = () => {
                                 <span className="block text-[10px] text-slate-500 font-bold mt-0.5">({method.maxWeight}%)</span>
                               </th>
                             ))}
+                            <th className="min-w-[140px] px-6 py-4 text-right font-black uppercase tracking-widest text-slate-300">
+                              Total
+                              <span className="block text-[10px] text-slate-500 font-bold mt-0.5">(100%)</span>
+                            </th>
                           </tr>
                           <tr>
                             <td className="px-6 py-4 text-left font-black uppercase tracking-widest text-slate-400">Student Score</td>
@@ -1079,6 +1083,9 @@ export const ParentPortal = () => {
                                 </td>
                               );
                             })}
+                            <td className="px-6 py-4 text-right font-black text-emerald-400 text-xl">
+                              {selectedCourse.total !== null && selectedCourse.total !== undefined ? Number(selectedCourse.total).toFixed(1) : '--'}
+                            </td>
                           </tr>
                         </tbody>
                       </table>

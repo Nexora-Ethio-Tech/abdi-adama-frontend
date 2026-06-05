@@ -108,17 +108,28 @@ export const VPGradeManagement = () => {
     const semNum = semToUse === 'First Semester' ? 1 : 2;
 
     try {
+      console.log(`[VPGradeManagement] Fetching data for section: ${section.id}, Year: ${yearToUse}, Semester: ${semNum} (${semToUse})`);
+
       const [studentsData, coursesData, gradesData] = await Promise.all([
         vicePrincipalService.getStudentsBySection(section.id),
         vicePrincipalService.getCoursesBySection(section.id),
         vicePrincipalService.getSectionGrades(section.id, yearToUse, semNum)
       ]);
 
+      console.log(`[VPGradeManagement] Data fetched successfully - Students: ${studentsData.length}, Courses: ${coursesData.length}, Grades: ${gradesData.grades?.length || 0}`);
+
       setStudents(studentsData);
       setCourses(coursesData);
       setStudentGrades(gradesData.grades);
+
+      // Check if data was fetched from a different semester
+      if (gradesData.queriedSemester !== gradesData.availableDataSemester && gradesData.availableDataSemester) {
+        const semesterName = gradesData.availableDataSemester === 1 ? 'First Semester' : 'Second Semester';
+        showToast(`Note: Showing grades from ${semesterName} (no data for ${semToUse})`, 'success');
+      }
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to fetch section data';
+      console.error(`[VPGradeManagement] Error fetching section data:`, err);
       showToast(message, 'error');
     } finally {
       setLoadingSectionData(false);
@@ -545,8 +556,8 @@ export const VPGradeManagement = () => {
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
           <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border ${toast.type === 'success'
-              ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300'
-              : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300'
+            ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300'
+            : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300'
             }`}>
             <CheckCircle2 className="text-emerald-500" size={20} />
             <p className="text-sm font-semibold">{toast.message}</p>

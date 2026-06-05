@@ -6,6 +6,21 @@ import { useNavigate } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import attendanceService from '../services/attendanceService';
 import studentService from '../services/studentService';
+import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
+
+type AttendanceMode = 'student' | 'staff' | null;
+type StaffAttendanceStatus = 'Present' | 'Absent';
+
+interface StaffAttendanceRecord {
+  id: string;
+  name: string;
+  branch: string;
+  department: string;
+  subjects: string[];
+  status: StaffAttendanceStatus;
+  signInTime?: string;
+  signOutTime?: string;
+}
 
 export const Attendance = () => {
   const navigate = useNavigate();
@@ -13,9 +28,12 @@ export const Attendance = () => {
   const isAdmin = role === 'school-admin' || role === 'super-admin';
   const isVP = role === 'vice-principal';
   const [selectedGrade, setSelectedGrade] = useState('10A');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'late'>>({});
+  const [selectedDate, setSelectedDate] = useState(getTodayEthiopianDate());
+  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent'>>({});
   const [students, setStudents] = useState<any[]>([]);
+  const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('staff');
+  const [staffFilter, setStaffFilter] = useState<'all' | 'present' | 'absent' | 'pending'>('all');
+  const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
   const [absentTeacher, setAbsentTeacher] = useState<any>(null);
@@ -28,13 +46,19 @@ export const Attendance = () => {
 
   // Fetch students for selected grade
   useEffect(() => {
+    if (attendanceMode !== 'student') {
+      setStudents([]);
+      setAttendance({});
+      return;
+    }
+
     const fetchStudents = async () => {
       setLoading(true);
       try {
         const data = await studentService.getAllStudents({ grade: selectedGrade });
         setStudents(data || []);
         // Initialize attendance state
-        const initialAttendance: Record<string, 'present' | 'absent' | 'late'> = {};
+        const initialAttendance: Record<string, 'present' | 'absent'> = {};
         data?.forEach((s: any) => {
           initialAttendance[s.id] = 'present';
         });
@@ -49,16 +73,30 @@ export const Attendance = () => {
       }
     };
     fetchStudents();
-  }, [selectedGrade]);
+  }, [selectedGrade, attendanceMode]);
 
-  const toggleStatus = (studentId: string, status: 'present' | 'absent' | 'late') => {
+  useEffect(() => {
+    const staffRecords: StaffAttendanceRecord[] = mockTeachers.map((teacher) => ({
+      id: teacher.id,
+      name: teacher.name,
+      branch: teacher.branch,
+      department: teacher.department,
+      subjects: teacher.subjects,
+      status: teacher.isInClass ? 'Present' : 'Absent',
+      signInTime: teacher.isInClass ? '08:05 AM' : undefined,
+      signOutTime: teacher.isInClass ? undefined : undefined,
+    }));
+    setStaffAttendance(staffRecords);
+  }, []);
+
+  const toggleStatus = (studentId: string, status: 'present' | 'absent') => {
     setAttendance(prev => ({
       ...prev,
       [studentId]: status
     }));
   };
 
-  const markAll = (status: 'present' | 'absent' | 'late') => {
+  const markAll = (status: 'present' | 'absent') => {
     const newAttendance = { ...attendance };
     students.forEach((s: any) => {
       newAttendance[s.id] = status;
@@ -73,15 +111,54 @@ export const Attendance = () => {
     { grade: '12A', enrollment: 25, present: 25, percentage: '100%' },
   ];
 
-  const progressWidthClasses: Record<string, string> = {
-    '100%': 'w-[100%]',
-    '96%': 'w-[96%]',
-    '93.3%': 'w-[93.3%]',
-    '91.6%': 'w-[91.6%]',
-    '83.3%': 'w-[83.3%]',
+  const filteredStaff = staffAttendance.filter((record) => {
+    if (staffFilter === 'all') return true;
+    if (staffFilter === 'pending') return !record.signInTime;
+    return record.status.toLowerCase() === staffFilter;
+  });
+
+  const staffSummary = staffAttendance.reduce(
+    (summary, record) => {
+      summary.present += record.status === 'Present' ? 1 : 0;
+      summary.absent += record.status === 'Absent' ? 1 : 0;
+      summary.pendingSignIn += record.signInTime ? 0 : 1;
+      summary.total += 1;
+      return summary;
+    },
+    { present: 0, absent: 0, pendingSignIn: 0, total: 0 }
+  );
+
+  const handleAttendanceModeChange = (mode: AttendanceMode) => {
+    setAttendanceMode(mode);
+    setStaffFilter('all');
   };
 
-  const getProgressWidthClass = (percentage: string) => progressWidthClasses[percentage] ?? 'w-[0%]';
+  const handleStaffSignIn = (id: string) => {
+    setStaffAttendance((prev) =>
+      prev.map((record) =>
+        record.id === id
+          ? {
+            ...record,
+            status: 'Present',
+            signInTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          : record
+      )
+    );
+  };
+
+  const handleStaffSignOut = (id: string) => {
+    setStaffAttendance((prev) =>
+      prev.map((record) =>
+        record.id === id
+          ? {
+            ...record,
+            signOutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          }
+          : record
+      )
+    );
+  };
 
   const runProxyAnalysis = () => {
     setIsProxyAnalysisRunning(true);
@@ -289,6 +366,58 @@ export const Attendance = () => {
       )}
 
       {!isVP && (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Attendance Oversight</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-2xl">
+                Select a view to begin. Student mode gives you grade-level roll call, while staff mode shows biometric sign-in/out tracking for teachers.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => handleAttendanceModeChange('student')}
+                className={`px-5 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${attendanceMode === 'student'
+                  ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20'
+                  : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+              >
+                Student Attendance
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAttendanceModeChange('staff')}
+                className={`px-5 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all ${attendanceMode === 'staff'
+                  ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20'
+                  : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800'
+                  }`}
+              >
+                Staff Attendance
+              </button>
+            </div>
+          </div>
+
+          {!attendanceMode && (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 p-10 text-center">
+              <p className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-3">No attendance view selected yet.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">Tap a mode above to load student or staff attendance details.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-3xl p-6 bg-slate-50 dark:bg-slate-800/60">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Student Attendance</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Review grade section attendance and save today’s roll.</p>
+                </div>
+                <div className="rounded-3xl p-6 bg-slate-50 dark:bg-slate-800/60">
+                  <h3 className="font-bold text-slate-800 dark:text-slate-100">Staff Attendance</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Monitor teacher biometric sign-in/out and attendance status.</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isVP && attendanceMode === 'student' && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Student Attendance</h2>
@@ -321,7 +450,7 @@ export const Attendance = () => {
         </div>
       )}
 
-      {!isVP && (
+      {!isVP && attendanceMode === 'student' && (
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between transition-colors duration-300">
           <div className="flex items-center gap-4">
             <div className="space-y-1">
@@ -381,7 +510,7 @@ export const Attendance = () => {
         </div>
       )}
 
-      {!isVP && (
+      {!isVP && attendanceMode === 'student' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
           <div className="overflow-x-auto">
             {isAdmin ? (
@@ -411,7 +540,8 @@ export const Attendance = () => {
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{stat.percentage}</span>
                           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div className={`h-full bg-emerald-500 rounded-full ${getProgressWidthClass(stat.percentage)}`} />
+                            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: stat.percentage }} />
                           </div>
                         </div>
                       </td>
@@ -465,25 +595,15 @@ export const Attendance = () => {
                           >
                             <XCircle size={20} />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleStatus(student.id, 'late')}
-                            className={`p-2 rounded-lg border transition-all ${attendance[student.id] === 'late'
-                              ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-100'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-500'
-                              }`}
-                            title="Late"
-                            aria-label="Mark late"
-                          >
-                            <Clock size={20} />
-                          </button>
+
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">96%</span>
                           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 rounded-full w-[96%]" />
+                            {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '96%' }} />
                           </div>
                         </div>
                       </td>
@@ -496,7 +616,114 @@ export const Attendance = () => {
         </div>
       )}
 
+      {!isVP && attendanceMode === 'staff' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Teachers Present</p>
+              <p className="mt-3 text-3xl font-black text-slate-900 dark:text-slate-100">{staffSummary.present}</p>
+            </div>
+            <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Teachers Absent</p>
+              <p className="mt-3 text-3xl font-black text-slate-900 dark:text-slate-100">{staffSummary.absent}</p>
+            </div>
+            <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Pending Sign-In</p>
+              <p className="mt-3 text-3xl font-black text-slate-900 dark:text-slate-100">{staffSummary.pendingSignIn}</p>
+            </div>
+          </div>
 
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Staff Biometric Attendance</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Filter staff by today’s presence and biometric status.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'all', label: 'All' },
+                { value: 'present', label: 'Present' },
+                { value: 'absent', label: 'Absent' },
+                { value: 'pending', label: 'Pending Sign-In' },
+              ].map((filter) => (
+                <button
+                  key={filter.value}
+                  type="button"
+                  onClick={() => setStaffFilter(filter.value as 'all' | 'present' | 'absent' | 'pending')}
+                  className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${staffFilter === filter.value
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Teacher</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Department</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Status</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-In</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-Out</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                  {filteredStaff.map((record) => (
+                    <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
+                            {record.name[0]}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-slate-100">{record.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{record.subjects.join(', ')}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{record.department}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{record.branch}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                          {record.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signInTime ?? 'Not signed in'}</td>
+                      <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signOutTime ?? 'Pending'}</td>
+                      <td className="px-6 py-4 text-right">
+                        {record.signInTime ? (
+                          <button
+                            type="button"
+                            onClick={() => handleStaffSignOut(record.id)}
+                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-800"
+                          >
+                            Sign Out
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleStaffSignIn(record.id)}
+                            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-500"
+                          >
+                            Sign In
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showSubModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">

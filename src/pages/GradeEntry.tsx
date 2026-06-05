@@ -3,7 +3,7 @@ import { useUser } from '../context/UserContext';
 import { Save, Lock, ArrowLeft, ChevronRight, Users, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs';
-import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, TeacherClass, ClassStudent } from '../services/teacherService';
+import { getMyClasses, getClassStudents, bulkEnterGrades, getCourseGrades, getGradingConfigsForGrade, submitCourseGrades, getGradeSubmissions, TeacherClass, ClassStudent } from '../services/teacherService';
 import {
   getCurrentECYear,
   ecYearToGregorian,
@@ -91,7 +91,10 @@ export const GradeEntry = () => {
 
         // Prefill existing grades for this course
         try {
-          const existing = await getCourseGrades(courseId);
+          const [existing, submissions] = await Promise.all([
+            getCourseGrades(courseId),
+            getGradeSubmissions()
+          ]);
           const prefill: ScoreMap = {};
           const locks = new Set<string>();
           for (const g of (existing || [])) {
@@ -100,6 +103,12 @@ export const GradeEntry = () => {
             prefill[g.student_id][g.type] = g.score ?? '';
             if (g.is_submitted) {
               locks.add(g.type);
+            }
+          }
+          // Also check explicit submissions in case there were no grades entered when it was locked
+          for (const sub of (submissions || [])) {
+            if (sub.course_id === courseId) {
+              locks.add(sub.submission_type);
             }
           }
           setScores(prefill);
@@ -183,7 +192,7 @@ export const GradeEntry = () => {
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message || 'Failed to save grades. Please try again.');
+      setSaveError(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to save grades. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -202,21 +211,31 @@ export const GradeEntry = () => {
       
       // 2. Lock all unlocked methods
       const newLocks = new Set(lockedMethods);
-      for (const method of gradingMethods) {
-        if (!lockedMethods.has(method.id)) {
-          // Check if there are actually any scores for this method to prevent empty submissions
-          const hasScores = students.some(s => scores[s.id]?.[method.id] !== '' && scores[s.id]?.[method.id] !== undefined);
-          if (hasScores) {
-            await submitCourseGrades(selectedCourseId, method.id);
-            newLocks.add(method.id);
+                for (const method of gradingMethods) {
+            if (!lockedMethods.has(method.id)) {
+              // Check if there are actually any scores for this method to prevent empty submissions
+              const hasScores = students.some(s => scores[s.id]?.[method.id] !== '' && scores[s.id]?.[method.id] !== undefined);
+              if (hasScores) {
+                try {
+                  await submitCourseGrades(selectedCourseId, method.id);
+                  newLocks.add(method.id);
+                } catch (err: any) {
+                  // If already submitted and locked, just add to locks and continue
+                  const errMsg = err?.response?.data?.error?.message || err?.response?.data?.message || '';
+                  if (errMsg.includes('already been submitted')) {
+                    newLocks.add(method.id);
+                  } else {
+                    throw err;
+                  }
+                }
+              }
+            }
           }
-        }
-      }
       setLockedMethods(newLocks);
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message || 'Failed to submit and lock grades. Please try again.');
+      setSaveError(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to submit and lock grades. Please try again.');
     } finally {
       setSubmittingGrades(false);
     }
