@@ -75,6 +75,13 @@ export const ExamSession: React.FC = () => {
 
         if (data.session.status === 'submitted') {
           setScreen('submitted');
+          if (data.session.finalScore !== null && data.session.finalScore !== undefined) {
+            setFinalScore({
+              score: 0,
+              total: 0,
+              pct: Math.round(Number(data.session.finalScore))
+            });
+          }
         } else if (data.session.status === 'terminated') {
           setScreen('terminated');
         } else if (data.session.status === 'active') {
@@ -277,12 +284,18 @@ export const ExamSession: React.FC = () => {
             <CheckCircle2 className="w-10 h-10 text-emerald-400" />
           </div>
           <h2 className="text-3xl font-black text-white mb-2">Exam Complete</h2>
-          <p className="text-slate-400 mb-6">Your answers have been saved and graded.</p>
-          {finalScore && (
+          <p className="text-slate-400 mb-6">
+            {examDetail?.exam?.showScore === false
+              ? 'Your answers have been saved successfully. The teacher has chosen to hide scores for this exam.'
+              : 'Your answers have been saved and graded.'}
+          </p>
+          {finalScore && examDetail?.exam?.showScore !== false && (
             <div className="bg-slate-700/50 rounded-2xl p-6 mb-6">
               <p className="text-slate-400 text-sm font-medium mb-1">Your Score</p>
               <p className="text-5xl font-black text-white">{finalScore.pct}<span className="text-2xl text-slate-400">%</span></p>
-              <p className="text-slate-400 text-sm mt-1">{finalScore.score} / {finalScore.total} marks</p>
+              {finalScore.total > 0 && (
+                <p className="text-slate-400 text-sm mt-1">{finalScore.score} / {finalScore.total} marks</p>
+              )}
               <div className="mt-4 h-3 bg-slate-600 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-1000 ${finalScore.pct >= 50 ? 'bg-emerald-500' : 'bg-red-500'}`}

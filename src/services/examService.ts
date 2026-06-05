@@ -132,6 +132,7 @@ export const saveTeacherExam = async (examData: {
   classId: string; title: string; examType: string; totalMarks: number; duration: number;
   instructions?: string; selectedSection?: string; gradeId?: string; subjectId?: string;
   examPassword?: string; isLocked?: boolean; passwordRequired?: boolean; questions?: any[];
+  showScore?: boolean; isGraded?: boolean; assessmentType?: string | null;
 }): Promise<any> => {
   const response = await api.post('/teacher/exams', examData);
   return response.data.data;

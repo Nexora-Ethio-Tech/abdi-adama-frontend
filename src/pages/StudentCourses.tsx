@@ -81,9 +81,11 @@ export const StudentCourses = () => {
       if (coursesData.length > 0) {
         if (preserveSelection && selectedCourse) {
           const stillThere = coursesData.find((c: StudentCourse) => c.id === selectedCourse.id);
-          setSelectedCourse(stillThere || null);
+          // keep selection (or fall back to first course so grades remain visible)
+          setSelectedCourse(stillThere || coursesData[0]);
         } else {
-          setSelectedCourse(null);
+          // Auto-select the first course so grades are immediately visible
+          setSelectedCourse(coursesData[0]);
         }
       } else {
         setSelectedCourse(null);
