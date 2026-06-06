@@ -161,8 +161,10 @@ export const Transcripts = () => {
           />
         </div>
         <div className="relative group">
+          <label htmlFor="filterGrade" className="sr-only">Filter by grade</label>
           <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
           <select
+            id="filterGrade"
             value={filterGrade}
             onChange={(e) => setFilterGrade(e.target.value)}
             className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none font-bold text-sm"

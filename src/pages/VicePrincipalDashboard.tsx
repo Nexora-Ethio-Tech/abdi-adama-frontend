@@ -57,9 +57,9 @@ export const VicePrincipalDashboard = () => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-8 animate-in fade-in duration-300 px-4 sm:px-6 lg:px-8 max-w-[95vw] xl:max-w-[1400px] mx-auto">
       {/* Header section with glassmorphic visuals */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-[2rem] p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20"></div>
         <div className="relative z-10">
@@ -112,9 +112,9 @@ export const VicePrincipalDashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Link 
-          to="/vp-attendance" 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Link
+          to="/vp-attendance"
           className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-emerald-500/10"
         >
           <div className="flex items-center justify-between mb-4">
@@ -127,8 +127,8 @@ export const VicePrincipalDashboard = () => {
           <p className="text-emerald-50/90 text-sm font-medium">Audit daily student presence matrices</p>
         </Link>
 
-        <Link 
-          to="/vp-grade-management" 
+        <Link
+          to="/vp-grade-management"
           className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-blue-500/10"
         >
           <div className="flex items-center justify-between mb-4">
@@ -142,8 +142,8 @@ export const VicePrincipalDashboard = () => {
         </Link>
 
 
-        <Link 
-          to="/vp-transcripts" 
+        <Link
+          to="/vp-transcripts"
           className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-indigo-500/10"
         >
           <div className="flex items-center justify-between mb-4">
@@ -161,11 +161,10 @@ export const VicePrincipalDashboard = () => {
 
       {toast.show && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border ${
-            toast.type === 'success'
+          <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border ${toast.type === 'success'
               ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300'
               : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300'
-          }`}>
+            }`}>
             <CheckCircle2 className="text-emerald-500" size={20} />
             <p className="text-sm font-semibold">{toast.message}</p>
           </div>

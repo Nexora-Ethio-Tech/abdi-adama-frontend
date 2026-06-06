@@ -41,7 +41,7 @@ export const TranscriptTemplate = ({ studentData }: TranscriptTemplateProps) => 
     : 0;
 
   return (
-    <div className="transcript-page w-full max-w-[148mm] mx-auto p-6 bg-white text-gray-900 border-2 border-double border-gray-300 shadow-2xl print:shadow-none print:border-0 print:p-4 print:w-[210mm] print:h-[297mm] print:m-0 print:overflow-hidden">
+    <div className="transcript-page w-full max-w-[95vw] sm:max-w-[148mm] mx-auto p-6 bg-white text-gray-900 border-2 border-double border-gray-300 shadow-2xl print:shadow-none print:border-0 print:p-4 print:w-[210mm] print:h-[297mm] print:m-0 print:overflow-hidden">
       {/* Header Section */}
       <div className="flex flex-col items-center mb-8 border-b-4 border-blue-900 pb-6">
         <img src={logo} alt="Abdi Adama School Logo" className="w-32 h-32 mb-4 object-contain" />

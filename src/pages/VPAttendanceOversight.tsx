@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone, CalendarDays } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import api from '../services/api';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
+import { ethiopianToGregorianIso, getTodayEthiopianDate } from '../utils/ethiopianCalendar';
 
 interface AbsentStudent {
   id: string;
@@ -24,16 +26,8 @@ interface SMSMessage {
 export const VPAttendanceOversight = () => {
   const { user } = useUser();
 
-  // Helper: get today in local timezone as YYYY-MM-DD
-  const getLocalToday = () => {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
-  const [selectedDate, setSelectedDate] = useState<string>(getLocalToday());
+  // Use Ethiopian date picker; default to today's Ethiopian date
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayEthiopianDate());
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +57,10 @@ export const VPAttendanceOversight = () => {
     setSelectedStudents(new Set());
     setSelectAll(false);
     try {
+      // Convert Ethiopian date (YYYY-MM-DD E.C.) to Gregorian ISO before sending to backend
+      const queryDate = selectedDate ? ethiopianToGregorianIso(selectedDate) : undefined;
       const response = await api.get('/vice-principal/attendance/absences-today', {
-        params: { date: selectedDate },
+        params: { date: queryDate },
         headers: {
           'Cache-Control': 'no-cache',
           Pragma: 'no-cache'
@@ -152,9 +148,9 @@ export const VPAttendanceOversight = () => {
   };
 
   return (
-    <div className="space-y-6 p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen">
+    <div className="space-y-6 p-6 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen max-w-[95vw] xl:max-w-[1400px] mx-auto">
       {/* Header */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -169,17 +165,16 @@ export const VPAttendanceOversight = () => {
           </div>
           {/* Date Picker */}
           <div className="flex-shrink-0 mt-2">
-            <label className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5">
+            <label htmlFor="vpAbsenceDatePicker" className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5">
               <CalendarDays size={12} className="inline mr-1" />
               View Absences For
             </label>
-            <input
-              type="date"
-              id="vpAbsenceDatePicker"
+            <EthiopianDatePicker
               value={selectedDate}
-              max={getLocalToday()}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition-all cursor-pointer w-full"
+              onChange={(v) => setSelectedDate(v)}
+              placeholder="YYYY-MM-DD"
+              title="Select absence date (Ethiopian calendar)"
+              className="w-full"
             />
             {selectedDate && (
               <p className="mt-1 text-xs text-indigo-300 font-medium text-center">
@@ -270,6 +265,7 @@ export const VPAttendanceOversight = () => {
                   type="checkbox"
                   checked={selectAll}
                   onChange={(e) => handleSelectAll(e.target.checked)}
+                  aria-label={selectAll ? 'Deselect all students' : 'Select all students'}
                   className="w-5 h-5 rounded border-slate-300 text-indigo-600 cursor-pointer"
                 />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -283,11 +279,10 @@ export const VPAttendanceOversight = () => {
             <button
               onClick={() => setShowSMSModal(true)}
               disabled={selectedStudents.size === 0}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
-                selectedStudents.size === 0
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${selectedStudents.size === 0
                   ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
                   : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20'
-              }`}
+                }`}
             >
               <MessageSquare size={18} />
               Send SMS ({selectedStudents.size})
@@ -301,8 +296,7 @@ export const VPAttendanceOversight = () => {
                   <input
                     type="checkbox"
                     checked={selectedStudents.has(student.id)}
-                    onChange={(e) => handleSelectStudent(student.id, e.target.checked)}
-                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 cursor-pointer mt-1 flex-shrink-0"
+                    onChange={(e) => handleSelectStudent(student.id, e.target.checked)} aria-label={`Select ${student.name}`} className="w-5 h-5 rounded border-slate-300 text-indigo-600 cursor-pointer mt-1 flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-2">
@@ -425,11 +419,10 @@ export const VPAttendanceOversight = () => {
                   <button
                     onClick={handleSendSMS}
                     disabled={smsSending || smsMessage.trim().length === 0}
-                    className={`flex items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-colors ${
-                      smsSending || smsMessage.trim().length === 0
+                    className={`flex items-center gap-2 px-8 py-2.5 rounded-xl font-bold transition-colors ${smsSending || smsMessage.trim().length === 0
                         ? 'bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 cursor-not-allowed'
                         : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20'
-                    }`}
+                      }`}
                   >
                     {smsSending ? (
                       <>
@@ -453,11 +446,10 @@ export const VPAttendanceOversight = () => {
       {toast.show && (
         <div className="fixed bottom-6 right-6 z-40 animate-in slide-in-from-bottom-2 duration-300">
           <div
-            className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-md ${
-              toast.type === 'success'
+            className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-xl border backdrop-blur-md ${toast.type === 'success'
                 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300'
                 : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300'
-            }`}
+              }`}
           >
             {toast.type === 'success' ? (
               <CheckCircle size={20} />

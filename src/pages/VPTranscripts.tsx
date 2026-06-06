@@ -243,7 +243,7 @@ export const VPTranscripts = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Student Transcripts</h1>
@@ -277,7 +277,7 @@ export const VPTranscripts = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(280px,380px)_1fr]">
         <div className="space-y-4">
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="relative">

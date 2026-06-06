@@ -230,40 +230,88 @@ export const TeacherAttendanceModal = ({ open, teacher, onClose }: TeacherAttend
               <p className="text-sm">{error}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
-              <table className="w-full min-w-[720px] text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800">
-                  <tr>
-                    <th className="px-6 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Date</th>
-                    <th className="px-6 py-4 text-xs font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="grid grid-cols-1 xl:grid-cols-[1.9fr_1fr] gap-6">
+              <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+                <div className="grid grid-cols-7 gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
+                  <div className="py-2 text-center">Sun</div>
+                  <div className="py-2 text-center">Mon</div>
+                  <div className="py-2 text-center">Tue</div>
+                  <div className="py-2 text-center">Wed</div>
+                  <div className="py-2 text-center">Thu</div>
+                  <div className="py-2 text-center">Fri</div>
+                  <div className="py-2 text-center">Sat</div>
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: new Date(ethiopianPartsToGregorianDate(selectedYear, selectedMonth, 1)).getDay() }).map((_, index) => (
+                    <div key={`empty-${index}`} className="h-20 rounded-3xl bg-slate-50 dark:bg-slate-800" />
+                  ))}
                   {dayRows.map((row) => (
-                    <tr key={row.isoDate} className={row.isWeekend ? 'bg-slate-50/40 dark:bg-slate-800/20' : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'}>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-slate-800 dark:text-slate-100">{row.label}</div>
-                        {row.isWeekend && (
-                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Weekend</p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        {!row.mark ? (
-                          <span className="inline-flex items-center gap-2 text-slate-300 dark:text-slate-600 font-black text-lg">&nbsp;</span>
-                        ) : row.mark === '✓' ? (
-                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-black text-sm">
-                            ✓ Signed In
+                    <div
+                      key={row.isoDate}
+                      className={`min-h-[88px] rounded-3xl border p-3 text-sm font-semibold flex flex-col justify-between ${row.mark === '✓'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20'
+                          : row.mark === '✗'
+                            ? 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950/20'
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span>{row.day}</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{row.isWeekend ? 'WE' : ''}</span>
+                      </div>
+                      <div className="pt-1">
+                        {row.mark ? (
+                          <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] font-black">
+                            {row.mark} {row.mark === '✓' ? 'Present' : 'Absent'}
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-black text-sm">
-                            ✗ Absent
+                          <span className="inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] font-black text-slate-400">
+                            No data
                           </span>
                         )}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-4">Month overview</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-600">Signed In</p>
+                      <p className="mt-3 text-3xl font-black text-emerald-700">{presentCount}</p>
+                    </div>
+                    <div className="rounded-3xl bg-rose-50 dark:bg-rose-950/20 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-rose-600">Absent</p>
+                      <p className="mt-3 text-3xl font-black text-rose-700">{absentCount}</p>
+                    </div>
+                    <div className="rounded-3xl bg-slate-50 dark:bg-slate-950/20 p-4 col-span-2">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">No data / weekends</p>
+                      <p className="mt-3 text-3xl font-black text-slate-700 dark:text-slate-200">{blankCount}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm">
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 mb-4">Legend</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-black">✓</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Present</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 font-black">✗</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Absent</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 font-black">—</span>
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">No sign-in / weekend</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
