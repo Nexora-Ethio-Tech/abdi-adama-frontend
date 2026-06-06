@@ -25,7 +25,8 @@ import {
   Globe,
   Quote,
   GraduationCap,
-  Lock
+  Lock,
+  X
 } from 'lucide-react';
 import About from './LandingSections/About';
 import Programs from './LandingSections/Programs';
@@ -43,25 +44,29 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
   if (showAdmission) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="School Logo" className="w-16 h-16 rounded-2xl shadow-lg object-cover" />
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admission Portal</h1>
-                <p className="text-sm text-slate-500">{displaySchoolName}</p>
+        <div className="max-w-4xl mx-auto mt-8">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+            {/* Header with Close Button */}
+            <div className="flex items-center justify-between p-8 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-4">
+                <img src={logo} alt="School Logo" className="w-16 h-16 rounded-2xl shadow-lg object-cover" />
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admission Portal</h1>
+                  <p className="text-sm text-slate-500">{displaySchoolName}</p>
+                </div>
               </div>
+              <button
+                onClick={() => setShowAdmission(false)}
+                className="p-3 text-slate-600 dark:text-slate-300 hover:text-white hover:bg-school-primary dark:hover:bg-school-primary bg-slate-100 dark:bg-slate-800 rounded-lg transition-all font-bold flex-shrink-0"
+                title="Close"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <button
-              onClick={() => setShowAdmission(false)}
-              className="text-slate-500 hover:text-school-primary font-bold transition-colors"
-            >
-              ← Back to Main
-            </button>
-          </div>
-
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-1 shadow-xl border border-slate-100 dark:border-slate-800">
-            <StudentRegistration isAdminView={false} />
+            {/* Form Content */}
+            <div className="p-1">
+              <StudentRegistration isAdminView={false} />
+            </div>
           </div>
         </div>
       </div>
@@ -81,7 +86,7 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 overflow-x-hidden">
       {/* Premium Navbar */}
       {/* Hero Section */}
-      <Hero />
+      <Hero setShowAdmission={setShowAdmission} />
       {/* Stats Section */}
       <section className="py-20 relative z-20">
         <div className="max-w-7xl mx-auto px-6">
@@ -133,7 +138,7 @@ export const LandingPage = () => {
         <Route path="/" element={<Home showAdmission={showAdmission} scrolled={scrolled} displaySchoolName={displaySchoolName} setShowAdmission={setShowAdmission} />} />
         <Route path="/about" element={<About />} />
         <Route path="/programs" element={<Programs setShowAdmission={setShowAdmission} />} />
-        <Route path="/school-life" element={<SchoolLife setShowAdmission={setShowAdmission} />} />
+        <Route path="/school-life" element={<SchoolLife showAdmission={showAdmission} setShowAdmission={setShowAdmission} displaySchoolName={displaySchoolName} />} />
         <Route path="/branches" element={<Branches setScrolled={setScrolled} />} />
       </Routes>
       <footer className="bg-white dark:bg-slate-950 pt-24 pb-12 border-t border-slate-100 dark:border-slate-800">
