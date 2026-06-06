@@ -36,8 +36,8 @@ export const TranscriptTemplate = ({ studentData }: TranscriptTemplateProps) => 
   // Calculate class average from all subjects
   const classAverage = subjects.length > 0 && subjects[0].name !== 'No grades found'
     ? Math.round(
-        subjects.reduce((sum, s) => sum + Number(s.mark || 0), 0) / subjects.length
-      )
+      subjects.reduce((sum, s) => sum + Number(s.mark || 0), 0) / subjects.length
+    )
     : 0;
 
   return (
@@ -82,8 +82,8 @@ export const TranscriptTemplate = ({ studentData }: TranscriptTemplateProps) => 
           </thead>
           <tbody>
             {subjects.map((subject, index) => (
-              <tr 
-                key={`${subject.name}-${index}`} 
+              <tr
+                key={`${subject.name}-${index}`}
                 className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}
               >
                 <td className="p-3 border border-gray-300 font-semibold text-gray-800">{subject.name}</td>
