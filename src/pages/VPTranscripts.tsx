@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, ChevronRight, Download, FileText, Loader2, Printer, Search, Users, X } from 'lucide-react';
+import { AlertCircle, ChevronRight, ChevronDown, Download, FileText, Loader2, Printer, Search, Users, X } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 import { TranscriptTemplate, TranscriptTemplateData } from '../components/TranscriptTemplate';
 
@@ -194,7 +194,7 @@ export const VPTranscripts = () => {
         academicYear: transcript.academicYear || 'N/A',
         semester: transcript.semester || 'N/A',
         subjects: subjects.length > 0 ? subjects : [{ name: 'No grades found', mark: 0, grade: '0' }],
-        average: transcript.overallAverage != null ? transcript.overallAverage.toFixed(1) : 0,
+        average: transcript.overallAverage != null ? Math.round(transcript.overallAverage) : 0,
         rank: transcript.overallRank ?? 0
       };
     }
@@ -219,7 +219,25 @@ export const VPTranscripts = () => {
     if (typeof document !== 'undefined' && !document.getElementById(styleId)) {
       const style = document.createElement('style');
       style.id = styleId;
-      style.innerHTML = `@media print { body * { visibility: hidden !important; } .transcript-print, .transcript-print * { visibility: visible !important; } .transcript-print { position: fixed !important; left: 0 !important; top: 0 !important; width: 100% !important; } }`;
+      style.innerHTML = `@page { size: A4; margin: 8mm; }
+        @media print {
+          body, html { margin: 0 !important; padding: 0 !important; }
+          body * { visibility: hidden !important; }
+          .transcript-print, .transcript-print * { visibility: visible !important; }
+          .transcript-print { position: absolute !important; left: 0 !important; top: 0 !important; width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+          .transcript-print img { max-width: 100% !important; height: auto !important; }
+          .transcript-print table, .transcript-page { page-break-inside: avoid !important; }
+          .transcript-print table th, .transcript-print table td { padding: 0.35rem !important; font-size: 9px !important; }
+          .transcript-print h1 { font-size: 20px !important; }
+          .transcript-print h2 { font-size: 14px !important; }
+          .transcript-print p, .transcript-print span, .transcript-print td, .transcript-print th { font-size: 10px !important; line-height: 1.2 !important; }
+          .transcript-print .grid { gap: 0.5rem !important; }
+          .transcript-print .border-2 { border-width: 1px !important; }
+          .transcript-print .p-6 { padding: 0.75rem !important; }
+          .transcript-print .p-4 { padding: 0.5rem !important; }
+          .transcript-print .p-3 { padding: 0.35rem !important; }
+          .transcript-print .p-2 { padding: 0.25rem !important; }
+        }`;
       document.head.appendChild(style);
     }
   }, []);
@@ -276,6 +294,7 @@ export const VPTranscripts = () => {
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
+                  aria-label="Clear search query"
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                 >
                   <X size={14} />
@@ -315,9 +334,9 @@ export const VPTranscripts = () => {
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="mb-3 flex items-center gap-2">
+            <div className="mb-4 flex items-center gap-2">
               <Users size={18} className="text-blue-600" />
-              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-700 dark:text-slate-200">Grades & Sections</h2>
+              <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-700 dark:text-slate-200">Grade & Section</h2>
             </div>
 
             {loadingHierarchy ? (
@@ -331,42 +350,66 @@ export const VPTranscripts = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {gradeGroups.map((group) => {
-                  const active = group.grade_name === selectedGrade;
+                {/* Grade Dropdown */}
+                <div>
+                  <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    Grade
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedGrade}
+                      onChange={(e) => {
+                        const gradeName = e.target.value;
+                        if (gradeName) {
+                          setSelectedGrade(gradeName);
+                          const gradeGroup = gradeGroups.find((g) => g.grade_name === gradeName);
+                          if (gradeGroup && gradeGroup.sections.length > 0) {
+                            setSelectedSection(gradeGroup.sections[0].id);
+                          }
+                        }
+                      }}
+                      title="Select a grade level"
+                      className="w-full appearance-none px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer pr-10"
+                    >
+                      <option value="">Select Grade</option>
+                      {gradeGroups.map((group) => (
+                        <option key={group.grade_name} value={group.grade_name}>
+                          {group.grade_name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
 
-                  return (
-                    <div key={group.grade_name} className="rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <button
-                        onClick={() => {
-                          setSelectedGrade(group.grade_name);
-                          setSelectedSection(group.sections[0]?.id || '');
-                        }}
-                        className={`flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition ${active ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'}`}
-                      >
-                        <span className="font-bold">{group.grade_name}</span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                          {group.sections.length} sections
-                        </span>
-                      </button>
-
-                      {active && (
-                        <div className="border-t border-slate-200 p-3 dark:border-slate-700">
-                          <div className="flex flex-wrap gap-2">
-                            {group.sections.map((section) => (
-                              <button
-                                key={section.id}
-                                onClick={() => setSelectedSection(section.id)}
-                                className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${selectedSection === section.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}
-                              >
-                                {section.section_name}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {/* Section Dropdown */}
+                <div>
+                  <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    Section
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedSection}
+                      onChange={(e) => setSelectedSection(e.target.value)}
+                      disabled={!selectedGrade}
+                      title="Select a section (choose a grade first)"
+                      className="w-full appearance-none px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer pr-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {selectedGrade ? 'Select Section' : 'Choose Grade First'}
+                      </option>
+                      {selectedGrade &&
+                        gradeGroups
+                          .find((g) => g.grade_name === selectedGrade)
+                          ?.sections.map((section) => (
+                            <option key={section.id} value={section.id}>
+                              {section.section_name} ({section.student_count}/{section.capacity})
+                            </option>
+                          ))}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
               </div>
             )}
           </div>

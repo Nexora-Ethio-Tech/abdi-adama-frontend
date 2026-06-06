@@ -26,11 +26,23 @@ export const TranscriptTemplate = ({ studentData }: TranscriptTemplateProps) => 
     ? studentData.subjects
     : [{ name: 'No grades found', mark: 0, grade: '0' }];
 
-  const average = studentData.average ?? 0;
   const rank = studentData.rank ?? 0;
 
+  // Calculate total sum from all subjects
+  const totalSum = subjects.length > 0 && subjects[0].name !== 'No grades found'
+    ? subjects.reduce((sum, s) => sum + Number(s.mark || 0), 0)
+    : 0;
+
+  // Calculate class average from all subjects
+  const classAverage = subjects.length > 0 && subjects[0].name !== 'No grades found'
+    ? Math.round(
+        subjects.reduce((sum, s) => sum + Number(s.mark || 0), 0) / subjects.length
+      )
+    : 0;
+
   return (
-    <div className="max-w-[210mm] min-h-[297mm] mx-auto p-12 bg-white text-gray-900 border-2 border-double border-gray-300 shadow-2xl print:shadow-none print:border-0 print:max-w-none print:min-h-0">
+    <div className="transcript-page w-full max-w-[148mm] mx-auto p-6 bg-white text-gray-900 border-2 border-double border-gray-300 shadow-2xl print:shadow-none print:border-0 print:p-4 print:w-[210mm] print:h-[297mm] print:m-0 print:overflow-hidden">
+      {/* Header Section */}
       <div className="flex flex-col items-center mb-8 border-b-4 border-blue-900 pb-6">
         <img src={logo} alt="Abdi Adama School Logo" className="w-32 h-32 mb-4 object-contain" />
         <h1 className="text-3xl font-extrabold text-blue-900 tracking-wider text-center">MANA BARUMSAA ABDII ADAAMAA</h1>
@@ -38,43 +50,78 @@ export const TranscriptTemplate = ({ studentData }: TranscriptTemplateProps) => 
         <p className="mt-2 text-sm italic font-medium text-center">"Excellence in Education & Integrity"</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-8 mb-10 bg-gray-50 p-6 rounded-lg border border-gray-200">
-        <div className="space-y-2">
-          <p><span className="font-bold text-gray-600">Student Name:</span> {studentData.name || 'N/A'}</p>
-          <p><span className="font-bold text-gray-600">Student ID:</span> {studentData.id || 'N/A'}</p>
+      {/* Student Information Section */}
+      <div className="grid grid-cols-2 gap-4 mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Student Name</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{studentData.name || 'N/A'}</p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <p><span className="font-bold text-gray-600">Academic Year:</span> {studentData.academicYear || 'N/A'}</p>
-          <p><span className="font-bold text-gray-600">Semester:</span> {studentData.semester || 'N/A'}</p>
+        <div className="space-y-3">
+          <div>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Academic Year</p>
+            <p className="text-lg font-bold text-gray-900 mt-1">{studentData.academicYear || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Semester</p>
+            <p className="text-sm font-bold text-gray-800 mt-1">{studentData.semester || 'N/A'}</p>
+          </div>
         </div>
       </div>
 
-      <table className="w-full text-left border-collapse mb-10">
-        <thead>
-          <tr className="bg-blue-900 text-white uppercase text-sm">
-            <th className="p-3 border">Subject Name</th>
-            <th className="p-3 border text-center">Score (100%)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {subjects.map((subject, index) => (
-            <tr key={`${subject.name}-${index}`} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-              <td className="p-3 border font-medium">{subject.name}</td>
-              <td className="p-3 border text-center">{subject.mark}</td>
+      {/* Academic Subjects Table */}
+      <div className="mb-8">
+        <h3 className="text-sm font-black text-blue-900 uppercase tracking-widest mb-3 border-b-2 border-blue-900 pb-2">Academic Performance</h3>
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-blue-900 text-white uppercase text-xs">
+              <th className="p-3 border border-blue-800 font-bold">Subject</th>
+              <th className="p-3 border border-blue-800 font-bold text-center">Score</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {subjects.map((subject, index) => (
+              <tr 
+                key={`${subject.name}-${index}`} 
+                className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}
+              >
+                <td className="p-3 border border-gray-300 font-semibold text-gray-800">{subject.name}</td>
+                <td className="p-3 border border-gray-300 text-center font-bold text-gray-900">{subject.mark}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-      <div className="flex justify-between items-start border-t-2 pt-6 gap-6">
-        <div className="space-y-2">
-          <p className="text-lg"><strong>Average Score:</strong> {average}%</p>
-          <p className="text-lg"><strong>Final Rank:</strong> {rank}</p>
+      {/* Summary Statistics */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+          <p className="text-xs font-black text-blue-700 uppercase tracking-widest mb-2">Average</p>
+          <p className="text-3xl font-extrabold text-blue-900">{classAverage}%</p>
         </div>
-        <div className="text-center w-48 shrink-0">
-          <div className="h-16 border-b border-gray-400 mb-2"></div>
-          <p className="text-sm font-bold">Principal Signature</p>
+        <div className="bg-indigo-50 border-2 border-indigo-200 rounded-lg p-4">
+          <p className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-2">Total Score</p>
+          <p className="text-3xl font-extrabold text-indigo-900">{totalSum}</p>
         </div>
+        <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
+          <p className="text-xs font-black text-purple-700 uppercase tracking-widest mb-2">Class Rank</p>
+          <p className="text-3xl font-extrabold text-purple-900">{rank}</p>
+        </div>
+      </div>
+
+      {/* Principal Signature Section */}
+      <div className="border-t-4 border-blue-900 pt-6">
+        <div className="text-center w-48 ml-auto">
+          <div className="h-16 border-b-2 border-gray-400 mb-3"></div>
+          <p className="text-xs font-bold text-gray-700 uppercase tracking-widest">Principal Signature</p>
+          <p className="text-xs text-gray-500 mt-1">Date: _______________</p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-8 text-center text-xs text-gray-500 border-t border-gray-300 pt-4">
+        <p>This is an official school transcript. For inquiries, contact the Academic Office.</p>
       </div>
     </div>
   );
