@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, Check, X, CreditCard, Eye, EyeOff, Download } from 'lucide-react';
 import financeClerkService from '../services/financeService';
+import { API_HOST_URL } from '../config/api';
 
-const API = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
+const API = API_HOST_URL || '';
 
 const getToken = () => localStorage.getItem('abdi_adama_token') || '';
 
@@ -167,7 +168,7 @@ export const FinanceClerkRegistration = () => {
       return;
     }
     // Open the backend endpoint to download the file directly from DB
-    window.open(`http://localhost:5000/api/school-admin/applications/${app.id}/transcript`, '_blank');
+    window.open(`${API}/api/school-admin/applications/${app.id}/transcript`, '_blank');
   };
 
   if (loading) {

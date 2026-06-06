@@ -1,4 +1,4 @@
-import { BookOpen, Users, Calendar, ArrowRight, ArrowLeft, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save, Send, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Users, Calendar, ArrowRight, ArrowLeft, ClipboardList, FileText, Plus, X, CheckCircle2, XCircle, Loader2, Star, Save, Send, Search, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
@@ -26,6 +26,23 @@ import {
   getCoursesByGradeForExams,
   getTeacherCoursesForExams
 } from '../services/examService';
+
+const normalizeGrade = (grade: any): string => {
+  if (!grade) return '';
+  const trimmed = String(grade).trim();
+  return /^\d+$/.test(trimmed) ? `Grade ${trimmed}` : trimmed;
+};
+
+const matchGrade = (hodGrades: any[], courseGrade: any): boolean => {
+  if (!hodGrades || !Array.isArray(hodGrades)) return false;
+  if (!courseGrade) return true;
+  const normalizedCourseGrade = normalizeGrade(courseGrade).toLowerCase();
+  const rawCourseGrade = String(courseGrade).trim().toLowerCase();
+  return hodGrades.some(g => {
+    const normG = String(g).trim().toLowerCase();
+    return normG === normalizedCourseGrade || normG === rawCourseGrade;
+  });
+};
 
 export const TeacherPortal = () => {
   const { user } = useUser();
@@ -83,7 +100,7 @@ export const TeacherPortal = () => {
   const handleApproveDeptPlan = async (id: string, rating: number, feedback: string) => {
     const defaultFeedback = feedback.trim() || 'Approved by Department Head';
 
-    // Update local state instantly
+    // Optimistic update
     setDeptPlans(prev => prev.map(p => p.id === id ? {
       ...p,
       status: 'Approved',
@@ -91,20 +108,14 @@ export const TeacherPortal = () => {
       dean_feedback: defaultFeedback
     } : p));
 
-    // Sync to user's plans in case it's a simulated plan they submitted
-    setPlans(prev => prev.map(p => p.id === id ? {
-      ...p,
-      status: 'Approved',
-      dean_rating: rating,
-      dean_feedback: defaultFeedback
-    } : p));
-
-    showToast('Plan approved successfully!', 'success');
-
     try {
       await reviewDeptPlan(id, { status: 'Approved', feedback: defaultFeedback, rating });
+      showToast('Plan approved successfully!', 'success');
+      // Refresh from DB to get accurate state
+      fetchDeptPlans();
     } catch (err: any) {
-      console.warn('Backend update failed/ignored for demo:', err);
+      showToast(err.response?.data?.error?.message || 'Failed to approve plan', 'error');
+      fetchDeptPlans(); // revert optimistic update with real data
     }
   };
 
@@ -114,7 +125,7 @@ export const TeacherPortal = () => {
       return;
     }
 
-    // Update local state instantly
+    // Optimistic update
     setDeptPlans(prev => prev.map(p => p.id === id ? {
       ...p,
       status: 'Revision Required',
@@ -122,20 +133,14 @@ export const TeacherPortal = () => {
       dean_feedback: feedback
     } : p));
 
-    // Sync to user's plans in case it's a simulated plan they submitted
-    setPlans(prev => prev.map(p => p.id === id ? {
-      ...p,
-      status: 'Revision Required',
-      dean_rating: rating,
-      dean_feedback: feedback
-    } : p));
-
-    showToast('Revision request submitted!', 'success');
-
     try {
       await reviewDeptPlan(id, { status: 'Revision Required', feedback, rating });
+      showToast('Revision request submitted!', 'success');
+      // Refresh from DB
+      fetchDeptPlans();
     } catch (err: any) {
-      console.warn('Backend update failed/ignored for demo:', err);
+      showToast(err.response?.data?.error?.message || 'Failed to request revision', 'error');
+      fetchDeptPlans(); // revert optimistic update
     }
   };
 
@@ -265,10 +270,10 @@ export const TeacherPortal = () => {
       const rawDeptHeads = Array.isArray(deptHeadsList) ? deptHeadsList : [];
       if (rawDeptHeads.length === 0) {
         setDeptHeads([
-          { teacher_id: 'dh-1', name: 'Dr. Girma Bekele', department: 'Mathematics Department' },
-          { teacher_id: 'dh-2', name: 'Wz. Aster Tolosa', department: 'Natural Science Department' },
-          { teacher_id: 'dh-3', name: 'Abo Chala Kebede', department: 'Social Science Department' },
-          { teacher_id: 'dh-4', name: 'Mstr. Kassa Hailu', department: 'Languages Department' }
+          { teacher_id: 'dh-1', name: 'Dr. Girma Bekele', department: 'Mathematics Department', subjects: ['algebra', 'geometry', 'calculus', 'maths'], grades: [] },
+          { teacher_id: 'dh-2', name: 'Wz. Aster Tolosa', department: 'Natural Science Department', subjects: ['bio', 'biology', 'chemistry', 'physics', 'science'], grades: [] },
+          { teacher_id: 'dh-3', name: 'Abo Chala Kebede', department: 'Social Science Department', subjects: ['history', 'geography', 'civics', 'social science'], grades: [] },
+          { teacher_id: 'dh-4', name: 'Mstr. Kassa Hailu', department: 'Languages Department', subjects: ['english', 'amharic', 'oromiffa', 'languages'], grades: [] }
         ]);
       } else {
         setDeptHeads(rawDeptHeads);
@@ -276,199 +281,7 @@ export const TeacherPortal = () => {
 
       if (dash?.teacherInfo?.is_dean || simulateDeanMode) {
         const dPlans = await getDeptPlans().catch(() => []);
-        const rawPlans = Array.isArray(dPlans) ? dPlans : [];
-        if (rawPlans.length === 0) {
-          // Populate 8 beautiful mock weekly plans for Mathematics Department
-          const mockPlans = [
-            {
-              id: 'mock-plan-1',
-              teacher_name: 'Alemu Asefa',
-              subject: 'Algebra (MATH-11) — Grade 11A',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Quadratic Equations and applications',
-              objectives: 'Students will be able to solve quadratic equations using the quadratic formula and apply it to word problems.',
-              teacher_activity: 'Deliver a lecture explaining the formula derivation, work through 3 examples on the board, and guide initial practice.',
-              teacherActivity: 'Deliver a lecture explaining the formula derivation, work through 3 examples on the board, and guide initial practice.',
-              student_activity: 'Take notes, solve practice problems in pairs, and ask clarifying questions.',
-              studentActivity: 'Take notes, solve practice problems in pairs, and ask clarifying questions.',
-              teaching_method: 'Lecture, guided practice, pair work',
-              teachingMethod: 'Lecture, guided practice, pair work',
-              teaching_aids: 'Whiteboard, textbook, printed worksheets',
-              teachingAids: 'Whiteboard, textbook, printed worksheets',
-              evaluation: 'Short exit ticket containing 2 quadratic equation problems to solve independently.',
-              remark: 'Make sure to emphasize the sign under the square root and real-world implications.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-2',
-              teacher_name: 'Tadesse Balcha',
-              subject: 'Geometry (GEOM-10) — Grade 10B',
-              date: '2026-06-01',
-              time_duration: '50 minutes',
-              timeDuration: '50 minutes',
-              content: 'Triangles and Similarity Criteria',
-              objectives: 'Students will learn to prove triangle similarity using AA, SAS, and SSS postulates.',
-              teacher_activity: 'Define similarity, prove AA criteria on board, and lead a discussion on real-life shadows/scale drawing.',
-              teacherActivity: 'Define similarity, prove AA criteria on board, and lead a discussion on real-life shadows/scale drawing.',
-              student_activity: 'Measure scale drawings and work on similarity proofs in groups.',
-              studentActivity: 'Measure scale drawings and work on similarity proofs in groups.',
-              teaching_method: 'Collaborative learning, proofs demonstration',
-              teachingMethod: 'Collaborative learning, proofs demonstration',
-              teaching_aids: 'Geometry toolkits, projection screen, work booklets',
-              teachingAids: 'Geometry toolkits, projection screen, work booklets',
-              evaluation: 'Solve 3 similarity proof worksheets at the end of the session.',
-              remark: 'Needs extra compass tools for geometric drawings.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-3',
-              teacher_name: 'Chala Kebede',
-              subject: 'Calculus (CALC-12) — Grade 12A',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Introduction to Derivatives and Rates of Change',
-              objectives: 'Understand the limit definition of the derivative and compute basic derivatives.',
-              teacher_activity: 'Introduce the secant line limit approaching the tangent line. Present power rule shortcut.',
-              teacherActivity: 'Introduce the secant line limit approaching the tangent line. Present power rule shortcut.',
-              student_activity: 'Solve rate of change problems from first principles.',
-              studentActivity: 'Solve rate of change problems from first principles.',
-              teaching_method: 'Concept induction, interactive board work',
-              teachingMethod: 'Concept induction, interactive board work',
-              teaching_aids: 'Graphing calculator, smart board diagrams',
-              teachingAids: 'Graphing calculator, smart board diagrams',
-              evaluation: 'Assess using 4 differentiation exercises.',
-              remark: 'Some students might struggle with algebraic limit simplification.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-4',
-              teacher_name: 'Meskerm Bekele',
-              subject: 'Statistics (STAT-11) — Grade 11C',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Measures of Central Tendency',
-              objectives: 'Calculate mean, median, and mode for grouped and ungrouped datasets.',
-              teacher_activity: 'Demonstrate calculation methods using a real-world class height survey dataset.',
-              teacherActivity: 'Demonstrate calculation methods using a real-world class height survey dataset.',
-              student_activity: 'Collect class data on shoes sizes and calculate the mean, median, and mode.',
-              studentActivity: 'Collect class data on shoes sizes and calculate the mean, median, and mode.',
-              teaching_method: 'Activity-based learning, statistical calculations',
-              teachingMethod: 'Activity-based learning, statistical calculations',
-              teaching_aids: 'Survey sheets, basic calculators',
-              teachingAids: 'Survey sheets, basic calculators',
-              evaluation: 'Submit dataset calculation summary tables.',
-              remark: 'Highlight the difference between sample mean and population mean.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-5',
-              teacher_name: 'Aster Tolosa',
-              subject: 'General Math (MATH-9) — Grade 9A',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Linear Equations in One Variable',
-              objectives: 'Solve basic multi-step linear equations and check the answers.',
-              teacher_activity: 'Model inverse operations method step-by-step. Show how to check solutions by substitution.',
-              teacherActivity: 'Model inverse operations method step-by-step. Show how to check solutions by substitution.',
-              student_activity: 'Solve textbook practice exercises individually and peer-check answers.',
-              studentActivity: 'Solve textbook practice exercises individually and peer-check answers.',
-              teaching_method: 'Direct instruction, individual practice',
-              teachingMethod: 'Direct instruction, individual practice',
-              teaching_aids: 'Worksheets, colored board markers',
-              teachingAids: 'Worksheets, colored board markers',
-              evaluation: 'Quiz with 3 linear equations.',
-              remark: 'Remind students of rules regarding negative number multiplication/division.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-6',
-              teacher_name: 'Kassa Hailu',
-              subject: 'Trigonometry (TRIG-10) — Grade 10A',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Soh-Cah-Toa and Right Triangle Trig',
-              objectives: 'Apply sine, cosine, and tangent ratios to find missing angles and side lengths.',
-              teacher_activity: 'Introduce SohCahToa mnemonic, demonstrate side selection (opposite, adjacent, hypotenuse).',
-              teacherActivity: 'Introduce SohCahToa mnemonic, demonstrate side selection (opposite, adjacent, hypotenuse).',
-              student_activity: 'Complete trigonometric ratio puzzle challenges in groups.',
-              studentActivity: 'Complete trigonometric ratio puzzle challenges in groups.',
-              teaching_method: 'Mnemonic instruction, gamified group exercises',
-              teachingMethod: 'Mnemonic instruction, gamified group exercises',
-              teaching_aids: 'Right-triangle posters, scientific calculators',
-              teachingAids: 'Right-triangle posters, scientific calculators',
-              evaluation: 'Group presentation of puzzle solutions.',
-              remark: 'Ensure calculator settings are in Degree mode, not Radian mode.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-7',
-              teacher_name: 'Selamawit Desta',
-              subject: 'Probability (PROB-12) — Grade 12B',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Conditional Probability and Bayes Theorem',
-              objectives: 'Calculate conditional probabilities using tree diagrams and apply Bayes theorem.',
-              teacher_activity: 'Explain tree diagrams, model calculation of conditional probabilities with marble-drawing examples.',
-              teacherActivity: 'Explain tree diagrams, model calculation of conditional probabilities with marble-drawing examples.',
-              student_activity: 'Solve real-world probability scenarios (e.g., medical test reliability) using Bayes theorem.',
-              studentActivity: 'Solve real-world probability scenarios (e.g., medical test reliability) using Bayes theorem.',
-              teaching_method: 'Problem solving, theoretical explanation',
-              teachingMethod: 'Problem solving, theoretical explanation',
-              teaching_aids: 'Probability tree templates, interactive slides',
-              teachingAids: 'Probability tree templates, interactive slides',
-              evaluation: 'Exit question sheet containing one Bayes theorem calculation.',
-              remark: 'Introduce conditional notation P(A|B) carefully.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            },
-            {
-              id: 'mock-plan-8',
-              teacher_name: 'Bekele Zewdu',
-              subject: 'Business Math (MATH-11) — Grade 11B',
-              date: '2026-06-01',
-              time_duration: '45 minutes',
-              timeDuration: '45 minutes',
-              content: 'Simple and Compound Interest Calculation',
-              objectives: 'Differentiate simple and compound interest. Use formulas to compute interest amounts.',
-              teacher_activity: 'Illustrate simple vs compound growth over 5 years. Write formulas on the board and compute examples.',
-              teacherActivity: 'Illustrate simple vs compound growth over 5 years. Write formulas on the board and compute examples.',
-              student_activity: 'Calculate interest accrued for different saving plan options using formulas.',
-              studentActivity: 'Calculate interest accrued for different saving plan options using formulas.',
-              teaching_method: 'Financial model analysis, formula applications',
-              teachingMethod: 'Financial model analysis, formula applications',
-              teaching_aids: 'Interest table booklets, simple calculators',
-              teachingAids: 'Interest table booklets, simple calculators',
-              evaluation: 'Quiz with 2 compound interest word problems.',
-              remark: 'Emphasize the variables P, r, n, and t clearly.',
-              status: 'Pending',
-              dean_rating: 0,
-              dean_feedback: ''
-            }
-          ];
-          setDeptPlans(mockPlans);
-        } else {
-          setDeptPlans(rawPlans);
-        }
+        setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
       }
     } catch (err) {
       console.error('Teacher portal error:', err);
@@ -477,10 +290,29 @@ export const TeacherPortal = () => {
     }
   };
 
+  // Separate fetch for dept plans (called when switching to dept-plans sub-tab)
+  const fetchDeptPlans = useCallback(async () => {
+    try {
+      const dPlans = await getDeptPlans().catch(() => []);
+      setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
+    } catch (err) {
+      console.error('Failed to fetch dept plans:', err);
+    }
+  }, []);
+
+
+
   useEffect(() => {
     fetchAll();
     loadGradesForExam();
   }, []);
+
+  // Refresh dept plans from DB whenever the dept-tasks tab is opened
+  useEffect(() => {
+    if (activeTab === 'dept-tasks') {
+      fetchDeptPlans();
+    }
+  }, [activeTab, fetchDeptPlans]);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
@@ -488,8 +320,7 @@ export const TeacherPortal = () => {
       setActiveTab('plans');
       setWeeklyPlanSubTab('my-plans');
     } else if (tab === 'dept-tasks') {
-      setActiveTab('plans');
-      setWeeklyPlanSubTab('dept-plans');
+      setActiveTab('dept-tasks');
     } else {
       setActiveTab('overview');
     }
@@ -610,8 +441,89 @@ export const TeacherPortal = () => {
 
   const clearLocalDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { } };
 
+  const isCourseAlreadyPlanned = useCallback((courseId: string) => {
+    return plans.some(p => (p.course_id || p.courseId) === courseId);
+  }, [plans]);
+
+  const filterDeptHeadsForCourse = useCallback((courseId: string) => {
+    if (!courseId) return [];
+    const selectedCourse = myCourses.find((c: any) => c.id === courseId);
+    if (!selectedCourse) return [];
+
+    const subjectName = (selectedCourse.name || '').toLowerCase();
+    const courseGrade = selectedCourse.grade_level || selectedCourse.grade || '';
+
+    const filtered = deptHeads.filter((hod: any) => {
+      const hodSubjects = Array.isArray(hod.subjects) ? hod.subjects : [];
+      const hasSubjectMatch = hodSubjects.some((s: any) => String(s).toLowerCase() === subjectName);
+      if (!hasSubjectMatch) return false;
+
+      const hodGrades = Array.isArray(hod.grades) ? hod.grades : [];
+      if (hodGrades.length === 0) return true;
+
+      return matchGrade(hodGrades, courseGrade);
+    });
+
+    if (filtered.length === 0) {
+      return deptHeads.filter((hod: any) => {
+        const hodSubjects = Array.isArray(hod.subjects) ? hod.subjects : [];
+        return hodSubjects.some((s: any) => String(s).toLowerCase() === subjectName);
+      });
+    }
+
+    return filtered;
+  }, [myCourses, deptHeads]);
+
+  // Auto-fill course and department head if teacher only has one course
+  useEffect(() => {
+    if (isPlanModalOpen && !editingPlan) {
+      const draft = loadLocalDraft();
+      if (!draft && myCourses.length === 1) {
+        const singleCourse = myCourses[0];
+        const subjectName = (singleCourse.name || '').toLowerCase();
+        const courseGrade = singleCourse.grade_level || singleCourse.grade || '';
+
+        const matchingHods = deptHeads.filter((hod: any) => {
+          const hodSubjects = Array.isArray(hod.subjects) ? hod.subjects : [];
+          const hasSubjectMatch = hodSubjects.some((s: any) => String(s).toLowerCase() === subjectName);
+          if (!hasSubjectMatch) return false;
+
+          const hodGrades = Array.isArray(hod.grades) ? hod.grades : [];
+          if (hodGrades.length === 0) return true;
+
+          return matchGrade(hodGrades, courseGrade);
+        });
+
+        const finalHods = matchingHods.length > 0 ? matchingHods : deptHeads.filter((hod: any) => {
+          const hodSubjects = Array.isArray(hod.subjects) ? hod.subjects : [];
+          return hodSubjects.some((s: any) => String(s).toLowerCase() === subjectName);
+        });
+
+        const defaultDeptHeadId = finalHods.length > 0 ? (finalHods[0].teacher_id || finalHods[0].id) : '';
+
+        setPlanForm(prev => ({
+          ...prev,
+          courseId: singleCourse.id,
+          subject: singleCourse.name,
+          deptHeadId: defaultDeptHeadId
+        }));
+      }
+    }
+  }, [isPlanModalOpen, editingPlan, myCourses, deptHeads, loadLocalDraft]);
+
   // Save plan as draft (status = Draft) or submit (status = Pending)
   const handleSavePlan = async (targetStatus: 'Draft' | 'Pending') => {
+    if (targetStatus === 'Pending') {
+      if (!planForm.courseId) {
+        showToast('Please select a Course / Subject before submitting.', 'error');
+        return;
+      }
+      if (!planForm.deptHeadId) {
+        showToast('Please select a Department Head before submitting.', 'error');
+        return;
+      }
+    }
+
     setSubmitting(true);
     const payload = { ...planForm, status: targetStatus };
     try {
@@ -708,6 +620,9 @@ export const TeacherPortal = () => {
     setPlanForm(filled);
     setIsPlanModalOpen(true);
   };
+
+  const filteredHods = planForm.courseId ? filterDeptHeadsForCourse(planForm.courseId) : deptHeads;
+  const displayHods = filteredHods.length > 0 ? filteredHods : deptHeads;
 
   const todaySchedule = dashboard?.todaySchedule || [];
   const pendingPlans = plans.filter(p => p.status === 'Pending').length;
@@ -858,6 +773,9 @@ export const TeacherPortal = () => {
             { id: 'plans', label: 'Weekly Plans' },
             { id: 'exams', label: 'Exams' },
           ];
+          if (isDean) {
+            tabs.push({ id: 'dept-tasks', label: 'Department Submissions' });
+          }
           return tabs.map(tab => {
             if (tab.id === 'exams') {
               return (
@@ -987,18 +905,6 @@ export const TeacherPortal = () => {
               >
                 My Weekly Plans
               </button>
-              {isDean && (
-                <button
-                  type="button"
-                  onClick={() => setWeeklyPlanSubTab('dept-plans')}
-                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${weeklyPlanSubTab === 'dept-plans'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-slate-400 hover:text-slate-600'
-                    }`}
-                >
-                  Department Submissions
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => setWeeklyPlanSubTab('communication-book')}
@@ -1301,23 +1207,33 @@ export const TeacherPortal = () => {
                 </div>
               )}
             </div>
-          ) : (!isDean || weeklyPlanSubTab === 'my-plans') ? (
+          ) : (
             <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-200">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                   <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Weekly Plans</h2>
                   <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Submit lesson plans for head of department review</p>
                 </div>
-                <button onClick={() => {
-                  setEditingPlan(null);
-                  // Restore locally-saved draft if one exists
-                  const draft = loadLocalDraft();
-                  setPlanForm(draft ?? emptyPlan);
-                  setIsPlanModalOpen(true);
-                }}
-                  className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
-                  <Plus size={18} /> Create New Plan
-                </button>
+                <div className="flex gap-4 flex-wrap">
+                  <button onClick={() => {
+                    setEditingPlan(null);
+                    // Restore locally-saved draft if one exists
+                    const draft = loadLocalDraft();
+                    setPlanForm(draft ?? emptyPlan);
+                    setIsPlanModalOpen(true);
+                  }}
+                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
+                    <Plus size={18} /> Create New Plan
+                  </button>
+                  <button onClick={() => {
+                    setEditingPlan(null);
+                    setPlanForm({ ...emptyPlan, status: 'Pending' });
+                    setIsPlanModalOpen(true);
+                  }}
+                    className="flex items-center gap-3 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20">
+                    <Send size={18} /> Submit New Plan
+                  </button>
+                </div>
               </div>
 
               <div className="overflow-x-auto">
@@ -1354,7 +1270,7 @@ export const TeacherPortal = () => {
                                 <p className="text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate">{plan.dean_feedback}</p>
                                 {plan.dean_rating && (
                                   <div className="flex gap-0.5 mt-1">
-                                    {[1, 2, 3].map(n => (
+                                    {[1, 2, 3, 4, 5].map(n => (
                                       <Star key={n} size={10} className={n <= plan.dean_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />
                                     ))}
                                   </div>
@@ -1401,132 +1317,132 @@ export const TeacherPortal = () => {
                 </table>
               </div>
             </div>
-          ) : (
-            /* Department Tasks Tab inside Weekly Plans */
-            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-200">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-                <div>
-                  <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Department Tasks</h2>
-                  <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Manage and review weekly plans submitted by teachers in your department</p>
-                </div>
-              </div>
-
-              {/* Filter Bar */}
-              <div className="flex flex-col md:flex-row gap-4 mb-6">
-                <input
-                  type="text"
-                  placeholder="Search teacher or subject..."
-                  value={deptSearch}
-                  onChange={e => setDeptSearch(e.target.value)}
-                  className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="flex-1 md:flex-none">
-                  <label htmlFor="deptFilter" className="sr-only">Filter lesson plans by status</label>
-                  <select
-                    id="deptFilter"
-                    title="Filter lesson plans by status"
-                    value={deptFilter}
-                    onChange={e => setDeptFilter(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="All">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Revision Required">Revision Required</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDeptPlans.length === 0 ? (
-                  <div className="col-span-full text-center py-12">
-                    <p className="text-slate-500 font-bold">No plans matching the search/filter criteria.</p>
-                  </div>
-                ) : (
-                  filteredDeptPlans.map((plan: any) => (
-                    <div
-                      key={plan.id}
-                      onClick={() => {
-                        setSelectedPlanForView(plan);
-                        setReviewRating(plan.dean_rating || plan.rating || 0);
-                        setReviewFeedback(plan.dean_feedback || plan.feedback || '');
-                      }}
-                      className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-900 transition-all p-6 space-y-4 group cursor-pointer relative overflow-hidden"
-                    >
-                      {/* Interactive hover indicator */}
-                      <div className="absolute top-0 right-0 w-2 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                      {/* Header */}
-                      <div className="border-b border-slate-100 dark:border-slate-700 pb-3">
-                        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight group-hover:text-blue-600 transition-colors">
-                          {plan.teacher_name || plan.teacherName}
-                        </h3>
-                        <p className="text-xs text-slate-500 font-bold uppercase mt-1">{plan.subject || '—'}</p>
-                      </div>
-
-                      {/* Plan Details Preview */}
-                      <div className="space-y-2 text-xs">
-                        <div>
-                          <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Date</label>
-                          <p className="text-slate-800 dark:text-slate-200 font-medium mt-0.5">{plan.date?.slice(0, 10)}</p>
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Topic / Content</label>
-                          <p className="text-slate-800 dark:text-slate-200 line-clamp-2 mt-0.5 font-medium">{plan.content}</p>
-                        </div>
-                        <div>
-                          <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Objectives</label>
-                          <p className="text-slate-800 dark:text-slate-200 line-clamp-2 mt-0.5 font-medium">{plan.objectives}</p>
-                        </div>
-                      </div>
-
-                      {/* Status Badge */}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
-                        <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved'
-                              ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
-                              : plan.status === 'Revision Required'
-                                ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
-                                : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
-                            }`}
-                        >
-                          {plan.status}
-                        </span>
-
-                        {(plan.dean_rating || plan.rating) ? (
-                          <div className="flex gap-0.5">
-                            {[1, 2, 3].map(star => (
-                              <Star
-                                key={star}
-                                size={12}
-                                className={star <= (plan.dean_rating || plan.rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'}
-                              />
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Feedback comment preview */}
-                      {(plan.dean_feedback || plan.feedback) && (
-                        <div className="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Comments</p>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
-                            {plan.dean_feedback || plan.feedback}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="text-center pt-2">
-                        <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest group-hover:underline">
-                          View & Evaluate Plan →
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
           )}
+        </div>
+      ) : activeTab === 'dept-tasks' ? (
+        /* Department Tasks Tab */
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-200">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+            <div>
+              <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Department Tasks</h2>
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Manage and review weekly plans submitted by teachers in your department</p>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <input
+              type="text"
+              placeholder="Search teacher or subject..."
+              value={deptSearch}
+              onChange={e => setDeptSearch(e.target.value)}
+              className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex-1 md:flex-none">
+              <label htmlFor="deptFilter" className="sr-only">Filter lesson plans by status</label>
+              <select
+                id="deptFilter"
+                title="Filter lesson plans by status"
+                value={deptFilter}
+                onChange={e => setDeptFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="All">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Revision Required">Revision Required</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredDeptPlans.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <p className="text-slate-500 font-bold">No plans matching the search/filter criteria.</p>
+              </div>
+            ) : (
+              filteredDeptPlans.map((plan: any) => (
+                <div
+                  key={plan.id}
+                  onClick={() => {
+                    setSelectedPlanForView(plan);
+                    setReviewRating(plan.dean_rating || plan.rating || 0);
+                    setReviewFeedback(plan.dean_feedback || plan.feedback || '');
+                  }}
+                  className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-900 transition-all p-6 space-y-4 group cursor-pointer relative overflow-hidden"
+                >
+                  {/* Interactive hover indicator */}
+                  <div className="absolute top-0 right-0 w-2 h-full bg-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                  {/* Header */}
+                  <div className="border-b border-slate-100 dark:border-slate-700 pb-3">
+                    <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+                      {plan.teacher_name || plan.teacherName}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-bold uppercase mt-1">{plan.subject || '—'}</p>
+                  </div>
+
+                  {/* Plan Details Preview */}
+                  <div className="space-y-2 text-xs">
+                    <div>
+                      <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Date</label>
+                      <p className="text-slate-800 dark:text-slate-200 font-medium mt-0.5">{plan.date?.slice(0, 10)}</p>
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Topic / Content</label>
+                      <p className="text-slate-800 dark:text-slate-200 line-clamp-2 mt-0.5 font-medium">{plan.content}</p>
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-400 uppercase tracking-wider text-[9px]">Objectives</label>
+                      <p className="text-slate-800 dark:text-slate-200 line-clamp-2 mt-0.5 font-medium">{plan.objectives}</p>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <span
+                      className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved'
+                          ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                          : plan.status === 'Revision Required'
+                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
+                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                        }`}
+                    >
+                      {plan.status}
+                    </span>
+
+                    {(plan.dean_rating || plan.rating) ? (
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <Star
+                            key={star}
+                            size={12}
+                            className={star <= (plan.dean_rating || plan.rating) ? 'text-amber-400 fill-amber-400' : 'text-slate-300 dark:text-slate-600'}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Feedback comment preview */}
+                  {(plan.dean_feedback || plan.feedback) && (
+                    <div className="bg-slate-50 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">Comments</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5 font-medium">
+                        {plan.dean_feedback || plan.feedback}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="text-center pt-2">
+                    <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest group-hover:underline">
+                      View & Evaluate Plan →
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       ) : null}
 
@@ -1556,6 +1472,36 @@ export const TeacherPortal = () => {
             </div>
 
             <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
+              {/* Revision Comments Banner */}
+              {editingPlan && editingPlan.status === 'Revision Required' && (editingPlan.dean_feedback || editingPlan.feedback) && (
+                <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-2xl flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 rounded-xl shrink-0">
+                    <AlertCircle size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-orange-800 dark:text-orange-400 uppercase tracking-wider">Revision Comments from Department Head</h4>
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mt-1 font-medium leading-relaxed">
+                      "{editingPlan.dean_feedback || editingPlan.feedback}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* No courses available notice */}
+              {!editingPlan && myCourses.length > 0 && myCourses.every(c => isCourseAlreadyPlanned(c.id)) && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 rounded-2xl flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
+                    <CheckCircle2 size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-blue-800 dark:text-blue-400 uppercase tracking-wider">All Courses Planned</h4>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1 font-medium leading-relaxed">
+                      You have already created weekly plans for all of your assigned courses. If you need to make changes or submit a draft, please edit the existing plans in the table below.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="planDate" className="text-xs font-bold text-slate-500 uppercase">Date</label>
@@ -1589,10 +1535,21 @@ export const TeacherPortal = () => {
                     required
                     value={planForm.courseId || ''}
                     onChange={e => {
+                      const selectedCourseId = e.target.value;
+                      const selectedCourse = myCourses.find((c: any) => c.id === selectedCourseId);
+                      const newSubject = selectedCourse?.name || '';
+                      
+                      const matchingHods = filterDeptHeadsForCourse(selectedCourseId);
+                      let newDeptHeadId = '';
+                      if (matchingHods.length > 0) {
+                        newDeptHeadId = matchingHods[0].teacher_id || matchingHods[0].id;
+                      }
+                      
                       const updated = {
                         ...planForm,
-                        courseId: e.target.value,
-                        subject: myCourses.find((c: any) => c.id === e.target.value)?.name || ''
+                        courseId: selectedCourseId,
+                        subject: newSubject,
+                        deptHeadId: newDeptHeadId
                       };
                       setPlanForm(updated);
                       if (!editingPlan) saveDraftLocally(updated);
@@ -1603,11 +1560,14 @@ export const TeacherPortal = () => {
                     {myCourses.length === 0 && (
                       <option value="" disabled>No courses assigned yet</option>
                     )}
-                    {myCourses.map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}{c.code ? ` (${c.code})` : ''}{c.class_name ? ` — ${c.class_name}` : ''}
-                      </option>
-                    ))}
+                    {myCourses.map((c: any) => {
+                      const alreadyPlanned = isCourseAlreadyPlanned(c.id);
+                      return (
+                        <option key={c.id} value={c.id} disabled={!editingPlan && alreadyPlanned}>
+                          {c.name}{c.code ? ` (${c.code})` : ''}{c.class_name ? ` — ${c.class_name}` : ''} {(!editingPlan && alreadyPlanned) ? ' (Already Planned)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
@@ -1617,19 +1577,19 @@ export const TeacherPortal = () => {
                     required
                     value={planForm.deptHeadId || ''}
                     onChange={e => {
-                      const updated = { ...planForm, deptHeadId: e.target.value };
+                      const updated = {
+                        ...planForm,
+                        deptHeadId: e.target.value
+                      };
                       setPlanForm(updated);
                       if (!editingPlan) saveDraftLocally(updated);
                     }}
                     className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select Department Head</option>
-                    {deptHeads.length === 0 && (
-                      <option value="" disabled>No department heads found</option>
-                    )}
-                    {deptHeads.map((dh: any) => (
-                      <option key={dh.teacher_id} value={dh.teacher_id}>
-                        {dh.name}{dh.department ? ` — ${dh.department}` : ''}
+                    {displayHods.map((hod: any) => (
+                      <option key={hod.teacher_id || hod.id} value={hod.teacher_id || hod.id}>
+                        {hod.name} {hod.department ? `— ${hod.department}` : ''}
                       </option>
                     ))}
                   </select>
@@ -1687,8 +1647,7 @@ export const TeacherPortal = () => {
                   {editingPlan ? 'Update Draft' : 'Save Draft'}
                 </button>
                 {/* Submit for review */}
-                <button type="button"
-                  onClick={() => handleSavePlan('Pending')}
+                <button type="submit"
                   disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                   {submitting ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
@@ -1974,9 +1933,9 @@ export const TeacherPortal = () => {
 
                 {/* Star Rating Selection */}
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1.5">Rate Plan Quality (1-3 Stars)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1.5">Rate Plan Quality (1-5 Stars)</label>
                   <div className="flex gap-1.5">
-                    {[1, 2, 3].map(star => (
+                    {[1, 2, 3, 4, 5].map(star => (
                       <button
                         key={star}
                         type="button"

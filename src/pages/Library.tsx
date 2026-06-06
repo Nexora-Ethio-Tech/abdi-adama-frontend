@@ -2,6 +2,7 @@
 import { Book, Search, Plus, CheckCircle, Clock, RefreshCw, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { API_HOST_URL } from '../config/api';
 
 interface BookType {
   id: string;
@@ -61,7 +62,7 @@ export const Library = () => {
     quantity: 1
   });
 
-  const API_URL = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
+  const API_URL = API_HOST_URL || '';
 
   const fetchData = async () => {
     setLoading(true);

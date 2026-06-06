@@ -1,21 +1,33 @@
-const getApiBaseUrl = () => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (!envUrl || envUrl.startsWith('/') || envUrl === '') {
-    return '/api';
+const normalizeApiUrl = (rawUrl: string | undefined) => {
+  if (!rawUrl || rawUrl === '') return '';
+  let url = rawUrl.trim();
+  if (url.endsWith('/api')) {
+    url = url.slice(0, -4);
   }
-  let url = envUrl;
-  // Ensure URL has protocol
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    url = 'https://' + url;
-  }
-  // Append /api if not already present
-  if (!url.endsWith('/api')) {
-    url = url + '/api';
+  if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
+    url = `https://${url}`;
   }
   return url;
 };
 
+const getApiBaseUrl = () => {
+  const envUrl = normalizeApiUrl(import.meta.env.VITE_API_URL);
+  if (!envUrl || envUrl.startsWith('/')) {
+    return '/api';
+  }
+  return envUrl.endsWith('/api') ? envUrl : `${envUrl}/api`;
+};
+
+const getApiHostUrl = () => {
+  const envUrl = normalizeApiUrl(import.meta.env.VITE_API_URL);
+  if (!envUrl || envUrl.startsWith('/')) {
+    return '';
+  }
+  return envUrl;
+};
+
 export const API_BASE_URL = getApiBaseUrl();
+export const API_HOST_URL = getApiHostUrl();
 
 export const API_ENDPOINTS = {
   // Auth

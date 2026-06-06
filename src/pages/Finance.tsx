@@ -10,8 +10,9 @@ import { useEffect, useCallback } from 'react';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import { ethiopianToGregorianIso, gregorianToEthiopian, formatEthiopianLabel, getTodayEthiopianDate, getEthiopianYear } from '../utils/ethiopianCalendar';
+import { API_HOST_URL } from '../config/api';
 
-const API = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
+const API = API_HOST_URL || '';
 
 const getToken = () => localStorage.getItem('abdi_adama_token') || '';
 

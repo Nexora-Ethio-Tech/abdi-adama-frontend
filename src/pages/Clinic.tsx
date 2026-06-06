@@ -60,21 +60,9 @@ export const Clinic = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Normalize API URL - ensure it has protocol and no /api suffix
-  const getApiUrl = () => {
-    let url = import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001';
-    // Remove /api suffix if present
-    if (url.endsWith('/api')) {
-      url = url.slice(0, -4);
-    }
-    // Ensure protocol
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'http://' + url;
-    }
-    return url;
-  };
-
-  const API_URL = getApiUrl();
+  const API_URL = import.meta.env.VITE_API_URL ?
+    import.meta.env.VITE_API_URL.replace(/\/api$/, '') :
+    '';
 
   // Fetch students with search and pagination support
   const fetchStudents = async (searchTerm: string = '', page: number = 1) => {

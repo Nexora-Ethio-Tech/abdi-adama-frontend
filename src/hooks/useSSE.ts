@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useStore, SchoolNotice } from '../context/useStore';
+import { API_HOST_URL } from '../config/api';
 
 /**
  * Custom hook to connect to SSE stream and listen for real-time updates
@@ -18,7 +19,7 @@ export const useSSE = () => {
       return;
     }
 
-    const API_URL = (import.meta.env.VITE_API_URL || 'https://api.abdi-adama.com:5001').replace(/\/api$/, '');
+    const API_URL = API_HOST_URL || '';
 
     try {
       // Connect to SSE stream (pass token via query parameter since EventSource doesn't support headers)

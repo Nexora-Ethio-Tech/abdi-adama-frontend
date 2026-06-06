@@ -11,6 +11,12 @@ export interface Subject {
   updatedAt: string;
 }
 
+export interface CourseWithGrade {
+  name: string;
+  code: string;
+  grade_level: string;
+}
+
 export interface CreateSubjectData {
   name: string;
   code: string;
@@ -33,6 +39,13 @@ const subjectService = {
 
   getAllSubjects: async (): Promise<Subject[]> => {
     const response = await api.get('/school-admin/subjects');
+    return response.data.data;
+  },
+
+  // Fetches distinct courses (name + grade_level) from the courses table via classes
+  // Used by the HoD promotion modal to show real DB courses per grade
+  getCoursesWithGrade: async (): Promise<CourseWithGrade[]> => {
+    const response = await api.get('/school-admin/courses-with-grade');
     return response.data.data;
   },
 

@@ -6,7 +6,7 @@ import { useUser } from '../context/UserContext';
 import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher, promoteTeacher, updateUser, resetUserPIN } from '../services/schoolAdminService';
 import classService from '../services/classService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
-import subjectService from '../services/subjectService';
+import subjectService, { CourseWithGrade } from '../services/subjectService';
 import { getVPTeachers, getLeaderboard, rateTeacher, resetLeaderboard } from '../services/vicePrincipalService';
 import { Star, Trophy, RefreshCcw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TeacherAttendanceModal } from '../components/TeacherAttendanceModal';
@@ -149,6 +149,7 @@ export const Teachers = () => {
   const [allGrades, setAllGrades] = useState<string[]>([]);
   const [sectionsMap, setSectionsMap] = useState<Record<string, string[]>>({});
   const [allSubjects, setAllSubjects] = useState<any[]>([]);
+  const [allCoursesWithGrade, setAllCoursesWithGrade] = useState<CourseWithGrade[]>([]);
 
   const getDefaultPromotionForm = () => ({
     promotionType: 'home-teacher' as const,
@@ -249,6 +250,15 @@ export const Teachers = () => {
       setAllSubjects(transformed);
     } catch (err) {
       console.error('Failed to fetch subjects for promotion UI', err);
+    }
+
+    // Also fetch real courses from the courses table (for HoD modal)
+    try {
+      const courses = await subjectService.getCoursesWithGrade();
+      console.log('[DEBUG] Fetched courses-with-grade from server:', courses);
+      setAllCoursesWithGrade(courses || []);
+    } catch (err) {
+      console.error('Failed to fetch courses-with-grade for HoD modal', err);
     }
   };
 
@@ -1173,46 +1183,12 @@ export const Teachers = () => {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Subjects / Courses</label>
-                {(() => {
-                  const subjectNames = Array.from(new Set(allSubjects.map((s: any) => s.name)));
-                  if (!subjectNames || subjectNames.length === 0) return <div className="text-sm text-slate-500">No subjects available</div>;
-                  return (
-                    <>
-                      <MultiSelectDropdown
-                        options={subjectNames}
-                        selectedValues={promotionForm.subjects}
-                        placeholder="Select Subjects / Courses"
-                        shortDisplay={true}
-                        onChange={(subName, checked) => {
-                          setPromotionForm(prev => {
-                            const next = new Set(prev.subjects || []);
-                            if (checked) next.add(subName); else next.delete(subName);
-                            return { ...prev, subjects: Array.from(next) };
-                          });
-                        }}
-                      />
-                      {promotionForm.subjects.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {promotionForm.subjects.map(s => (
-                            <span key={s} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-
               {promotionForm.promotionType === 'head-of-department' && (
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-600">Select grades this head will oversee (multi-select dropdown-style).</p>
-
+                <div className="space-y-4">
+                  {/* STEP 1: Select Grades */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Grades</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase">Step 1 — Select Grades</label>
+                    <p className="text-xs text-slate-500">Choose which grades this department head will oversee.</p>
                     <MultiSelectDropdown
                       options={allGrades}
                       selectedValues={promotionForm.grades}
@@ -1221,30 +1197,99 @@ export const Teachers = () => {
                       onChange={(g, checked) => {
                         setPromotionForm(prev => {
                           const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
-                          // clear subjects if they no longer match selected grades
-                          let nextSubjects = [...prev.subjects];
-                          if (!checked) {
-                            const allowed = new Set(nextGrades);
-                            nextSubjects = nextSubjects.filter(sname => {
-                              const s = allSubjects.find(sub => sub.name === sname);
-                              return s ? allowed.has(s.gradeLevel) : true;
-                            });
-                          }
+                          // Clear subjects that no longer match any selected grade
+                          const allowed = new Set(nextGrades);
+                          const nextSubjects = prev.subjects.filter(sname => {
+                            const s = allSubjects.find(sub => sub.name === sname);
+                            return s ? allowed.has(s.gradeLevel) : false;
+                          });
                           return { ...prev, grades: nextGrades, subjects: nextSubjects };
                         });
                       }}
                     />
+                    {promotionForm.grades.length > 0 && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {promotionForm.grades.map(g => (
+                          <span key={g} className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-full border border-indigo-200 dark:border-indigo-700">
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  {promotionForm.grades.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {promotionForm.grades.map(g => (
-                        <span key={g} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  )}
+                  {/* STEP 2: Select Courses filtered by selected grades (from real DB courses table) */}
+                  {promotionForm.grades.length > 0 && (() => {
+                    // Normalize grade labels for comparison (e.g. "10" -> "Grade 10", "Grade 10" -> "Grade 10")
+                    const normalizeGrade = (g: string) => {
+                      const trimmed = g.trim();
+                      return /^\d+$/.test(trimmed) ? `Grade ${trimmed}` : trimmed;
+                    };
+                    const selectedGradeSet = new Set(promotionForm.grades.map(normalizeGrade));
+
+                    // Filter courses from the DB that match selected grades
+                    const filteredCourseNames = Array.from(
+                      new Set(
+                        allCoursesWithGrade
+                          .filter(c => selectedGradeSet.has(normalizeGrade(c.grade_level)))
+                          .map(c => c.name)
+                      )
+                    ).sort();
+
+                    // Fallback: if no DB courses found, try subjects table
+                    const gradeSet = new Set(promotionForm.grades);
+                    const fallbackNames = Array.from(
+                      new Set(
+                        allSubjects
+                          .filter((s: any) => gradeSet.has(s.gradeLevel))
+                          .map((s: any) => s.name)
+                      )
+                    );
+
+                    const courseNames = filteredCourseNames.length > 0 ? filteredCourseNames : fallbackNames;
+                    const usingFallback = filteredCourseNames.length === 0 && fallbackNames.length > 0;
+
+                    return (
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Step 2 — Select Courses / Subjects</label>
+                        <p className="text-xs text-slate-500">
+                          {usingFallback
+                            ? 'Showing subjects (no courses found in course management for selected grades).'
+                            : 'Only courses taught in the selected grades are shown.'}
+                        </p>
+                        {courseNames.length === 0 ? (
+                          <div className="px-4 py-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg text-sm text-amber-700 dark:text-amber-300">
+                            No courses found for the selected grades. Please add courses via Course Management (Classes → select class → add course) first.
+                          </div>
+                        ) : (
+                          <>
+                            <MultiSelectDropdown
+                              options={courseNames as string[]}
+                              selectedValues={promotionForm.subjects}
+                              placeholder="Select Courses / Subjects"
+                              shortDisplay={true}
+                              onChange={(subName, checked) => {
+                                setPromotionForm(prev => {
+                                  const next = new Set(prev.subjects || []);
+                                  if (checked) next.add(subName); else next.delete(subName);
+                                  return { ...prev, subjects: Array.from(next) };
+                                });
+                              }}
+                            />
+                            {promotionForm.subjects.length > 0 && (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {promotionForm.subjects.map(s => (
+                                  <span key={s} className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-700">
+                                    {s}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
