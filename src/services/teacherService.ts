@@ -242,8 +242,18 @@ export const submitGrade = async (data: SubmitGradeData) => {
   return response.data;
 };
 
+export const saveDraftGrades = async (data: { courseId: string; submissionType: string; academicYear?: string; semester?: number }) => {
+  const response = await api.post('/teacher/grades/save-draft', data);
+  return response.data;
+};
+
 export const submitCourseGrades = async (courseId: string, submissionType: string) => {
   const response = await api.post('/teacher/grades/submit-course', { courseId, submissionType });
+  return response.data;
+};
+
+export const finalizeGradeSubmission = async (data: { courseId: string; submissionType: string; academicYear?: string; semester?: number }) => {
+  const response = await api.post('/teacher/grades/finalize-submission', data);
   return response.data;
 };
 
