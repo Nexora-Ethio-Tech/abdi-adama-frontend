@@ -11,8 +11,8 @@ export default defineConfig(({ mode }) => {
     // Load environment variables (Vite prefixes env vars with VITE_)
     const env = loadEnv(mode, process.cwd(), '');
     // Prefer an explicit proxy target for dev; fall back to a valid local backend URL if VITE_API_URL is relative
-    const API_PROXY_TARGET = env.VITE_API_PROXY || 
-        (env.VITE_API_URL && env.VITE_API_URL.startsWith('http') ? env.VITE_API_URL : 'http://localhost:5000');
+    const API_PROXY_TARGET = env.VITE_API_PROXY ||
+        (env.VITE_API_URL && env.VITE_API_URL.startsWith('https') ? env.VITE_API_URL : 'https://api.abdi-adama.com');
 
     return {
         plugins: [react()],

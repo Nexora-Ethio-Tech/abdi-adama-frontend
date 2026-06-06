@@ -12,6 +12,7 @@ import {
   Check,
   CheckCheck
 } from 'lucide-react';
+import { API_HOST_URL } from '../config/api';
 
 interface Medicine {
   id: string;
@@ -60,9 +61,7 @@ export const Clinic = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL ?
-    import.meta.env.VITE_API_URL.replace(/\/api$/, '') :
-    '';
+  const API_URL = API_HOST_URL || '';
 
   // Fetch students with search and pagination support
   const fetchStudents = async (searchTerm: string = '', page: number = 1) => {
