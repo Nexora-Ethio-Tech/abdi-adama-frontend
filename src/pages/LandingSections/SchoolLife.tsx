@@ -19,7 +19,8 @@ import {
     Globe,
     Quote,
     GraduationCap,
-    Lock
+    Lock,
+    X
 } from 'lucide-react';
 import { useStore } from '../../context/useStore';
 import { useTranslation } from 'react-i18next';
@@ -27,13 +28,47 @@ import { useUser } from '../../context/UserContext';
 import { useState, useEffect } from 'react';
 import { branchService } from '../../services/branchService';
 import { useNavigate } from 'react-router-dom';
+import logo from '../../assets/logo.jpg';
+import { StudentRegistration } from '../../components/StudentRegistration';
 
 
-
-export default function SchoolLife({ setShowAdmission }: { setShowAdmission: (show: boolean) => void }) {
+export default function SchoolLife({ showAdmission, setShowAdmission, displaySchoolName }: { showAdmission: boolean, setShowAdmission: (show: boolean) => void, displaySchoolName?: string }) {
     const { t, i18n } = useTranslation();
     const { schoolName, schoolMotto, registrationOpen } = useUser();
     const navigate = useNavigate();
+    const schoolDisplayName = displaySchoolName || schoolName.english;
+
+    if (showAdmission) {
+        return (
+            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8">
+                <div className="max-w-4xl mx-auto mt-8">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        {/* Header with Close Button */}
+                        <div className="flex items-center justify-between p-8 border-b border-slate-200 dark:border-slate-700">
+                            <div className="flex items-center gap-4">
+                                <img src={logo} alt="School Logo" className="w-16 h-16 rounded-2xl shadow-lg object-cover" />
+                                <div>
+                                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Admission Portal</h1>
+                                    <p className="text-sm text-slate-500">{schoolDisplayName}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAdmission(false)}
+                                className="p-3 text-slate-600 dark:text-slate-300 hover:text-white hover:bg-school-primary dark:hover:bg-school-primary bg-slate-100 dark:bg-slate-800 rounded-lg transition-all font-bold flex-shrink-0"
+                                title="Close"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                        {/* Form Content */}
+                        <div className="p-1">
+                            <StudentRegistration isAdminView={false} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

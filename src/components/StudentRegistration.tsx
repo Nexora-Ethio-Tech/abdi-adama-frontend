@@ -1077,7 +1077,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       <option value="">Select Gender</option>
                       <option>Male</option>
                       <option>Female</option>
-                      <option>Other</option>
                     </select>
                     {validationErrors.gender && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.gender}</p>}
                   </div>
@@ -1476,8 +1475,17 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
       {viewingTranscript && (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-950 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="relative bg-white dark:bg-slate-950 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+            {/* Floating Close Button */}
+            <button
+              onClick={() => setViewingTranscript(null)}
+              className="absolute top-4 right-4 z-10 p-3 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white rounded-full shadow-lg transition-all hover:scale-110 active:scale-95"
+              title="Close Transcript"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 pr-20">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-blue-600 text-white rounded-2xl">
                   <FileText size={24} />
@@ -1487,18 +1495,10 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Student: {viewingTranscript.name}</p>
                 </div>
               </div>
-              <button
-                onClick={() => setViewingTranscript(null)}
-                title="Close transcript verification modal"
-                aria-label="Close transcript verification modal"
-                className="p-3 bg-white dark:bg-slate-800 text-slate-500 hover:text-rose-500 rounded-2xl shadow-lg transition-all hover:scale-110 active:scale-95"
-              >
-                <X size={24} />
-              </button>
             </div>
 
             <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6 relative">
                 {transcriptLoading ? (
                   <div className="w-full h-[420px] flex items-center justify-center">
                     <p className="text-sm text-slate-500">Loading transcript...</p>

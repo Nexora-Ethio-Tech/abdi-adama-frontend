@@ -28,7 +28,7 @@ export const Attendance = () => {
   const isAdmin = role === 'school-admin' || role === 'super-admin';
   const isVP = role === 'vice-principal';
   const [selectedGrade, setSelectedGrade] = useState('10A');
-  const [selectedDate, setSelectedDate] = useState(getTodayEthiopianDate());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent'>>({});
   const [students, setStudents] = useState<any[]>([]);
   const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('staff');
@@ -434,13 +434,13 @@ export const Attendance = () => {
                     studentId,
                     status
                   }));
-                  await attendanceService.markAttendance({
+                  await api.post('/teacher/attendance', {
                     date: selectedDate,
                     attendanceRecords: records
-                  } as any);
+                  });
                   alert('Attendance saved successfully!');
-                } catch (error) {
-                  alert('Failed to save attendance');
+                } catch (error: any) {
+                  alert('Failed to save attendance: ' + (error?.response?.data?.error?.message || error.message || 'Unknown error'));
                 }
               }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-100 dark:shadow-none">

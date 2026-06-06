@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone } from 'lucide-react';
+import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone, CalendarDays } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import api from '../services/api';
 
@@ -23,6 +23,17 @@ interface SMSMessage {
 
 export const VPAttendanceOversight = () => {
   const { user } = useUser();
+
+  // Helper: get today in local timezone as YYYY-MM-DD
+  const getLocalToday = () => {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState<string>(getLocalToday());
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,16 +52,24 @@ export const VPAttendanceOversight = () => {
     type: 'success'
   });
 
-  // Fetch today's absent students
+  // Re-fetch when date changes
   useEffect(() => {
     fetchAbsentStudents();
-  }, []);
+  }, [selectedDate]);
 
   const fetchAbsentStudents = async () => {
     setLoading(true);
     setError(null);
+    setSelectedStudents(new Set());
+    setSelectAll(false);
     try {
-      const response = await api.get('/vice-principal/attendance/absences-today');
+      const response = await api.get('/vice-principal/attendance/absences-today', {
+        params: { date: selectedDate },
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache'
+        }
+      });
       const data = response.data;
       setAbsentStudents(data.data || []);
     } catch (err: any) {
@@ -138,14 +157,36 @@ export const VPAttendanceOversight = () => {
       <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-8 shadow-xl relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
         <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
-        <div className="relative z-10">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-indigo-400 mb-2">Daily Attendance Monitoring</p>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-2">
-            Absence Oversight & Parent Notifications
-          </h1>
-          <p className="text-slate-400 text-sm max-w-2xl font-medium leading-relaxed">
-            Monitor students absent today and send instant SMS notifications to parents. All data resets daily at midnight.
-          </p>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-indigo-400 mb-2">Daily Attendance Monitoring</p>
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-2">
+              Absence Oversight & Parent Notifications
+            </h1>
+            <p className="text-slate-400 text-sm max-w-2xl font-medium leading-relaxed">
+              Monitor student absences by date and send instant SMS notifications to parents.
+            </p>
+          </div>
+          {/* Date Picker */}
+          <div className="flex-shrink-0 mt-2">
+            <label className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5">
+              <CalendarDays size={12} className="inline mr-1" />
+              View Absences For
+            </label>
+            <input
+              type="date"
+              id="vpAbsenceDatePicker"
+              value={selectedDate}
+              max={getLocalToday()}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-400 transition-all cursor-pointer w-full"
+            />
+            {selectedDate && (
+              <p className="mt-1 text-xs text-indigo-300 font-medium text-center">
+                {selectedDate.split('-').reverse().join('-')}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
@@ -158,7 +199,7 @@ export const VPAttendanceOversight = () => {
                 <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Absent Today</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Absent on {selectedDate}</p>
                 <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{absentStudents.length}</p>
               </div>
             </div>
@@ -217,7 +258,7 @@ export const VPAttendanceOversight = () => {
           <CheckCircle className="mx-auto mb-4 text-emerald-500" size={48} />
           <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Perfect Attendance</h3>
           <p className="text-slate-600 dark:text-slate-300 max-w-md mx-auto">
-            All students are present today. No absences to report or notifications to send.
+            No absences recorded for <strong>{selectedDate}</strong>. Try a different date or check that attendance has been saved by a teacher.
           </p>
         </div>
       ) : (

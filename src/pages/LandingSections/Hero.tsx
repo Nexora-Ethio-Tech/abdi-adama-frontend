@@ -21,7 +21,6 @@ import {
     GraduationCap,
     Lock
 } from 'lucide-react';
-import { useState } from 'react';
 import { useStore } from '../../context/useStore';
 import { useUser } from '../../context/UserContext';
 import { useTranslation } from 'react-i18next';
@@ -30,13 +29,11 @@ import { formatEthiopianLabel } from '../../utils/ethiopianCalendar';
 
 
 
-export default function Hero() {
+export default function Hero({ setShowAdmission }: { setShowAdmission: (show: boolean) => void }) {
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const { schoolName, schoolMotto, registrationOpen } = useUser();
     const { publicPosts } = useStore();
-
-    const [showAdmission, setShowAdmission] = useState(false);
 
     const { scrollY } = useScroll();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
