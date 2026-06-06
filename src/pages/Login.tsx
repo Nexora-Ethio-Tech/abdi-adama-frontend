@@ -97,6 +97,7 @@ export const Login = () => {
 
         <div className="card p-8">
           {/* Mode Toggle */}
+          {/*
           <div className="flex gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-8">
             <button
               onClick={() => { setLoginMode('password'); setError(''); setSuccess(''); }}
@@ -104,13 +105,14 @@ export const Login = () => {
             >
               Password
             </button>
-            <button
+             <button
               onClick={() => { setLoginMode('otp'); setError(''); setSuccess(''); resetOtp(); }}
               className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all uppercase tracking-widest ${loginMode === 'otp' ? 'bg-white dark:bg-slate-700 text-school-primary shadow-sm' : 'text-slate-500'}`}
             >
               OTP (Fayda)
             </button>
           </div>
+           */ }
 
           {/* Alerts */}
           {error && (

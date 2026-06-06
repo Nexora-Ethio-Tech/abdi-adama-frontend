@@ -31,13 +31,13 @@ export const Transcripts = () => {
     setIsCalculating(true);
     setTimeout(() => {
       const newRanks: Record<string, any> = {};
-      
+
       const studentAvgs = mockStudents.map(s => ({ ...s, avg: +(Math.random() * (99 - 65) + 65).toFixed(1) }));
-      
+
       studentAvgs.forEach(student => {
         const baseGrade = student.grade.replace(/[^0-9]/g, '');
         const section = student.grade;
-        
+
         const gradePeers = studentAvgs.filter(s => s.grade.replace(/[^0-9]/g, '') === baseGrade).sort((a, b) => b.avg - a.avg);
         const sectionPeers = studentAvgs.filter(s => s.grade === section).sort((a, b) => b.avg - a.avg);
 
@@ -63,7 +63,7 @@ export const Transcripts = () => {
       alert("Please calculate grades first.");
       return;
     }
-    
+
     const headers = ['Student ID', 'Name', 'Grade', 'Average', 'Section Rank', 'Overall Rank'];
     const rows = filteredStudents.map(s => {
       const data = calculatedRanks[s.id];
@@ -71,8 +71,8 @@ export const Transcripts = () => {
       return [s.id, s.name, s.grade, `${data.avg}%`, `${data.sectionRank}/${data.totalInSection}`, `${data.overallRank}/${data.totalInGrade}`];
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
+    const csvContent = "data:text/csv;charset=utf-8,"
+      + headers.join(",") + "\n"
       + rows.map(e => e.join(",")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
