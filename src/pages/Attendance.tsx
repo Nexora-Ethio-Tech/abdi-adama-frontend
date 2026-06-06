@@ -7,6 +7,7 @@ import { Breadcrumbs } from '../components/Breadcrumbs';
 import attendanceService from '../services/attendanceService';
 import studentService from '../services/studentService';
 import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import api from '../services/api';
 
 type AttendanceMode = 'student' | 'staff' | null;
 type StaffAttendanceStatus = 'Present' | 'Absent';

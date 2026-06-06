@@ -406,7 +406,8 @@ export const ParentPortal = () => {
 
   // Fetch communication book logs when requested
   useEffect(() => {
-    if (!selectedChild || !showCommBook) return;
+    if (!selectedChild) return;
+    if (!showCommBook && activePortalTab !== 'communication-book') return;
     setCommLoading(true);
     getChildCommunicationLogs(selectedChild.id)
       .then(logs => {
@@ -415,7 +416,7 @@ export const ParentPortal = () => {
       })
       .catch(() => setCommLogs([]))
       .finally(() => setCommLoading(false));
-  }, [selectedChild, showCommBook]);
+  }, [selectedChild, showCommBook, activePortalTab]);
 
   // Fetch active clinic chat thread
   useEffect(() => {
@@ -1787,6 +1788,153 @@ export const ParentPortal = () => {
           </div>
         </div>
       )}
+
+      {/* ==================== 10. COMMUNICATION BOOK TAB ==================== */}
+      {activePortalTab === 'communication-book' && (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Weekly Communication Book</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Weekly evaluations and behavior metrics logged by your child's homeroom teacher.</p>
+            </div>
+          </div>
+
+          {/* Child Picker */}
+          {renderChildPicker()}
+
+          {commLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (() => {
+            // Find the latest communication log that is still active (not expired)
+            const activeLog = commLogs.find(log => isLogActive(log.week_ending));
+            
+            if (!selectedChild) {
+              return (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+                  <ClipboardList className="text-slate-300 mx-auto mb-4" size={40} />
+                  <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">Select a child to view the communication book.</p>
+                </div>
+              );
+            }
+
+            if (!activeLog) {
+              return (
+                <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
+                  <ClipboardList className="text-slate-350 dark:text-slate-700 mx-auto mb-4" size={48} />
+                  <p className="text-slate-500 dark:text-slate-400 font-bold text-lg uppercase tracking-tight">No active evaluation card</p>
+                  <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+                    There are no current evaluations or they have automatically expired. The homeroom teacher will post a fresh evaluation for the upcoming week soon.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Active Evaluation Banner */}
+                <div className="bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-[2rem] p-6 border border-blue-500/20 dark:border-blue-500/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                      <Star size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Active Evaluation Window</p>
+                      <h3 className="text-lg font-black text-slate-800 dark:text-white mt-0.5">
+                        Week ending: {formatEthiopianLabel(activeLog.week_ending)} ({activeLog.week_ending_formatted || activeLog.week_ending})
+                      </h3>
+                    </div>
+                  </div>
+                  {activeLog.teacher_name && (
+                    <span className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm">
+                      👤 Teacher: {activeLog.teacher_name}
+                    </span>
+                  )}
+                </div>
+
+                {/* Grid of Ratings */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {commFields.map((field) => {
+                    const rating = getFieldRating(activeLog, field.id);
+                    return (
+                      <div key={field.id} className="group bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div className="flex flex-col items-center text-center">
+                          <div className={`w-14 h-14 rounded-2xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                            {rating}
+                          </div>
+                          <h4 className="font-black text-slate-800 dark:text-slate-100 text-sm mb-1">{field.label}</h4>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold leading-tight mb-4 min-h-[30px] flex items-center justify-center px-2">
+                            {field.description}
+                          </p>
+                          <span className={`w-full py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${getRatingColor(rating)} text-white shadow-sm`}>
+                            {ratingLabels[rating] || 'Unrated'}
+                          </span>
+                          
+                          {/* Visual Dots Indicator */}
+                          <div className="flex gap-1.5 mt-4 justify-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span
+                                key={star}
+                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                  star <= rating
+                                    ? rating === 5
+                                      ? 'bg-emerald-500 shadow-md shadow-emerald-500/20'
+                                      : rating === 4
+                                        ? 'bg-teal-500 shadow-md shadow-teal-500/20'
+                                        : rating === 3
+                                          ? 'bg-blue-500 shadow-md shadow-blue-500/20'
+                                          : rating === 2
+                                            ? 'bg-amber-500 shadow-md shadow-amber-500/20'
+                                            : 'bg-orange-500 shadow-md shadow-orange-500/20'
+                                    : 'bg-slate-200 dark:bg-slate-800'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Teacher Notes section */}
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-8 rounded-[2rem] border border-slate-150/40 dark:border-slate-800 relative overflow-hidden group">
+                  <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <ClipboardList size={16} />
+                    Teacher's Observations & Remarks
+                  </h4>
+                  <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed italic font-medium relative z-10">
+                    "{activeLog.teacher_note || "No specific note or remarks logged by the teacher for this week. Keep up the consistent work!"}"
+                  </p>
+                  <Star size={100} className="absolute -bottom-10 -right-10 text-slate-400/5 dark:text-slate-800/10 rotate-12 group-hover:scale-110 transition-transform duration-700" />
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
+};
+
+// Helper function to check if a communication log is still active (visible until the following Friday morning at 9:00 AM)
+const isLogActive = (weekEndingStr: string): boolean => {
+  if (!weekEndingStr) return false;
+  const parts = weekEndingStr.split('-');
+  if (parts.length !== 3) return false;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const d = new Date(year, month, day);
+  
+  // Add 4 days to push it past the current week's Friday
+  d.setDate(d.getDate() + 4);
+  // Now find the next Friday (day 5)
+  const currentDay = d.getDay();
+  const diff = (5 - currentDay + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  d.setHours(9, 0, 0, 0); // Friday morning at 9:00 AM
+  
+  return new Date() < d;
 };

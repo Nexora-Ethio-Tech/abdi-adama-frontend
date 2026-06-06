@@ -176,6 +176,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: LayoutDashboard, label: t('nav.myDashboard') || 'My Dashboard', path: buildParentPortalPath('dashboard') },
           { icon: BookOpen, label: 'Grades & Courses', path: buildParentPortalPath('grades') },
           { icon: GraduationCap, label: 'Academic History', path: buildParentPortalPath('history') },
+          { icon: ClipboardList, label: 'Communication Book', path: buildParentPortalPath('communication-book') },
           { icon: HeartPulse, label: 'Clinic Support', path: buildParentPortalPath('clinic') },
         ];
       case 'finance-clerk':
