@@ -17,6 +17,7 @@ export interface ExamSession {
   endTime: number;
   terminated?: boolean;
   violationCount?: number;
+  finalScore?: number | null;
 }
 
 export interface ExamDetail {
@@ -28,6 +29,7 @@ export interface ExamDetail {
     instructions?: string;
     teacherName?: string;
     passwordRequired?: boolean;
+    showScore?: boolean;
   };
   session: ExamSession;
   questions: ExamQuestion[];

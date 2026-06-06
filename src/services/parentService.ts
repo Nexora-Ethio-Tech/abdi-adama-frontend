@@ -33,6 +33,7 @@ export interface CommunicationLog {
   rating_social?: number;
   rating_punctuality?: number;
   rating_note_taking?: number;
+  rating_excellent?: number;
   teacher_note?: string;
   teacher_name?: string;
 }

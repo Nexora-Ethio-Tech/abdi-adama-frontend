@@ -2,7 +2,7 @@ import { BookOpen, Users, Calendar, ArrowRight, ArrowLeft, ClipboardList, FileTe
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../context/UserContext';
-import { getTodayEthiopianDate, gregorianToEthiopian } from '../utils/ethiopianCalendar';
+import { getTodayEthiopianDate, gregorianToEthiopian, formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import {
   getTeacherDashboard,
   getMyWeeklyPlans,
@@ -502,8 +502,10 @@ export const TeacherPortal = () => {
     const diff = day === 0 ? 0 : 7 - day;
     const sunday = new Date(today);
     sunday.setDate(today.getDate() + diff);
-    const ethDate = gregorianToEthiopian(sunday);
-    return `${ethDate.year}-${String(ethDate.month).padStart(2, '0')}-${String(ethDate.day).padStart(2, '0')}`;
+    const yyyy = sunday.getFullYear();
+    const mm = String(sunday.getMonth() + 1).padStart(2, '0');
+    const dd = String(sunday.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
   };
 
   // Load all homeroom sections + their students for global search
@@ -1203,7 +1205,7 @@ export const TeacherPortal = () => {
                       <div>
                         <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest">Communication Book</p>
                         <h3 className="text-white text-xl font-black mt-0.5">{activeCommStudent.name}</h3>
-                        <p className="text-emerald-200 text-xs mt-0.5">Week ending: {getWeekEndingSunday()}</p>
+                        <p className="text-emerald-200 text-xs mt-0.5">Week ending: {formatEthiopianLabel(getWeekEndingSunday())}</p>
                       </div>
                       <button
                         type="button"

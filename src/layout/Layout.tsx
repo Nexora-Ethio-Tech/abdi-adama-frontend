@@ -39,6 +39,7 @@ export const Layout = () => {
         case 'grades': return 'Grades & Courses';
         case 'history': return 'Academic History';
         case 'clinic': return 'Clinic Support';
+        case 'communication-book': return 'Communication Book';
         default: return 'Parent Portal';
       }
     }
