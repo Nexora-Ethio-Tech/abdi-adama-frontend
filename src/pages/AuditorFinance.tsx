@@ -17,12 +17,13 @@ import {
   formatEthiopianLabel
 } from '../utils/ethiopianCalendar';
 
-type AuditorFinanceTab = 'collections' | 'fee-reductions';
+type AuditorFinanceTab = 'collections' | 'fee-reductions' | 'registration-fees';
 
 const tabFromSearch = (tab: string | null): AuditorFinanceTab => {
   if (
     tab === 'collections' ||
-    tab === 'fee-reductions'
+    tab === 'fee-reductions' ||
+    tab === 'registration-fees'
   ) {
     return tab;
   }
@@ -35,11 +36,10 @@ export const AuditorFinance = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<AuditorFinanceTab>(
-    location.pathname === '/special-students'
-      ? 'fee-reductions'
-      : tabFromSearch(searchParams.get('tab'))
-  );
+  const initialTab = location.pathname === '/special-students'
+    ? 'fee-reductions'
+    : tabFromSearch(searchParams.get('tab'));
+  const [activeTab, setActiveTab] = useState<AuditorFinanceTab>(initialTab);
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
@@ -57,7 +57,9 @@ export const AuditorFinance = () => {
   
   // Filters
   const [feeReductionFilter, setFeeReductionFilter] = useState<'pending' | 'approved' | 'rejected' | ''>('');
-  const [collectionStatusFilter, setCollectionStatusFilter] = useState<'Pending' | 'Paid' | 'Overdue' | ''>('');
+  const [collectionStatusFilter, setCollectionStatusFilter] = useState<'Pending' | 'Paid' | 'Overdue' | ''>(
+    initialTab === 'registration-fees' ? 'Paid' : ''
+  );
 
   // Pagination states
   const [reductionPage, setReductionPage] = useState(1);
@@ -100,6 +102,10 @@ export const AuditorFinance = () => {
 
   const handleTabChange = (tab: AuditorFinanceTab) => {
     setActiveTab(tab);
+    setCollectionStatusFilter(tab === 'registration-fees' ? 'Paid' : '');
+    setFeeReductionFilter('');
+    setReductionPage(1);
+    setCollectionPage(1);
     navigate(`/finance?tab=${tab}`);
   };
 
@@ -123,7 +129,10 @@ export const AuditorFinance = () => {
         const reductionsData = await auditorService.getFeeReductions({ branchId: selectedBranchId, status: feeReductionFilter || undefined });
         setFeeReductions(reductionsData);
       } else if (activeTab === 'collections') {
-        const collectionsData = await auditorService.getCollections({ branchId: selectedBranchId, status: collectionStatusFilter || undefined });
+        const collectionsData = await auditorService.getCollections({ branchId: selectedBranchId, status: collectionStatusFilter || undefined, feeType: 'monthly' });
+        setCollections(collectionsData);
+      } else if (activeTab === 'registration-fees') {
+        const collectionsData = await auditorService.getCollections({ branchId: selectedBranchId, status: collectionStatusFilter || undefined, feeType: 'registration' });
         setCollections(collectionsData);
       }
     } catch (err: any) {
@@ -283,7 +292,7 @@ export const AuditorFinance = () => {
               onClick={() => handleTabChange('collections')}
               className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'collections' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-150 dark:hover:bg-slate-850'}`}
             >
-              Fee Collections ({collections.length})
+              Fee Collections {activeTab === 'collections' ? `(${collections.length})` : ''}
             </button>
             <button
               type="button"
@@ -291,6 +300,13 @@ export const AuditorFinance = () => {
               className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-150 dark:hover:bg-slate-850'}`}
             >
               Fee Reductions ({feeReductions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('registration-fees')}
+              className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide transition-all ${activeTab === 'registration-fees' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-150 dark:hover:bg-slate-850'}`}
+            >
+              Registration Fees {activeTab === 'registration-fees' ? `(${collections.length})` : ''}
             </button>
           </div>
 
@@ -327,6 +343,21 @@ export const AuditorFinance = () => {
               </select>
             )}
 
+            {activeTab === 'registration-fees' && (
+              <select
+                title="Filter registration fees by status"
+                value={collectionStatusFilter}
+                onChange={(e) => {
+                  setCollectionStatusFilter(e.target.value as any);
+                }}
+                className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">All Students</option>
+                <option value="Paid">Paid</option>
+                <option value="Pending">Unpaid / Pending</option>
+              </select>
+            )}
+
             <div className="relative flex-1 md:w-80">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -349,14 +380,16 @@ export const AuditorFinance = () => {
             <>
 
 
-              {activeTab === 'collections' && (
+              {(activeTab === 'collections' || activeTab === 'registration-fees') && (
                 <div>
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
                         <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Student</th>
                         <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Grade</th>
-                        <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Month/Year</th>
+                        <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
+                          {activeTab === 'registration-fees' ? 'Year' : 'Month/Year'}
+                        </th>
                         <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Amount</th>
                         <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Paid</th>
                         <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Balance</th>
@@ -376,7 +409,15 @@ export const AuditorFinance = () => {
                           </td>
                           <td className="px-6 py-3.5">
                             <span className="text-sm font-medium text-slate-600 dark:text-slate-350">
-                              {(['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(col.billing_month) - 1] || col.billing_month)} {col.billing_year}
+                              {activeTab === 'registration-fees' ? col.billing_year : (
+                                <>
+                                  {([
+                                    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                                  ][parseInt(col.billing_month) - 1] || col.billing_month)}{' '}
+                                  {col.billing_year}
+                                </>
+                              )}
                             </span>
                           </td>
                           <td className="px-6 py-3.5">
@@ -410,7 +451,11 @@ export const AuditorFinance = () => {
                         <tr>
                           <td colSpan={8} className="p-12 text-center">
                             <Landmark className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No student collections found for this branch.</p>
+                            <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">
+                              {activeTab === 'registration-fees'
+                                ? 'No registration fees found for this branch.'
+                                : 'No student collections found for this branch.'}
+                            </p>
                           </td>
                         </tr>
                       )}

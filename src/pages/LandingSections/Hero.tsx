@@ -1,5 +1,4 @@
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
-import schoolImg from '../../../public/school.png';
 import {
     ArrowRight,
     LogIn,
@@ -139,7 +138,7 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
                             className="relative hidden lg:block perspective-1000"
                         >
                             <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-900 aspect-[4/5] group preserve-3">
-                                <img src={schoolImg} alt="Students" className="w-full h-full object-cover slow-zoom" />
+                                <img src="/school.png" alt="Students" className="w-full h-full object-cover slow-zoom" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
                                 <div className="absolute bottom-10 left-10 right-10 text-white bg-zinc-800/90 rounded-xl p-5">
                                     <div className="flex items-center gap-2 mb-2">

@@ -181,6 +181,7 @@ export interface AuditTrailQueryParams {
 export interface CollectionsQueryParams {
   branchId?: string;
   status?: string;
+  feeType?: 'monthly' | 'registration';
 }
 
 export interface OtherTransactionsQueryParams {
