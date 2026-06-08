@@ -35,6 +35,7 @@ export interface Transaction {
   date: string;
   verified_by: string;
   branch_id: string;
+  status?: 'Paid' | 'Pending' | 'Overdue' | string;
   created_at: string;
 }
 
@@ -210,6 +211,7 @@ const auditorService = {
     return (response.data.data || []).map((p: any) => ({
       ...p,
       amount: parseFloat(p.amount) || 0,
+      status: p.status,
     }));
   },
 
