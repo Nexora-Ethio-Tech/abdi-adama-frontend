@@ -188,7 +188,6 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: HeartPulse, label: 'Request Aid', path: '/finance-dashboard?tab=aid-requests' },
           { icon: Truck, label: 'Transport', path: '/finance-dashboard?tab=transport' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
-          ...(user?.isBranchAuditor ? [{ icon: Users, label: t('nav.specialStudents'), path: '/special-students' }] : []),
         ];
       case 'librarian':
         return [
@@ -209,11 +208,10 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       case 'auditor':
         return [
           { icon: LayoutDashboard, label: t('nav.dashboard'), path: '/auditor-dashboard' },
-          { icon: Wallet, label: 'Students Fianance', path: '/finance' },
+          { icon: Wallet, label: 'Student Finance', path: '/finance' },
           { icon: DollarSign, label: 'Payroll Ledger', path: '/payroll' },
           { icon: Landmark, label: 'Loan Accounts', path: '/loans' },
           { icon: UserSquare2, label: 'Salary Profiles', path: '/employee-profiles' },
-          { icon: Users, label: t('nav.specialStudents'), path: '/special-students' },
         ];
       default:
         return [];

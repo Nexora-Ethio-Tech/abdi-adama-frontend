@@ -429,11 +429,8 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              <Route path="special-students" element={
-                <ProtectedRoute allowedRoles={['auditor', 'finance-clerk', 'super-admin']}>
-                  <AuditorFinance />
-                </ProtectedRoute>
-              } />
+              {/* special-students is now part of Student Finance > Fee Reductions */}
+              <Route path="special-students" element={<Navigate to="/finance?tab=fee-reductions" replace />} />
 
               <Route path="finance" element={
                 <ProtectedRoute allowedRoles={['auditor', 'super-admin']}>

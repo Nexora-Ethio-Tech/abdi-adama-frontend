@@ -6,9 +6,7 @@ import {
   Clock,
   ShieldCheck,
   ArrowRight,
-  FileText,
   Users,
-  BarChart3,
   DollarSign,
   Landmark,
   UserSquare2,
@@ -240,45 +238,38 @@ export const AuditorDashboard = () => {
 
           <div>
             <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-widest mb-4">
-              Student finance workspace
+              Student Finance Workspace
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <QuickLink
-                to="/finance?tab=transactions"
-                title="Transactions"
-                description="Search and export payment ledger by date range"
+                to="/finance?tab=collections"
+                title="Fee Collections"
+                description="Audit student payment collections and billing status"
                 icon={Wallet}
               />
               <QuickLink
                 to="/finance?tab=fee-reductions"
-                title="Fee reductions"
-                description="Review and approve special student fee requests"
+                title="Fee Reductions"
+                description="Review and approve special student fee reduction requests"
                 icon={Users}
               />
               <QuickLink
-                to="/finance?tab=audit"
-                title="Student finance"
-                description="Audit trail and student finance filters"
-                icon={BarChart3}
-              />
-              <QuickLink
-                to="/finance"
-                title="Full finance center"
-                description="Open the complete student finance control center"
-                icon={FileText}
+                to="/finance?tab=registration-fees"
+                title="Registration Fees"
+                description="View annual registration fee status for all students"
+                icon={DollarSign}
               />
             </div>
           </div>
 
           <div>
             <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-widest mb-4">
-              Other modules
+              Other Modules
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <QuickLink to="/payroll" title="Payroll ledger" description="Staff payroll records" icon={DollarSign} />
-              <QuickLink to="/loans" title="Loan accounts" description="Branch loan oversight" icon={Landmark} />
-              <QuickLink to="/employee-profiles" title="Salary profiles" description="Employee compensation" icon={UserSquare2} />
-              <QuickLink to="/special-students" title="Special students" description="Fee reduction roster" icon={Users} />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <QuickLink to="/payroll" title="Payroll Ledger" description="Staff payroll records" icon={DollarSign} />
+              <QuickLink to="/loans" title="Loan Accounts" description="Branch loan oversight" icon={Landmark} />
+              <QuickLink to="/employee-profiles" title="Salary Profiles" description="Employee compensation" icon={UserSquare2} />
             </div>
           </div>
         </>

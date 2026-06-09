@@ -36,9 +36,7 @@ export const AuditorFinance = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const initialTab = location.pathname === '/special-students'
-    ? 'fee-reductions'
-    : tabFromSearch(searchParams.get('tab'));
+  const initialTab = tabFromSearch(searchParams.get('tab'));
   const [activeTab, setActiveTab] = useState<AuditorFinanceTab>(initialTab);
 
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -68,10 +66,6 @@ export const AuditorFinance = () => {
 
   // Sync URL (?tab=) and legacy paths with activeTab
   useEffect(() => {
-    if (location.pathname === '/special-students') {
-      setActiveTab('fee-reductions');
-      return;
-    }
     setActiveTab(tabFromSearch(searchParams.get('tab')));
   }, [location.pathname, searchParams]);
 
