@@ -106,13 +106,21 @@ export interface Collection {
   student_name: string;
   digital_id: string;
   grade: string;
-  billing_month: string;
-  billing_year: number;
+  month: string;
+  billing_month: string;   // Ethiopian month name e.g. "Sene"
+  billing_year: number;    // Ethiopian year e.g. 2018
+  billing_month_num: number;
+  // Per-fee-type breakdown
+  monthly_fee_due: number;
+  bus_fee_due: number;
+  penalty_fee_due: number;
+  registration_fee_due: number;
+  // Totals
   total_amount: number;
   amount_paid: number;
   balance: number;
   status: 'Pending' | 'Paid' | 'Overdue';
-  due_date: string;
+  due_date: string;        // Gregorian ISO date – converted to EC in UI via formatEthiopianLabel
   updated_at: string;
 }
 
@@ -185,7 +193,7 @@ export interface AuditTrailQueryParams {
 export interface CollectionsQueryParams {
   branchId?: string;
   status?: string;
-  feeType?: 'monthly' | 'registration';
+  feeType?: 'monthly' | 'registration' | 'penalty';
 }
 
 export interface OtherTransactionsQueryParams {
@@ -262,6 +270,11 @@ const auditorService = {
     return (response.data.data || []).map((c: any) => ({
       ...c,
       billing_year: parseInt(c.billing_year) || 0,
+      billing_month_num: parseInt(c.billing_month_num) || 0,
+      monthly_fee_due: parseFloat(c.monthly_fee_due) || 0,
+      bus_fee_due: parseFloat(c.bus_fee_due) || 0,
+      penalty_fee_due: parseFloat(c.penalty_fee_due) || 0,
+      registration_fee_due: parseFloat(c.registration_fee_due) || 0,
       total_amount: parseFloat(c.total_amount) || 0,
       amount_paid: parseFloat(c.amount_paid) || 0,
       balance: parseFloat(c.balance) || 0,

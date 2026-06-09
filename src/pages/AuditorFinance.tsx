@@ -343,25 +343,25 @@ export const AuditorFinance = () => {
                           <td className="px-6 py-3.5">
                             <span className="text-sm font-medium text-slate-600 dark:text-slate-350">
                               {activeTab === 'registration-fees' ? col.billing_year : (
-                                <>
-                                  {([
-                                    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                                  ][parseInt(col.billing_month) - 1] || col.billing_month)}{' '}
-                                  {col.billing_year}
-                                </>
+                                <>{col.billing_month}{' '}{col.billing_year}</>
                               )}
                             </span>
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{col.total_amount.toLocaleString()} ETB</span>
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{Number(col.total_amount || 0).toLocaleString()} ETB</span>
+                            <div className="text-[10px] text-slate-400 mt-0.5 space-x-1">
+                              {Number(col.monthly_fee_due) > 0 && <span>Monthly: {Number(col.monthly_fee_due).toLocaleString()}</span>}
+                              {Number(col.bus_fee_due) > 0 && <span>· Bus: {Number(col.bus_fee_due).toLocaleString()}</span>}
+                              {Number(col.penalty_fee_due) > 0 && <span className="text-rose-500">· Penalty: {Number(col.penalty_fee_due).toLocaleString()}</span>}
+                              {Number(col.registration_fee_due) > 0 && <span className="text-blue-500">· Reg: {Number(col.registration_fee_due).toLocaleString()}</span>}
+                            </div>
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className="text-sm font-bold text-emerald-600">{col.amount_paid.toLocaleString()} ETB</span>
+                            <span className="text-sm font-bold text-emerald-600">{Number(col.amount_paid || 0).toLocaleString()} ETB</span>
                           </td>
                           <td className="px-6 py-3.5">
-                            <span className={`text-sm font-bold ${col.balance > 0 ? 'text-red-500' : 'text-slate-600'}`}>
-                              {col.balance.toLocaleString()} ETB
+                            <span className={`text-sm font-bold ${Number(col.balance) > 0 ? 'text-red-500' : 'text-slate-600'}`}>
+                              {Number(col.balance || 0).toLocaleString()} ETB
                             </span>
                           </td>
                           <td className="px-6 py-3.5">
