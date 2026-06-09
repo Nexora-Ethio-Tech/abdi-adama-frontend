@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Wallet, Users, CheckCircle, XCircle, Search,
-  Clock, ShieldCheck, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
-  Building, TrendingUp, Landmark, DollarSign
+  Users, CheckCircle, XCircle, Search,
+  ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
+  Building, Landmark, Clock
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import auditorService, {
-  type AuditorDashboard as AuditorDashboardData,
   type FeeReduction,
   type Branch,
   type Collection
@@ -44,7 +43,6 @@ export const AuditorFinance = () => {
     return localStorage.getItem('auditor_selected_branch') || '';
   });
 
-  const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
   const [feeReductions, setFeeReductions] = useState<FeeReduction[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
 
@@ -116,9 +114,6 @@ export const AuditorFinance = () => {
       setError(null);
 
       // Load specific tab datasets to prevent heavy database queries
-      const dashboardPromise = auditorService.getDashboard(selectedBranchId);
-      setDashboard(await dashboardPromise);
-
       if (activeTab === 'fee-reductions') {
         const reductionsData = await auditorService.getFeeReductions({ branchId: selectedBranchId, status: feeReductionFilter || undefined });
         setFeeReductions(reductionsData);
@@ -181,20 +176,19 @@ export const AuditorFinance = () => {
             Finance <span className="text-blue-600">Audit Center</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium flex items-center gap-2">
-            <ShieldCheck size={18} className="text-emerald-500" />
             Global branch auditing and real-time transaction reporting
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
           {/* Branch Selector Dropdown */}
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-2xl shadow-sm">
-            <Building className="w-5 h-5 text-blue-600" />
+          <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-2xl shadow-sm w-full md:w-auto">
+            <Building className="w-5 h-5 text-blue-600 shrink-0" />
             <select
               title="Select branch to audit"
               value={selectedBranchId}
               onChange={handleBranchChange}
-              className="bg-transparent text-sm font-bold text-slate-850 dark:text-white outline-none cursor-pointer pr-4"
+              className="bg-transparent text-sm font-bold text-slate-850 dark:text-white outline-none cursor-pointer pr-4 w-full"
             >
               <option value="" disabled>Select a branch</option>
               {branches.map((b) => (
@@ -219,79 +213,7 @@ export const AuditorFinance = () => {
         </div>
       )}
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-6 rounded-[2.5rem] shadow-xl hover:-translate-y-1 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-2">Total Payments</p>
-              <p className="text-3xl font-black">{dashboard?.totalPayments.count || 0}</p>
-              <p className="text-blue-100 text-xs font-bold mt-1">{dashboard?.totalPayments.total.toLocaleString() || 0} ETB</p>
-            </div>
-            <div className="p-3 bg-white/20 rounded-2xl">
-              <Wallet className="w-8 h-8" />
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Monthly Payments</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.monthlyPayments.count || 0}</p>
-              <p className="text-slate-500 text-xs font-bold mt-1">{dashboard?.monthlyPayments.total.toLocaleString() || 0} ETB</p>
-            </div>
-            <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl">
-              <TrendingUp className="w-8 h-8" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Pending Approvals</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.pendingApprovals ?? 0}</p>
-              <p className="text-slate-500 text-xs font-bold mt-1">
-                {dashboard?.pendingLoans ?? 0} Loan{(dashboard?.pendingLoans ?? 0) !== 1 ? 's' : ''} &bull; {dashboard?.pendingFeeReductions ?? 0} Fee Reduction{(dashboard?.pendingFeeReductions ?? 0) !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-2xl">
-              <Clock className="w-8 h-8" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-100 dark:border-slate-800 hover:-translate-y-1 transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Recent Transactions</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.recentTransactions.length || 0}</p>
-              <p className="text-slate-500 text-xs font-bold mt-1">Last 5</p>
-            </div>
-            <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-2xl">
-              <ShieldCheck className="w-8 h-8" />
-            </div>
-          </div>
-        </div>
-
-        {/* Registration Fee card */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-500 text-white p-6 rounded-[2.5rem] shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
-          onClick={() => handleTabChange('registration-fees')}>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-2">Registration Fees</p>
-              <p className="text-3xl font-black">{dashboard?.registrationFees?.count || 0}</p>
-              <p className="text-emerald-100 text-xs font-bold mt-1">
-                {(dashboard?.registrationFees?.total || 0).toLocaleString()} ETB collected
-              </p>
-            </div>
-            <div className="p-3 bg-white/20 rounded-2xl">
-              <DollarSign className="w-8 h-8" />
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content Tabs */}
       <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none overflow-hidden">

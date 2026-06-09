@@ -165,15 +165,15 @@ export const AuditorDashboard = () => {
         </div>
 
         {/* Branch Selector Dropdown */}
-        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm">
-          <Building className="w-5 h-5 text-blue-600" />
-          <div className="flex flex-col">
+        <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm w-full md:w-auto">
+          <Building className="w-5 h-5 text-blue-600 shrink-0" />
+          <div className="flex flex-col w-full">
             <span className="text-[10px] font-black uppercase text-slate-400">Selected Branch</span>
             <select
               title="Select branch to audit"
               value={selectedBranchId}
               onChange={handleBranchChange}
-              className="bg-transparent text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-0 cursor-pointer pr-4"
+              className="bg-transparent text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-0 cursor-pointer pr-4 w-full"
             >
               <option value="" disabled>Select a branch</option>
               {branches.map((b) => (
