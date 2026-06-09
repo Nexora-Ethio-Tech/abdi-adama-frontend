@@ -38,6 +38,9 @@ import NavBar from './LandingSections/NavBar';
 import { branchService } from '../services/branchService';
 import Hero from './LandingSections/Hero';
 
+
+// just trying the auto deploy
+
 const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: { showAdmission: boolean, scrolled: boolean, displaySchoolName: string, setShowAdmission: (show: boolean) => void }) => {
 
 
