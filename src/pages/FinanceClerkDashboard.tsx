@@ -311,13 +311,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     setSelectedPaymentTypes([]);
     financeClerkService.getStudentOutstanding(student.id, month).then((d) => {
       setOutstandingData(d);
-      // Pagume = Ethiopian month 13 (e.g. "2018-13").
-      // During Pagume the annual Registration Fee is billable, so include it.
-      // For every other month the registration fee is handled via the Registrations
-      // tab admission workflow, so hide it here to avoid accidental double-charging.
-      const isPagume = month.endsWith('-13');
+      // Show every fee type that still has a remaining balance.
+      // The backend (getRegistrationDueForMonth / computeMonthlyOutstanding) already
+      // determines the correct due amount for each fee type — including the one-time
+      // enrollment-month registration fee and the annual Pagume registration fee.
+      // Filtering it out here while the backend still counts it in the outstanding total
+      // would trap the student in "Pending" status forever because they could never
+      // pay the remaining balance through the Collection tab.
       const validFees = (d.fees || []).filter((f: any) => {
-        if (f.feeType === 'registration' && !isPagume) return false;
         if (f.feeType === 'bus' && !d.usesTransport) return false;
         if (Number(f.remaining || 0) <= 0) return false;
         return true;
@@ -1637,7 +1638,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <button
-                              onClick={() => openPaymentModal(student, activeTab === 'overdue' ? (student.overdue_months?.[0] || undefined) : undefined)}
+                              onClick={() => openPaymentModal(student, activeTab === 'overdue' ? getCurrentEthiopianMonth() : undefined)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
                             >
                               Record Payment
@@ -1721,7 +1722,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     </div>
 
                     <button
-                      onClick={() => openPaymentModal(student, isOverdueTab ? (student.overdue_months?.[0] || undefined) : undefined)}
+                      onClick={() => openPaymentModal(student, isOverdueTab ? getCurrentEthiopianMonth() : undefined)}
                       className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
                     >
                       Record Payment
