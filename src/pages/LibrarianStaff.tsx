@@ -61,6 +61,7 @@ export const LibrarianStaff = () => {
         name: person.name,
         email: person.email,
         digitalId: person.digital_id || person.digitalId,
+        zkDeviceId: person.zk_device_id || person.zkDeviceId,
         status: person.status,
         userId: person.user_id || person.id,
         branchId: person.branch_id,
@@ -370,7 +371,16 @@ export const LibrarianStaff = () => {
                       </button>
                     </td>
                     <td className="px-6 py-4 text-slate-600 dark:text-slate-400">{staff.email}</td>
-                    <td className="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-sm">{staff.digitalId}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-mono text-slate-600 dark:text-slate-400">{staff.digitalId}</p>
+                        {staff.zkDeviceId && (
+                          <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-[10px] font-bold tracking-wider">
+                            ZK: {staff.zkDeviceId}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${staff.status === 'Approved'
                         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'

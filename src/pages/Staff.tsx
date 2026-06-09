@@ -180,6 +180,7 @@ export const Staff = () => {
             role: u.role,
             status: u.status,
             digitalId: u.digital_id || u.digitalId,
+            zkDeviceId: u.zk_device_id || u.zkDeviceId,
             branchId,
             branchName: matched?.name || (branchId ? 'Unknown Branch' : 'All Branches'),
           };
@@ -421,7 +422,14 @@ export const Staff = () => {
                         <div>
                           <p className="font-bold text-slate-800 dark:text-white">{staff.name}</p>
                           <p className="text-xs text-slate-500">{staff.email}</p>
-                          <p className="text-xs font-mono text-slate-400 mt-1">{staff.digitalId || '—'}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs font-mono text-slate-400">{staff.digitalId || '—'}</p>
+                            {staff.zkDeviceId && (
+                              <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-[10px] font-bold tracking-wider">
+                                ZK: {staff.zkDeviceId}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">

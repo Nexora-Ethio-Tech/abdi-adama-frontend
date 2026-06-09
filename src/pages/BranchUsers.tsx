@@ -138,7 +138,14 @@ export const BranchUsers = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">{user.digitalId}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-600 dark:text-slate-400 font-mono">{user.digitalId || user.digital_id}</span>
+                          {(user.zkDeviceId || user.zk_device_id) && (
+                            <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-[10px] font-bold tracking-wider">
+                              ZK: {user.zkDeviceId || user.zk_device_id}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full text-[10px] font-black uppercase tracking-wider">

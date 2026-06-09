@@ -354,6 +354,7 @@ export const Teachers = () => {
           name: teacher.name,
           email: teacher.email,
           digitalId: teacher.digital_id,
+          zkDeviceId: teacher.zk_device_id || teacher.zkDeviceId,
           status: teacher.status,
           userId: teacher.user_id,
           branchId: teacher.branch_id,
@@ -703,7 +704,16 @@ export const Teachers = () => {
                         </button>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{teacher.email}</td>
-                      <td className="px-6 py-4 text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-mono text-slate-600 dark:text-slate-400">{teacher.digitalId}</p>
+                          {teacher.zkDeviceId && (
+                            <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 rounded text-[10px] font-bold tracking-wider">
+                              ZK: {teacher.zkDeviceId}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         {isAdmin && teacher.status !== 'Pending' ? (
                           <button
