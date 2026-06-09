@@ -239,8 +239,8 @@ const translations: Record<Language, TranslationSchema> = {
       subtitle: "Scroll to turn the pages.",
       coverTitle: "The Book",
       coverSubtitle: "Of Excellence",
-      coverEdition: "2024 Edition",
-      legacyTitle: "Our 2024 Legacy",
+      coverEdition: "2025 Edition",
+      legacyTitle: "Our 2025 Legacy",
       legacyDesc: "Our students achieved an unprecedented 98% pass rate in the national exams, with 15 students ranking in the top 100 nationwide. This milestone reflects our commitment to academic excellence.",
       students: [
         {
@@ -262,7 +262,7 @@ const translations: Record<Language, TranslationSchema> = {
           img: "https://www.abdiadama.com/assets/images/saronlulsagadd.jpg",
         },
       ],
-      classOf: "Class of 2024",
+      classOf: "Class of 2025",
       endOfVolume: "End of Volume",
       futureAwaits: "Your Future Awaits",
     },
