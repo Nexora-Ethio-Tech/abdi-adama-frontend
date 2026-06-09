@@ -20,6 +20,10 @@ export interface AuditorDashboard {
     count: number;
     total: number;
   };
+  registrationFees: {
+    count: number;
+    total: number;
+  };
   pendingFeeReductions: number;
   pendingLoans: number;
   pendingApprovals: number;

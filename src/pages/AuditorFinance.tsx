@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Wallet, Users, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
-  Building, TrendingUp, Landmark
+  Building, TrendingUp, Landmark, DollarSign
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -220,7 +220,7 @@ export const AuditorFinance = () => {
       )}
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-6 rounded-[2.5rem] shadow-xl hover:-translate-y-1 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -271,6 +271,23 @@ export const AuditorFinance = () => {
             </div>
             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-2xl">
               <ShieldCheck className="w-8 h-8" />
+            </div>
+          </div>
+        </div>
+
+        {/* Registration Fee card */}
+        <div className="bg-gradient-to-br from-emerald-600 to-teal-500 text-white p-6 rounded-[2.5rem] shadow-xl hover:-translate-y-1 transition-all cursor-pointer"
+          onClick={() => handleTabChange('registration-fees')}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-emerald-100 text-xs font-bold uppercase tracking-widest mb-2">Registration Fees</p>
+              <p className="text-3xl font-black">{dashboard?.registrationFees?.count || 0}</p>
+              <p className="text-emerald-100 text-xs font-bold mt-1">
+                {(dashboard?.registrationFees?.total || 0).toLocaleString()} ETB collected
+              </p>
+            </div>
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <DollarSign className="w-8 h-8" />
             </div>
           </div>
         </div>
