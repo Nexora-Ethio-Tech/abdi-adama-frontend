@@ -200,7 +200,7 @@ export const LoanManagement = () => {
         {role === 'finance-clerk' && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="bg-slate-900 dark:bg-blue-600 text-white font-black text-sm uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
+            className="bg-slate-900 dark:bg-blue-600 text-white font-black text-sm uppercase tracking-widest px-6 py-3.5 rounded-2xl hover:bg-slate-800 dark:hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none w-full sm:w-auto"
           >
             <Plus size={16} />
             Issue New Loan
@@ -216,10 +216,10 @@ export const LoanManagement = () => {
 
       {/* Tabs and Search Header */}
       <div className="bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/30 dark:shadow-none flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl">
+        <div className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl w-full lg:w-auto">
           <button
             onClick={() => setActiveTab('pending')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === 'pending'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -229,17 +229,17 @@ export const LoanManagement = () => {
           </button>
           <button
             onClick={() => setActiveTab('approved')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === 'approved'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
             }`}
           >
-            Approved / Awaiting Payment
+            Approved
           </button>
           <button
             onClick={() => setActiveTab('active')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === 'active'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
@@ -249,13 +249,13 @@ export const LoanManagement = () => {
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${
+            className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all whitespace-nowrap ${
               activeTab === 'history'
                 ? 'bg-white dark:bg-slate-900 text-slate-850 dark:text-white shadow-md'
                 : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
             }`}
           >
-            History / Rejected
+            History
           </button>
         </div>
 
@@ -435,10 +435,10 @@ export const LoanManagement = () => {
                 <div className="space-y-3">
                   <label className="text-sm font-bold text-slate-500 uppercase">Select Employee *</label>
                   
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       title="Filter employees by role (Staff or Student)"
-                      className="w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full sm:w-1/3 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500"
                       value={loanRoleFilter}
                       onChange={(e) => {
                         setLoanRoleFilter(e.target.value);
