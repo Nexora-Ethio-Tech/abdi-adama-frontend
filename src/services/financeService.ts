@@ -6,6 +6,10 @@ export interface FinanceClerkDashboard {
   todayCollection: number;
   monthlyRevenue: number;
   pendingApprovals: number;
+  registrations: number;
+  overdueStudents: number;
+  transportStudents: number;
+  staffCount: number;
   recentTransactions: Transaction[];
 }
 
@@ -189,6 +193,10 @@ const financeClerkService = {
       todayCollection: parseFloat(d.todayCollection) || 0,
       monthlyRevenue: parseFloat(d.monthlyRevenue) || 0,
       pendingApprovals: parseInt(d.pendingApprovals) || 0,
+      registrations: parseInt(d.registrations) || 0,
+      overdueStudents: parseInt(d.overdueStudents) || 0,
+      transportStudents: parseInt(d.transportStudents) || 0,
+      staffCount: parseInt(d.staffCount) || 0,
       recentTransactions: (d.recentTransactions || []).map((tx: any) => ({
         ...tx,
         amount: parseFloat(tx.amount) || 0,
@@ -197,7 +205,7 @@ const financeClerkService = {
   },
 
   // 2. Get All Students with Fee Info
-  getStudentsFees: async (params?: { search?: string; feeStatus?: 'standard' | 'reduced' }): Promise<StudentFeeInfo[]> => {
+  getStudentsFees: async (params?: { search?: string; feeStatus?: 'standard' | 'reduced'; grade?: string }): Promise<StudentFeeInfo[]> => {
     const response = await api.get('/finance-clerk/students/fees', { params });
     return (response.data.data || []).map((s: any) => ({
       ...s,

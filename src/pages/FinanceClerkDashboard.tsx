@@ -97,7 +97,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
   // Student List Pagination
   const [studentPage, setStudentPage] = useState(1);
-  const [studentsPerPage, setStudentsPerPage] = useState<number>(10);
+  const [gradeFilter, setGradeFilter] = useState('');
+  const [studentsPerPage, setStudentsPerPage] = useState<number>(50);
 
   // Staff Payment Filters & Pagination
   const [staffSearchTerm, setStaffSearchTerm] = useState('');
@@ -161,9 +162,17 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     try {
       setLoading(true);
       setError(null);
+      
+      if (isOverviewView) {
+        const dashboardData = await financeClerkService.getDashboard();
+        setDashboard(dashboardData);
+        setLoading(false);
+        return;
+      }
+
       const [dashboardData, studentsData, overdueData, staffData, pendingApplications] = await Promise.all([
         financeClerkService.getDashboard(),
-        financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined }),
+        financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined, grade: gradeFilter || undefined }),
         financeClerkService.getOverduePayments(),
         payrollService.getAllProfiles().catch(() => []),
         financeClerkService.getPendingApplications({ status: 'awaiting-payment' }),
@@ -721,35 +730,35 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       },
       {
         title: 'Overdue',
-        value: overdueStudents.length.toString(),
+        value: (dashboard?.overdueStudents || 0).toString(),
         subtitle: 'Students needing follow-up',
         color: 'from-amber-600 to-amber-500',
         action: () => navigate('/finance-dashboard?tab=overdue')
       },
       {
         title: 'Request Aid',
-        value: pendingCount.toString(),
+        value: (dashboard?.pendingApprovals || 0).toString(),
         subtitle: 'Pending aid requests',
         color: 'from-purple-600 to-purple-500',
         action: () => navigate('/finance-dashboard?tab=aid-requests')
       },
       {
         title: 'Registrations',
-        value: pendingApplicationsCount.toString(),
+        value: (dashboard?.registrations || 0).toString(),
         subtitle: 'Pending registration applications',
         color: 'from-blue-600 to-blue-500',
         action: () => navigate('/finance-dashboard?tab=registrations')
       },
       {
         title: 'Staff Payments',
-        value: staffProfiles.length.toString(),
+        value: (dashboard?.staffCount || 0).toString(),
         subtitle: 'Employees in payroll',
         color: 'from-slate-700 to-slate-600',
         action: () => navigate('/finance-dashboard?tab=staff-payments')
       },
       {
         title: 'Transport',
-        value: assignedTransportCount.toString(),
+        value: (dashboard?.transportStudents || 0).toString(),
         subtitle: 'Students assigned to drivers',
         color: 'from-amber-700 to-orange-600',
         action: () => navigate('/finance-dashboard?tab=transport')
@@ -796,7 +805,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     <div className="space-y-6">
       <Breadcrumbs />
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
             {isCollectionsView ? headerTitleMap[activeTab] : 'Finance Overview'}
@@ -811,7 +820,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               resetTransactionForm();
               setShowTransactionModal(true);
             }}
-            className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all font-bold text-sm"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all font-bold text-sm w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
             Record Transaction
@@ -821,7 +830,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           <button
             onClick={openAidRequestPicker}
             disabled={eligibleAidStudents.length === 0}
-            className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 shadow-lg shadow-purple-500/20 transition-all font-bold text-sm disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-2xl hover:bg-purple-700 shadow-lg shadow-purple-500/20 transition-all font-bold text-sm disabled:opacity-50 w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
             Add Request Aid
@@ -830,10 +839,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       </div>
 
       {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
-        <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
-            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'all'
+            className={`px-6 py-3 font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'all'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
@@ -842,7 +851,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           </button>
           <button
             onClick={() => setActiveTab('registrations')}
-            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'registrations'
+            className={`px-6 py-3 font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'registrations'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
@@ -851,7 +860,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
           </button>
           <button
             onClick={() => setActiveTab('staff-payments')}
-            className={`px-6 py-3 font-bold text-sm transition-all ${activeTab === 'staff-payments'
+            className={`px-6 py-3 font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'staff-payments'
               ? 'text-blue-600 border-b-2 border-blue-600'
               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
@@ -1483,15 +1492,21 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 <option value="reduced">Reduced</option>
               </select>
               <div className="relative">
-                <label htmlFor="students-per-page" className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Per page</label>
+                <label htmlFor="grade-filter" className="block text-[10px] font-bold text-slate-600 dark:text-slate-400 mb-1">Grade</label>
                 <select
-                  id="students-per-page"
-                  value={studentsPerPage}
-                  onChange={(e) => { setStudentsPerPage(Number(e.target.value)); setStudentPage(1); }}
+                  id="grade-filter"
+                  value={gradeFilter}
+                  onChange={(e) => { setGradeFilter(e.target.value); setStudentPage(1); }}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                 >
-                  {perPageOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt} per page</option>
+                  <option value="">All Grades</option>
+                  {Array.from(new Set(transportPolicies.map(p => p.grade_level).filter(Boolean))).sort((a, b) => {
+                    const numA = parseInt(a!);
+                    const numB = parseInt(b!);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a!.localeCompare(b!);
+                  }).map(grade => (
+                    <option key={grade} value={grade!}>Grade {grade}</option>
                   ))}
                 </select>
               </div>
@@ -1685,7 +1700,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                           {isOverdueTab && !student.is_bus_user ? 'N/A' : displayBus.toLocaleString()}
                         </p>
                       </div>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center">
+                      <div className="bg-slate-50 dark:bg-slate-800/50 p-2 rounded-xl text-center col-span-2">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
                           {isOverdueTab ? 'Penalty Unpaid' : 'Penalty'}
                         </p>
