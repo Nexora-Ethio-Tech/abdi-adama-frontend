@@ -130,7 +130,7 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
                                     {registrationOpen && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
                                     {!registrationOpen && <Lock size={16} />}
                                 </button>
-                            </div>
+                             </div>
                         </div>
 
                         <motion.div
@@ -140,7 +140,6 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
                             <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white dark:border-slate-900 aspect-[4/5] group preserve-3">
                                 <img src="/school.png" alt="Students" className="w-full h-full object-cover slow-zoom" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60" />
-                            
                             </div>
                             <div className="absolute -top-10 -right-10 w-40 h-40 bg-school-secondary/20 rounded-full blur-3xl animate-pulse" />
                             <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-school-primary/20 rounded-full blur-3xl animate-pulse delay-700" />
