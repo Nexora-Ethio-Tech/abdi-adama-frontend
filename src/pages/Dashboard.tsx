@@ -11,6 +11,7 @@ import { getTodayEthiopianDate, formatEthiopianLabel, gregorianToEthiopian, ethi
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import settingsService from '../services/settingsService';
 import { userService } from '../services/userService';
+import api from '../services/api';
 
 const StatCard = ({ icon: Icon, label, value, trend, color, onClick }: any) => (
   <div 
@@ -45,6 +46,8 @@ export const Dashboard = () => {
   const [deletingEvent, setDeletingEvent] = useState<Event | null>(null);
   const [eventEthDate, setEventEthDate] = useState('');
   const [noticeExpiryEthDate, setNoticeExpiryEthDate] = useState('');
+  const [selectedAudience, setSelectedAudience] = useState('all');
+  const [postingNotice, setPostingNotice] = useState(false);
   const isSuperAdmin = role === 'super-admin';
 
   const handleToggleGradesLock = async (newVal: boolean) => {
@@ -135,14 +138,32 @@ export const Dashboard = () => {
             setDashboardStats(response.data);
           }
         } else if (role === 'school-admin') {
-          const [dashboardData, atRiskData, eventsData] = await Promise.all([
+          const [dashboardData, atRiskData, eventsData, noticesRes] = await Promise.all([
             getSchoolAdminDashboard(),
             getAtRiskStudents(),
-            getUpcomingEvents(5)
+            getUpcomingEvents(5),
+            api.get('/school-admin/notices').catch(() => ({ data: { data: [] } }))
           ]);
           setSchoolAdminStats(dashboardData);
           setAtRiskStudents(atRiskData.students || []);
           setUpcomingEvents(eventsData || []);
+          // Seed the notice store with persisted notices from the database
+          const rawNotices: any[] = noticesRes.data?.data || [];
+          const { setNotices: _setNotices } = useStore.getState();
+          if (rawNotices.length > 0) {
+            const mapped = rawNotices.map((n: any) => ({
+              id: n.id,
+              title: n.title,
+              content: n.content,
+              priority: n.priority || 'Normal',
+              time: n.created_at || new Date().toISOString(),
+              category: (n.category || 'Academic') as any,
+              audience: n.audience === 'all'
+                ? ['super-admin','school-admin','vice-principal','teacher','student','parent','driver','clinic-admin','finance-clerk','librarian','auditor']
+                : String(n.audience || 'all').split(',').map((r: string) => r.trim()),
+            }));
+            _setNotices(mapped);
+          }
         }
       } catch (err: any) {
         console.error('❌ Dashboard API Error:', err);
@@ -154,6 +175,7 @@ export const Dashboard = () => {
 
     fetchDashboardStats();
   }, [role]);
+
 
   // Event Management Handlers
   const refreshEvents = async () => {
@@ -914,7 +936,14 @@ export const Dashboard = () => {
                     <span className="text-xs text-slate-400 font-medium">{notice.time}</span>
                     {isAdmin && (
                       <button
-                        onClick={() => deleteNotice(notice.id)}
+                        onClick={async () => {
+                          try {
+                            await api.delete(`/school-admin/notices/${notice.id}`);
+                          } catch (err) {
+                            console.error('Failed to delete notice from API:', err);
+                          }
+                          deleteNotice(notice.id);
+                        }}
                         className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors"
                         title="Delete Notice"
                       >
@@ -931,6 +960,20 @@ export const Dashboard = () => {
               </p>
               {notice.category === 'Logistics' && (notice as any).driverName && (
                 <p className="text-[10px] font-bold text-amber-600 mt-2">Posted by: {(notice as any).driverName}</p>
+              )}
+              {isAdmin && notice.audience && notice.audience.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Audience:</span>
+                  {notice.audience.includes('all') || notice.audience.length >= 5 ? (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-violet-100 text-violet-700 uppercase">All Users</span>
+                  ) : (
+                    notice.audience
+                      .filter((a: string) => !['school-admin','super-admin'].includes(a))
+                      .map((a: string) => (
+                        <span key={a} className="px-2 py-0.5 rounded-full text-[9px] font-black bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase">{a}</span>
+                      ))
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -1076,19 +1119,61 @@ export const Dashboard = () => {
                 <X size={20} />
               </button>
             </div>
-            <form className="p-6 space-y-4 flex-1 overflow-y-auto" onSubmit={(e) => {
+            <form className="p-6 space-y-4 flex-1 overflow-y-auto" onSubmit={async (e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
-              addNotice({
-                title: formData.get('title') as string,
-                content: formData.get('content') as string,
-                priority: formData.get('priority') as any,
-                category: formData.get('category') as any,
-                expiresAt: formData.get('expiresAt') as string || undefined,
-                audience: ['super-admin', 'school-admin', 'vice-principal', 'teacher', 'student', 'parent']
-              });
+              const title = formData.get('title') as string;
+              const content = formData.get('content') as string;
+              const priority = formData.get('priority') as string;
+              const category = formData.get('category') as string;
+              const expiresAt = (formData.get('expiresAt') as string) || undefined;
+
+              // Map UI audience selection to role arrays
+              const audienceRoleMap: Record<string, string[]> = {
+                all: ['super-admin', 'school-admin', 'vice-principal', 'teacher', 'student', 'parent', 'driver', 'clinic-admin', 'finance-clerk', 'librarian', 'auditor'],
+                teacher: ['teacher', 'school-admin', 'super-admin'],
+                driver: ['driver', 'school-admin', 'super-admin'],
+                'clinic-admin': ['clinic-admin', 'school-admin', 'super-admin'],
+                'parent-student': ['parent', 'student', 'school-admin', 'super-admin'],
+              };
+              const audienceRoles = audienceRoleMap[selectedAudience] || audienceRoleMap.all;
+
+              setPostingNotice(true);
+              try {
+                // POST to backend to persist + trigger SSE broadcast
+                await api.post('/school-admin/notices', {
+                  title,
+                  content,
+                  priority,
+                  category,
+                  expiresAt,
+                  audience: selectedAudience,
+                });
+                // Also add locally for immediate display
+                addNotice({
+                  title,
+                  content,
+                  priority: priority as any,
+                  category: category as any,
+                  expiresAt,
+                  audience: audienceRoles,
+                });
+              } catch (err) {
+                // Fallback: add locally if API fails
+                addNotice({
+                  title,
+                  content,
+                  priority: priority as any,
+                  category: category as any,
+                  expiresAt,
+                  audience: audienceRoles,
+                });
+              } finally {
+                setPostingNotice(false);
+              }
               setShowNoticeModal(false);
               setNoticeExpiryEthDate('');
+              setSelectedAudience('all');
             }}>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Notice Title</label>
@@ -1120,6 +1205,39 @@ export const Dashboard = () => {
                   </select>
                 </div>
               </div>
+              {/* Audience targeting */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                  <Users size={12} />
+                  Target Audience
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { value: 'all', label: '🌐 All Users', desc: 'Everyone receives this notice' },
+                    { value: 'teacher', label: '👨‍🏫 Teachers Only', desc: 'Only teachers see this' },
+                    { value: 'driver', label: '🚌 Drivers Only', desc: 'Only drivers see this' },
+                    { value: 'clinic-admin', label: '🏥 Clinic Staff Only', desc: 'Only clinic staff see this' },
+                    { value: 'parent-student', label: '👨‍👩‍👧 Parents & Students', desc: 'Parents and students see this' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSelectedAudience(opt.value)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 text-left transition-all ${
+                        selectedAudience === opt.value
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      <span className="text-sm font-bold text-slate-800 dark:text-slate-100 flex-1">{opt.label}</span>
+                      <span className="text-[10px] text-slate-400 hidden sm:block">{opt.desc}</span>
+                      {selectedAudience === opt.value && (
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Content</label>
                 <textarea name="content" required rows={4} placeholder="Write the details of the notice here..." className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
@@ -1137,9 +1255,17 @@ export const Dashboard = () => {
                 <input name="expiresAt" type="hidden" value={noticeExpiryEthDate} />
               </div>
               <div className="pt-4">
-                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2">
-                  <Bell size={18} />
-                  <span>Publish Notice</span>
+                <button
+                  type="submit"
+                  disabled={postingNotice}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-200 dark:shadow-none flex items-center justify-center gap-2"
+                >
+                  {postingNotice ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Bell size={18} />
+                  )}
+                  <span>{postingNotice ? 'Publishing...' : 'Publish Notice'}</span>
                 </button>
               </div>
             </form>

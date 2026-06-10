@@ -85,6 +85,43 @@ export const useSSE = () => {
         }
       });
 
+      // ── New school notice posted by admin ──────────────────────────────
+      eventSource.addEventListener('SCHOOL_NOTICE', (event: Event) => {
+        const customEvent = event as MessageEvent;
+        try {
+          const payload = JSON.parse(customEvent.data);
+          console.log('📢 [SSE] New school notice received:', payload.id);
+          // Convert comma-separated audience string back to array
+          const audienceArr = payload.audience === 'all'
+            ? ['super-admin', 'school-admin', 'vice-principal', 'teacher', 'student', 'parent', 'driver', 'clinic-admin', 'finance-clerk', 'librarian', 'auditor']
+            : String(payload.audience || 'all').split(',').map((r: string) => r.trim());
+          const notice: SchoolNotice = {
+            id: payload.id,
+            title: payload.title,
+            content: payload.content,
+            priority: payload.priority || 'Normal',
+            time: payload.createdAt || new Date().toISOString(),
+            category: (payload.category as any) || 'Academic',
+            audience: audienceArr,
+          };
+          addNoticeRaw(notice);
+        } catch (err) {
+          console.error('Failed to parse SSE school notice event:', err);
+        }
+      });
+
+      // ── School notice deleted by admin ─────────────────────────────────
+      eventSource.addEventListener('SCHOOL_NOTICE_DELETED', (event: Event) => {
+        const customEvent = event as MessageEvent;
+        try {
+          const payload = JSON.parse(customEvent.data);
+          console.log('🗑️ [SSE] School notice deleted:', payload.id);
+          deleteNotice(payload.id);
+        } catch (err) {
+          console.error('Failed to parse SSE school notice deletion event:', err);
+        }
+      });
+
       // ── Connection heartbeat ───────────────────────────────────────────
       eventSource.addEventListener('connected', (event: Event) => {
         const customEvent = event as MessageEvent;
