@@ -37,6 +37,29 @@ export const Classes = () => {
     }
   }, [isSchoolAdmin]);
 
+  // Stay in sync with class changes made in other tabs (e.g. Timetable Structure)
+  useEffect(() => {
+    if (!isSchoolAdmin) return;
+
+    const handleClassesUpdated = () => {
+      fetchClasses();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchClasses();
+      }
+    };
+
+    window.addEventListener('classes-updated', handleClassesUpdated);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('classes-updated', handleClassesUpdated);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSchoolAdmin]);
+
   const fetchClasses = async () => {
     try {
       setLoading(true);

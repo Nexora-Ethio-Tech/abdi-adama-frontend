@@ -25,6 +25,8 @@ export interface Props {
   onSave: (rows: StructureRow[]) => Promise<void> | void;
   classes: ClassRecord[];
   teachers: Teacher[];
+  /** Called after a new class is created so parent can refresh its class list */
+  onClassCreated?: (newClass: ClassRecord) => void;
 }
 
 interface GradeState {
@@ -103,7 +105,7 @@ const buildGradeMap = (classes: ClassRecord[], rows: StructureRow[]): Record<str
   return map;
 };
 
-export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialRows = [], onSave }) => {
+export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, initialRows = [], onSave, onClassCreated }) => {
   const [gradeMap, setGradeMap] = useState<Record<string, GradeState>>({});
   const [saving, setSaving] = useState(false);
   const [newGradeInput, setNewGradeInput] = useState('');
@@ -373,6 +375,13 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
       });
 
       resolvedClasses.set(cacheKey, created.id);
+
+      // Notify the parent (ScheduleBuilder) so it can refresh its class list
+      if (onClassCreated) onClassCreated(created);
+
+      // Broadcast a global event so the Classes tab also re-fetches
+      window.dispatchEvent(new CustomEvent('classes-updated', { detail: created }));
+
       return created.id;
     };
 

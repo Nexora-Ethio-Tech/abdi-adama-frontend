@@ -998,6 +998,14 @@ export const ScheduleBuilder = () => {
                     classes={classes}
                     teachers={teachers}
                     initialRows={structureRows}
+                    onClassCreated={(newClass) => {
+                      // Immediately add new class to local state so the editor's
+                      // class list updates without waiting for a full DB refresh
+                      setClasses(prev => {
+                        if (prev.some(c => c.id === newClass.id)) return prev;
+                        return [...prev, newClass];
+                      });
+                    }}
                     onSave={async (rows) => {
                       // update state, persist, and refresh from the latest DB state
                       try {
