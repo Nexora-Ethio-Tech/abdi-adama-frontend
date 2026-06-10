@@ -279,7 +279,7 @@ export const TeacherPortal = () => {
         setDeptHeads(rawDeptHeads);
       }
 
-      if (dash?.teacherInfo?.is_dean || simulateDeanMode) {
+      if (dash?.teacherInfo?.is_dean || dash?.teacherInfo?.is_hod || simulateDeanMode) {
         const dPlans = await getDeptPlans().catch(() => []);
         setDeptPlans(Array.isArray(dPlans) ? dPlans : []);
       }
@@ -626,7 +626,7 @@ export const TeacherPortal = () => {
 
   const todaySchedule = dashboard?.todaySchedule || [];
   const pendingPlans = plans.filter(p => p.status === 'Pending').length;
-  const isDean = dashboard?.teacherInfo?.is_dean === true || simulateDeanMode === true;
+  const isDean = dashboard?.teacherInfo?.is_dean === true || dashboard?.teacherInfo?.is_hod === true || simulateDeanMode === true;
 
   // Exam Handlers
   const handlePublishExam = async (examId: string) => {
