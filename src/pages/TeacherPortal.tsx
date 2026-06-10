@@ -601,7 +601,7 @@ export const TeacherPortal = () => {
   const openEditModal = (plan: any) => {
     setEditingPlan(plan);
     const filled = {
-      date: plan.date?.slice(0, 10) || '',
+      date: plan.date ? new Date(plan.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
       content: plan.content || '',
       objectives: plan.objectives || '',
       teacherActivity: plan.teacher_activity || plan.teacherActivity || '',
@@ -1289,7 +1289,7 @@ export const TeacherPortal = () => {
                                   const submittedPlan = { ...plan, status: 'Pending', teacher_name: user?.name || 'Assigned Teacher', teacherName: user?.name || 'Assigned Teacher' };
                                   try {
                                     const payload = {
-                                      date: plan.date?.slice(0, 10) || '',
+                                      date: plan.date ? new Date(plan.date).toISOString() : new Date().toISOString(),
                                       content: plan.content || '',
                                       objectives: plan.objectives || '',
                                       teacherActivity: plan.teacher_activity || plan.teacherActivity || '',

@@ -146,7 +146,7 @@ export const updateWeeklyPlan = async (planId: string, data: {
   remark?: string;
   status?: 'Draft' | 'Pending';
 }) => {
-  const response = await api.patch(`/teacher/weekly-plans/${planId}`, data);
+  const response = await api.post(`/teacher/weekly-plans/${planId}`, data);
   return response.data;
 };
 
