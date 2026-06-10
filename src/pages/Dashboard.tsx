@@ -951,7 +951,20 @@ export const Dashboard = () => {
                       </button>
                     )}
                   </div>
-                  {notice.expiresAt && <span className="text-[10px] text-rose-400 italic font-medium">Expires: {formatEthiopianLabel(notice.expiresAt)}</span>}
+                  {notice.expiresAt && (() => {
+                    // expiresAt is stored as an Ethiopian calendar string (YYYY-MM-DD E.C.)
+                    // from the EthiopianDatePicker, so display it directly without
+                    // re-converting through gregorianToEthiopian (which would shift the year ~7 years back).
+                    const ethMonths = ['Meskerem','Tikimt','Hidar','Tahsas','Tir','Yekatit','Megabit','Miazia','Ginbot','Sene','Hamle','Nehase','Pagume'];
+                    const parts = notice.expiresAt.split('-');
+                    if (parts.length === 3) {
+                      const [yr, mo, dy] = parts.map(Number);
+                      const label = `${dy} ${ethMonths[mo - 1] ?? ''} ${yr} E.C.`;
+                      return <span className="text-[10px] text-rose-400 italic font-medium">Expires: {label}</span>;
+                    }
+                    // Fallback: if not in Ethiopian string format, try Gregorian conversion
+                    return <span className="text-[10px] text-rose-400 italic font-medium">Expires: {formatEthiopianLabel(notice.expiresAt)}</span>;
+                  })()}
                 </div>
               </div>
               <h4 className="font-bold text-slate-800 dark:text-slate-100 mb-2">{notice.title}</h4>
