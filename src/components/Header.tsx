@@ -88,7 +88,7 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
 
         {/* Right: Controls */}
         <div className="flex items-center gap-1 md:gap-3">
-          {/* Search */}
+          {/* Search — hidden on xs */}
           <div className={cn("relative group hidden sm:block", isExamLockedDown && "opacity-50 pointer-events-none")}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
             <input
@@ -123,22 +123,22 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
 
-          {/* Calendar */}
+          {/* Calendar — hidden on mobile to save space */}
           <button
             onClick={() => setShowCalendar(true)}
             disabled={isExamLockedDown}
-            className={cn("p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all", isExamLockedDown && "opacity-50 cursor-not-allowed")}
+            className={cn("hidden sm:flex p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all", isExamLockedDown && "opacity-50 cursor-not-allowed")}
             title="Open Calendar"
           >
             <CalendarIcon size={20} />
           </button>
 
-          {/* Notifications */}
+          {/* Notifications — hidden on mobile to save space */}
           <button
             type="button"
             disabled={isExamLockedDown}
             title="Notifications"
-            className={cn("relative p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all", isExamLockedDown && "opacity-50 cursor-not-allowed")}
+            className={cn("relative hidden sm:flex p-2.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all", isExamLockedDown && "opacity-50 cursor-not-allowed")}
           >
             <Bell size={20} />
             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-school-secondary rounded-full border-2 border-white dark:border-slate-900" />
@@ -176,20 +176,39 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
                 {/* Backdrop to close on outside click */}
                 <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
 
-                <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden z-50">
+                {/* Responsive dropdown: full-width offset on xs, fixed width on sm+ */}
+                <div className="absolute top-full right-0 mt-2 w-[calc(100vw-2rem)] sm:w-64 max-w-xs bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200/50 dark:border-slate-800/50 overflow-hidden z-50">
                   {/* Header info */}
                   <div className="px-5 pt-4 pb-3 bg-gradient-to-br from-school-primary/5 to-school-accent/5 border-b border-slate-100 dark:border-slate-800">
                     <p className="text-xs font-black text-slate-700 dark:text-slate-200">{user?.name}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">{user?.email}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">{user?.email}</p>
                     <span className="inline-block mt-1.5 px-2 py-0.5 bg-school-primary/10 text-school-primary rounded-full text-[10px] font-bold uppercase tracking-wide">
                       {role?.replace(/-/g, ' ')}
                     </span>
                   </div>
 
+                  {/* Mobile-only: Calendar & Notifications shortcuts */}
+                  <div className="sm:hidden px-2 pt-2 border-b border-slate-100 dark:border-slate-800 pb-2 flex gap-2">
+                    <button
+                      onClick={() => { setIsMenuOpen(false); setShowCalendar(true); }}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    >
+                      <CalendarIcon size={15} />
+                      Calendar
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative"
+                    >
+                      <Bell size={15} />
+                      <span className="absolute top-1.5 left-[calc(50%-6px)] w-2 h-2 bg-school-secondary rounded-full border border-white dark:border-slate-900" />
+                      Alerts
+                    </button>
+                  </div>
 
-
-                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
-                    {!['super-admin', 'school-admin'].includes(role || '') && (
+                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                    {/* Change Password — available for all roles except super-admin */}
+                    {role !== 'super-admin' && (
                       <button
                         onClick={handleChangePassword}
                         className="w-full px-3 py-2.5 flex items-center gap-3 rounded-xl text-sm font-bold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800 transition-all"
