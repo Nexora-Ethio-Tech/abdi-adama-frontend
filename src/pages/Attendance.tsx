@@ -21,6 +21,10 @@ interface StaffAttendanceRecord {
   status: StaffAttendanceStatus;
   signInTime?: string;
   signOutTime?: string;
+  zkDeviceId?: number;
+  role?: string;
+  isBiometric?: boolean;
+  classes?: number;
 }
 
 export const Attendance = () => {
@@ -76,19 +80,58 @@ export const Attendance = () => {
     fetchStudents();
   }, [selectedGrade, attendanceMode]);
 
+  // Fetch staff attendance from backend (biometric & manually logged ZKTeco devices)
   useEffect(() => {
-    const staffRecords: StaffAttendanceRecord[] = mockTeachers.map((teacher) => ({
-      id: teacher.id,
-      name: teacher.name,
-      branch: teacher.branch,
-      department: teacher.department,
-      subjects: teacher.subjects,
-      status: teacher.isInClass ? 'Present' : 'Absent',
-      signInTime: teacher.isInClass ? '08:05 AM' : undefined,
-      signOutTime: teacher.isInClass ? undefined : undefined,
-    }));
-    setStaffAttendance(staffRecords);
-  }, []);
+    if (attendanceMode !== 'staff') return;
+
+    const fetchStaff = async () => {
+      setLoading(true);
+      try {
+        const endpoint = isVP ? '/vice-principal/staff-attendance' : '/school-admin/staff-attendance';
+        const response = await api.get(endpoint, {
+          params: { date: selectedDate }
+        });
+        if (response.data && response.data.success) {
+          const mappedRecords: StaffAttendanceRecord[] = response.data.data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            branch: item.branch_name || 'Main',
+            department: item.department || (item.role === 'teacher' ? 'Academics' : item.role),
+            subjects: item.subjects || [],
+            status: item.attendance_status === 'Present' ? 'Present' : 'Absent',
+            signInTime: item.sign_in_time || undefined,
+            signOutTime: item.sign_out_time || undefined,
+            zkDeviceId: item.zk_device_id,
+            role: item.role,
+            isBiometric: item.is_biometric,
+            classes: item.classes_count || 0
+          }));
+          setStaffAttendance(mappedRecords);
+        }
+      } catch (error) {
+        console.error('Failed to fetch staff attendance:', error);
+        // Fall back to mock data
+        const staffRecords: StaffAttendanceRecord[] = mockTeachers.map((teacher) => ({
+          id: teacher.id,
+          name: teacher.name,
+          branch: teacher.branch,
+          department: teacher.department,
+          subjects: teacher.subjects,
+          status: teacher.isInClass ? 'Present' : 'Absent',
+          signInTime: teacher.isInClass ? '08:05 AM' : undefined,
+          signOutTime: teacher.isInClass ? undefined : undefined,
+          zkDeviceId: undefined,
+          role: 'teacher',
+          isBiometric: false,
+          classes: teacher.classes || 3
+        }));
+        setStaffAttendance(staffRecords);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStaff();
+  }, [selectedDate, attendanceMode, isVP]);
 
   const toggleStatus = (studentId: string, status: 'present' | 'absent') => {
     setAttendance(prev => ({
@@ -165,11 +208,11 @@ export const Attendance = () => {
     setIsProxyAnalysisRunning(true);
     setProxySuggestions([]);
     window.setTimeout(() => {
-      const suggestions = mockTeachers
-        .filter((teacher) => !teacher.isInClass)
+      const suggestions = staffAttendance
+        .filter((record) => record.status === 'Present' && record.role === 'teacher')
         .slice(0, 3)
-        .map((teacher) => `${teacher.name} (${teacher.subjects.join(', ')})`);
-      setProxySuggestions(suggestions);
+        .map((record) => `${record.name} (${record.subjects.join(', ') || 'General'})`);
+      setProxySuggestions(suggestions.length > 0 ? suggestions : ['No teachers currently checked in']);
       setIsProxyAnalysisRunning(false);
     }, 1200);
   };
@@ -254,11 +297,11 @@ export const Attendance = () => {
                   <h3 className="text-xl font-black uppercase tracking-tight text-blue-900 dark:text-blue-100">Staff Shortage Command Center</h3>
                   <p className="text-sm font-bold text-blue-600/70 dark:text-blue-400/70 mt-1 flex items-center gap-2">
                     <span className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-100 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      {mockTeachers.filter(t => !t.isInClass).length} ABSENT STAFF
+                      {staffAttendance.filter(t => t.status === 'Absent').length} ABSENT STAFF
                     </span>
                     <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                     <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      {mockTeachers.filter(t => t.isInClass).length} PRESENT
+                      {staffAttendance.filter(t => t.status === 'Present').length} PRESENT
                     </span>
                   </p>
                 </div>
@@ -284,7 +327,7 @@ export const Attendance = () => {
                   <span className="text-[10px] font-bold text-rose-500 dark:text-rose-400">Action Required</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {mockTeachers.filter(t => !t.isInClass).map((teacher) => (
+                  {staffAttendance.filter(t => t.status === 'Absent').map((teacher) => (
                     <div key={teacher.id} className="group p-5 bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-slate-100 dark:border-slate-800 hover:border-rose-200 dark:hover:border-rose-900/30 transition-all duration-300 hover:shadow-lg hover:shadow-rose-500/5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -294,11 +337,9 @@ export const Attendance = () => {
                           <div>
                             <p className="text-sm font-black text-slate-800 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{teacher.name}</p>
                             <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 rounded text-[9px] font-black uppercase tracking-wider">{teacher.subjects[0]}</span>
+                              <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400 rounded text-[9px] font-black uppercase tracking-wider">{teacher.subjects[0] || teacher.department || 'Staff'}</span>
                               <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                              <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded text-[9px] font-black uppercase tracking-wider">Impact: 3 Classes</span>
-                              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-                              <span className="text-[9px] font-bold text-slate-400">10A, 11B, 9C</span>
+                              <span className="px-2 py-0.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded text-[9px] font-black uppercase tracking-wider">Impact: {teacher.classes || 3} Classes</span>
                             </div>
                           </div>
                         </div>
@@ -666,13 +707,13 @@ export const Attendance = () => {
               <table className="w-full text-left">
                 <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Teacher</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Department</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Staff Member</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Role / Dept</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Status</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-In</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-Out</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Action</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Verification & ZK ID</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -685,7 +726,11 @@ export const Attendance = () => {
                           </div>
                           <div>
                             <p className="font-bold text-slate-800 dark:text-slate-100">{record.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{record.subjects.join(', ')}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              {record.subjects && record.subjects.length > 0
+                                ? record.subjects.join(', ')
+                                : record.role ? record.role.replace('-', ' ').toUpperCase() : 'Staff'}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -699,23 +744,30 @@ export const Attendance = () => {
                       <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signInTime ?? 'Not signed in'}</td>
                       <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signOutTime ?? 'Pending'}</td>
                       <td className="px-6 py-4 text-right">
-                        {record.signInTime ? (
-                          <button
-                            type="button"
-                            onClick={() => handleStaffSignOut(record.id)}
-                            className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-wider hover:bg-slate-800"
-                          >
-                            Sign Out
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleStaffSignIn(record.id)}
-                            className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-500"
-                          >
-                            Sign In
-                          </button>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {record.zkDeviceId ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100 dark:border-blue-900/20">
+                              ZK ID: {record.zkDeviceId}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                              No Device Linked
+                            </span>
+                          )}
+                          {record.isBiometric ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/20">
+                              Biometric Verified
+                            </span>
+                          ) : record.signInTime ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-900/20">
+                              Manual Entry
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-rose-100 dark:border-rose-900/20">
+                              No Punch
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -767,7 +819,7 @@ export const Attendance = () => {
                   Eligible Substitutes
                 </h4>
                 <div className="grid grid-cols-1 gap-3">
-                  {mockTeachers.filter(t => !t.isInClass && t.id !== absentTeacher?.id).map((teacher) => (
+                  {staffAttendance.filter(t => t.status === 'Present' && t.role === 'teacher' && t.id !== absentTeacher?.id).map((teacher) => (
                     <div key={teacher.id} className="flex items-center justify-between p-4 border border-slate-100 dark:border-slate-800 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center font-bold">
@@ -775,7 +827,7 @@ export const Attendance = () => {
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-800 dark:text-white">{teacher.name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase">{teacher.subjects.join(', ')}</p>
+                          <p className="text-[10px] text-slate-400 font-medium uppercase">{teacher.subjects.join(', ') || 'General'}</p>
                         </div>
                       </div>
                       <button type="button" className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold opacity-0 group-hover:opacity-100 transition-all">
