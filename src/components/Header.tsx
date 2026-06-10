@@ -55,7 +55,6 @@ export const Header = ({ title, onMenuClick }: HeaderProps) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
   };
 
   const handleChangePassword = () => {

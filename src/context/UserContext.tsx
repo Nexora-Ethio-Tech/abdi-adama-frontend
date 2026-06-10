@@ -346,6 +346,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      console.log("START");
       const token = localStorage.getItem('abdi_adama_token');
       if (token) {
         const { default: api } = await import('../services/api');
@@ -359,6 +360,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem('abdi_adama_user');
       localStorage.removeItem('abdi_adama_token');
       localStorage.removeItem('abdi_adama_refresh_token');
+      window.location.href = '/';
     }
   };
 
