@@ -313,6 +313,11 @@ export const promoteTeacher = async (
   return response.data;
 };
 
+export const removeTeacherPromotion = async (userId: string) => {
+  const response = await api.delete(`/school-admin/users/${userId}/promote`);
+  return response.data;
+};
+
 // Student Management
 export const updateUser = async (userId: string, data: { name?: string; email?: string; grade?: string; parentPhone?: string }) => {
   const response = await api.patch(`/school-admin/users/${userId}`, data);

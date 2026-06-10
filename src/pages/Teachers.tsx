@@ -3,7 +3,7 @@ import PhoneInput from '../components/PhoneInput';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher, promoteTeacher, updateUser, resetUserPIN } from '../services/schoolAdminService';
+import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher, promoteTeacher, updateUser, resetUserPIN, removeTeacherPromotion } from '../services/schoolAdminService';
 import classService from '../services/classService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService, { CourseWithGrade } from '../services/subjectService';
@@ -1456,6 +1456,30 @@ export const Teachers = () => {
                 >
                   Cancel
                 </button>
+                {promotionTarget?.staffProfile?.promotion && (
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('Are you sure you want to remove this teacher\'s promotion?')) {
+                        setPromoting(true);
+                        try {
+                          await removeTeacherPromotion(promotionTarget.userId);
+                          setShowPromoteModal(false);
+                          setPromotionTarget(null);
+                          fetchTeachers();
+                        } catch (err: any) {
+                          console.error('Failed to remove promotion:', err);
+                          alert(err.response?.data?.error?.message || 'Failed to remove promotion');
+                        } finally {
+                          setPromoting(false);
+                        }
+                      }
+                    }}
+                    className="flex-1 bg-rose-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-rose-700 disabled:opacity-50 text-sm"
+                    disabled={promoting}
+                  >
+                    {promoting ? 'Removing...' : 'Remove Promotion'}
+                  </button>
+                )}
                 <button
                   onClick={async () => {
                     setPromoting(true);
@@ -1483,7 +1507,7 @@ export const Teachers = () => {
                       setPromoting(false);
                     }
                   }}
-                  className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50"
+                  className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 text-sm"
                   disabled={promoting}
                 >
                   {promoting ? 'Promoting...' : promotionTarget?.staffProfile?.promotion ? 'Save Promotion' : 'Promote Teacher'}
