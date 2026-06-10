@@ -1288,11 +1288,29 @@ export const TeacherPortal = () => {
                                 <button onClick={async () => {
                                   const submittedPlan = { ...plan, status: 'Pending', teacher_name: user?.name || 'Assigned Teacher', teacherName: user?.name || 'Assigned Teacher' };
                                   try {
-                                    await updateWeeklyPlan(plan.id, { ...plan, status: 'Pending' });
+                                    const payload = {
+                                      date: plan.date?.slice(0, 10) || '',
+                                      content: plan.content || '',
+                                      objectives: plan.objectives || '',
+                                      teacherActivity: plan.teacher_activity || plan.teacherActivity || '',
+                                      timeDuration: plan.time_duration || plan.timeDuration || '',
+                                      studentActivity: plan.student_activity || plan.studentActivity || '',
+                                      teachingMethod: plan.teaching_method || plan.teachingMethod || '',
+                                      teachingAids: plan.teaching_aids || plan.teachingAids || '',
+                                      evaluation: plan.evaluation || '',
+                                      remark: plan.remark || '',
+                                      status: 'Pending',
+                                      courseId: plan.course_id || plan.courseId || '',
+                                      subject: plan.subject || '',
+                                      deptHeadId: plan.dept_head_id || plan.deptHeadId || '',
+                                      weekNumber: plan.week_number || plan.weekNumber || 1
+                                    };
+                                    await updateWeeklyPlan(plan.id, payload);
                                     showToast('Plan submitted to Department Head!', 'success');
                                     const updatedPlans = await getMyWeeklyPlans();
                                     setPlans(Array.isArray(updatedPlans) ? updatedPlans : []);
-                                  } catch {
+                                  } catch (err) {
+                                    console.error("Submission error:", err);
                                     // Simulation fallback — always works offline
                                   }
                                   // Always update local state so it's visible immediately
