@@ -558,7 +558,9 @@ export const TeacherPortal = () => {
       const planList = await getMyWeeklyPlans();
       setPlans(Array.isArray(planList) ? planList : []);
     } catch (err: any) {
-      console.warn('Backend failed, falling back to local simulation:', err);
+      const msg = err?.message || 'Failed to save plan. Please try again.';
+      showToast(msg, 'error');
+      console.error('handleSavePlan error:', err);
 
       const targetId = editingPlan?.id || 'sim-' + Date.now();
       const updatedPlan = {
@@ -1321,6 +1323,11 @@ export const TeacherPortal = () => {
                                   Edit
                                 </button>
                                 <button onClick={async () => {
+                                  // Guard: sim-IDs mean the plan was never saved to DB — user must open modal and save properly
+                                  if (!plan.id || String(plan.id).startsWith('sim-')) {
+                                    showToast('Please open and re-save the plan as a Draft first before submitting.', 'error');
+                                    return;
+                                  }
                                   const submittedPlan = { ...plan, status: 'Pending', teacher_name: user?.name || 'Assigned Teacher', teacherName: user?.name || 'Assigned Teacher' };
                                   try {
                                     const payload = {
@@ -1334,7 +1341,7 @@ export const TeacherPortal = () => {
                                       teachingAids: plan.teaching_aids || plan.teachingAids || '',
                                       evaluation: plan.evaluation || '',
                                       remark: plan.remark || '',
-                                      status: 'Pending',
+                                      status: 'Pending' as const,
                                       courseId: plan.course_id || plan.courseId || '',
                                       subject: plan.subject || '',
                                       deptHeadId: plan.dept_head_id || plan.deptHeadId || '',
@@ -1344,18 +1351,18 @@ export const TeacherPortal = () => {
                                     showToast('Plan submitted to Department Head!', 'success');
                                     const updatedPlans = await getMyWeeklyPlans();
                                     setPlans(Array.isArray(updatedPlans) ? updatedPlans : []);
-                                  } catch (err) {
-                                    console.error("Submission error:", err);
-                                    // Simulation fallback — always works offline
+                                  } catch (err: any) {
+                                    const msg = err?.message || 'Submission failed. Please try again.';
+                                    showToast(msg, 'error');
+                                    console.error('Submission error:', err);
                                   }
-                                  // Always update local state so it's visible immediately
+                                  // Optimistically update local state regardless of API result
                                   setPlans(prev => prev.map(p => p.id === plan.id ? submittedPlan : p));
                                   setDeptPlans(prev => {
                                     const exists = prev.some(p => p.id === plan.id);
                                     if (exists) return prev.map(p => p.id === plan.id ? submittedPlan : p);
-                                    return [submittedPlan, ...prev]; // Add if not yet in dept queue
+                                    return [submittedPlan, ...prev];
                                   });
-                                  showToast('Plan submitted to Department Head!', 'success');
                                 }}
                                   className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold hover:bg-emerald-200 transition-colors flex items-center gap-1">
                                   <CheckCircle2 size={14} /> Submit

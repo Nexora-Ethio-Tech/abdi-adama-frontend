@@ -145,6 +145,10 @@ export const updateWeeklyPlan = async (planId: string, data: {
   evaluation?: string;
   remark?: string;
   status?: 'Draft' | 'Pending';
+  courseId?: string;
+  subject?: string;
+  deptHeadId?: string;
+  weekNumber?: number;
 }) => {
   const response = await api.post(`/teacher/weekly-plans/${planId}`, data);
   return response.data;
@@ -279,7 +283,7 @@ export const getDeptPlans = async (status?: string) => {
 };
 
 export const reviewDeptPlan = async (planId: string, data: { status: string; feedback?: string; rating?: number }) => {
-  const response = await api.patch(`/teacher/dept-plans/${planId}/review`, data);
+  const response = await api.post(`/teacher/dept-plans/${planId}/review`, data);
   return response.data;
 };
 
