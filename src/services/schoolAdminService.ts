@@ -292,11 +292,19 @@ export const deleteTeacher = async (userId: string) => {
   return response.data;
 };
 
-// Promote a teacher to a new responsibility/role
 export const promoteTeacher = async (
   userId: string,
   data: {
-    promotionType: 'home-teacher' | 'before-school-educator' | 'head-of-department';
+    promotionType?: 'home-teacher' | 'before-school-educator' | 'head-of-department';
+    roles?: string[];
+    headOfDepartment?: {
+      grades?: string[];
+      subjects?: string[];
+    };
+    homeTeacher?: {
+      grades?: string[];
+      sections?: Record<string, string[]>;
+    };
     subjects?: string[];
     grades?: string[];
     sections?: Record<string, string[]>;

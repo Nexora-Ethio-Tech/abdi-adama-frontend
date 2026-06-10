@@ -122,10 +122,11 @@ export const Teachers = () => {
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promotionTarget, setPromotionTarget] = useState<any | null>(null);
   const [promotionForm, setPromotionForm] = useState<{
-    promotionType: 'home-teacher' | 'before-school-educator' | 'head-of-department';
-    subjects: string[];
-    grades: string[];
-    sectionsByGrade: Record<string, string[]>;
+    roles: string[];
+    hodGrades: string[];
+    hodSubjects: string[];
+    htGrades: string[];
+    htSectionsByGrade: Record<string, string[]>;
     beforeSchool: {
       days: string[];
       startTime: string;
@@ -134,10 +135,11 @@ export const Teachers = () => {
       extraPayAmount?: string;
     };
   }>({
-    promotionType: 'home-teacher',
-    subjects: [],
-    grades: [],
-    sectionsByGrade: {},
+    roles: [],
+    hodGrades: [],
+    hodSubjects: [],
+    htGrades: [],
+    htSectionsByGrade: {},
     beforeSchool: {
       days: [],
       startTime: '07:00',
@@ -152,10 +154,11 @@ export const Teachers = () => {
   const [allCoursesWithGrade, setAllCoursesWithGrade] = useState<CourseWithGrade[]>([]);
 
   const getDefaultPromotionForm = () => ({
-    promotionType: 'home-teacher' as const,
-    subjects: [] as string[],
-    grades: [] as string[],
-    sectionsByGrade: {} as Record<string, string[]>,
+    roles: [] as string[],
+    hodGrades: [] as string[],
+    hodSubjects: [] as string[],
+    htGrades: [] as string[],
+    htSectionsByGrade: {} as Record<string, string[]>,
     beforeSchool: {
       days: [] as string[],
       startTime: '07:00',
@@ -168,19 +171,34 @@ export const Teachers = () => {
   const getPromotionFormFromProfile = (promotion: any) => {
     if (!promotion) return getDefaultPromotionForm();
 
+    const activeRoles = promotion.roles || (promotion.promotionType ? [promotion.promotionType] : []);
+    const hod = promotion.headOfDepartment || (activeRoles.includes('head-of-department') ? promotion : {});
+    const ht = promotion.homeTeacher || (activeRoles.includes('home-teacher') ? promotion : {});
+    const bs = promotion.beforeSchool || (activeRoles.includes('before-school-educator') ? promotion.beforeSchool : {});
+
     return {
-      promotionType: promotion.promotionType || 'home-teacher',
-      subjects: promotion.subjects || [],
-      grades: promotion.grades || [],
-      sectionsByGrade: promotion.sections || {},
+      roles: activeRoles,
+      hodGrades: hod.grades || [],
+      hodSubjects: hod.subjects || [],
+      htGrades: ht.grades || [],
+      htSectionsByGrade: ht.sections || {},
       beforeSchool: {
-        days: promotion.beforeSchool?.days || [],
-        startTime: promotion.beforeSchool?.startTime || '07:00',
-        endTime: promotion.beforeSchool?.endTime || '08:00',
-        useConfiguredRate: promotion.beforeSchool?.useConfiguredRate ?? true,
-        extraPayAmount: promotion.beforeSchool?.extraPayAmount != null ? String(promotion.beforeSchool.extraPayAmount) : ''
+        days: bs?.days || [],
+        startTime: bs?.startTime || '07:00',
+        endTime: bs?.endTime || '08:00',
+        useConfiguredRate: bs?.useConfiguredRate ?? true,
+        extraPayAmount: bs?.extraPayAmount != null ? String(bs.extraPayAmount) : ''
       }
     };
+  };
+
+  const isTeacherPromoted = (teacher: any) => {
+    const promo = teacher.staffProfile?.promotion;
+    if (!promo) return false;
+    if (Array.isArray(promo.roles)) {
+      return promo.roles.length > 0;
+    }
+    return !!promo.promotionType;
   };
 
   useEffect(() => {
@@ -774,10 +792,10 @@ export const Teachers = () => {
                                 await fetchClasses(teacher.branchId);
                                 setShowPromoteModal(true);
                               }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${teacher.staffProfile?.promotion ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
-                              title={teacher.staffProfile?.promotion ? 'Edit promotion' : 'Promote'}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${isTeacherPromoted(teacher) ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                              title={isTeacherPromoted(teacher) ? 'Edit promotion' : 'Promote'}
                             >
-                              {teacher.staffProfile?.promotion ? 'Promoted' : 'Promote'}
+                              {isTeacherPromoted(teacher) ? 'Promoted' : 'Promote'}
                             </button>
                             <button
                               onClick={() => openEditModal(teacher)}
@@ -1177,49 +1195,84 @@ export const Teachers = () => {
                 <X size={20} />
               </button>
             </div>
-
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase">Promotion Type</label>
-                <select
-                  title="Select promotion type"
-                  value={promotionForm.promotionType}
-                  onChange={(e) => setPromotionForm({ ...promotionForm, promotionType: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="home-teacher">Home Teacher (takes attendance for assigned sections)</option>
-                  <option value="before-school-educator">Before-school Educator (extra pay configured by super-admin)</option>
-                  <option value="head-of-department">Head of Department (manage subjects for selected grades)</option>
-                </select>
+                <label className="text-xs font-bold text-slate-500 uppercase">Promotion Roles</label>
+                <div className="flex flex-col gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={promotionForm.roles.includes('home-teacher')}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setPromotionForm(prev => {
+                          const nextRoles = checked ? [...prev.roles, 'home-teacher'] : prev.roles.filter(r => r !== 'home-teacher');
+                          return { ...prev, roles: nextRoles };
+                        });
+                      }}
+                      className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <span>Home Teacher (takes attendance for assigned sections)</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={promotionForm.roles.includes('head-of-department')}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setPromotionForm(prev => {
+                          const nextRoles = checked ? [...prev.roles, 'head-of-department'] : prev.roles.filter(r => r !== 'head-of-department');
+                          return { ...prev, roles: nextRoles };
+                        });
+                      }}
+                      className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <span>Head of Department (manage subjects for selected grades)</span>
+                  </label>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={promotionForm.roles.includes('before-school-educator')}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setPromotionForm(prev => {
+                          const nextRoles = checked ? [...prev.roles, 'before-school-educator'] : prev.roles.filter(r => r !== 'before-school-educator');
+                          return { ...prev, roles: nextRoles };
+                        });
+                      }}
+                      className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <span>Before-school Educator (extra pay configured by super-admin)</span>
+                  </label>
+                </div>
               </div>
 
-              {promotionForm.promotionType === 'head-of-department' && (
-                <div className="space-y-4">
-                  {/* STEP 1: Select Grades */}
+              {promotionForm.roles.includes('head-of-department') && (
+                <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Head of Department Settings</h4>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase">Step 1 — Select Grades</label>
                     <p className="text-xs text-slate-500">Choose which grades this department head will oversee.</p>
                     <MultiSelectDropdown
                       options={allGrades}
-                      selectedValues={promotionForm.grades}
+                      selectedValues={promotionForm.hodGrades}
                       placeholder="Select Grades"
                       shortDisplay={true}
                       onChange={(g, checked) => {
                         setPromotionForm(prev => {
-                          const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
-                          // Clear subjects that no longer match any selected grade
+                          const nextGrades = checked ? [...prev.hodGrades, g] : prev.hodGrades.filter(x => x !== g);
                           const allowed = new Set(nextGrades);
-                          const nextSubjects = prev.subjects.filter(sname => {
+                          const nextSubjects = prev.hodSubjects.filter(sname => {
                             const s = allSubjects.find(sub => sub.name === sname);
                             return s ? allowed.has(s.gradeLevel) : false;
                           });
-                          return { ...prev, grades: nextGrades, subjects: nextSubjects };
+                          return { ...prev, hodGrades: nextGrades, hodSubjects: nextSubjects };
                         });
                       }}
                     />
-                    {promotionForm.grades.length > 0 && (
+                    {promotionForm.hodGrades.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {promotionForm.grades.map(g => (
+                        {promotionForm.hodGrades.map(g => (
                           <span key={g} className="px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-xs font-semibold rounded-full border border-indigo-200 dark:border-indigo-700">
                             {g}
                           </span>
@@ -1228,16 +1281,12 @@ export const Teachers = () => {
                     )}
                   </div>
 
-                  {/* STEP 2: Select Courses filtered by selected grades (from real DB courses table) */}
-                  {promotionForm.grades.length > 0 && (() => {
-                    // Normalize grade labels for comparison (e.g. "10" -> "Grade 10", "Grade 10" -> "Grade 10")
+                  {promotionForm.hodGrades.length > 0 && (() => {
                     const normalizeGrade = (g: string) => {
                       const trimmed = g.trim();
                       return /^\d+$/.test(trimmed) ? `Grade ${trimmed}` : trimmed;
                     };
-                    const selectedGradeSet = new Set(promotionForm.grades.map(normalizeGrade));
-
-                    // Filter courses from the DB that match selected grades
+                    const selectedGradeSet = new Set(promotionForm.hodGrades.map(normalizeGrade));
                     const filteredCourseNames = Array.from(
                       new Set(
                         allCoursesWithGrade
@@ -1245,9 +1294,7 @@ export const Teachers = () => {
                           .map(c => c.name)
                       )
                     ).sort();
-
-                    // Fallback: if no DB courses found, try subjects table
-                    const gradeSet = new Set(promotionForm.grades);
+                    const gradeSet = new Set(promotionForm.hodGrades);
                     const fallbackNames = Array.from(
                       new Set(
                         allSubjects
@@ -1255,7 +1302,6 @@ export const Teachers = () => {
                           .map((s: any) => s.name)
                       )
                     );
-
                     const courseNames = filteredCourseNames.length > 0 ? filteredCourseNames : fallbackNames;
                     const usingFallback = filteredCourseNames.length === 0 && fallbackNames.length > 0;
 
@@ -1275,20 +1321,20 @@ export const Teachers = () => {
                           <>
                             <MultiSelectDropdown
                               options={courseNames as string[]}
-                              selectedValues={promotionForm.subjects}
+                              selectedValues={promotionForm.hodSubjects}
                               placeholder="Select Courses / Subjects"
                               shortDisplay={true}
                               onChange={(subName, checked) => {
                                 setPromotionForm(prev => {
-                                  const next = new Set(prev.subjects || []);
+                                  const next = new Set(prev.hodSubjects || []);
                                   if (checked) next.add(subName); else next.delete(subName);
-                                  return { ...prev, subjects: Array.from(next) };
+                                  return { ...prev, hodSubjects: Array.from(next) };
                                 });
                               }}
                             />
-                            {promotionForm.subjects.length > 0 && (
+                            {promotionForm.hodSubjects.length > 0 && (
                               <div className="flex flex-wrap gap-2 pt-1">
-                                {promotionForm.subjects.map(s => (
+                                {promotionForm.hodSubjects.map(s => (
                                   <span key={s} className="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-full border border-emerald-200 dark:border-emerald-700">
                                     {s}
                                   </span>
@@ -1303,29 +1349,30 @@ export const Teachers = () => {
                 </div>
               )}
 
-              {promotionForm.promotionType === 'home-teacher' && (
-                <div className="space-y-3">
+              {promotionForm.roles.includes('home-teacher') && (
+                <div className="space-y-3 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Home Teacher Settings</h4>
                   <p className="text-sm text-slate-600">Select grades and sections this teacher will be head of (optional, multi-select).</p>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase">Grades</label>
                     <MultiSelectDropdown
                       options={allGrades}
-                      selectedValues={promotionForm.grades}
+                      selectedValues={promotionForm.htGrades}
                       placeholder="Select Grades"
                       shortDisplay={true}
                       onChange={(g, checked) => {
                         setPromotionForm(prev => {
-                          const nextGrades = checked ? [...prev.grades, g] : prev.grades.filter(x => x !== g);
-                          const nextSectionsByGrade = { ...(prev.sectionsByGrade || {}) };
+                          const nextGrades = checked ? [...prev.htGrades, g] : prev.htGrades.filter(x => x !== g);
+                          const nextSectionsByGrade = { ...(prev.htSectionsByGrade || {}) };
                           if (!checked) delete nextSectionsByGrade[g];
-                          return { ...prev, grades: nextGrades, sectionsByGrade: nextSectionsByGrade };
+                          return { ...prev, htGrades: nextGrades, htSectionsByGrade: nextSectionsByGrade };
                         });
                       }}
                     />
                   </div>
-                  {promotionForm.grades.length > 0 && (
+                  {promotionForm.htGrades.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {promotionForm.grades.map(g => (
+                      {promotionForm.htGrades.map(g => (
                         <span key={g} className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-full border border-slate-200 dark:border-slate-700">
                           {g}
                         </span>
@@ -1333,30 +1380,31 @@ export const Teachers = () => {
                     </div>
                   )}
 
-                  {promotionForm.grades.map((g) => (
+                  {promotionForm.htGrades.map((g) => (
                     <div key={g} className="space-y-1">
                       <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">{g}</div>
                       <div className="flex flex-wrap gap-2 pt-1">
                         {(sectionsMap[g] && sectionsMap[g].length > 0) ? (
                           sectionsMap[g].map((s) => {
-                            const selected = (promotionForm.sectionsByGrade && promotionForm.sectionsByGrade[g] || []).includes(s);
+                            const selected = (promotionForm.htSectionsByGrade && promotionForm.htSectionsByGrade[g] || []).includes(s);
                             return (
-                              <label key={s} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
+                              <label key={s} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={selected}
                                   onChange={(e) => {
                                     const checked = e.target.checked;
                                     setPromotionForm(prev => {
-                                      const sbg = { ...(prev.sectionsByGrade || {}) };
+                                      const sbg = { ...(prev.htSectionsByGrade || {}) };
                                       const arr = sbg[g] ? [...sbg[g]] : [];
                                       if (checked) arr.push(s); else {
                                         const idx = arr.indexOf(s); if (idx >= 0) arr.splice(idx, 1);
                                       }
                                       sbg[g] = arr;
-                                      return { ...prev, sectionsByGrade: sbg };
+                                      return { ...prev, htSectionsByGrade: sbg };
                                     });
                                   }}
+                                  className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
                                 />
                                 <span>{s}</span>
                               </label>
@@ -1369,15 +1417,16 @@ export const Teachers = () => {
                 </div>
               )}
 
-              {promotionForm.promotionType === 'before-school-educator' && (
-                <div className="space-y-3">
+              {promotionForm.roles.includes('before-school-educator') && (
+                <div className="space-y-3 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50/50 dark:bg-slate-800/30">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Before-school Educator Settings</h4>
                   <p className="text-sm text-slate-600">Configure before-school educator assignments and extra pay.</p>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Days</label>
                     <div className="flex flex-wrap gap-2">
                       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((d) => (
-                        <label key={d} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm">
+                        <label key={d} className="inline-flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm cursor-pointer">
                           <input
                             type="checkbox"
                             checked={promotionForm.beforeSchool.days.includes(d)}
@@ -1389,6 +1438,7 @@ export const Teachers = () => {
                                 return { ...prev, beforeSchool: { ...prev.beforeSchool, days: Array.from(days) } };
                               });
                             }}
+                            className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
                           />
                           <span>{d}</span>
                         </label>
@@ -1404,7 +1454,7 @@ export const Teachers = () => {
                         title="Start time for before-school session"
                         value={promotionForm.beforeSchool.startTime}
                         onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, startTime: e.target.value } }))}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1414,7 +1464,7 @@ export const Teachers = () => {
                         title="End time for before-school session"
                         value={promotionForm.beforeSchool.endTime}
                         onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, endTime: e.target.value } }))}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm"
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                       />
                     </div>
                   </div>
@@ -1422,13 +1472,14 @@ export const Teachers = () => {
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Pay Rate</label>
                     <div className="flex items-center gap-3">
-                      <label className="inline-flex items-center gap-2">
+                      <label className="inline-flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={promotionForm.beforeSchool.useConfiguredRate}
                           onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, useConfiguredRate: e.target.checked } }))}
+                          className="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 w-4 h-4"
                         />
-                        Use super-admin configured rate
+                        <span>Use super-admin configured rate</span>
                       </label>
                     </div>
                   </div>
@@ -1441,78 +1492,83 @@ export const Teachers = () => {
                       value={promotionForm.beforeSchool.extraPayAmount || ''}
                       onChange={(e) => setPromotionForm(prev => ({ ...prev, beforeSchool: { ...prev.beforeSchool, extraPayAmount: e.target.value } }))}
                       disabled={promotionForm.beforeSchool.useConfiguredRate}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm"
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                       placeholder="Leave empty to use configured rate"
                     />
                   </div>
                 </div>
               )}
+            </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowPromoteModal(false)}
-                  className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50"
-                  disabled={promoting}
-                >
-                  Cancel
-                </button>
-                {promotionTarget?.staffProfile?.promotion && (
-                  <button
-                    onClick={async () => {
-                      if (window.confirm('Are you sure you want to remove this teacher\'s promotion?')) {
-                        setPromoting(true);
-                        try {
-                          await removeTeacherPromotion(promotionTarget.userId);
-                          setShowPromoteModal(false);
-                          setPromotionTarget(null);
-                          fetchTeachers();
-                        } catch (err: any) {
-                          console.error('Failed to remove promotion:', err);
-                          alert(err.response?.data?.error?.message || 'Failed to remove promotion');
-                        } finally {
-                          setPromoting(false);
-                        }
-                      }
-                    }}
-                    className="flex-1 bg-rose-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-rose-700 disabled:opacity-50 text-sm"
-                    disabled={promoting}
-                  >
-                    {promoting ? 'Removing...' : 'Remove Promotion'}
-                  </button>
-                )}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => setShowPromoteModal(false)}
+                className="flex-1 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800"
+                disabled={promoting}
+              >
+                Cancel
+              </button>
+              {promotionTarget?.staffProfile?.promotion && (
                 <button
                   onClick={async () => {
-                    setPromoting(true);
-                    try {
-                      await promoteTeacher(promotionTarget.userId, {
-                        promotionType: promotionForm.promotionType,
-                        grades: promotionForm.grades,
-                        subjects: promotionForm.subjects,
-                        sections: promotionForm.sectionsByGrade,
-                        beforeSchool: {
-                          days: promotionForm.beforeSchool.days,
-                          startTime: promotionForm.beforeSchool.startTime,
-                          endTime: promotionForm.beforeSchool.endTime,
-                          useConfiguredRate: promotionForm.beforeSchool.useConfiguredRate,
-                          extraPayAmount: promotionForm.beforeSchool.extraPayAmount ? Number(promotionForm.beforeSchool.extraPayAmount) : undefined
-                        }
-                      });
-                      setShowPromoteModal(false);
-                      setPromotionTarget(null);
-                      fetchTeachers();
-                    } catch (err: any) {
-                      console.error('Promotion failed:', err);
-                      alert(err.response?.data?.error?.message || 'Promotion failed. Ensure backend route is implemented');
-                    } finally {
-                      setPromoting(false);
+                    if (window.confirm('Are you sure you want to remove this teacher\'s promotion?')) {
+                      setPromoting(true);
+                      try {
+                        await removeTeacherPromotion(promotionTarget.userId);
+                        setShowPromoteModal(false);
+                        setPromotionTarget(null);
+                        fetchTeachers();
+                      } catch (err: any) {
+                        console.error('Failed to remove promotion:', err);
+                        alert(err.response?.data?.error?.message || 'Failed to remove promotion');
+                      } finally {
+                        setPromoting(false);
+                      }
                     }
                   }}
-                  className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                  className="flex-1 bg-rose-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-rose-700 disabled:opacity-50 text-sm"
                   disabled={promoting}
                 >
-                  {promoting ? 'Promoting...' : promotionTarget?.staffProfile?.promotion ? 'Save Promotion' : 'Promote Teacher'}
+                  {promoting ? 'Removing...' : 'Remove Promotion'}
                 </button>
-              </div>
+              )}
+              <button
+                onClick={async () => {
+                  setPromoting(true);
+                  try {
+                    await promoteTeacher(promotionTarget.userId, {
+                      roles: promotionForm.roles,
+                      headOfDepartment: {
+                        grades: promotionForm.hodGrades,
+                        subjects: promotionForm.hodSubjects
+                      },
+                      homeTeacher: {
+                        grades: promotionForm.htGrades,
+                        sections: promotionForm.htSectionsByGrade
+                      },
+                      beforeSchool: {
+                        days: promotionForm.beforeSchool.days,
+                        startTime: promotionForm.beforeSchool.startTime,
+                        endTime: promotionForm.beforeSchool.endTime,
+                        useConfiguredRate: promotionForm.beforeSchool.useConfiguredRate,
+                        extraPayAmount: promotionForm.beforeSchool.extraPayAmount ? Number(promotionForm.beforeSchool.extraPayAmount) : undefined
+                      }
+                    });
+                    setShowPromoteModal(false);
+                    setPromotionTarget(null);
+                    fetchTeachers();
+                  } catch (err: any) {
+                    console.error('Promotion failed:', err);
+                    alert(err.response?.data?.error?.message || 'Promotion failed.');
+                  } finally {
+                    setPromoting(false);
+                  }
+                }}
+                className="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-indigo-700 disabled:opacity-50 text-sm"
+                disabled={promoting}
+              >
+                {promoting ? 'Saving...' : promotionTarget?.staffProfile?.promotion ? 'Save Promotion' : 'Promote Teacher'}
+              </button>
             </div>
           </div>
         </div>
