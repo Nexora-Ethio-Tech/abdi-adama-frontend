@@ -47,6 +47,8 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
   const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [selectedDayEvents, setSelectedDayEvents] = useState<any[] | null>(null);
+  const [selectedDayNumber, setSelectedDayNumber] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     title: '', date: '', type: 'Academic', description: '', branchId: ''
@@ -241,7 +243,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
             {/* Day grid */}
             <div className="grid grid-cols-7">
               {emptyLeading.map((_, i) => (
-                <div key={`e-${i}`} className={`border-b border-r border-slate-50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-800/10 ${compact ? 'h-11 md:h-12' : 'h-24 md:h-28'}`} />
+                <div key={`e-${i}`} className={`border-b border-r border-slate-50 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-800/10 ${compact ? 'h-14 md:h-16' : 'h-24 md:h-28'}`} />
               ))}
               {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
                 const dayEvents = getEventsForDay(day);
@@ -249,9 +251,15 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 return (
                   <div
                     key={day}
+                    onClick={() => {
+                      if (dayEvents.length > 0) {
+                        setSelectedDayEvents(dayEvents);
+                        setSelectedDayNumber(day);
+                      }
+                    }}
                     className={`border-b border-r border-slate-100 dark:border-slate-800 p-1 group transition-colors ${
                       today ? 'bg-blue-50 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    } ${compact ? 'h-11 md:h-12' : 'h-24 md:h-28'}`}
+                    } ${compact ? 'h-14 md:h-16' : 'h-24 md:h-28'} ${dayEvents.length > 0 ? 'cursor-pointer' : ''}`}
                   >
                     <span className={`font-bold inline-flex items-center justify-center rounded-full ${compact ? 'text-xs w-5 h-5' : 'text-sm w-7 h-7'} ${
                       today
@@ -266,7 +274,12 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                           key={ev.id}
                           title={ev.title}
                           className={`rounded font-bold truncate cursor-pointer ${compact ? 'px-1 py-0.2 text-[8px]' : 'px-1.5 py-0.5 text-[10px]'} ${EVENT_COLORS[ev.type] ?? EVENT_COLORS.Event}`}
-                          onClick={() => canManage && openEdit(ev)}
+                          onClick={(e) => {
+                            if (canManage) {
+                              e.stopPropagation();
+                              openEdit(ev);
+                            }
+                          }}
                         >
                           {ev.title}
                         </div>
@@ -366,8 +379,8 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
       {/* Add / Edit Event Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0 bg-slate-50/50 dark:bg-slate-800/50">
               <h3 className="font-bold text-slate-800 dark:text-slate-100">
                 {editingEvent ? 'Edit Event' : 'Add New Event'}
               </h3>
@@ -381,7 +394,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 <X size={18} />
               </button>
             </div>
-            <div className="p-5 space-y-4">
+            <div className="p-5 space-y-4 flex-1 overflow-y-auto">
               {formError && (
                 <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 rounded-xl p-3 text-xs text-rose-700 dark:text-rose-300">{formError}</div>
               )}
@@ -428,7 +441,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 />
               </div>
             </div>
-            <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
+            <div className="p-5 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3 shrink-0">
               <button
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors"
@@ -443,6 +456,73 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 {editingEvent ? 'Save Changes' : 'Create Event'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Events Details Modal */}
+      {selectedDayEvents && selectedDayEvents.length > 0 && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+                Events for {ETH_MONTHS[ecMonth - 1]} {selectedDayNumber}, {ecYear} E.C.
+              </h3>
+              <button
+                type="button"
+                title="Close day events modal"
+                onClick={() => {
+                  setSelectedDayEvents(null);
+                  setSelectedDayNumber(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+              {selectedDayEvents.map(ev => (
+                <div key={ev.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-2 relative group">
+                  <div className="flex items-center justify-between">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${EVENT_COLORS[ev.type] ?? EVENT_COLORS.Event}`}>
+                      {ev.type}
+                    </span>
+                    {canManage && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          title="Edit event"
+                          onClick={() => {
+                            setSelectedDayEvents(null);
+                            setSelectedDayNumber(null);
+                            openEdit(ev);
+                          }}
+                          className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors"
+                        >
+                          <Edit size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Delete event"
+                          onClick={() => {
+                            setSelectedDayEvents(null);
+                            setSelectedDayNumber(null);
+                            handleDelete(ev.id);
+                          }}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <h4 className="font-bold text-slate-800 dark:text-slate-200 text-base">{ev.title}</h4>
+                  {ev.description && (
+                    <p className="text-sm text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{ev.description}</p>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>

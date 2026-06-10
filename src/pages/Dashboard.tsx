@@ -1064,8 +1064,8 @@ export const Dashboard = () => {
 
       {showNoticeModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">Post New Notice</h3>
               <button
                 type="button"
@@ -1076,7 +1076,7 @@ export const Dashboard = () => {
                 <X size={20} />
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={(e) => {
+            <form className="p-6 space-y-4 flex-1 overflow-y-auto" onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.currentTarget);
               addNotice({
@@ -1194,8 +1194,8 @@ export const Dashboard = () => {
 
       {showEventModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
               <h3 className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider text-sm">
                 {editingEvent ? 'Edit Event' : 'Create New Event'}
               </h3>
@@ -1212,7 +1212,7 @@ export const Dashboard = () => {
                 <X size={20} />
               </button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
+            <form className="p-6 space-y-4 flex-1 overflow-y-auto" onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}>
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-500 uppercase">Event Title</label>
                 <input
