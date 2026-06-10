@@ -1918,23 +1918,23 @@ export const ParentPortal = () => {
   );
 };
 
-// Helper function to check if a communication log is still active (visible until the following Friday morning at 9:00 AM)
+// Helper function to check if a communication log is still active (visible until Thursday evening)
+const getWeekEndingThursday = (): string => {
+  const today = new Date();
+  const day = today.getDay();
+  let diff = 4 - day;
+  if (diff < 0) {
+    diff += 7;
+  }
+  const thursday = new Date(today);
+  thursday.setDate(today.getDate() + diff);
+  const yyyy = thursday.getFullYear();
+  const mm = String(thursday.getMonth() + 1).padStart(2, '0');
+  const dd = String(thursday.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 const isLogActive = (weekEndingStr: string): boolean => {
   if (!weekEndingStr) return false;
-  const parts = weekEndingStr.split('-');
-  if (parts.length !== 3) return false;
-  const year = parseInt(parts[0], 10);
-  const month = parseInt(parts[1], 10) - 1;
-  const day = parseInt(parts[2], 10);
-  const d = new Date(year, month, day);
-  
-  // Add 4 days to push it past the current week's Friday
-  d.setDate(d.getDate() + 4);
-  // Now find the next Friday (day 5)
-  const currentDay = d.getDay();
-  const diff = (5 - currentDay + 7) % 7;
-  d.setDate(d.getDate() + diff);
-  d.setHours(9, 0, 0, 0); // Friday morning at 9:00 AM
-  
-  return new Date() < d;
+  return weekEndingStr === getWeekEndingThursday();
 };

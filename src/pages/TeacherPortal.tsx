@@ -14,7 +14,8 @@ import {
   getDeptPlans,
   reviewDeptPlan,
   submitCommunicationLog,
-  getCommunicationLogs
+  getCommunicationLogs,
+  getCommunicationLogsByWeek
 } from '../services/teacherService';
 import {
   getTeacherExams,
@@ -171,6 +172,7 @@ export const TeacherPortal = () => {
 
   // ─── Communication Book States ───────────────────────────────────────────────
   const [commSections, setCommSections] = useState<any[]>([]);
+  const [sentCommStudentIds, setSentCommStudentIds] = useState<string[]>([]);
   const [selectedCommSection, setSelectedCommSection] = useState<any | null>(null);
   const [commStudents, setCommStudents] = useState<any[]>([]);
   const [commStudentsLoading, setCommStudentsLoading] = useState(false);
@@ -327,15 +329,20 @@ export const TeacherPortal = () => {
   }, [location.search]);
 
   // ─── Communication Book Helpers ───────────────────────────────────────────────
-  const getWeekEndingSunday = (): string => {
+  const getWeekEndingThursday = (): string => {
     const today = new Date();
-    const day = today.getDay(); // 0=Sun
-    const diff = day === 0 ? 0 : 7 - day;
-    const sunday = new Date(today);
-    sunday.setDate(today.getDate() + diff);
-    const yyyy = sunday.getFullYear();
-    const mm = String(sunday.getMonth() + 1).padStart(2, '0');
-    const dd = String(sunday.getDate()).padStart(2, '0');
+    const day = today.getDay(); // 0=Sun, 1=Mon, ..., 4=Thu, 5=Fri, 6=Sat
+    // Cycle starts on Friday, ends on Thursday.
+    // If today is Fri (5), diff = 6. If Thu (4), diff = 0.
+    let diff = 4 - day;
+    if (diff < 0) {
+      diff += 7;
+    }
+    const thursday = new Date(today);
+    thursday.setDate(today.getDate() + diff);
+    const yyyy = thursday.getFullYear();
+    const mm = String(thursday.getMonth() + 1).padStart(2, '0');
+    const dd = String(thursday.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   };
 
@@ -355,6 +362,15 @@ export const TeacherPortal = () => {
   // Load homeroom sections when comm-book tab opens
   useEffect(() => {
     if (weeklyPlanSubTab !== 'communication-book') return;
+    
+    // Fetch sent communication logs for this week to mark students
+    getCommunicationLogsByWeek(getWeekEndingThursday())
+      .then(logs => {
+        const sentIds = (Array.isArray(logs) ? logs : []).map((l: any) => l.student_id || l.studentId);
+        setSentCommStudentIds(sentIds);
+      })
+      .catch(() => setSentCommStudentIds([]));
+
     getMyClasses('attendance').then(data => {
       const list = Array.isArray(data) ? data : [];
       const sections = list.map((c: any) => ({
@@ -391,7 +407,7 @@ export const TeacherPortal = () => {
     setCommLogSuccess(false);
     try {
       const logs = await getCommunicationLogs(student.id);
-      const weekEnding = getWeekEndingSunday();
+      const weekEnding = getWeekEndingThursday();
       const existing = Array.isArray(logs) ? logs.find((l: any) => l.week_ending && l.week_ending.startsWith(weekEnding)) : null;
       if (existing) {
         setCommLogForm({
@@ -414,8 +430,9 @@ export const TeacherPortal = () => {
     if (!activeCommStudent) return;
     setIsSubmittingLog(true);
     try {
-      await submitCommunicationLog({ studentId: activeCommStudent.id, weekEnding: getWeekEndingSunday(), ...commLogForm });
+      await submitCommunicationLog({ studentId: activeCommStudent.id, weekEnding: getWeekEndingThursday(), ...commLogForm });
       setCommLogSuccess(true);
+      setSentCommStudentIds(prev => [...prev, activeCommStudent.id]);
       showToast(`Communication log sent for ${activeCommStudent.name}!`, 'success');
       setTimeout(() => { setIsCommCardOpen(false); setCommLogSuccess(false); }, 1800);
     } catch {
@@ -974,12 +991,21 @@ export const TeacherPortal = () => {
                             <p className="text-sm font-bold text-slate-800 dark:text-white">{name}</p>
                             <p className="text-[10px] text-slate-400 uppercase tracking-widest">{s.sectionName} · {s.digitalId || ''}</p>
                           </div>
-                          <button
-                            onClick={() => { setGlobalCommSearch(''); openCommCard({ id, name }); }}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1"
-                          >
-                            <Send size={12} /> Talk to Parent
-                          </button>
+                          {sentCommStudentIds.includes(id) ? (
+                            <button
+                              disabled
+                              className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-black rounded-xl cursor-not-allowed flex items-center gap-1"
+                            >
+                              <CheckCircle2 size={12} /> Sent
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => { setGlobalCommSearch(''); openCommCard({ id, name }); }}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all flex items-center gap-1"
+                            >
+                              <Send size={12} /> Talk to Parent
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -1060,12 +1086,21 @@ export const TeacherPortal = () => {
                                 <p className="text-[10px] text-slate-400 uppercase tracking-wider">{s.digitalId || s.grade || '—'}</p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => openCommCard(s)}
-                              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-sm"
-                            >
-                              <Send size={13} /> Talk to Parent
-                            </button>
+                            {sentCommStudentIds.includes(s.id) ? (
+                              <button
+                                disabled
+                                className="flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-black rounded-xl cursor-not-allowed shadow-sm"
+                              >
+                                <CheckCircle2 size={13} /> Sent
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openCommCard(s)}
+                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-sm"
+                              >
+                                <Send size={13} /> Talk to Parent
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1111,7 +1146,7 @@ export const TeacherPortal = () => {
                       <div>
                         <p className="text-emerald-200 text-[10px] font-black uppercase tracking-widest">Communication Book</p>
                         <h3 className="text-white text-xl font-black mt-0.5">{activeCommStudent.name}</h3>
-                        <p className="text-emerald-200 text-xs mt-0.5">Week ending: {formatEthiopianLabel(getWeekEndingSunday())}</p>
+                        <p className="text-emerald-200 text-xs mt-0.5">Week ending: {formatEthiopianLabel(getWeekEndingThursday())}</p>
                       </div>
                       <button
                         type="button"

@@ -174,6 +174,11 @@ export const getCommunicationLogs = async (studentId: string) => {
   return response.data.data;
 };
 
+export const getCommunicationLogsByWeek = async (weekEnding: string) => {
+  const response = await api.get(`/teacher/communication-logs/week/${weekEnding}`);
+  return response.data.data;
+};
+
 // ─── TypeScript Interfaces ────────────────────────────────────────────────────
 export interface TeacherClass {
   id: string;
@@ -296,6 +301,7 @@ const teacherService = {
   updateWeeklyPlan,
   submitCommunicationLog,
   getCommunicationLogs,
+  getCommunicationLogsByWeek,
   getClassGrades,
   submitGrade,
   submitCourseGrades,
