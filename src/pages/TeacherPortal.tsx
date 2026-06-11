@@ -370,7 +370,7 @@ export const TeacherPortal = () => {
   // Load homeroom sections when comm-book tab opens
   useEffect(() => {
     if (weeklyPlanSubTab !== 'communication-book') return;
-    
+
     // Fetch sent communication logs for this week to mark students
     getCommunicationLogsByWeek(getWeekEndingThursday())
       .then(logs => {
@@ -926,8 +926,8 @@ export const TeacherPortal = () => {
                 type="button"
                 onClick={() => setWeeklyPlanSubTab('my-plans')}
                 className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${weeklyPlanSubTab === 'my-plans'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
               >
                 My Weekly Plans
@@ -936,8 +936,8 @@ export const TeacherPortal = () => {
                 type="button"
                 onClick={() => setWeeklyPlanSubTab('communication-book')}
                 className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${weeklyPlanSubTab === 'communication-book'
-                    ? 'border-emerald-600 text-emerald-600'
-                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
                   }`}
               >
                 Communication Book
@@ -1470,10 +1470,10 @@ export const TeacherPortal = () => {
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700">
                     <span
                       className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${plan.status === 'Approved'
-                          ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
-                          : plan.status === 'Revision Required'
-                            ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
-                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
+                        ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                        : plan.status === 'Revision Required'
+                          ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400'
+                          : 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
                         }`}
                     >
                       {plan.status}
@@ -1606,13 +1606,13 @@ export const TeacherPortal = () => {
                       const selectedCourseId = e.target.value;
                       const selectedCourse = myCourses.find((c: any) => c.id === selectedCourseId);
                       const newSubject = selectedCourse?.name || '';
-                      
+
                       const matchingHods = filterDeptHeadsForCourse(selectedCourseId);
                       let newDeptHeadId = '';
                       if (matchingHods.length > 0) {
                         newDeptHeadId = matchingHods[0].teacher_id || matchingHods[0].id;
                       }
-                      
+
                       const updated = {
                         ...planForm,
                         courseId: selectedCourseId,
@@ -1942,9 +1942,9 @@ export const TeacherPortal = () => {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
                   <span className={`inline-block mt-0.5 px-3 py-0.5 rounded-full text-[9px] font-black uppercase ${selectedPlanForView.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' :
-                      selectedPlanForView.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
-                        selectedPlanForView.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
-                          'bg-amber-100 text-amber-600'
+                    selectedPlanForView.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' :
+                      selectedPlanForView.status === 'Draft' ? 'bg-slate-100 text-slate-600' :
+                        'bg-amber-100 text-amber-600'
                     }`}>{selectedPlanForView.status}</span>
                 </div>
               </div>
