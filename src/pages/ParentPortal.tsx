@@ -649,7 +649,9 @@ export const ParentPortal = () => {
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-16">
       {/* Premium Family Dashboard Header Banner (Second Screenshot Design) */}
-      <div className="bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-4 md:p-6 text-white shadow-2xl relative overflow-hidden border border-white/5">
+      <div className={`${
+        activePortalTab === 'dashboard' ? 'block' : 'hidden md:block'
+      } bg-gradient-to-br from-[#0c1424] via-[#0f1b30] to-[#12233f] rounded-[2.5rem] p-4 md:p-6 text-white shadow-2xl relative overflow-hidden border border-white/5`}>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#13233f] text-blue-400 border border-blue-800/50 text-[9px] font-black uppercase tracking-widest">
