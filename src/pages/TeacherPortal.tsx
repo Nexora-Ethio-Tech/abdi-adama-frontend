@@ -105,12 +105,16 @@ export const TeacherPortal = () => {
     setDeptPlans(prev => prev.map(p => p.id === id ? {
       ...p,
       status: 'Approved',
-      dean_rating: rating,
+      dean_rating: rating || null,
       dean_feedback: defaultFeedback
     } : p));
 
     try {
-      await reviewDeptPlan(id, { status: 'Approved', feedback: defaultFeedback, rating });
+      const payload: any = { status: 'Approved', feedback: defaultFeedback };
+      if (rating > 0) {
+        payload.rating = rating;
+      }
+      await reviewDeptPlan(id, payload);
       showToast('Plan approved successfully!', 'success');
       // Refresh from DB to get accurate state
       fetchDeptPlans();
@@ -130,12 +134,16 @@ export const TeacherPortal = () => {
     setDeptPlans(prev => prev.map(p => p.id === id ? {
       ...p,
       status: 'Revision Required',
-      dean_rating: rating,
+      dean_rating: rating || null,
       dean_feedback: feedback
     } : p));
 
     try {
-      await reviewDeptPlan(id, { status: 'Revision Required', feedback, rating });
+      const payload: any = { status: 'Revision Required', feedback };
+      if (rating > 0) {
+        payload.rating = rating;
+      }
+      await reviewDeptPlan(id, payload);
       showToast('Revision request submitted!', 'success');
       // Refresh from DB
       fetchDeptPlans();
@@ -1707,7 +1715,8 @@ export const TeacherPortal = () => {
                   {editingPlan ? 'Update Draft' : 'Save Draft'}
                 </button>
                 {/* Submit for review */}
-                <button type="submit"
+                <button type="button"
+                  onClick={() => handleSavePlan('Pending')}
                   disabled={submitting}
                   className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
                   {submitting ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />}
