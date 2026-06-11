@@ -162,7 +162,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     try {
       setLoading(true);
       setError(null);
-      
+
       if (isOverviewView) {
         const dashboardData = await financeClerkService.getDashboard();
         setDashboard(dashboardData);
@@ -630,10 +630,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   // Overdue students are exclusively shown in the Overdue tab.
   const filteredStudents = students.filter(student => {
     if (student.collection_status === 'overdue') return false;
-    
+
     // If no search term, show all non-overdue students
     if (!searchTerm.trim()) return true;
-    
+
     const q = searchTerm.toLowerCase();
     return (
       student.name.toLowerCase().includes(q) ||
@@ -645,7 +645,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const filteredOverdueStudents = overdueStudents.filter(student => {
     // If no search term, show all overdue students
     if (!searchTerm.trim()) return true;
-    
+
     return (
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2060,12 +2060,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         );
                       });
                     })()
-                    ) : isLoadingOutstanding ? (
+                  ) : isLoadingOutstanding ? (
                     <div className="col-span-full p-6 flex flex-col items-center justify-center gap-3">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       <p className="text-sm text-slate-500 font-medium">Loading outstanding fees...</p>
                     </div>
-                    ) : (
+                  ) : (
                     <div className="grid grid-cols-2 gap-3">
                       {[{ key: 'Monthly Tuition', label: 'Monthly Tuition' }, { key: 'Bus Fee', label: 'Bus Fee' }, { key: 'Penalty Fee', label: 'Penalty Fee' }].map((item) => {
                         const checked = selectedPaymentTypes.includes(item.key);
@@ -2088,7 +2088,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   const penaltyInputAmount = Number(paymentAmounts['penalty'] ?? penaltyRemaining);
                   const isPenaltyFullyPaid = penaltySelected && penaltyInputAmount >= penaltyRemaining;
                   const payingOtherFees = selectedPaymentTypes.some(t => t !== 'Penalty Fee');
-                  
+
                   if (payingOtherFees && !isPenaltyFullyPaid) {
                     return (
                       <div className="mb-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-2">
