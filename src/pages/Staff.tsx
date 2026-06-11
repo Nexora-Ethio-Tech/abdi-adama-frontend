@@ -268,10 +268,10 @@ export const Staff = () => {
     if (!editingStaff) return;
     setResettingPassword(true);
     try {
-      const result = await userService.resetUserPIN(editingStaff.id);
-      const newPIN = result?.newPIN || result?.data?.newPIN;
-      if (newPIN) {
-        setGeneratedPassword(newPIN);
+      const result = await userService.resetUserPassword(editingStaff.id);
+      const temporaryPassword = result?.temporaryPassword || result?.data?.temporaryPassword;
+      if (temporaryPassword) {
+        setGeneratedPassword(temporaryPassword);
       } else {
         setToast({ show: true, message: 'Password reset succeeded', type: 'success' });
         setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3500);
@@ -298,7 +298,7 @@ export const Staff = () => {
       .split(/\s+/)
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
-      
+
     if (!formattedName) {
       setErrorModal({ show: true, message: 'Name is required' });
       return;

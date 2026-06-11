@@ -41,7 +41,7 @@ export const userService = {
 
   // Update user status
   updateUserStatus: async (userId: string, status: 'Approved' | 'Pending' | 'Revoked') => {
-    const response = await api.patch(API_ENDPOINTS.UPDATE_USER_STATUS(userId), { status });
+    const response = await api.post(API_ENDPOINTS.UPDATE_USER_STATUS(userId), { status });
     return response.data;
   },
 
@@ -66,13 +66,19 @@ export const userService = {
 
   // Update user details (Super Admin)
   updateUser: async (userId: string, data: { name?: string; email?: string }) => {
-    const response = await api.patch(API_ENDPOINTS.UPDATE_USER(userId), data);
+    const response = await api.post(API_ENDPOINTS.UPDATE_USER(userId), data);
     return response.data;
   },
 
   // Reset user PIN (Super Admin)
   resetUserPIN: async (userId: string) => {
     const response = await api.post(API_ENDPOINTS.RESET_USER_PIN(userId));
+    return response.data;
+  },
+
+  // Reset user password (Super Admin)
+  resetUserPassword: async (userId: string) => {
+    const response = await api.post(API_ENDPOINTS.RESET_USER_PASSWORD(userId));
     return response.data;
   },
 };

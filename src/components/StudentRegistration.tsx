@@ -190,10 +190,8 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   const { role, user, registrationOpen, setRegistrationOpen } = useUser();
   const isFinance = role === 'finance-clerk' || role === 'super-admin';
   const formRef = useRef<HTMLFormElement>(null);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
-    if (isAdminView) return false;
-    return localStorage.getItem('has_submitted_application') === 'true';
-  });
+  // Track if showing the active application error (NOT permanently blocking all submissions)
+  const [activeApplicationError, setActiveApplicationError] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<RegistrationTab>('new');
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>(isFinance ? 'awaiting-finance' : 'pending');
@@ -416,6 +414,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     if (isSubmitting) return; // Guard against double-submission
 
     setValidationErrors({});
+    setActiveApplicationError(null);
 
     if (!registrationOpen) {
       setSubmitError('Registration is closed. New applications cannot be submitted at this time.');
@@ -551,8 +550,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
         setEthiopianDob('');
         setRegistrationStep(1);
         setValidationErrors({});
-        localStorage.setItem('has_submitted_application', 'true');
-        setAlreadySubmitted(true);
+        setActiveApplicationError(null);
         setTimeout(() => {
           setSuccessMessage(null);
           navigate('/');
@@ -565,6 +563,13 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
       const errorMessage = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to submit application';
       const errorObj = error.response?.data?.errors || {};
       const errorCode = error.response?.data?.error?.code;
+
+      // Check if error is due to active application (not permanent block)
+      if (errorMessage.includes('active application')) {
+        setActiveApplicationError(errorMessage);
+        setSubmitError(null);
+        return;
+      }
 
       setValidationErrors(errorObj);
 
@@ -986,19 +991,6 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
             <h3 className="text-xl font-black text-slate-800 dark:text-white">Online applications are currently closed</h3>
             <p className="text-sm text-slate-500 max-w-md mx-auto">Please contact the school administration or check back later for registration updates.</p>
           </div>
-        ) : alreadySubmitted ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-12 text-center space-y-6">
-            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-500 rounded-full flex items-center justify-center mx-auto border border-emerald-100 dark:border-emerald-900">
-              <CheckCircle size={32} />
-            </div>
-            <div className="space-y-2">
-              <h3 className="text-xl font-black text-slate-850 dark:text-white">Application Already Submitted</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                We have already received your admission application. To ensure a fair process, applicants are allowed to submit only one application.
-              </p>
-            </div>
-            <p className="text-xs text-slate-400 dark:text-slate-500">If you believe this is an error or need to update your details, please contact school administration.</p>
-          </div>
         ) : (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
@@ -1022,6 +1014,16 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
             </div>
             <form ref={formRef} onSubmit={handleRegister} className="p-6 space-y-6">
+              {activeApplicationError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 dark:bg-rose-950/30 dark:border-rose-900/50 p-4 flex gap-3">
+                  <AlertTriangle className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" size={18} />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-rose-700 dark:text-rose-300">Active Application Exists</h4>
+                    <p className="text-sm text-rose-600 dark:text-rose-400 mt-1">{activeApplicationError}</p>
+                    <p className="text-xs text-rose-500 dark:text-rose-400 mt-2">Once your current application is completed, you will be able to submit a new one. If you need assistance, please contact school administration.</p>
+                  </div>
+                </div>
+              )}
               <div className={`space-y-6 animate-in fade-in slide-in-from-right-4 ${registrationStep !== 1 ? 'hidden' : ''}`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-1">
@@ -1327,7 +1329,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                 ) : (
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !!activeApplicationError}
                     className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-3 rounded-xl font-bold transition-all shadow-lg disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (

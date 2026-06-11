@@ -36,7 +36,7 @@ export const API_ENDPOINTS = {
   ME: '/auth/me',
   REFRESH_TOKEN: '/auth/refresh-token',
   CHANGE_PASSWORD: '/auth/change-password',
-  
+
   // Super Admin
   CREATE_SCHOOL_ADMIN: '/super-admin/create-school-admin',
   CREATE_VICE_PRINCIPAL: '/super-admin/create-vice-principal',
@@ -47,7 +47,8 @@ export const API_ENDPOINTS = {
   UPDATE_USER_STATUS: (id: string) => `/super-admin/users/${id}/status`,
   DELETE_USER: (id: string) => `/super-admin/users/${id}`,
   RESET_USER_PIN: (id: string) => `/super-admin/users/${id}/reset-pin`,
-  
+  RESET_USER_PASSWORD: (id: string) => `/super-admin/users/${id}/reset-password`,
+
   // School Admin
   REGISTER_USER: '/school-admin/register-user',
   GET_BRANCH_USERS: '/school-admin/users',
