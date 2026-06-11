@@ -630,6 +630,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   // Overdue students are exclusively shown in the Overdue tab.
   const filteredStudents = students.filter(student => {
     if (student.collection_status === 'overdue') return false;
+    
+    // If no search term, show all non-overdue students
+    if (!searchTerm.trim()) return true;
+    
     const q = searchTerm.toLowerCase();
     return (
       student.name.toLowerCase().includes(q) ||
@@ -638,11 +642,16 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     );
   });
 
-  const filteredOverdueStudents = overdueStudents.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOverdueStudents = overdueStudents.filter(student => {
+    // If no search term, show all overdue students
+    if (!searchTerm.trim()) return true;
+    
+    return (
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   const displayedStudents = activeTab === 'all' ? filteredStudents : filteredOverdueStudents;
   const paginatedStudents = displayedStudents.slice((studentPage - 1) * studentsPerPage, studentPage * studentsPerPage);
