@@ -376,6 +376,15 @@ const financeClerkService = {
       responseType: 'blob'
     });
     return response.data;
+  },
+
+  // 12. Send SMS to parent about overdue payment
+  sendSmsToParent: async (studentId: string, message: string) => {
+    const response = await api.post('/finance-clerk/students/sms/send', {
+      studentId,
+      message
+    });
+    return response.data;
   }
 
 };

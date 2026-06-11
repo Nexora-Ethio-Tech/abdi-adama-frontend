@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, MessageSquare } from 'lucide-react';
 import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportStudentInfo, type TransportFeePolicy, type TransportDriverInfo } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
@@ -66,6 +66,10 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [showTransportModal, setShowTransportModal] = useState(false);
   const [showStopTransportModal, setShowStopTransportModal] = useState(false);
   const [showReductionModal, setShowReductionModal] = useState(false);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [smsStudent, setSmsStudent] = useState<any | null>(null);
+  const [smsMessage, setSmsMessage] = useState('');
+  const [isSendingSms, setIsSendingSms] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentFeeInfo | null>(null);
   const [reductionStudent, setReductionStudent] = useState<StudentFeeInfo | null>(null);
   const [transportStudent, setTransportStudent] = useState<TransportStudentInfo | null>(null);
@@ -373,6 +377,49 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         : ''
     );
     setShowReductionModal(true);
+  };
+
+  const openSmsModal = (student: any) => {
+    setSmsStudent(student);
+    setSmsMessage('');
+    setShowSmsModal(true);
+  };
+
+  const handleSendSms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsSendingSms(true);
+      setError(null);
+
+      if (!smsStudent?.id) {
+        setError('Invalid student selection');
+        return;
+      }
+
+      if (!smsMessage.trim()) {
+        setError('Message cannot be empty');
+        return;
+      }
+
+      if (smsMessage.length > 160) {
+        setError('Message cannot exceed 160 characters');
+        return;
+      }
+
+      await financeClerkService.sendSmsToParent(smsStudent.id, smsMessage);
+
+      setSuccess(`SMS sent successfully to parent of ${smsStudent.name}!`);
+      setShowSmsModal(false);
+      setSmsMessage('');
+      setSmsStudent(null);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Error sending SMS:', err);
+      setError(err.response?.data?.error?.message || 'Failed to send SMS. Please try again.');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setIsSendingSms(false);
+    }
   };
 
   const openTransportModal = (student: TransportStudentInfo) => {
@@ -1646,6 +1693,16 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-wrap items-center justify-end gap-2">
+                            {activeTab === 'overdue' && (
+                              <button
+                                onClick={() => openSmsModal(student)}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2"
+                                title="Send SMS to parent"
+                              >
+                                <MessageSquare className="w-4 h-4" />
+                                SMS
+                              </button>
+                            )}
                             <button
                               onClick={() => openPaymentModal(student, activeTab === 'overdue' ? getCurrentEthiopianMonth() : undefined)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
@@ -2386,6 +2443,99 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         </div>
       )}
 
+      {/* SMS Modal */}
+      {showSmsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl w-full max-w-md border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+              <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                <MessageSquare className="w-6 h-6" />
+                Send SMS
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowSmsModal(false)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
+                aria-label="Close SMS modal"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {smsStudent && (
+              <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border-b border-slate-100 dark:border-slate-800">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Student: <span className="font-bold text-slate-900 dark:text-white">{smsStudent.name}</span>
+                </p>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  ID: <span className="font-bold text-slate-900 dark:text-white">{smsStudent.digital_id}</span>
+                </p>
+                {smsStudent.parent_phone ? (
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                    Parent Phone: <span className="font-bold text-slate-900 dark:text-white">{smsStudent.parent_phone}</span>
+                  </p>
+                ) : (
+                  <p className="text-sm text-rose-600 dark:text-rose-400 mt-2">
+                    ⚠️ No parent phone number on file
+                  </p>
+                )}
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+                  Total Overdue: <span className="font-black text-red-600">{Number(smsStudent.total_unpaid || 0).toLocaleString()} ETB</span>
+                </p>
+              </div>
+            )}
+
+            <form
+              onSubmit={handleSendSms}
+              className="p-6 space-y-4 overflow-y-auto flex-1"
+            >
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="sms-message" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Message *
+                </label>
+                <textarea
+                  id="sms-message"
+                  required
+                  value={smsMessage}
+                  onChange={(e) => setSmsMessage(e.target.value)}
+                  rows={5}
+                  maxLength={160}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                  placeholder="Write your SMS message here (max 160 characters)..."
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  {smsMessage.length}/160 characters
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowSmsModal(false)}
+                  disabled={isSendingSms}
+                  className="flex-1 px-6 py-3 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-slate-700 dark:text-slate-300 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!smsMessage.trim() || !smsStudent?.parent_phone || isSendingSms}
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-bold transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {isSendingSms ? 'Sending…' : 'Send SMS'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );
