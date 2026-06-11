@@ -1315,7 +1315,7 @@ export const TeacherPortal = () => {
                                 <p className="text-xs text-slate-600 dark:text-slate-400 max-w-[120px] truncate">{plan.dean_feedback}</p>
                                 {plan.dean_rating && (
                                   <div className="flex gap-0.5 mt-1">
-                                    {[1, 2, 3, 4, 5].map(n => (
+                                    {[1, 2, 3].map(n => (
                                       <Star key={n} size={10} className={n <= plan.dean_rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300'} />
                                     ))}
                                   </div>
@@ -1481,7 +1481,7 @@ export const TeacherPortal = () => {
 
                     {(plan.dean_rating || plan.rating) ? (
                       <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map(star => (
+                        {[1, 2, 3].map(star => (
                           <Star
                             key={star}
                             size={12}
@@ -2002,9 +2002,9 @@ export const TeacherPortal = () => {
 
                 {/* Star Rating Selection */}
                 <div>
-                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1.5">Rate Plan Quality (1-5 Stars)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase block mb-1.5">Rate Plan Quality (1-3 Stars)</label>
                   <div className="flex gap-1.5">
-                    {[1, 2, 3, 4, 5].map(star => (
+                    {[1, 2, 3].map(star => (
                       <button
                         key={star}
                         type="button"
