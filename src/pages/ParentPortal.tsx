@@ -37,7 +37,6 @@ import {
   getParentChildGrades,
   getParentChildHistory,
   getChildTeachers,
-  getChildAttendance,
   getChildClinicUpdates,
   getDriverUpdates,
   getSchoolAnnouncements,
@@ -46,8 +45,6 @@ import {
   ParentAnnouncement,
   CommunicationLog,
   Teacher,
-  AttendanceRecord,
-  AttendanceStatistics,
   ClinicVisit,
   HealthProfile,
   DriverUpdate,
@@ -113,11 +110,7 @@ export const ParentPortal = () => {
   const [childTeachers, setChildTeachers] = useState<Teacher[]>([]);
   const [teachersLoading, setTeachersLoading] = useState(false);
 
-  // NEW: Attendance State
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [attendanceStats, setAttendanceStats] = useState<any>(null);
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
-  const [attendanceExpanded, setAttendanceExpanded] = useState(false);
+
 
   // NEW: Clinic Support Sub-Tab
   const [clinicSupportTab, setClinicSupportTab] = useState<'chat' | 'visits'>('visits');
@@ -174,8 +167,7 @@ export const ParentPortal = () => {
     setCurrentLogIndex(0);
     setChatMessages([]);
     setChildTeachers([]);
-    setAttendanceRecords([]);
-    setAttendanceStats(null);
+
     setClinicVisits([]);
     setHealthProfile({});
     setGradesError('');
@@ -459,37 +451,7 @@ export const ParentPortal = () => {
       .finally(() => setTeachersLoading(false));
   }, [selectedChild, activePortalTab]);
 
-  // Fetch attendance when on dashboard or attendance tab (with auto-refresh)
-  useEffect(() => {
-    if (!selectedChild || (activePortalTab !== 'dashboard' && activePortalTab !== 'attendance')) return;
 
-    let cancelled = false;
-    const loadAttendance = () => {
-      setAttendanceLoading(true);
-      getChildAttendance(selectedChild.id)
-        .then(data => {
-          if (cancelled) return;
-          setAttendanceRecords(data.records || []);
-          setAttendanceStats(data.statistics || {});
-        })
-        .catch(err => {
-          if (cancelled) return;
-          console.error('Failed to fetch attendance:', err);
-          setAttendanceRecords([]);
-          setAttendanceStats({});
-        })
-        .finally(() => {
-          if (!cancelled) setAttendanceLoading(false);
-        });
-    };
-
-    loadAttendance();
-    const interval = setInterval(loadAttendance, 30000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [selectedChild, activePortalTab]);
 
   // Fetch clinic updates when on clinic tab
   useEffect(() => {
@@ -730,11 +692,7 @@ export const ParentPortal = () => {
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-5">
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Attendance</p>
-                          <p className="text-xl font-black text-emerald-600">{child.attendance || '0.0%'}</p>
-                        </div>
+                      <div className="grid grid-cols-1 gap-5">
                         <div className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100/50 dark:border-slate-700/50">
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Performance Rank</p>
                           <p className="text-lg font-black text-blue-600 truncate">{child.performance || 'Pending'}</p>
@@ -1364,116 +1322,7 @@ export const ParentPortal = () => {
         </div>
       )}
 
-      {/* ==================== 5. ATTENDANCE TAB ==================== */}
-      {activePortalTab === 'attendance' && (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Attendance Records</h1>
-              <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium italic">Track your child's daily attendance and summary statistics.</p>
-            </div>
-          </div>
 
-          {/* Child Picker */}
-          {renderChildPicker()}
-
-          {/* Attendance Stats */}
-          {attendanceLoading ? (
-            <div className="flex justify-center items-center h-48">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : attendanceStats && Object.keys(attendanceStats).length > 0 ? (
-            <div className="space-y-6">
-              {/* Statistics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 text-center">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Total Days</p>
-                  <p className="text-3xl font-black text-slate-900 dark:text-white">{attendanceStats.total_days || 0}</p>
-                </div>
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-6 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-center">
-                  <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Present</p>
-                  <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{attendanceStats.present_days || 0}</p>
-                </div>
-                <div className="bg-rose-50 dark:bg-rose-900/20 p-6 rounded-2xl border border-rose-200 dark:border-rose-800 text-center">
-                  <p className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Absent</p>
-                  <p className="text-3xl font-black text-rose-600 dark:text-rose-400">{attendanceStats.absent_days || 0}</p>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-900/20 p-6 rounded-2xl border border-amber-200 dark:border-amber-800 text-center">
-                  <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-2">Late</p>
-                  <p className="text-3xl font-black text-amber-600 dark:text-amber-400">{attendanceStats.late_days || 0}</p>
-                </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-200 dark:border-blue-800 text-center">
-                  <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Percentage</p>
-                  <p className="text-3xl font-black text-blue-600 dark:text-blue-400">{(attendanceStats.attendance_percentage || 0).toFixed(1)}%</p>
-                </div>
-              </div>
-
-              {/* Attendance Progress Bar */}
-              <div className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Overall Attendance</h3>
-                  <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{(attendanceStats.attendance_percentage || 0).toFixed(1)}%</span>
-                </div>
-                <div className="w-full h-4 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <svg viewBox="0 0 100 10" className="w-full h-full">
-                    <rect
-                      x="0"
-                      y="0"
-                      width={getClampedPercentage(attendanceStats?.attendance_percentage || 0)}
-                      height="10"
-                      rx="5"
-                      ry="5"
-                      fill="currentColor"
-                      className="transition-all duration-1000 text-blue-500"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Recent Records Table */}
-              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden">
-                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Recent Records</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                      <tr>
-                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Date</th>
-                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
-                        <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {attendanceRecords.slice(0, 10).map((record) => (
-                        <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-8 py-5 font-bold text-slate-900 dark:text-white">{formatEthiopianLabel(record.date)}</td>
-                          <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${record.status === 'present'
-                              ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'
-                              : record.status === 'absent'
-                                ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'
-                                : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'
-                              }`}>
-                              {record.status}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5 text-slate-600 dark:text-slate-400">{record.recorded_by_name || 'Admin'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-slate-900 p-12 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-center">
-              <Calendar className="text-slate-300 mx-auto mb-4" size={40} />
-              <p className="text-slate-500 dark:text-slate-400 font-bold text-lg">No attendance records found.</p>
-            </div>
-          )}
-        </div>
-      )}
 
       {activePortalTab === 'finance' && (
         <div className="space-y-8 animate-in fade-in duration-500">
