@@ -392,11 +392,18 @@ export const TeacherPortal = () => {
     }).catch(() => { setCommSections([]); setAllHomeroomStudents([]); });
   }, [weeklyPlanSubTab]);
 
-  // Load students when a section is selected
+  // Load students when a section is selected AND refresh sent IDs for the current week
   useEffect(() => {
     if (!selectedCommSection) return;
     setCommStudentsLoading(true);
     setCommPage(1);
+    // Refresh the sent list every time a section is opened, so the blue "Sent" state is always accurate
+    getCommunicationLogsByWeek(getWeekEndingThursday())
+      .then(logs => {
+        const sentIds = (Array.isArray(logs) ? logs : []).map((l: any) => l.student_id || l.studentId);
+        setSentCommStudentIds(sentIds);
+      })
+      .catch(() => {});
     getClassStudents(selectedCommSection.id).then((data: any) => {
       const list = Array.isArray(data) ? data : [];
       setCommStudents(list.map((s: any) => ({
@@ -409,6 +416,11 @@ export const TeacherPortal = () => {
   }, [selectedCommSection]);
 
   const openCommCard = async (student: any) => {
+    // Block re-opening if already sent this week
+    if (sentCommStudentIds.includes(student.id)) {
+      showToast('Communication book already sent to this student this week.', 'error');
+      return;
+    }
     setActiveCommStudent(student);
     setCommLogForm(defaultCommForm);
     setIsCommCardOpen(true);
@@ -416,7 +428,8 @@ export const TeacherPortal = () => {
     try {
       const logs = await getCommunicationLogs(student.id);
       const weekEnding = getWeekEndingThursday();
-      const existing = Array.isArray(logs) ? logs.find((l: any) => l.week_ending && l.week_ending.startsWith(weekEnding)) : null;
+      // Compare only the date portion (first 10 chars) to handle timestamp vs date format
+      const existing = Array.isArray(logs) ? logs.find((l: any) => l.week_ending && String(l.week_ending).slice(0, 10) === weekEnding) : null;
       if (existing) {
         setCommLogForm({
           ratingUniform: existing.rating_uniform ?? 0,

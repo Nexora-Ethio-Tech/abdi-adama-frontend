@@ -1936,5 +1936,6 @@ const getWeekEndingThursday = (): string => {
 
 const isLogActive = (weekEndingStr: string): boolean => {
   if (!weekEndingStr) return false;
-  return weekEndingStr === getWeekEndingThursday();
+  // Compare only the date portion (YYYY-MM-DD) to handle both date and timestamp formats
+  return String(weekEndingStr).slice(0, 10) === getWeekEndingThursday();
 };
