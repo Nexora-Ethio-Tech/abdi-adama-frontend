@@ -63,6 +63,7 @@ import {
   isYearAccessible,
   isSemesterAccessible,
   formatEthiopianLabel,
+  gregorianToEthiopian,
 } from '../utils/ethiopianCalendar';
 
 export const ParentPortal = () => {
@@ -1842,7 +1843,7 @@ export const ParentPortal = () => {
                     <div>
                       <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Active Evaluation Window</p>
                       <h3 className="text-lg font-black text-slate-800 dark:text-white mt-0.5">
-                        Week ending: {formatEthiopianLabel(activeLog.week_ending)} ({activeLog.week_ending_formatted || activeLog.week_ending})
+                        Week ending: {formatEthiopianLabel(activeLog.week_ending)} ({formatEthiopianNumeric(activeLog.week_ending)})
                       </h3>
                     </div>
                   </div>
@@ -1853,30 +1854,30 @@ export const ParentPortal = () => {
                   )}
                 </div>
 
-                {/* Grid of Ratings */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Grid of Ratings - Responsive 2 columns on mobile */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                   {commFields.map((field) => {
                     const rating = getFieldRating(activeLog, field.id);
                     return (
-                      <div key={field.id} className="group bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                      <div key={field.id} className="group bg-white dark:bg-slate-900 p-4 rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
                         <div className="flex flex-col items-center text-center">
-                          <div className={`w-14 h-14 rounded-2xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-2xl mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
+                          <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl ${getRatingColor(rating)} flex items-center justify-center text-white font-black text-lg sm:text-2xl mb-2 sm:mb-4 shadow-lg group-hover:scale-110 transition-transform`}>
                             {rating}
                           </div>
-                          <h4 className="font-black text-slate-800 dark:text-slate-100 text-sm mb-1">{field.label}</h4>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold leading-tight mb-4 min-h-[30px] flex items-center justify-center px-2">
+                          <h4 className="font-black text-slate-800 dark:text-slate-100 text-xs sm:text-sm mb-1">{field.label}</h4>
+                          <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 font-bold leading-tight mb-2 sm:mb-4 min-h-[24px] sm:min-h-[30px] flex items-center justify-center px-1">
                             {field.description}
                           </p>
-                          <span className={`w-full py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${getRatingColor(rating)} text-white shadow-sm`}>
+                          <span className={`w-full py-1 sm:py-1.5 rounded-lg sm:rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-wider ${getRatingColor(rating)} text-white shadow-sm`}>
                             {ratingLabels[rating] || 'Unrated'}
                           </span>
                           
                           {/* Visual Dots Indicator */}
-                          <div className="flex gap-1.5 mt-4 justify-center">
+                          <div className="flex gap-1 sm:gap-1.5 mt-3 sm:mt-4 justify-center">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <span
                                 key={star}
-                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 ${
                                   star <= rating
                                     ? rating === 5
                                       ? 'bg-emerald-500 shadow-md shadow-emerald-500/20'
@@ -1938,4 +1939,16 @@ const isLogActive = (weekEndingStr: string): boolean => {
   if (!weekEndingStr) return false;
   // Compare only the date portion (YYYY-MM-DD) to handle both date and timestamp formats
   return String(weekEndingStr).slice(0, 10) === getWeekEndingThursday();
+};
+
+const formatEthiopianNumeric = (dateInput: string | Date | null): string => {
+  if (!dateInput) return '';
+  try {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    if (isNaN(date.getTime())) return '';
+    const { year, month, day } = gregorianToEthiopian(date);
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')} E.C.`;
+  } catch (e) {
+    return '';
+  }
 };
