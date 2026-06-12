@@ -286,7 +286,7 @@ export const Branches = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Add New Branch</h3>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowAddModal(false)} title="Close add branch modal" aria-label="Close add branch modal" className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>
@@ -307,6 +307,8 @@ export const Branches = () => {
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
+                    title="Upload branch image"
+                    aria-label="Upload branch image"
                     className="w-full text-sm text-slate-500 dark:text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400 cursor-pointer"
                   />
                 </div>
@@ -406,7 +408,7 @@ export const Branches = () => {
                 </div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100">Edit Branch</h3>
               </div>
-              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowEditModal(false)} title="Close edit branch modal" aria-label="Close edit branch modal" className="text-slate-400 hover:text-slate-600">
                 <X size={20} />
               </button>
             </div>

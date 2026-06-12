@@ -1095,7 +1095,7 @@ const EditAttendanceModal = ({
             <h3 className="font-bold text-slate-800 dark:text-white">Manual Punch Entry</h3>
             <p className="text-xs text-slate-500 font-medium tracking-tight mt-0.5">{record.name} ({record.role?.replace('-', ' ').toUpperCase()})</p>
           </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+          <button type="button" onClick={onClose} title="Close manual punch entry" aria-label="Close manual punch entry" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -1109,11 +1109,15 @@ const EditAttendanceModal = ({
                   type="time"
                   value={signIn}
                   onChange={(e) => setSignIn(e.target.value)}
+                  title="Arrival time"
+                  aria-label="Arrival time"
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setFieldToNow('signIn')}
+                  title="Set arrival time to now"
+                  aria-label="Set arrival time to now"
                   className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
                 >
                   Now
@@ -1128,11 +1132,15 @@ const EditAttendanceModal = ({
                   type="time"
                   value={lunchOut}
                   onChange={(e) => setLunchOut(e.target.value)}
+                  title="Lunch out time"
+                  aria-label="Lunch out time"
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setFieldToNow('lunchOut')}
+                  title="Set lunch out time to now"
+                  aria-label="Set lunch out time to now"
                   className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
                 >
                   Now
@@ -1147,11 +1155,15 @@ const EditAttendanceModal = ({
                   type="time"
                   value={lunchIn}
                   onChange={(e) => setLunchIn(e.target.value)}
+                  title="Lunch in time"
+                  aria-label="Lunch in time"
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setFieldToNow('lunchIn')}
+                  title="Set lunch in time to now"
+                  aria-label="Set lunch in time to now"
                   className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
                 >
                   Now
@@ -1166,11 +1178,15 @@ const EditAttendanceModal = ({
                   type="time"
                   value={signOut}
                   onChange={(e) => setSignOut(e.target.value)}
+                  title="Departure time"
+                  aria-label="Departure time"
                   className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setFieldToNow('signOut')}
+                  title="Set departure time to now"
+                  aria-label="Set departure time to now"
                   className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
                 >
                   Now

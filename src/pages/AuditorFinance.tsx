@@ -7,6 +7,7 @@ import {
   BarChart3, ArrowDownRight, Filter
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { useStore } from '../context/useStore';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import auditorService, {
   type AuditorDashboard as AuditorDashboardData,
@@ -31,6 +32,7 @@ const tabFromSearch = (tab: string | null): AuditorFinanceTab => {
 
 export const AuditorFinance = () => {
   const _user = useUser();
+  const { selectedBranchId } = useStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -112,7 +114,7 @@ export const AuditorFinance = () => {
   };
 
   const buildPaymentQueryParams = () => {
-    const params: { startDate?: string; endDate?: string } = {};
+    const params: { startDate?: string; endDate?: string; branchId?: string } = {};
 
     if (transactionStartEth) {
       const start = ethiopianToGregorianIso(transactionStartEth);
@@ -138,7 +140,7 @@ export const AuditorFinance = () => {
   };
 
   const buildAuditQueryParams = () => {
-    const params: { startDate?: string; endDate?: string; category?: string; direction?: string } = {};
+    const params: { startDate?: string; endDate?: string; category?: string; direction?: string; branchId?: string } = {};
 
     if (financeStartEth) {
       const start = ethiopianToGregorianIso(financeStartEth);
@@ -175,7 +177,13 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
+      if (!selectedBranchId) {
+        setError('Please select a branch first.');
+        setLoading(false);
+        return;
+      }
       const params = buildAuditQueryParams();
+      params.branchId = selectedBranchId;
       const auditData = await auditorService.getAuditTrail(params);
       setAuditTrail(auditData);
     } catch (err: any) {
@@ -189,12 +197,18 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
+      if (!selectedBranchId) {
+        setError('Please select a branch first.');
+        setLoading(false);
+        return;
+      }
       const params = buildPaymentQueryParams();
+      params.branchId = selectedBranchId;
       console.log('📊 [AuditorDashboard] Fetching with params:', params);
       const [dashboardData, paymentsData, feeReductionsData] = await Promise.all([
-        auditorService.getDashboard(),
+        auditorService.getDashboard(selectedBranchId),
         auditorService.getPayments(params),
-        auditorService.getFeeReductions({ status: feeReductionFilter || undefined })
+        auditorService.getFeeReductions({ branchId: selectedBranchId, status: feeReductionFilter || undefined })
       ]);
       console.log('✅ [AuditorDashboard] Dashboard:', dashboardData);
       console.log('✅ [AuditorDashboard] Payments fetched:', paymentsData?.length || 0, paymentsData);
@@ -212,7 +226,11 @@ export const AuditorFinance = () => {
 
   const handleApprove = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      await auditorService.updateFeeReductionStatus(id, { status });
+      if (!selectedBranchId) {
+        setError('Please select a branch first.');
+        return;
+      }
+      await auditorService.updateFeeReductionStatus(id, { status }, selectedBranchId);
       setSuccess(`Fee reduction ${status.toLowerCase()} successfully!`);
       fetchData();
       setTimeout(() => setSuccess(null), 3000);
@@ -226,7 +244,14 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
-      const paymentsData = await auditorService.getPayments(buildPaymentQueryParams());
+      if (!selectedBranchId) {
+        setError('Please select a branch first.');
+        setLoading(false);
+        return;
+      }
+      const params = buildPaymentQueryParams();
+      params.branchId = selectedBranchId;
+      const paymentsData = await auditorService.getPayments(params);
       setPayments(paymentsData);
       setSuccess('Transaction filters applied.');
       setTimeout(() => setSuccess(null), 3000);
