@@ -74,6 +74,22 @@ const attendanceService = {
     const response = await api.patch(`/school-admin/attendance/${id}`, data);
     return response.data.data;
   },
+
+  // Get attendance summary by grade for the branch
+  getAttendanceSummary: async (date?: string, grade?: string): Promise<any> => {
+    const response = await api.get('/school-admin/attendance-summary', {
+      params: { date, grade }
+    });
+    return response.data.data;
+  },
+
+  // Get student attendance history (30-day average and stats)
+  getStudentAttendanceHistory: async (studentId: string, days?: number): Promise<any> => {
+    const response = await api.get(`/school-admin/students/${studentId}/attendance-history`, {
+      params: { days }
+    });
+    return response.data.data;
+  },
 };
 
 export default attendanceService;

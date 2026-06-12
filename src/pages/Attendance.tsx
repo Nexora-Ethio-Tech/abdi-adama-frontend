@@ -1,5 +1,4 @@
 import { CheckCircle, XCircle, Clock, ChevronDown, UserCheck, Users, ShieldAlert, ArrowRight, X, Send, Check, Loader2, ArrowLeft } from 'lucide-react';
-import { mockTeachers, mockStudents } from '../data/mockData';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -32,8 +31,8 @@ export const Attendance = () => {
   const { role } = useUser();
   const isAdmin = role === 'school-admin' || role === 'super-admin';
   const isVP = role === 'vice-principal';
-  const [selectedGrade, setSelectedGrade] = useState('10A');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedGrade, setSelectedGrade] = useState('');
+  const [selectedDate, setSelectedDate] = useState(getTodayEthiopianDate());
   const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent'>>({});
   const [students, setStudents] = useState<any[]>([]);
   const [attendanceMode, setAttendanceMode] = useState<AttendanceMode>('staff');
@@ -44,10 +43,10 @@ export const Attendance = () => {
   const [absentTeacher, setAbsentTeacher] = useState<any>(null);
   const [isProxyAnalysisRunning, setIsProxyAnalysisRunning] = useState(false);
   const [proxySuggestions, setProxySuggestions] = useState<string[]>([]);
-  const [absentReviewQueue, setAbsentReviewQueue] = useState([
-    { id: '1', studentName: 'Ahmed Ali', grade: '10A', reason: 'Not reported', time: '08:15 AM' },
-    { id: '2', studentName: 'Sara Mohammed', grade: '9B', reason: 'Family emergency', time: '08:45 AM' },
-  ]);
+  const [absentReviewQueue, setAbsentReviewQueue] = useState<any[]>([]);
+  const [gradeStats, setGradeStats] = useState<any[]>([]);
+  const [studentAttendanceHistory, setStudentAttendanceHistory] = useState<Record<string, any>>({});
+  const [attendanceSummaryLoading, setAttendanceSummaryLoading] = useState(false);
 
   // Fetch students for selected grade
   useEffect(() => {
@@ -68,17 +67,31 @@ export const Attendance = () => {
           initialAttendance[s.id] = 'present';
         });
         setAttendance(initialAttendance);
+
+        // Fetch attendance history for each student (for 30-day stats)
+        if (isAdmin && data && data.length > 0) {
+          const historyMap: Record<string, any> = {};
+          for (const student of data) {
+            try {
+              const history = await attendanceService.getStudentAttendanceHistory(student.id, 30);
+              if (history) {
+                historyMap[student.id] = history;
+              }
+            } catch (err) {
+              console.error(`Failed to fetch attendance history for student ${student.id}:`, err);
+            }
+          }
+          setStudentAttendanceHistory(historyMap);
+        }
       } catch (error) {
         console.error('Failed to fetch students:', error);
-        // Fall back to mock data
-        const filtered = mockStudents.filter((s: any) => s.grade === selectedGrade);
-        setStudents(filtered);
+        setStudents([]);
       } finally {
         setLoading(false);
       }
     };
     fetchStudents();
-  }, [selectedGrade, attendanceMode]);
+  }, [selectedGrade, attendanceMode, isAdmin]);
 
   // Fetch staff attendance from backend (biometric & manually logged ZKTeco devices)
   useEffect(() => {
@@ -110,28 +123,69 @@ export const Attendance = () => {
         }
       } catch (error) {
         console.error('Failed to fetch staff attendance:', error);
-        // Fall back to mock data
-        const staffRecords: StaffAttendanceRecord[] = mockTeachers.map((teacher) => ({
-          id: teacher.id,
-          name: teacher.name,
-          branch: teacher.branch,
-          department: teacher.department,
-          subjects: teacher.subjects,
-          status: teacher.isInClass ? 'Present' : 'Absent',
-          signInTime: teacher.isInClass ? '08:05 AM' : undefined,
-          signOutTime: teacher.isInClass ? undefined : undefined,
-          zkDeviceId: undefined,
-          role: 'teacher',
-          isBiometric: false,
-          classes: teacher.classes || 3
-        }));
-        setStaffAttendance(staffRecords);
+        setStaffAttendance([]);
       } finally {
         setLoading(false);
       }
     };
     fetchStaff();
   }, [selectedDate, attendanceMode, isVP]);
+
+  // Fetch attendance summary by grade for school admin
+  useEffect(() => {
+    if (!isAdmin || attendanceMode !== 'student') {
+      setGradeStats([]);
+      return;
+    }
+
+    const fetchAttendanceSummary = async () => {
+      setAttendanceSummaryLoading(true);
+      try {
+        const summaryData = await attendanceService.getAttendanceSummary(selectedDate);
+        if (summaryData && summaryData.summary) {
+          // Transform backend data to match expected format
+          const transformed = summaryData.summary.map((item: any) => {
+            const percent = item.total_students > 0 
+              ? ((parseInt(item.present || 0, 10) / parseInt(item.total_students, 10)) * 100)
+              : 0;
+            
+            // Normalize grade display: ensure "Grade " prefix
+            let gradeText = item.grade;
+            if (!gradeText.startsWith('Grade ') && /^\d+/.test(gradeText)) {
+              gradeText = `Grade ${gradeText}`;
+            }
+            
+            // Format grade display: "Grade 10" or "Grade 10 - Section A"
+            let gradeDisplay = gradeText;
+            if (item.section && item.section.trim()) {
+              gradeDisplay = `${gradeText} - ${item.section}`;
+            }
+            
+            // Extract just the number for the badge (e.g., "10" from "Grade 10 - Section A")
+            const badgeNumber = gradeText.replace('Grade ', '').split('-')[0].trim();
+            
+            return {
+              id: item.id,
+              grade: gradeDisplay,
+              badgeNumber: badgeNumber,
+              enrollment: parseInt(item.total_students, 10),
+              present: parseInt(item.present || 0, 10),
+              percentage: percent.toFixed(1) + '%',
+              percentageNumeric: percent.toFixed(1)
+            };
+          });
+          setGradeStats(transformed);
+        }
+      } catch (error) {
+        console.error('Failed to fetch attendance summary:', error);
+        // Keep existing gradeStats if fetch fails
+      } finally {
+        setAttendanceSummaryLoading(false);
+      }
+    };
+
+    fetchAttendanceSummary();
+  }, [selectedDate, attendanceMode, isAdmin]);
 
   const toggleStatus = (studentId: string, status: 'present' | 'absent') => {
     setAttendance(prev => ({
@@ -147,13 +201,6 @@ export const Attendance = () => {
     });
     setAttendance(newAttendance);
   };
-
-  const gradeStats = [
-    { grade: '10A', enrollment: 24, present: 22, percentage: '91.6%' },
-    { grade: '9B', enrollment: 30, present: 28, percentage: '93.3%' },
-    { grade: '11C', enrollment: 18, present: 15, percentage: '83.3%' },
-    { grade: '12A', enrollment: 25, present: 25, percentage: '100%' },
-  ];
 
   const filteredStaff = staffAttendance.filter((record) => {
     if (staffFilter === 'all') return true;
@@ -504,10 +551,10 @@ export const Attendance = () => {
                   onChange={(e) => setSelectedGrade(e.target.value)}
                   className="appearance-none pl-4 pr-10 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 transition-all w-40"
                 >
-                  <option value="10A">Grade 10A</option>
-                  <option value="9B">Grade 9B</option>
-                  <option value="11C">Grade 11C</option>
-                  <option value="12A">Grade 12A</option>
+                  <option value="">-- Select Grade --</option>
+                  {gradeStats.map((grade, idx) => (
+                    <option key={idx} value={grade.grade}>{grade.grade}</option>
+                  ))}
                 </select>
                 <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
@@ -515,14 +562,18 @@ export const Attendance = () => {
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="space-y-1">
-              <label htmlFor="attendanceDate" className="text-[10px] font-bold text-slate-500 uppercase">Attendance Date</label>
-              <input
-                id="attendanceDate"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <label htmlFor="attendanceDate" className="text-[10px] font-bold text-slate-500 uppercase">Attendance Date (Ethiopian)</label>
+              <div className="flex flex-col gap-1">
+                <input
+                  id="attendanceDate"
+                  type="text"
+                  value={selectedDate}
+                  placeholder="YYYY-MM-DD (Ethiopian)"
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-[9px] text-slate-500 dark:text-slate-400">{formatEthiopianLabel(selectedDate)}</span>
+              </div>
             </div>
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="space-y-1">
@@ -571,9 +622,9 @@ export const Attendance = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center text-blue-700 dark:text-blue-400 font-bold text-xs">
-                            {stat.grade}
+                            {stat.badgeNumber}
                           </div>
-                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">Grade {stat.grade}</span>
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-100">{stat.grade}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center text-sm font-medium text-slate-600 dark:text-slate-400">{stat.enrollment} Students</td>
@@ -583,7 +634,7 @@ export const Attendance = () => {
                           <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{stat.percentage}</span>
                           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: stat.percentage }} />
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${stat.percentageNumeric}%` }} />
                           </div>
                         </div>
                       </td>
@@ -642,10 +693,15 @@ export const Attendance = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <span className="text-sm font-bold text-slate-700 dark:text-slate-300">96%</span>
+                          <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                            {studentAttendanceHistory[student.id]?.attendance_percentage ?? '-'}%
+                          </span>
                           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
-                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: '96%' }} />
+                            <div 
+                              className="h-full bg-emerald-500 rounded-full" 
+                              style={{ width: `${studentAttendanceHistory[student.id]?.attendance_percentage ?? 0}%` }} 
+                            />
                           </div>
                         </div>
                       </td>
