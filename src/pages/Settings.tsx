@@ -108,8 +108,8 @@ export const Settings = () => {
   const [staffPayoutEdited, setStaffPayoutEdited] = useState(false);
   // Lock target editing after 4th of each Gregorian month
   const isTargetSettingLocked = (() => { const d = new Date().getDate(); return d > 4; })();
-  const [smtpSettings, setSmtpSettings] = useState({ smtp_host: '', smtp_port: '587', smtp_user: '', smtp_from: '' });
-  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpSettings, setSmtpSettings] = useState({ smtp_host: 'smtp.gmail.com', smtp_port: '587', smtp_user: 'abdiadamaschooloffice@gmail.com', smtp_from: 'abdiadamaschooloffice@gmail.com' });
+  const [smtpPass, setSmtpPass] = useState('gdgg eify uzec fhox');
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [smtpMessage, setSmtpMessage] = useState('');
@@ -184,7 +184,14 @@ export const Settings = () => {
       loadGeneralSettings().catch(console.error);
       loadFeeStructure(currentBranchScopeId).catch(console.error);
       loadProfitTargets(currentBranchScopeId).catch(console.error);
-      settingsService.getSmtpSettings().then(setSmtpSettings).catch(console.error);
+      settingsService.getSmtpSettings().then((saved) => {
+        setSmtpSettings(prev => ({
+          smtp_host: saved.smtp_host || prev.smtp_host,
+          smtp_port: saved.smtp_port || prev.smtp_port,
+          smtp_user: saved.smtp_user || prev.smtp_user,
+          smtp_from: saved.smtp_from || prev.smtp_from,
+        }));
+      }).catch(console.error);
     } else if (role === 'school-admin') {
       // School Admin: load finance settings for read-only viewing of assigned policy
       loadFinanceSettings();
