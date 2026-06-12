@@ -622,7 +622,7 @@ export const Staff = () => {
       {/* Success Modal */}
       {successModal.show && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-green-100 text-green-600 rounded-full">
@@ -658,6 +658,12 @@ export const Staff = () => {
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                 <p className="text-sm text-amber-800 dark:text-amber-200">
                   <strong>⚠️ Important:</strong> This password will only be shown once. Make sure to save it securely.
+                </p>
+              </div>
+
+              <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4">
+                <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                  <strong>📧 Email sent:</strong> A welcome email with the Digital ID, login email, and temporary password has been automatically sent to <strong>{successModal.data?.user?.email}</strong>.
                 </p>
               </div>
 
