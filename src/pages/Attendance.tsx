@@ -145,25 +145,25 @@ export const Attendance = () => {
         if (summaryData && summaryData.summary) {
           // Transform backend data to match expected format
           const transformed = summaryData.summary.map((item: any) => {
-            const percent = item.total_students > 0 
+            const percent = item.total_students > 0
               ? ((parseInt(item.present || 0, 10) / parseInt(item.total_students, 10)) * 100)
               : 0;
-            
+
             // Normalize grade display: ensure "Grade " prefix
             let gradeText = item.grade;
             if (!gradeText.startsWith('Grade ') && /^\d+/.test(gradeText)) {
               gradeText = `Grade ${gradeText}`;
             }
-            
+
             // Format grade display: "Grade 10" or "Grade 10 - Section A"
             let gradeDisplay = gradeText;
             if (item.section && item.section.trim()) {
               gradeDisplay = `${gradeText} - ${item.section}`;
             }
-            
+
             // Extract just the number for the badge (e.g., "10" from "Grade 10 - Section A")
             const badgeNumber = gradeText.replace('Grade ', '').split('-')[0].trim();
-            
+
             return {
               id: item.id,
               grade: gradeDisplay,
@@ -698,9 +698,9 @@ export const Attendance = () => {
                           </span>
                           <div className="w-24 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                             {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, no-inline-styles */}
-                            <div 
-                              className="h-full bg-emerald-500 rounded-full" 
-                              style={{ width: `${studentAttendanceHistory[student.id]?.attendance_percentage ?? 0}%` }} 
+                            <div
+                              className="h-full bg-emerald-500 rounded-full"
+                              style={{ width: `${studentAttendanceHistory[student.id]?.attendance_percentage ?? 0}%` }}
                             />
                           </div>
                         </div>
