@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     // Prefer an explicit proxy target for dev; fall back to a valid local backend URL if VITE_API_URL is relative
     const API_PROXY_TARGET = env.VITE_API_PROXY ||
-        (env.VITE_API_URL && env.VITE_API_URL.startsWith('https') ? env.VITE_API_URL : 'https://api.abdi-adama.com');
+        (env.VITE_API_URL && env.VITE_API_URL.startsWith('https') ? env.VITE_API_URL : 'https://abdi-adama.com');
 
     return {
         plugins: [react()],

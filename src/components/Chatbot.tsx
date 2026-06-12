@@ -1,10 +1,8 @@
-
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, MinusCircle, Maximize2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useEffect, useRef } from 'react';
-
+import {API_BASE_URL} from "../config/api";
 
 export const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -85,34 +83,43 @@ export const Chatbot = () => {
     window.addEventListener('pointerup', handlePointerUp);
     wrapperRef.current?.setPointerCapture(e.pointerId);
   };
+
   const handleSend = async (e: React.FormEvent) => {
-    setIsLoading(true);
     e.preventDefault();
     if (!message.trim() || isLoading) return;
+    
     const userMessage = { role: "user", content: message };
     setMessages(prev => [...prev, userMessage]);
     setMessage('');
     setIsLoading(true);
 
-
     try {
-      const response = await fetch('https://kaleabbelayhun-abdiragbackend.hf.space/chat', {
+      const response = await fetch(`${API_BASE_URL}/guest/chat`, { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          "Authorization": `Bearer ${import.meta.env.VITE_HF_TOKEN}`
         },
         body: JSON.stringify({ messages: [...messages, userMessage] }),
       });
 
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
       const data = await response.json();
+      
+      // Safety check in case of error payload returning cleanly but missing "content"
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       setMessages(prev => [...prev, { role: "assistant", content: data.content }]);
     } catch (err) {
-      setMessages(prev => [...prev, { role: "assistant", content: "**Error:** Could not reach the server. Please try again." }]);
+      console.error("Chat error:", err);
+      setMessages(prev => [...prev, { role: "assistant", content: "**Error:** Could not reach the server. Please try again later." }]);
     } finally {
       setIsLoading(false);
     }
-
   };
 
   if (!isOpen) {
