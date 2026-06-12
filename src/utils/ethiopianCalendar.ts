@@ -135,9 +135,10 @@ export function gregorianToEthiopian(date: Date | string): { year: number; month
   const d = typeof date === 'string' ? new Date(date) : date;
   if (isNaN(d.getTime())) return { year: 2018, month: 1, day: 1 };
   
-  const year = d.getFullYear();
-  const month = d.getMonth() + 1;
-  const day = d.getDate();
+  const useUtc = typeof date === 'string';
+  const year = useUtc ? d.getUTCFullYear() : d.getFullYear();
+  const month = (useUtc ? d.getUTCMonth() : d.getMonth()) + 1;
+  const day = useUtc ? d.getUTCDate() : d.getDate();
   
   const a = Math.floor((14 - month) / 12);
   const y = year + 4800 - a;
