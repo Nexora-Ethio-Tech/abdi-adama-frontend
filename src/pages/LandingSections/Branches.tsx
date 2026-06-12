@@ -28,7 +28,7 @@ interface BranchInfo {
     name: string;
     address: string;
     email: string;
-    profile_image?: string;
+    logo_url?: string;
 }
 
 export default function Branches({ setScrolled }: { setScrolled: (scrolled: boolean) => void }) {
@@ -140,7 +140,7 @@ export default function Branches({ setScrolled }: { setScrolled: (scrolled: bool
                                 {/* Branch Image */}
                                 <div className="relative h-52 overflow-hidden">
                                     <img
-                                        src={branch.profile_image || DEFAULT_BRANCH_IMAGE}
+                                        src={branch.logo_url || DEFAULT_BRANCH_IMAGE}
                                         alt={branch.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                     />

@@ -23,7 +23,7 @@ export const Branches = () => {
     phone: '',
     email: '',
     address: '',
-    profile_image: '' 
+    logoUrl: '' 
   });
 
   // Edit branch state
@@ -88,7 +88,7 @@ export const Branches = () => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setBranchForm((prev) => ({ ...prev, profile_image: base64String }));
+      setBranchForm((prev) => ({ ...prev, logoUrl: base64String }));
     };
     reader.readAsDataURL(file);
   };
@@ -101,7 +101,7 @@ export const Branches = () => {
       console.log('✅ Branch created:', response);
       alert('Branch created successfully!');
       setShowAddModal(false);
-      setBranchForm({ name: '', code: '', phone: '', email: '', address: '', profile_image: '' });
+      setBranchForm({ name: '', code: '', phone: '', email: '', address: '', logoUrl: '' });
       // Refresh branches
       const refreshResponse = await branchService.getAllBranches();
       if (refreshResponse.success) {
@@ -296,9 +296,9 @@ export const Branches = () => {
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Branch Image (Max 5MB)</label>
                 <div className="mt-1 flex items-center gap-4">
-                  {branchForm.profile_image && (
+                  {branchForm.logoUrl && (
                     <img 
-                      src={branchForm.profile_image} 
+                      src={branchForm.logoUrl} 
                       alt="Branch preview" 
                       className="w-16 h-16 rounded-lg object-cover border border-slate-200 shadow-sm"
                     />
