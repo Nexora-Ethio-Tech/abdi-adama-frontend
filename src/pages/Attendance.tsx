@@ -19,6 +19,8 @@ interface StaffAttendanceRecord {
   subjects: string[];
   status: StaffAttendanceStatus;
   signInTime?: string;
+  lunchOutTime?: string;
+  lunchInTime?: string;
   signOutTime?: string;
   zkDeviceId?: number;
   role?: string;
@@ -111,8 +113,10 @@ export const Attendance = () => {
             branch: item.branch_name || 'Main',
             department: item.department || (item.role === 'teacher' ? 'Academics' : item.role),
             subjects: item.subjects || [],
-            status: item.attendance_status === 'Present' ? 'Present' : 'Absent',
+            status: (item.attendance_status || '').toLowerCase() === 'present' ? 'Present' : 'Absent',
             signInTime: item.sign_in_time || undefined,
+            lunchOutTime: item.lunch_out_time || undefined,
+            lunchInTime: item.lunch_in_time || undefined,
             signOutTime: item.sign_out_time || undefined,
             zkDeviceId: item.zk_device_id,
             role: item.role,
@@ -764,69 +768,90 @@ export const Attendance = () => {
                 <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Staff Member</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Role / Dept</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-In</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Sign-Out</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Arrival</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Lunch Out</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Lunch In</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Departure</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Verification & ZK ID</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                  {filteredStaff.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
-                            {record.name[0]}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-800 dark:text-slate-100">{record.name}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">
-                              {record.subjects && record.subjects.length > 0
-                                ? record.subjects.join(', ')
-                                : record.role ? record.role.replace('-', ' ').toUpperCase() : 'Staff'}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{record.department}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{record.branch}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signInTime ?? 'Not signed in'}</td>
-                      <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signOutTime ?? 'Pending'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {record.zkDeviceId ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100 dark:border-blue-900/20">
-                              ZK ID: {record.zkDeviceId}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                              No Device Linked
-                            </span>
-                          )}
-                          {record.isBiometric ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/20">
-                              Biometric Verified
-                            </span>
-                          ) : record.signInTime ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-900/20">
-                              Manual Entry
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-rose-100 dark:border-rose-900/20">
-                              No Punch
-                            </span>
-                          )}
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Loading staff attendance...</p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : filteredStaff.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
+                          {staffFilter === 'all'
+                            ? 'No staff members found for this branch.'
+                            : `No staff members with status "${staffFilter}" for this date.`}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStaff.map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 font-bold">
+                              {record.name[0]}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-800 dark:text-slate-100">{record.name}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                                {record.subjects && record.subjects.length > 0
+                                  ? record.subjects.join(', ')
+                                  : record.role ? record.role.replace('-', ' ').toUpperCase() : 'Staff'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            {record.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signInTime ?? '--:--'}</td>
+                        <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.lunchOutTime ?? '--:--'}</td>
+                        <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.lunchInTime ?? '--:--'}</td>
+                        <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signOutTime ?? '--:--'}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {record.zkDeviceId ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100 dark:border-blue-900/20">
+                                ZK ID: {record.zkDeviceId}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
+                                No Device Linked
+                              </span>
+                            )}
+                            {record.isBiometric ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/20">
+                                Biometric Verified
+                              </span>
+                            ) : record.signInTime ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-900/20">
+                                Manual Entry
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-rose-100 dark:border-rose-900/20">
+                                No Punch
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
