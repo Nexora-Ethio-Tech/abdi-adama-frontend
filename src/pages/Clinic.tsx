@@ -191,7 +191,7 @@ export const Clinic = () => {
         setMessages(resJson.data || []);
         // Mark unread messages as read for this conversation (WhatsApp-like behavior)
         await fetch(`${API_URL}/api/clinic/chat/read`, {
-          method: 'PATCH',
+          method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ student_id: childId })
         });
