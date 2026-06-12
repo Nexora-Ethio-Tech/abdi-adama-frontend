@@ -53,4 +53,5 @@ export const API_ENDPOINTS = {
   REGISTER_USER: '/school-admin/register-user',
   GET_BRANCH_USERS: '/school-admin/users',
   GET_BRANCH_USER: (id: string) => `/school-admin/users/${id}`,
+  DELETE_BRANCH_USER: (id: string) => `/school-admin/users/${id}`,
 };

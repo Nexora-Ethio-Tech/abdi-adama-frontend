@@ -47,7 +47,13 @@ export const userService = {
 
   // Delete user
   deleteUser: async (userId: string) => {
-    const response = await api.delete(API_ENDPOINTS.DELETE_USER(userId));
+    const userJson = localStorage.getItem('abdi_adama_user');
+    const role = userJson ? JSON.parse(userJson).role : null;
+    const isSchoolAdmin = role === 'school-admin';
+    const endpoint = isSchoolAdmin
+      ? API_ENDPOINTS.DELETE_BRANCH_USER(userId)
+      : API_ENDPOINTS.DELETE_USER(userId);
+    const response = await api.delete(endpoint);
     return response.data;
   },
 
