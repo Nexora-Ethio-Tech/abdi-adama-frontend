@@ -1478,7 +1478,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
 
       {viewingTranscript && (
         <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="relative bg-white dark:bg-slate-950 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20">
+          <div className="relative bg-white dark:bg-slate-950 w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 border border-white/20 flex flex-col max-h-[90vh]">
             {/* Floating Close Button */}
             <button
               onClick={() => setViewingTranscript(null)}
@@ -1500,7 +1500,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
               </div>
             </div>
 
-            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 overflow-y-auto flex-1">
               <div className="lg:col-span-2 space-y-6 relative">
                 {transcriptLoading ? (
                   <div className="w-full h-[420px] flex items-center justify-center">
