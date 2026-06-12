@@ -48,6 +48,8 @@ export const FinanceClerkRegistration = () => {
   const [showCredentials, setShowCredentials] = useState(false);
   const [approvedApp, setApprovedApp] = useState<any>(null);
 
+
+
   const copyText = async (text: string, label: string) => {
     if (!text || text === 'N/A') return;
     try {
@@ -98,6 +100,7 @@ export const FinanceClerkRegistration = () => {
   useEffect(() => {
     fetchPendingApplications();
   }, [fetchPendingApplications]);
+
 
   const loadRegistrationFee = async (grade?: string) => {
     try {
@@ -309,6 +312,7 @@ export const FinanceClerkRegistration = () => {
           ))}
         </div>
       )}
+
 
       {/* Approval Modal */}
       {showApprovalForm && selectedApp && (

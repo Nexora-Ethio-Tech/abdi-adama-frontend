@@ -683,9 +683,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
 
     const q = searchTerm.toLowerCase();
     return (
-      student.name.toLowerCase().includes(q) ||
-      student.digital_id.toLowerCase().includes(q) ||
-      student.id.toLowerCase().includes(q)
+      (student.name || '').toLowerCase().includes(q) ||
+      (student.digital_id || '').toLowerCase().includes(q) ||
+      (student.id || '').toLowerCase().includes(q)
     );
   });
 
@@ -694,9 +694,9 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     if (!searchTerm.trim()) return true;
 
     return (
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.digital_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.id.toLowerCase().includes(searchTerm.toLowerCase())
+      (student.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (student.digital_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (student.id || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
@@ -710,8 +710,8 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     const searchValue = transportSearchTerm.toLowerCase();
     if (!searchValue) return true;
     return (
-      student.name.toLowerCase().includes(searchValue) ||
-      student.digital_id.toLowerCase().includes(searchValue) ||
+      (student.name || '').toLowerCase().includes(searchValue) ||
+      (student.digital_id || '').toLowerCase().includes(searchValue) ||
       (student.route_name || '').toLowerCase().includes(searchValue) ||
       (student.driver_name || '').toLowerCase().includes(searchValue)
     );
@@ -725,7 +725,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     // Only show results if user has typed something in the search box
     if (!q) return false;
     return (
-      student.name.toLowerCase().includes(q) ||
+      (student.name || '').toLowerCase().includes(q) ||
       (student.digital_id || '').toLowerCase().includes(q) ||
       (student.id || '').toLowerCase().includes(q)
     );

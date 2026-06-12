@@ -418,28 +418,28 @@ export const AuditorFinance = () => {
   };
 
   const filteredPayments = payments.filter(payment =>
-    payment.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    payment.student_id.toLowerCase().includes(searchQuery.toLowerCase())
+    (payment.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (payment.student_id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const registrationFeePayments = filteredPayments.filter((payment) => {
-    const isRegistration = payment.type.toLowerCase().includes('registration');
-    const matchesStatus = registrationFeeStatus === 'all' || payment.status?.toLowerCase() === registrationFeeStatus;
+    const isRegistration = (payment.type || '').toLowerCase().includes('registration');
+    const matchesStatus = registrationFeeStatus === 'all' || (payment.status || '').toLowerCase() === registrationFeeStatus;
     return isRegistration && matchesStatus;
   });
 
   const displayedPayments = showRegistrationFeeOnly ? registrationFeePayments : filteredPayments;
 
   const filteredFeeReductions = feeReductions.filter(reduction =>
-    reduction.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    reduction.digital_id.toLowerCase().includes(searchQuery.toLowerCase())
+    (reduction.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (reduction.digital_id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredAuditTrail = auditTrail.filter(entry =>
-    entry.student_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.action_label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    entry.category.toLowerCase().includes(searchQuery.toLowerCase())
+    (entry.student_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (entry.action_label || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (entry.section || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (entry.category || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Pagination calculation for Transactions
@@ -578,6 +578,13 @@ export const AuditorFinance = () => {
               className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Fee Reductions ({feeReductions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('finance')}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'finance' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            >
+              Audit Trail ({auditTrail.length})
             </button>
           </div>
 

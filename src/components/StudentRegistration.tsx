@@ -12,6 +12,7 @@ import {
   registerUser,
   toggleRegistration
 } from '../services/schoolAdminService';
+import { branchService } from '../services/branchService';
 import api from '../services/api';
 import { EthiopianDatePicker } from './EthiopianDatePicker';
 import { ethiopianToGregorianIso, gregorianToEthiopian, formatEthiopianDateOnly } from '../utils/ethiopianCalendar';
@@ -247,9 +248,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
   useEffect(() => {
     const fetchBranches = async () => {
       try {
-        const response = await api.get('/school-admin/public/branches');
-        if (response.data.success && Array.isArray(response.data.data)) {
-          setBranchesList(response.data.data);
+        const response = await branchService.getAllBranchesGuest();
+        if (response.success && Array.isArray(response.data)) {
+          setBranchesList(response.data);
         }
       } catch (err) {
         console.error('Failed to fetch branches list:', err);

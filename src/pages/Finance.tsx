@@ -130,9 +130,9 @@ export const Finance = () => {
 
   const filteredAuditLogs = allAuditLogs.filter((log) => {
     const matchesSearch =
-      log.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.modifiedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.approverName.toLowerCase().includes(searchTerm.toLowerCase());
+      (log.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.modifiedBy || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (log.approverName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSectionFilter = auditSection === 'all' || log.section === auditSection;
     return (
       log.direction === auditFilter &&
@@ -145,14 +145,14 @@ export const Finance = () => {
 
   const filteredTransactions = dbTransactions.filter((tx) => {
     const matchesSearch =
-      tx.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.verified_by.toLowerCase().includes(searchTerm.toLowerCase());
+      (tx.student_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tx.verified_by || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesRange(tx.date) && matchesSearch;
   });
 
   const calculateNetProfit = () => {
     const totalIn = filteredTransactions
-      .filter(tx => tx.type === 'Income' || tx.type.startsWith('Payment'))
+      .filter(tx => tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee')
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
     const totalOut = filteredTransactions
       .filter(tx => tx.type === 'Expense')
@@ -216,7 +216,7 @@ export const Finance = () => {
           {t('finance.back')}
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-900/20 relative overflow-hidden group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
           <div className="relative z-10">
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{t('finance.totalRevenue')}</p>
@@ -241,8 +241,17 @@ export const Finance = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
+          <p className="text-slate-500 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Monthly Fees</p>
+          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.monthly_fees || 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
+          <div className="mt-8 flex items-center gap-2 text-purple-500 text-[10px] font-black uppercase tracking-widest bg-purple-50 dark:bg-purple-900/20 w-fit px-3 py-1 rounded-full">
+            <ArrowUpRight size={14} />
+            <span>Tuition Revenue</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
           <p className="text-slate-500 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{t('finance.registrationFees')}</p>
-          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.monthly_revenue || 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
+          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.registration_fees || 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
           <div className="mt-8 flex items-center gap-2 text-blue-500 text-[10px] font-black uppercase tracking-widest bg-blue-50 dark:bg-blue-900/20 w-fit px-3 py-1 rounded-full">
             <ArrowUpRight size={14} />
             <span>{t('finance.monthlyTarget')}</span>
@@ -703,9 +712,9 @@ export const Finance = () => {
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' || tx.type.startsWith('Payment') ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -718,7 +727,7 @@ export const Finance = () => {
                       </td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
@@ -730,9 +739,9 @@ export const Finance = () => {
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' || tx.type.startsWith('Payment') ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -740,7 +749,7 @@ export const Finance = () => {
                       <td className="px-6 py-4 text-slate-600">{tx.student_name}</td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
