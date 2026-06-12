@@ -32,12 +32,22 @@ const tabFromSearch = (tab: string | null): AuditorFinanceTab => {
 
 export const AuditorFinance = () => {
   const user = useUser();
-  const { selectedBranchId } = useStore();
-  // Use the store selection if available, otherwise fall back to the auditor's own branch
-  const effectiveBranchId: string | null = selectedBranchId ?? (user as any)?.branch_id ?? null;
+  const { selectedBranchId, setSelectedBranchId } = useStore();
+  // Use the store selection if available, fallback to localStorage if auditor, otherwise fall back to the auditor's own branch
+  const effectiveBranchId: string | null = selectedBranchId ?? localStorage.getItem('auditor_selected_branch') ?? (user as any)?.branch_id ?? null;
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  // Synchronize store with localStorage on load
+  useEffect(() => {
+    if (!selectedBranchId) {
+      const saved = localStorage.getItem('auditor_selected_branch');
+      if (saved) {
+        setSelectedBranchId(saved);
+      }
+    }
+  }, [selectedBranchId, setSelectedBranchId]);
 
   const [activeTab, setActiveTab] = useState<AuditorFinanceTab>(
     location.pathname === '/special-students'

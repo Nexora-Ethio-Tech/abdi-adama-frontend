@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import auditorService, { type AuditorDashboard as AuditorDashboardData, type Branch } from '../services/auditorService';
+import { useStore } from '../context/useStore';
 
 const OverviewCard = ({
   title,
@@ -94,12 +95,20 @@ const QuickLink = ({
 export const AuditorDashboard = () => {
   const { t } = useTranslation();
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
-    return localStorage.getItem('auditor_selected_branch') || '';
-  });
+  const { selectedBranchId, setSelectedBranchId } = useStore();
   const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Sync with localStorage on load if store is empty
+  useEffect(() => {
+    if (!selectedBranchId) {
+      const saved = localStorage.getItem('auditor_selected_branch');
+      if (saved) {
+        setSelectedBranchId(saved);
+      }
+    }
+  }, [selectedBranchId, setSelectedBranchId]);
 
   // Load branches
   useEffect(() => {
@@ -107,17 +116,24 @@ export const AuditorDashboard = () => {
       try {
         const branchList = await auditorService.getBranches();
         setBranches(branchList);
-        if (branchList.length > 0 && !selectedBranchId) {
+        
+        const saved = localStorage.getItem('auditor_selected_branch');
+        const currentSelection = useStore.getState().selectedBranchId || saved;
+        const exists = branchList.some(b => b.id === currentSelection);
+        
+        if (branchList.length > 0 && (!currentSelection || !exists)) {
           const firstBranchId = branchList[0].id;
           setSelectedBranchId(firstBranchId);
           localStorage.setItem('auditor_selected_branch', firstBranchId);
+        } else if (exists && useStore.getState().selectedBranchId !== currentSelection) {
+          setSelectedBranchId(currentSelection);
         }
       } catch (err: any) {
         console.error('Failed to load branches:', err);
       }
     };
     fetchBranches();
-  }, []);
+  }, [setSelectedBranchId]);
 
   // Load dashboard data whenever selected branch changes
   useEffect(() => {
@@ -171,7 +187,7 @@ export const AuditorDashboard = () => {
             <span className="text-[10px] font-black uppercase text-slate-400">Selected Branch</span>
             <select
               title="Select branch to audit"
-              value={selectedBranchId}
+              value={selectedBranchId || ''}
               onChange={handleBranchChange}
               className="bg-transparent text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-0 cursor-pointer pr-4 w-full"
             >
