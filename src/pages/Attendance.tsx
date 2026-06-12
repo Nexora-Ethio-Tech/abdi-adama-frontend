@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle, Clock, ChevronDown, UserCheck, Users, ShieldAlert, ArrowRight, X, Send, Check, Loader2, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, ChevronDown, UserCheck, Users, ShieldAlert, ArrowRight, X, Send, Check, Loader2, ArrowLeft, Pencil } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { getTodayEthiopianDate, formatEthiopianLabel } from '../utils/ethiopianC
 import api from '../services/api';
 
 type AttendanceMode = 'student' | 'staff' | null;
-type StaffAttendanceStatus = 'Present' | 'Absent';
+type StaffAttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Present (Late)';
 
 interface StaffAttendanceRecord {
   id: string;
@@ -18,6 +18,7 @@ interface StaffAttendanceRecord {
   department: string;
   subjects: string[];
   status: StaffAttendanceStatus;
+  isLateArrival?: boolean;
   signInTime?: string;
   lunchOutTime?: string;
   lunchInTime?: string;
@@ -26,6 +27,7 @@ interface StaffAttendanceRecord {
   role?: string;
   isBiometric?: boolean;
   classes?: number;
+  date?: string;
 }
 
 export const Attendance = () => {
@@ -42,6 +44,8 @@ export const Attendance = () => {
   const [staffAttendance, setStaffAttendance] = useState<StaffAttendanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
+  const [editRecord, setEditRecord] = useState<StaffAttendanceRecord | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
   const [absentTeacher, setAbsentTeacher] = useState<any>(null);
   const [isProxyAnalysisRunning, setIsProxyAnalysisRunning] = useState(false);
   const [proxySuggestions, setProxySuggestions] = useState<string[]>([]);
@@ -107,22 +111,34 @@ export const Attendance = () => {
           params: { date: selectedDate }
         });
         if (response.data && response.data.success) {
-          const mappedRecords: StaffAttendanceRecord[] = response.data.data.map((item: any) => ({
-            id: item.id,
-            name: item.name,
-            branch: item.branch_name || 'Main',
-            department: item.department || (item.role === 'teacher' ? 'Academics' : item.role),
-            subjects: item.subjects || [],
-            status: (item.attendance_status || '').toLowerCase() === 'present' ? 'Present' : 'Absent',
-            signInTime: item.sign_in_time || undefined,
-            lunchOutTime: item.lunch_out_time || undefined,
-            lunchInTime: item.lunch_in_time || undefined,
-            signOutTime: item.sign_out_time || undefined,
-            zkDeviceId: item.zk_device_id,
-            role: item.role,
-            isBiometric: item.is_biometric,
-            classes: item.classes_count || 0
-          }));
+          const mappedRecords: StaffAttendanceRecord[] = response.data.data.map((item: any) => {
+            const rawStatus = (item.attendance_status || '').toLowerCase();
+            const isLateArrival = !!item.is_late_arrival;
+            let status: StaffAttendanceStatus = 'Absent';
+            if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
+            else if (rawStatus === 'present')   status = 'Present';
+            else if (rawStatus === 'late')       status = 'Late';
+            else if (rawStatus === 'half-day')   status = 'Half Day';
+            else if (rawStatus === 'absent')     status = 'Absent';
+            return {
+              id: item.id,
+              name: item.name,
+              branch: item.branch_name || 'Main',
+              department: item.department || (item.role === 'teacher' ? 'Academics' : item.role),
+              subjects: item.subjects || [],
+              status,
+              isLateArrival,
+              signInTime: item.sign_in_time || undefined,
+              lunchOutTime: item.lunch_out_time || undefined,
+              lunchInTime: item.lunch_in_time || undefined,
+              signOutTime: item.sign_out_time || undefined,
+              zkDeviceId: item.zk_device_id,
+              role: item.role,
+              isBiometric: item.is_biometric,
+              classes: item.classes_count || 0,
+              date: selectedDate,
+            };
+          });
           setStaffAttendance(mappedRecords);
         }
       } catch (error) {
@@ -134,6 +150,66 @@ export const Attendance = () => {
     };
     fetchStaff();
   }, [selectedDate, attendanceMode, isVP]);
+
+  const handleSaveManualAttendance = async (userId: string, date: string, formData: {
+    status?: string;
+    sign_in_time?: string;
+    lunch_out_time?: string;
+    lunch_in_time?: string;
+    sign_out_time?: string;
+  }) => {
+    setEditSaving(true);
+    try {
+      const response = await api.post('/school-admin/staff-attendance', {
+        userId,
+        date,
+        ...formData
+      });
+      if (response.data && response.data.success) {
+        const endpoint = isVP ? '/vice-principal/staff-attendance' : '/school-admin/staff-attendance';
+        const refreshResponse = await api.get(endpoint, {
+          params: { date: selectedDate }
+        });
+        if (refreshResponse.data && refreshResponse.data.success) {
+          const mappedRecords: StaffAttendanceRecord[] = refreshResponse.data.data.map((item: any) => {
+            const rawStatus = (item.attendance_status || '').toLowerCase();
+            const isLateArrival = !!item.is_late_arrival;
+            let status: StaffAttendanceStatus = 'Absent';
+            if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
+            else if (rawStatus === 'present')   status = 'Present';
+            else if (rawStatus === 'late')       status = 'Late';
+            else if (rawStatus === 'half-day')   status = 'Half Day';
+            else if (rawStatus === 'absent')     status = 'Absent';
+            return {
+              id: item.id,
+              name: item.name,
+              branch: item.branch_name || 'Main',
+              department: item.department || (item.role === 'teacher' ? 'Academics' : item.role),
+              subjects: item.subjects || [],
+              status,
+              isLateArrival,
+              signInTime: item.sign_in_time || undefined,
+              lunchOutTime: item.lunch_out_time || undefined,
+              lunchInTime: item.lunch_in_time || undefined,
+              signOutTime: item.sign_out_time || undefined,
+              zkDeviceId: item.zk_device_id,
+              role: item.role,
+              isBiometric: item.is_biometric,
+              classes: item.classes_count || 0,
+              date: selectedDate,
+            };
+          });
+          setStaffAttendance(mappedRecords);
+        }
+        setEditRecord(null);
+      }
+    } catch (error) {
+      console.error('Failed to save manual attendance:', error);
+      alert('Failed to save manual attendance. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   // Fetch attendance summary by grade for school admin
   useEffect(() => {
@@ -768,18 +844,19 @@ export const Attendance = () => {
                 <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Staff Member</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">ZK ID</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Status</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Arrival</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Lunch Out</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Lunch In</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Departure</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Verification & ZK ID</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Verification & Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
+                      <td colSpan={8} className="px-6 py-12 text-center">
                         <div className="flex flex-col items-center gap-3">
                           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Loading staff attendance...</p>
@@ -788,7 +865,7 @@ export const Attendance = () => {
                     </tr>
                   ) : filteredStaff.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
+                      <td colSpan={8} className="px-6 py-12 text-center">
                         <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
                           {staffFilter === 'all'
                             ? 'No staff members found for this branch.'
@@ -814,8 +891,17 @@ export const Attendance = () => {
                             </div>
                           </div>
                         </td>
+                        <td className="px-6 py-4 text-center text-sm font-semibold text-slate-600 dark:text-slate-400">
+                          {record.zkDeviceId ?? '--'}
+                        </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em]
+                            ${record.status === 'Present'         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
+                            ${record.status === 'Present (Late)'  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : ''}
+                            ${record.status === 'Half Day'        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
+                            ${record.status === 'Late'            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                            ${record.status === 'Absent'          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : ''}
+                          `}>
                             {record.status}
                           </span>
                         </td>
@@ -825,27 +911,24 @@ export const Attendance = () => {
                         <td className="px-6 py-4 text-center text-sm text-slate-600 dark:text-slate-400">{record.signOutTime ?? '--:--'}</td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            {record.zkDeviceId ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-blue-100 dark:border-blue-900/20">
-                                ZK ID: {record.zkDeviceId}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 rounded-lg text-[10px] font-black uppercase tracking-wider">
-                                No Device Linked
-                              </span>
-                            )}
                             {record.isBiometric ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-emerald-100 dark:border-emerald-900/20">
-                                Biometric Verified
+                                Biometric
                               </span>
                             ) : record.signInTime ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-amber-100 dark:border-amber-900/20">
-                                Manual Entry
+                                Manual
                               </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-lg text-[10px] font-black uppercase tracking-wider border border-rose-100 dark:border-rose-900/20">
-                                No Punch
-                              </span>
+                            ) : null}
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditRecord(record)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 dark:bg-slate-800 dark:hover:bg-blue-900/30 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors text-[10px] font-black uppercase tracking-wider"
+                                title="Edit attendance manually"
+                              >
+                                <Pencil size={11} />
+                                Edit
+                              </button>
                             )}
                           </div>
                         </td>
@@ -929,6 +1012,198 @@ export const Attendance = () => {
           </div>
         </div>
       )}
+
+      {editRecord && (
+        <EditAttendanceModal
+          record={editRecord}
+          onClose={() => setEditRecord(null)}
+          onSave={handleSaveManualAttendance}
+          saving={editSaving}
+        />
+      )}
+    </div>
+  );
+};
+
+const EditAttendanceModal = ({
+  record,
+  onClose,
+  onSave,
+  saving
+}: {
+  record: StaffAttendanceRecord;
+  onClose: () => void;
+  onSave: (userId: string, date: string, formData: any) => Promise<void>;
+  saving: boolean;
+}) => {
+  const to24h = (time12?: string): string => {
+    if (!time12) return '';
+    const parts = time12.split(' ');
+    if (parts.length < 2) return '';
+    const [timePart, meridiem] = parts;
+    const [hStr, mStr] = timePart.split(':');
+    let h = parseInt(hStr, 10);
+    if (meridiem === 'PM' && h !== 12) h += 12;
+    if (meridiem === 'AM' && h === 12) h = 0;
+    return `${h.toString().padStart(2, '0')}:${mStr}`;
+  };
+
+  const to12h = (time24: string): string => {
+    if (!time24) return '';
+    const [hStr, mStr] = time24.split(':');
+    let h = parseInt(hStr, 10);
+    const m = parseInt(mStr, 10);
+    const meridiem = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${meridiem}`;
+  };
+
+  const getCurrentTime24 = () => {
+    const d = new Date();
+    return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  const [signIn, setSignIn] = useState(to24h(record.signInTime) || getCurrentTime24());
+  const [lunchOut, setLunchOut] = useState(to24h(record.lunchOutTime) || '');
+  const [lunchIn, setLunchIn] = useState(to24h(record.lunchInTime) || '');
+  const [signOut, setSignOut] = useState(to24h(record.signOutTime) || '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(record.id, record.date || new Date().toISOString().split('T')[0], {
+      sign_in_time: signIn ? to12h(signIn) : undefined,
+      lunch_out_time: lunchOut ? to12h(lunchOut) : undefined,
+      lunch_in_time: lunchIn ? to12h(lunchIn) : undefined,
+      sign_out_time: signOut ? to12h(signOut) : undefined,
+    });
+  };
+
+  const setFieldToNow = (field: string) => {
+    const now24 = getCurrentTime24();
+    if (field === 'signIn') setSignIn(now24);
+    if (field === 'lunchOut') setLunchOut(now24);
+    if (field === 'lunchIn') setLunchIn(now24);
+    if (field === 'signOut') setSignOut(now24);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl animate-in zoom-in duration-300 overflow-hidden border border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div>
+            <h3 className="font-bold text-slate-800 dark:text-white">Manual Punch Entry</h3>
+            <p className="text-xs text-slate-500 font-medium tracking-tight mt-0.5">{record.name} ({record.role?.replace('-', ' ').toUpperCase()})</p>
+          </div>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Arrival Time</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={signIn}
+                  onChange={(e) => setSignIn(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFieldToNow('signIn')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
+                >
+                  Now
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lunch Out Time</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={lunchOut}
+                  onChange={(e) => setLunchOut(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFieldToNow('lunchOut')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
+                >
+                  Now
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Lunch In Time</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={lunchIn}
+                  onChange={(e) => setLunchIn(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFieldToNow('lunchIn')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
+                >
+                  Now
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Departure Time</label>
+              <div className="flex gap-2">
+                <input
+                  type="time"
+                  value={signOut}
+                  onChange={(e) => setSignOut(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-600/50 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFieldToNow('signOut')}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-xs transition-colors"
+                >
+                  Now
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Attendance'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
