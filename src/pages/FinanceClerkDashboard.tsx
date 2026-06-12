@@ -179,7 +179,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined, grade: gradeFilter || undefined }),
         financeClerkService.getOverduePayments(),
         payrollService.getAllProfiles().catch(() => []),
-        financeClerkService.getPendingApplications({ status: 'awaiting-payment' }),
+        financeClerkService.getPendingApplications(),
       ]);
       const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),

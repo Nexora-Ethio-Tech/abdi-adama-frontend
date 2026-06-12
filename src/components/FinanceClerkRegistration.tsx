@@ -78,7 +78,7 @@ export const FinanceClerkRegistration = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API}/api/finance-clerk/applications?status=awaiting-payment`, {
+      const response = await fetch(`${API}/api/finance-clerk/applications`, {
         headers: authHeaders(),
       });
 
