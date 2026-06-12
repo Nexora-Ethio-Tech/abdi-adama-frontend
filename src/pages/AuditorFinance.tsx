@@ -31,8 +31,10 @@ const tabFromSearch = (tab: string | null): AuditorFinanceTab => {
 };
 
 export const AuditorFinance = () => {
-  const _user = useUser();
+  const user = useUser();
   const { selectedBranchId } = useStore();
+  // Use the store selection if available, otherwise fall back to the auditor's own branch
+  const effectiveBranchId: string | null = selectedBranchId ?? (user as any)?.branch_id ?? null;
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -93,8 +95,10 @@ export const AuditorFinance = () => {
   }, [location.pathname, searchParams, navigate]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (effectiveBranchId) {
+      fetchData();
+    }
+  }, [effectiveBranchId]);
 
   useEffect(() => {
     if (activeTab === 'finance') {
@@ -177,13 +181,13 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
-      if (!selectedBranchId) {
-        setError('Please select a branch first.');
+      if (!effectiveBranchId) {
+        setError('No branch assigned. Contact your administrator.');
         setLoading(false);
         return;
       }
       const params = buildAuditQueryParams();
-      params.branchId = selectedBranchId;
+      params.branchId = effectiveBranchId;
       const auditData = await auditorService.getAuditTrail(params);
       setAuditTrail(auditData);
     } catch (err: any) {
@@ -197,18 +201,18 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
-      if (!selectedBranchId) {
-        setError('Please select a branch first.');
+      if (!effectiveBranchId) {
+        setError('No branch assigned. Contact your administrator.');
         setLoading(false);
         return;
       }
       const params = buildPaymentQueryParams();
-      params.branchId = selectedBranchId;
+      params.branchId = effectiveBranchId;
       console.log('📊 [AuditorDashboard] Fetching with params:', params);
       const [dashboardData, paymentsData, feeReductionsData] = await Promise.all([
-        auditorService.getDashboard(selectedBranchId),
+        auditorService.getDashboard(effectiveBranchId),
         auditorService.getPayments(params),
-        auditorService.getFeeReductions({ branchId: selectedBranchId, status: feeReductionFilter || undefined })
+        auditorService.getFeeReductions({ branchId: effectiveBranchId, status: feeReductionFilter || undefined })
       ]);
       console.log('✅ [AuditorDashboard] Dashboard:', dashboardData);
       console.log('✅ [AuditorDashboard] Payments fetched:', paymentsData?.length || 0, paymentsData);
@@ -226,11 +230,11 @@ export const AuditorFinance = () => {
 
   const handleApprove = async (id: string, status: 'approved' | 'rejected') => {
     try {
-      if (!selectedBranchId) {
-        setError('Please select a branch first.');
+      if (!effectiveBranchId) {
+        setError('No branch assigned. Contact your administrator.');
         return;
       }
-      await auditorService.updateFeeReductionStatus(id, { status }, selectedBranchId);
+      await auditorService.updateFeeReductionStatus(id, { status }, effectiveBranchId);
       setSuccess(`Fee reduction ${status.toLowerCase()} successfully!`);
       fetchData();
       setTimeout(() => setSuccess(null), 3000);
@@ -244,13 +248,13 @@ export const AuditorFinance = () => {
     try {
       setLoading(true);
       setError(null);
-      if (!selectedBranchId) {
-        setError('Please select a branch first.');
+      if (!effectiveBranchId) {
+        setError('No branch assigned. Contact your administrator.');
         setLoading(false);
         return;
       }
       const params = buildPaymentQueryParams();
-      params.branchId = selectedBranchId;
+      params.branchId = effectiveBranchId;
       const paymentsData = await auditorService.getPayments(params);
       setPayments(paymentsData);
       setSuccess('Transaction filters applied.');
@@ -814,7 +818,7 @@ export const AuditorFinance = () => {
                       <td className="px-6 py-3.5">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(payment.date)}</p>
                         <div className="flex gap-1.5 mt-0.5">
-                          <span className="text-[10px] text-slate-400">{new Date(payment.date).toLocaleDateString()}</span>
+                          <span className="text-[10px] text-slate-400">{payment.date}</span>
                           <span className="text-[10px] text-slate-400/80">&bull;</span>
                           <span className="text-[10px] text-slate-400">{new Date(payment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
