@@ -23,7 +23,7 @@ export const Branches = () => {
     phone: '',
     email: '',
     address: '',
-    logoUrl: '' 
+    logoUrl: ''
   });
 
   // Edit branch state
@@ -215,7 +215,7 @@ export const Branches = () => {
             {error && <span className="text-amber-600 ml-2">⚠️ Using cached data</span>}
           </p>
         </div>
-        <button 
+        <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm md:text-base"
         >
@@ -297,9 +297,9 @@ export const Branches = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase">Branch Image (Max 5MB)</label>
                 <div className="mt-1 flex items-center gap-4">
                   {branchForm.logoUrl && (
-                    <img 
-                      src={branchForm.logoUrl} 
-                      alt="Branch preview" 
+                    <img
+                      src={branchForm.logoUrl}
+                      alt="Branch preview"
                       className="w-16 h-16 rounded-lg object-cover border border-slate-200 shadow-sm"
                     />
                   )}

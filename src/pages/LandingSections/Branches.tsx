@@ -102,7 +102,7 @@ export default function Branches({ setScrolled }: { setScrolled: (scrolled: bool
                     {isLoading ? (
                         // Skeleton Layout matching the real card structure
                         Array.from({ length: 4 }).map((_, i) => (
-                            <div 
+                            <div
                                 key={`skeleton-${i}`}
                                 className="animate-pulse overflow-hidden bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl"
                             >
@@ -111,7 +111,7 @@ export default function Branches({ setScrolled }: { setScrolled: (scrolled: bool
                                     <div className="absolute top-4 left-4 w-12 h-12 bg-slate-300 dark:bg-slate-700 rounded-2xl" />
                                     <div className="h-6 bg-slate-300 dark:bg-slate-700 rounded w-2/3" />
                                 </div>
-                                
+
                                 {/* Content Skeleton */}
                                 <div className="p-6 space-y-4">
                                     <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-full w-1/2" />
