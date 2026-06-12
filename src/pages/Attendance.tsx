@@ -116,10 +116,10 @@ export const Attendance = () => {
             const isLateArrival = !!item.is_late_arrival;
             let status: StaffAttendanceStatus = 'Absent';
             if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
-            else if (rawStatus === 'present')   status = 'Present';
-            else if (rawStatus === 'late')       status = 'Late';
-            else if (rawStatus === 'half-day')   status = 'Half Day';
-            else if (rawStatus === 'absent')     status = 'Absent';
+            else if (rawStatus === 'present') status = 'Present';
+            else if (rawStatus === 'late') status = 'Late';
+            else if (rawStatus === 'half-day') status = 'Half Day';
+            else if (rawStatus === 'absent') status = 'Absent';
             return {
               id: item.id,
               name: item.name,
@@ -176,10 +176,10 @@ export const Attendance = () => {
             const isLateArrival = !!item.is_late_arrival;
             let status: StaffAttendanceStatus = 'Absent';
             if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
-            else if (rawStatus === 'present')   status = 'Present';
-            else if (rawStatus === 'late')       status = 'Late';
-            else if (rawStatus === 'half-day')   status = 'Half Day';
-            else if (rawStatus === 'absent')     status = 'Absent';
+            else if (rawStatus === 'present') status = 'Present';
+            else if (rawStatus === 'late') status = 'Late';
+            else if (rawStatus === 'half-day') status = 'Half Day';
+            else if (rawStatus === 'absent') status = 'Absent';
             return {
               id: item.id,
               name: item.name,
@@ -896,11 +896,11 @@ export const Attendance = () => {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em]
-                            ${record.status === 'Present'         ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
-                            ${record.status === 'Present (Late)'  ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : ''}
-                            ${record.status === 'Half Day'        ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
-                            ${record.status === 'Late'            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
-                            ${record.status === 'Absent'          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : ''}
+                            ${record.status === 'Present' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : ''}
+                            ${record.status === 'Present (Late)' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' : ''}
+                            ${record.status === 'Half Day' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
+                            ${record.status === 'Late' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
+                            ${record.status === 'Absent' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : ''}
                           `}>
                             {record.status}
                           </span>
