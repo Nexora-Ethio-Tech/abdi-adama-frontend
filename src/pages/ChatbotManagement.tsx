@@ -14,6 +14,8 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useUser } from '../context/UserContext';
+// IMPORTANT: Adjust the path below to point to wherever your 'api' instance is exported
+import api from '../services/api'; 
 
 type Message = {
     role: "user" | "assistant";
@@ -25,17 +27,12 @@ type DocumentItem = {
     text: string;
 };
 
-const API_BASE = "https://kaleabbelayhun-abdiragbackend.hf.space";
-
 export default function ChatbotManagement() {
     const { user, role } = useUser();
     
     // Determine if user is super-admin
     const isSuperAdmin = role === "super-admin";
     
-    // Secure token for admin verification
-    const adminToken = import.meta.env.VITE_SUPER_ADMIN_TOKEN || ""; 
-
     const [messages, setMessages] = useState<Message[]>(([
         {
             role: "assistant",
@@ -59,25 +56,12 @@ export default function ChatbotManagement() {
         scrollRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages, loading]);
 
-    // API HEADERS HELPER
-    const getHeaders = (requiresAdmin = false) => {
-        const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-            "Authorization": `Bearer ${import.meta.env.VITE_HF_TOKEN}`
-        };
-        if (requiresAdmin) {
-            headers["X-Admin-Token"] = adminToken;
-        }
-        return headers;
-    };
-
     const loadDocs = async () => {
         try {
-            const res = await fetch(`${API_BASE}/getdocs`, { headers: getHeaders() });
-            const data = await res.json();
-            setDocs(data.documents || []);
+            const response = await api.get('/super-admin/chatbot/docs');
+            setDocs(response.data.documents || []);
         } catch (err) {
-            console.error(err);
+            console.error("Error loading docs:", err);
         }
     };
 
@@ -96,18 +80,11 @@ export default function ChatbotManagement() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_BASE}/chat`, {
-                method: "POST",
-                headers: getHeaders(),
-                body: JSON.stringify({ messages: newMessages }),
-            });
-
-            if (!res.ok) throw new Error("Backend Error");
-            const data = await res.json();
-            setMessages([...newMessages, { role: "assistant", content: data.content }]);
+            const response = await api.post('/guest/chat', { messages: newMessages });
+            setMessages([...newMessages, { role: "assistant", content: response.data.content }]);
         } catch (err) {
             console.error(err);
-            setMessages([...newMessages, { role: "assistant", content: "Something went wrong." }]);
+            setMessages([...newMessages, { role: "assistant", content: "Something went wrong. Could not connect to backend." }]);
         } finally {
             setLoading(false);
         }
@@ -118,17 +95,12 @@ export default function ChatbotManagement() {
         if (!docText.trim() || !isSuperAdmin) return;
         setDocLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/postdocs`, {
-                method: "POST",
-                headers: getHeaders(true),
-                body: JSON.stringify({ text: docText }),
-            });
-            if (!res.ok) throw new Error(await res.text());
+            await api.post('/super-admin/chatbot/docs', { text: docText });
             setDocText("");
             loadDocs();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Failed to add document. Check your permissions.");
+            alert(err.response?.data?.error || "Failed to add document. Check your permissions or backend logs.");
         } finally {
             setDocLoading(false);
         }
@@ -139,15 +111,11 @@ export default function ChatbotManagement() {
         if (!window.confirm("Are you sure you want to delete this full document?")) return;
 
         try {
-            const res = await fetch(`${API_BASE}/docs/${id}`, {
-                method: "DELETE",
-                headers: getHeaders(true),
-            });
-            if (!res.ok) throw new Error(await res.text());
+            await api.delete(`/super-admin/chatbot/docs/${id}`);
             loadDocs();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Failed to delete document.");
+            alert(err.response?.data?.error || "Failed to delete document.");
         }
     };
 
@@ -156,32 +124,24 @@ export default function ChatbotManagement() {
         if (!window.confirm("Are you sure you want to delete ALL documents? This cannot be undone.")) return;
 
         try {
-            const res = await fetch(`${API_BASE}/docs`, {
-                method: "DELETE",
-                headers: getHeaders(true),
-            });
-            if (!res.ok) throw new Error(await res.text());
+            await api.delete('/super-admin/chatbot/docs');
             setDocs([]);
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
+            alert(err.response?.data?.error || "Failed to clear documents.");
         }
     };
 
     const updateDoc = async () => {
         if (editingId === null || !isSuperAdmin) return;
         try {
-            const res = await fetch(`${API_BASE}/docs/${editingId}`, {
-                method: "PUT",
-                headers: getHeaders(true),
-                body: JSON.stringify({ text: editingText }),
-            });
-            if (!res.ok) throw new Error(await res.text());
+            await api.put(`/super-admin/chatbot/docs/${editingId}`, { text: editingText });
             setEditingId(null);
             setEditingText("");
             loadDocs();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
-            alert("Failed to update document.");
+            alert(err.response?.data?.error || "Failed to update document.");
         }
     };
 
@@ -191,6 +151,7 @@ export default function ChatbotManagement() {
         <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white p-6">
             <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 lg:grid-cols-2">
 
+                {/* Left Side: Chatbot Preview */}
                 <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col h-[850px]">
 
                     <div className="bg-blue-600 p-5 text-white">
@@ -271,6 +232,7 @@ export default function ChatbotManagement() {
                     </div>
                 </div>
 
+                {/* Right Side: Knowledge Base Management */}
                 <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col h-[850px]">
 
                     {/* Header */}
