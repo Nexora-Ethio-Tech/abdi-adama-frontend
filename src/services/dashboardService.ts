@@ -57,7 +57,7 @@ export const dashboardService = {
 
   createEvent: async (
     role: string,
-    data: { title: string; date: string; type: string; description?: string; branchId?: string | null }
+    data: { title: string; date: string; endDate?: string; type: string; description?: string; branchId?: string | null }
   ): Promise<any> => {
     if (role === 'super-admin') {
       const response = await api.post('/super-admin/events', data);
