@@ -1,6 +1,7 @@
 
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 import {
   LayoutDashboard,
   Users,
@@ -41,6 +42,47 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+const checkClinicNotifications = async (userId?: string) => {
+  try {
+    // 1. Check Chat Messages
+    const chatRes = await api.get('/clinic/chat');
+    const msgs = chatRes.data?.data || [];
+    const hasUnreadChat = msgs.some((m: any) => {
+      const senderRole = m.role || m.sender_role;
+      const readStatus = m.read ?? m.is_read;
+      return senderRole === 'clinic' && !readStatus;
+    });
+
+    // 2. Check Clinic Visits
+    const dashRes = await api.get('/parent/dashboard');
+    const kids = dashRes.data?.data?.children || [];
+
+    let hasNewVisit = false;
+    await Promise.all(
+      kids.map(async (child: any) => {
+        try {
+          const res = await api.get(`/parent/child/${child.id}/clinic-updates`);
+          const visits = res.data?.data?.visits || [];
+          if (visits.length > 0) {
+            const latestVisitId = visits[0].id;
+            const lastViewed = localStorage.getItem(`last_viewed_clinic_visit_id_${child.id}`);
+            if (latestVisitId !== lastViewed) {
+              hasNewVisit = true;
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to check visits for child ${child.id}:`, err);
+        }
+      })
+    );
+
+    return { hasUnreadChat, hasNewVisit };
+  } catch (err) {
+    console.error('Failed to check clinic notifications:', err);
+    return { hasUnreadChat: false, hasNewVisit: false };
+  }
+};
+
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -53,6 +95,31 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const location = useLocation();
   const { t, i18n } = useTranslation();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [clinicChatNotification, setClinicChatNotification] = useState(false);
+  const [clinicVisitsNotification, setClinicVisitsNotification] = useState(false);
+
+  useEffect(() => {
+    if (role !== 'parent') return;
+
+    const check = async () => {
+      const { hasUnreadChat, hasNewVisit } = await checkClinicNotifications(user?.id);
+      setClinicChatNotification(hasUnreadChat);
+      setClinicVisitsNotification(hasNewVisit);
+    };
+
+    check();
+
+    const handleUpdate = () => {
+      check();
+    };
+    window.addEventListener('clinic-notification-update', handleUpdate);
+    const interval = setInterval(check, 30000);
+
+    return () => {
+      window.removeEventListener('clinic-notification-update', handleUpdate);
+      clearInterval(interval);
+    };
+  }, [role, user]);
 
   const toggleExpanded = (label: string) => {
     const newExpanded = new Set(expandedItems);
@@ -386,7 +453,15 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
               )}
             >
               <item.icon size={20} className={cn("transition-transform group-hover:scale-110", isActive ? (role === 'parent' ? "text-blue-400" : "text-white") : "text-slate-400 dark:text-slate-500 group-hover:text-school-accent")} />
-              <span className="font-bold text-sm tracking-wide">{item.label}</span>
+              <span className="font-bold text-sm tracking-wide flex items-center gap-2">
+                {item.label}
+                {item.label === 'Clinic Support' && (clinicChatNotification || clinicVisitsNotification) && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-450 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                  </span>
+                )}
+              </span>
             </NavLink>
           );
         })}

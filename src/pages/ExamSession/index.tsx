@@ -87,7 +87,11 @@ export const ExamSession: React.FC = () => {
         } else if (data.session.status === 'active') {
           // Resume active session
           setSessionId(data.session.id);
-          setScreen('active');
+          if (data.exam.passwordRequired) {
+            setScreen('password');
+          } else {
+            setScreen('active');
+          }
         } else {
           setScreen('pre-start');
         }
@@ -206,8 +210,13 @@ export const ExamSession: React.FC = () => {
     try {
       const result = await verifyExamPassword(examId, passwordInput.trim());
       setSessionId(result?.session?.id || null);
-      const dur = Number(examDetail?.exam.durationMinutes || 60) * 60 * 1000;
-      setExamEndTime(Date.now() + dur);
+      
+      // If the session was already active before, preserve the endTime
+      if (examDetail?.session?.status !== 'active') {
+        const dur = Number(examDetail?.exam.durationMinutes || 60) * 60 * 1000;
+        setExamEndTime(Date.now() + dur);
+      }
+      
       setPasswordInput('');
       setScreen('active');
       requestFullscreen();
@@ -406,12 +415,19 @@ export const ExamSession: React.FC = () => {
   }
 
   if (screen === 'password') {
+    const isResuming = examDetail?.session?.status === 'active';
     return (
       <div className="fixed inset-0 bg-slate-900 flex items-center justify-center p-4">
         <div className="max-w-sm w-full bg-slate-800 rounded-3xl p-8 text-center border border-slate-700">
           <KeyRound className="w-12 h-12 text-blue-400 mx-auto mb-4" />
-          <h3 className="text-xl font-black text-white mb-2">Exam Password Required</h3>
-          <p className="text-slate-400 text-sm mb-6">Your teacher has set a password for this exam.</p>
+          <h3 className="text-xl font-black text-white mb-2">
+            {isResuming ? 'Exam Resume Locked' : 'Exam Password Required'}
+          </h3>
+          <p className="text-slate-400 text-sm mb-6">
+            {isResuming
+              ? 'You left the exam page. The teacher must enter the password to allow you to resume.'
+              : 'Your teacher has set a password for this exam.'}
+          </p>
           <input
             type="password"
             placeholder="Enter exam password"
@@ -423,11 +439,23 @@ export const ExamSession: React.FC = () => {
           />
           {passwordError && <p className="text-red-400 text-sm mb-3">{passwordError}</p>}
           <div className="flex gap-3">
-            <button onClick={() => setScreen('pre-start')} className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-bold transition-colors">
-              Back
+            <button
+              onClick={() => {
+                if (isResuming) {
+                  navigate('/exams');
+                } else {
+                  setScreen('pre-start');
+                }
+              }}
+              className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl font-bold transition-colors"
+            >
+              {isResuming ? 'Cancel' : 'Back'}
             </button>
-            <button onClick={handlePasswordSubmit} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors">
-              Verify & Start
+            <button
+              onClick={handlePasswordSubmit}
+              className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors"
+            >
+              {isResuming ? 'Verify & Resume' : 'Verify & Start'}
             </button>
           </div>
         </div>

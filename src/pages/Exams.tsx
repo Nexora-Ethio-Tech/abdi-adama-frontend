@@ -46,6 +46,11 @@ const StudentExamCard = ({ exam, onStart }: { exam: PublishedExam; onStart: () =
       <div className="space-y-2 mb-5">
         {exam.teacherName && <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium"><User size={12} className="text-emerald-500" /> {exam.teacherName}</div>}
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium"><Clock size={12} className="text-amber-500" /> {exam.durationMinutes} min • {exam.questionCount} questions</div>
+        {exam.passwordRequired && (
+          <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 font-bold">
+            <Lock size={12} className="text-blue-500" /> Password Required
+          </div>
+        )}
         {isSubmitted && exam.finalScore !== null && (
           <div className="mt-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Score</p>
@@ -763,6 +768,8 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
   const [showScore, setShowScore] = useState<boolean>(editingExam?.show_score !== false);
   const [isGraded, setIsGraded] = useState<boolean>(!!editingExam?.is_graded);
   const [assessmentType, setAssessmentType] = useState<string>(editingExam?.assessment_type || 'quiz-1');
+  const [examPassword, setExamPassword] = useState<string>(editingExam?.exam_password || '');
+  const [passwordRequired, setPasswordRequired] = useState<boolean>(!!editingExam?.password_required);
   const [gradesForExam, setGradesForExam] = useState<any[]>([]);
   const [sectionsForGrade, setSectionsForGrade] = useState<any[]>([]);
   const [coursesForSection, setCoursesForSection] = useState<any[]>([]);
@@ -931,6 +938,11 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
   const pointsDiff = totalQuestionPoints - totalMarks;
 
   const handleSave = async (publish: boolean = false) => {
+    if (passwordRequired && !examPassword.trim()) {
+      alert('Please enter a password for the exam.');
+      return;
+    }
+
     const examQuestions = assignmentDetails.isDocumentOnly
       ? []
       : questions.map((question) => ({
@@ -956,6 +968,8 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
             showScore,
             isGraded,
             assessmentType: isGraded ? assessmentType : null,
+            examPassword: passwordRequired ? examPassword.trim() : null,
+            passwordRequired,
           });
           examId = updated?.id || editingExam.id;
         } else {
@@ -973,6 +987,8 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
             showScore,
             isGraded,
             assessmentType: isGraded ? assessmentType : null,
+            examPassword: passwordRequired ? examPassword.trim() : null,
+            passwordRequired,
           });
           examId = created?.id;
         }
@@ -1182,6 +1198,45 @@ const ExamCreator = ({ type, editingExam, onCancel, onSave }: {
                       <option value="assignment" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Assignment</option>
                       <option value="final-exam" className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">Final Exam</option>
                     </select>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-0.5">
+                    <label className="text-sm font-semibold text-slate-900 dark:text-white">Require Exam Password</label>
+                    <p className="text-xs text-slate-500">Require students to enter a password to start or resume the exam.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPasswordRequired(!passwordRequired)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      passwordRequired ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        passwordRequired ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {passwordRequired && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 col-span-full animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2">
+                      <Lock size={16} className="text-blue-500" />
+                      <label className="text-sm font-semibold text-slate-900 dark:text-white">Exam Password</label>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Enter exam password (e.g. 123456)"
+                      value={examPassword}
+                      onChange={e => setExamPassword(e.target.value)}
+                      className="w-full max-w-md px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono tracking-wider focus:border-blue-500 outline-none transition-colors"
+                    />
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Students must enter this password to start the exam and to resume if they reload or leave the page.
+                    </p>
                   </div>
                 )}
               </div>

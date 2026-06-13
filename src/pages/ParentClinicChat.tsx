@@ -18,6 +18,7 @@ interface ChatMessage {
   text: string;
   timestamp?: string;
   is_read?: boolean;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 export const ParentClinicChat = () => {
@@ -75,6 +76,7 @@ export const ParentClinicChat = () => {
         }));
         setMessages(msgs);
         await api.patch('/clinic/chat/read', { student_id: selectedChildId });
+        window.dispatchEvent(new Event('clinic-notification-update'));
       } catch (err) {
         console.error('Failed to fetch messages:', err);
       } finally {
@@ -86,25 +88,74 @@ export const ParentClinicChat = () => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedChildId) return;
-    setLoading(true);
+    const textToSend = newMessage.trim();
+    if (!textToSend || !selectedChildId) return;
+
+    // Reset the input field immediately
+    setNewMessage('');
+
+    // Add message to state immediately with 'sending' status and a temporary ID
+    const tempId = 'temp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    const tempMsg: ChatMessage = {
+      id: tempId,
+      role: 'parent',
+      child_id: selectedChildId,
+      text: textToSend,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'sending'
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
     try {
       const res = await api.post('/clinic/chat', {
-        message: newMessage.trim(),
+        message: textToSend,
         childId: selectedChildId,
-        // optional hint for server/consumers — backend will still use authenticated user role
         recipientRole: 'clinic-admin'
       });
       const m = res.data?.data || res.data;
-      setMessages(prev => [...prev, { id: m.id || Date.now().toString(), role: 'parent', child_id: selectedChildId, text: m.text || m.message, timestamp: m.timestamp }]);
-      setNewMessage('');
-      // Refresh to get normalized timestamps/unread counts
-      try { const fresh = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`); setMessages((fresh.data?.data || []).map((mm: any) => ({ id: mm.id, role: mm.role || mm.sender_role || 'parent', child_id: mm.child_id || mm.student_id, text: mm.text || mm.message, timestamp: mm.timestamp || mm.created_at }))); } catch {};
+
+      // Update status to 'sent'
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                id: m.id || msg.id,
+                timestamp: m.timestamp || m.created_at || msg.timestamp,
+                status: 'sent'
+              }
+            : msg
+        )
+      );
+      window.dispatchEvent(new Event('clinic-notification-update'));
+
+      // Asynchronously fetch fresh data to sync timestamps/read states
+      try {
+        const fresh = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChildId)}`);
+        const msgs = (fresh.data?.data || []).map((mm: any) => ({
+          id: mm.id,
+          role: mm.role || mm.sender_role || 'parent',
+          child_id: mm.child_id || mm.student_id || mm.childId,
+          text: mm.text || mm.message,
+          timestamp: mm.timestamp || mm.created_at,
+          is_read: mm.is_read ?? mm.read ?? false,
+          status: 'sent'
+        }));
+        setMessages(msgs);
+      } catch {}
     } catch (err: any) {
       console.error('Send failed:', err);
-      alert(err.response?.data?.error?.message || 'Failed to send message');
-    } finally {
-      setLoading(false);
+      // Update status to 'failed'
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                status: 'failed'
+              }
+            : msg
+        )
+      );
     }
   };
 
@@ -177,12 +228,24 @@ export const ParentClinicChat = () => {
                 {m.text}
               </div>
               <div className="flex items-center gap-2 justify-end px-1">
-                <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp || 'Just now'}</span>
                 {m.role === 'parent' && (
-                  m.is_read ? (
-                    <CheckCheck size={12} className="text-emerald-300" />
+                  m.status === 'sending' ? (
+                    <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" title="Sending..." />
+                  ) : m.status === 'failed' ? (
+                    <span className="flex items-center gap-1 text-rose-500 font-black text-[9px] uppercase" title="Failed to send">
+                      <ShieldAlert size={12} />
+                      Not Sent
+                    </span>
                   ) : (
-                    <Check size={12} className="text-slate-300" />
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="Sent" />
+                      {m.is_read ? (
+                        <CheckCheck size={12} className="text-emerald-450" />
+                      ) : (
+                        <Check size={12} className="text-slate-400" />
+                      )}
+                    </span>
                   )
                 )}
               </div>
