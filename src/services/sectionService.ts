@@ -34,7 +34,7 @@ export const assignStudentToSection = async (
   sectionId: string,
   reason?: string
 ): Promise<AssignmentResult> => {
-  const response = await api.patch(`/sections/${studentId}/section`, {
+  const response = await api.post(`/sections/${studentId}/section`, {
     sectionId,
     reason: reason || 'Manual assignment'
   });

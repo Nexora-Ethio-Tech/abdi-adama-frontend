@@ -75,7 +75,7 @@ const studentService = {
   },
 
   updateStudent: async (id: string, data: UpdateStudentData): Promise<Student> => {
-    const response = await api.patch(`/school-admin/students/${id}`, data);
+    const response = await api.post(`/school-admin/students/${id}`, data);
     return response.data.data;
   },
 
@@ -85,7 +85,7 @@ const studentService = {
   },
 
   assignClass: async (id: string, classId: string): Promise<Student> => {
-    const response = await api.patch(`/school-admin/students/${id}/assign-class`, { classId });
+    const response = await api.post(`/school-admin/students/${id}/assign-class`, { classId });
     return response.data.data;
   },
 

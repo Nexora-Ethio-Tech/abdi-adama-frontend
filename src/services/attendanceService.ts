@@ -71,7 +71,7 @@ const attendanceService = {
   },
 
   updateAttendance: async (id: string, data: UpdateAttendanceData): Promise<AttendanceRecord> => {
-    const response = await api.patch(`/school-admin/attendance/${id}`, data);
+    const response = await api.post(`/school-admin/attendance/${id}`, data);
     return response.data.data;
   },
 

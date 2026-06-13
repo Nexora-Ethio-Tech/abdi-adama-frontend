@@ -148,7 +148,7 @@ export const registerUser = async (data: RegisterUserData): Promise<RegisterUser
 
 // Toggle Registration Open/Closed
 export const toggleRegistration = async (open: boolean): Promise<void> => {
-  const response = await api.patch('/school-admin/system-settings/registration', { open });
+  const response = await api.post('/school-admin/system-settings/registration', { open });
   return response.data;
 };
 
@@ -251,7 +251,7 @@ export const createPublicPendingApplication = async (data: any) => {
 };
 
 export const updateApplicationStatus = async (id: string, data: UpdateApplicationStatusData & { parentPhone?: string }) => {
-  const response = await api.patch(`/school-admin/applications/${id}/status`, data);
+  const response = await api.post(`/school-admin/applications/${id}/status`, data);
   return response.data;
 };
 
@@ -274,14 +274,14 @@ export const getBranchTeachers = async () => {
 
 // Teacher Management
 export const approveTeacher = async (userId: string) => {
-  const response = await api.patch(`/school-admin/users/${userId}/status`, {
+  const response = await api.post(`/school-admin/users/${userId}/status`, {
     status: 'Approved'
   });
   return response.data;
 };
 
 export const revokeTeacher = async (userId: string) => {
-  const response = await api.patch(`/school-admin/users/${userId}/status`, {
+  const response = await api.post(`/school-admin/users/${userId}/status`, {
     status: 'Revoked'
   });
   return response.data;
@@ -317,7 +317,7 @@ export const promoteTeacher = async (
     };
   }
 ) => {
-  const response = await api.patch(`/school-admin/users/${userId}/promote`, data);
+  const response = await api.post(`/school-admin/users/${userId}/promote`, data);
   return response.data;
 };
 
@@ -328,7 +328,7 @@ export const removeTeacherPromotion = async (userId: string) => {
 
 // Student Management
 export const updateUser = async (userId: string, data: { name?: string; email?: string; grade?: string; parentPhone?: string }) => {
-  const response = await api.patch(`/school-admin/users/${userId}`, data);
+  const response = await api.post(`/school-admin/users/${userId}`, data);
   return response.data;
 };
 
@@ -418,7 +418,7 @@ export const createEvent = async (data: CreateEventData): Promise<Event> => {
 };
 
 export const updateEvent = async (eventId: string, data: UpdateEventData): Promise<Event> => {
-  const response = await api.patch(`/school-admin/events/${eventId}`, data);
+  const response = await api.post(`/school-admin/events/${eventId}`, data);
   return response.data.data;
 };
 

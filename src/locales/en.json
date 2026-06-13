@@ -131,11 +131,11 @@
       "rights": "© 2026 ABDI ADAMA SCHOOL • MADE IN ADAMA",
       "founded": "Founded in 2005, Abdi Adama School is a premier educational institution in Ethiopia dedicated to producing competent and patriotic citizens.",
       "links": {
-        "about": "About Us",
-        "admissions": "Admissions",
-        "curriculum": "Curriculum",
-        "schoolLife": "School Life",
-        "careers": "Careers"
+        "/": "Home",
+        "/about": "About Us",
+        "/programs": "Programs",
+        "/school-life": "School Life",
+        "/branches": "Branches"
       }
     },
     "valuesSubtitle": "Our Foundations",

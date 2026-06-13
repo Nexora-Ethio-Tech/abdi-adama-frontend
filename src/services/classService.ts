@@ -39,7 +39,7 @@ export const classService = {
 
   // Update class
   updateClass: async (classId: string, data: UpdateClassData) => {
-    const response = await api.patch(`/school-admin/classes/${classId}`, data);
+    const response = await api.post(`/school-admin/classes/${classId}`, data);
     return response.data;
   },
 

@@ -119,7 +119,7 @@ const payrollService = {
   },
 
   updateFinanceSetting: async (key: string, value: number): Promise<FinanceSetting> => {
-    const response = await api.patch(`/super-admin/finance-settings/${key}`, { value });
+    const response = await api.post(`/super-admin/finance-settings/${key}`, { value });
     return response.data.data;
   },
 
@@ -197,7 +197,7 @@ const payrollService = {
   },
 
   finalizePayroll: async (id: string): Promise<any> => {
-    const response = await api.patch(`/payroll/runs/${id}/finalize`);
+    const response = await api.post(`/payroll/runs/${id}/finalize`);
     return response.data;
   },
 
@@ -270,7 +270,7 @@ const payrollService = {
   },
 
   markNotificationRead: async (id: string): Promise<any> => {
-    const response = await api.patch(`/payroll/notifications/${id}/read`);
+    const response = await api.post(`/payroll/notifications/${id}/read`);
     return response.data.data;
   }
 };

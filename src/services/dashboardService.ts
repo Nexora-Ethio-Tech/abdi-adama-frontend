@@ -69,10 +69,10 @@ export const dashboardService = {
 
   updateEvent: async (role: string, id: string, data: any): Promise<any> => {
     if (role === 'super-admin') {
-      const response = await api.patch(`/super-admin/events/${id}`, data);
+      const response = await api.post(`/super-admin/events/${id}`, data);
       return response.data.data;
     }
-    const response = await api.patch(`/school-admin/events/${id}`, data);
+    const response = await api.post(`/school-admin/events/${id}`, data);
     return response.data.data;
   },
 

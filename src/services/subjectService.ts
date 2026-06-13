@@ -50,7 +50,7 @@ const subjectService = {
   },
 
   updateSubject: async (id: string, data: UpdateSubjectData): Promise<Subject> => {
-    const response = await api.patch(`/school-admin/subjects/${id}`, data);
+    const response = await api.post(`/school-admin/subjects/${id}`, data);
     return response.data.data;
   },
 

@@ -14,7 +14,7 @@ export const getAbsenceQueue = async (status?: string) => {
 };
 
 export const updateAbsenceStatus = async (id: string, status: 'pending' | 'excused' | 'notified') => {
-  const response = await api.patch(`/vice-principal/absence-queue/${id}`, { status });
+  const response = await api.post(`/vice-principal/absence-queue/${id}`, { status });
   return response.data;
 };
 
@@ -32,7 +32,7 @@ export const reviewWeeklyPlan = async (planId: string, data: {
   deanFeedback?: string;
   deanRating?: number;
 }) => {
-  const response = await api.patch(`/vice-principal/weekly-plans/${planId}/review`, data);
+  const response = await api.post(`/vice-principal/weekly-plans/${planId}/review`, data);
   return response.data;
 };
 
@@ -188,7 +188,7 @@ export const getAttendanceAlerts = async () => {
 };
 
 export const approveAttendance = async (alertId: string, data: { status: 'Approved' | 'Flagged'; remarks?: string }) => {
-  const response = await api.patch(`/vice-principal/attendance-alerts/${alertId}`, data);
+  const response = await api.post(`/vice-principal/attendance-alerts/${alertId}`, data);
   return response.data;
 };
 

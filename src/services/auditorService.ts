@@ -246,7 +246,7 @@ const auditorService = {
     data: ApproveFeeReductionRequest,
     branchId?: string
   ): Promise<FeeReduction> => {
-    const response = await api.patch(`/auditor/fee-reductions/${id}/status`, data, { params: { branchId } });
+    const response = await api.post(`/auditor/fee-reductions/${id}/status`, data, { params: { branchId } });
     return response.data.data;
   },
 

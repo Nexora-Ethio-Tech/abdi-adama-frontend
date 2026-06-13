@@ -6,6 +6,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { useUser, type UserRole } from './context/UserContext';
 import { Suspense, lazy, type ReactNode } from 'react';
+import ScrollToTop from './components/ScrollToTop';
 //import LandingPage from './pages/LandingPage/LandingPage';
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })));
@@ -136,6 +137,7 @@ function App() {
 
   return (
     <BrowserRouter>
+    <ScrollToTop />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}

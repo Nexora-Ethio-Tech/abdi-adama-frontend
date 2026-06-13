@@ -24,7 +24,8 @@ import {
   Users,
   FileText,
   AlertCircle,
-  DollarSign
+  DollarSign,
+  ShieldAlert
 } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -119,6 +120,8 @@ export const ParentPortal = () => {
   const [clinicVisits, setClinicVisits] = useState<ClinicVisit[]>([]);
   const [healthProfile, setHealthProfile] = useState<HealthProfile>({});
   const [clinicUpdatesLoading, setClinicUpdatesLoading] = useState(false);
+  const [unreadClinicMessagesCount, setUnreadClinicMessagesCount] = useState(0);
+  const [newClinicVisitsCount, setNewClinicVisitsCount] = useState(0);
 
   // NEW: Driver Updates State
   const [driverUpdates, setDriverUpdates] = useState<DriverUpdate[]>([]);
@@ -424,13 +427,23 @@ export const ParentPortal = () => {
           child_id: m.child_id || m.student_id,
           student_name: m.student_name,
           text: m.text || m.message,
-          timestamp: m.timestamp || m.created_at
+          timestamp: m.timestamp || m.created_at,
+          is_read: m.is_read ?? m.read ?? false
         }));
         setChatMessages(msgs);
+
+        // If chat tab is active, mark them read immediately
+        if (clinicSupportTab === 'chat') {
+          api.post('/clinic/chat/read', { student_id: selectedChild.id })
+            .then(() => {
+              window.dispatchEvent(new Event('clinic-notification-update'));
+            })
+            .catch(console.error);
+        }
       })
       .catch(console.error)
       .finally(() => setChatLoading(false));
-  }, [selectedChild, activePortalTab]);
+  }, [selectedChild, activePortalTab, clinicSupportTab]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -461,8 +474,15 @@ export const ParentPortal = () => {
     setHealthProfile({});
     getChildClinicUpdates(selectedChild.id)
       .then(data => {
-        setClinicVisits(data.visits || []);
+        const visits = data.visits || [];
+        setClinicVisits(visits);
         setHealthProfile(data.health_profile || {});
+
+        // If clinicSupportTab === 'visits' is active, save the latest visit ID as viewed
+        if (clinicSupportTab === 'visits' && visits.length > 0) {
+          localStorage.setItem(`last_viewed_clinic_visit_id_${selectedChild.id}`, visits[0].id);
+          window.dispatchEvent(new Event('clinic-notification-update'));
+        }
       })
       .catch(err => {
         console.error('Failed to fetch clinic updates:', err);
@@ -470,6 +490,81 @@ export const ParentPortal = () => {
         setHealthProfile({});
       })
       .finally(() => setClinicUpdatesLoading(false));
+  }, [selectedChild, activePortalTab, clinicSupportTab]);
+
+  // Mark visits as viewed when switching to visits sub-tab
+  useEffect(() => {
+    if (selectedChild && activePortalTab === 'clinic' && clinicSupportTab === 'visits' && clinicVisits.length > 0) {
+      const latestVisitId = clinicVisits[0].id;
+      const lastViewed = localStorage.getItem(`last_viewed_clinic_visit_id_${selectedChild.id}`);
+      if (latestVisitId !== lastViewed) {
+        localStorage.setItem(`last_viewed_clinic_visit_id_${selectedChild.id}`, latestVisitId);
+        window.dispatchEvent(new Event('clinic-notification-update'));
+      }
+    }
+  }, [selectedChild, activePortalTab, clinicSupportTab, clinicVisits]);
+
+  // Mark messages as read when switching to chat sub-tab
+  useEffect(() => {
+    if (selectedChild && activePortalTab === 'clinic' && clinicSupportTab === 'chat' && chatMessages.length > 0) {
+      const hasUnread = chatMessages.some(m => (m.role === 'clinic' || m.sender_role === 'clinic') && !(m.is_read ?? m.read));
+      if (hasUnread) {
+        api.post('/clinic/chat/read', { student_id: selectedChild.id })
+          .then(() => {
+            setChatMessages(prev => prev.map(m => m.role === 'clinic' ? { ...m, is_read: true, read: true } : m));
+            window.dispatchEvent(new Event('clinic-notification-update'));
+          })
+          .catch(console.error);
+      }
+    }
+  }, [selectedChild, activePortalTab, clinicSupportTab, chatMessages]);
+
+  // Clinic Support notifications check for sub-tabs
+  useEffect(() => {
+    const check = async () => {
+      if (!selectedChild) return;
+      try {
+        // Chat messages count for selected child
+        const chatRes = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChild.id)}`);
+        const msgs = chatRes.data?.data || [];
+        const unreads = msgs.filter((m: any) => {
+          const senderRole = m.role || m.sender_role;
+          const readStatus = m.read ?? m.is_read;
+          return senderRole === 'clinic' && !readStatus;
+        }).length;
+        setUnreadClinicMessagesCount(unreads);
+
+        // Visits count for selected child
+        const visitRes = await api.get(`/parent/child/${selectedChild.id}/clinic-updates`);
+        const visits = visitRes.data?.data?.visits || [];
+        if (visits.length > 0) {
+          const latestVisitId = visits[0].id;
+          const lastViewed = localStorage.getItem(`last_viewed_clinic_visit_id_${selectedChild.id}`);
+          if (latestVisitId !== lastViewed) {
+            setNewClinicVisitsCount(1);
+          } else {
+            setNewClinicVisitsCount(0);
+          }
+        } else {
+          setNewClinicVisitsCount(0);
+        }
+      } catch (err) {
+        console.error('Failed to check clinic notifications in portal:', err);
+      }
+    };
+
+    check();
+
+    const handleUpdate = () => {
+      check();
+    };
+    window.addEventListener('clinic-notification-update', handleUpdate);
+    const interval = setInterval(check, 30000);
+
+    return () => {
+      window.removeEventListener('clinic-notification-update', handleUpdate);
+      clearInterval(interval);
+    };
   }, [selectedChild, activePortalTab]);
 
   // NEW: Fetch driver updates for dashboard
@@ -513,24 +608,73 @@ export const ParentPortal = () => {
 
   const handleSendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newChatMessage.trim() || !selectedChild) return;
+    const textToSend = newChatMessage.trim();
+    if (!textToSend || !selectedChild) return;
+
+    // Reset input immediately
+    setNewChatMessage('');
+
+    const tempId = 'temp-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    const tempMsg = {
+      id: tempId,
+      role: 'parent',
+      child_id: selectedChild.id,
+      text: textToSend,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      status: 'sending'
+    };
+    setChatMessages(prev => [...prev, tempMsg]);
+
     try {
       const res = await api.post('/clinic/chat', {
-        message: newChatMessage,
+        message: textToSend,
         childId: selectedChild.id
       });
       const m = res.data?.data || res.data;
-      setChatMessages(prev => [...prev, {
-        id: m.id || Date.now().toString(),
-        role: 'parent',
-        child_id: selectedChild.id,
-        text: m.text || m.message,
-        timestamp: m.timestamp || 'Just now'
-      }]);
-      setNewChatMessage('');
+
+      // Update status to 'sent'
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                id: m.id || msg.id,
+                timestamp: m.timestamp || m.created_at || msg.timestamp,
+                status: 'sent'
+              }
+            : msg
+        )
+      );
+      window.dispatchEvent(new Event('clinic-notification-update'));
+
+      // Asynchronously fetch fresh data to sync timestamps/read states
+      try {
+        const fresh = await api.get(`/clinic/chat?childId=${encodeURIComponent(selectedChild.id)}`);
+        const msgs = (fresh.data?.data || []).map((mm: any) => ({
+          id: mm.id,
+          role: mm.role || mm.sender_role || 'parent',
+          child_id: mm.child_id || mm.student_id,
+          student_name: mm.student_name,
+          text: mm.text || mm.message,
+          timestamp: mm.timestamp || mm.created_at,
+          is_read: mm.is_read ?? mm.read ?? false,
+          status: 'sent'
+        }));
+        setChatMessages(msgs);
+      } catch {}
     } catch (err: any) {
       console.error('Send failed:', err);
-      alert(err.response?.data?.error?.message || 'Failed to send message');
+      // Update status to 'failed'
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === tempId
+            ? {
+                ...msg,
+                status: 'failed'
+              }
+            : msg
+        )
+      );
     }
   };
 
@@ -1434,21 +1578,29 @@ export const ParentPortal = () => {
                 <div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
                   <button
                     onClick={() => setClinicSupportTab('visits')}
-                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'visits'
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${clinicSupportTab === 'visits'
                       ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                       }`}
                   >
-                    Clinic Visits
+                    <span>Clinic Visits</span>
+                    {newClinicVisitsCount > 0 && (
+                      <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" />
+                    )}
                   </button>
                   <button
                     onClick={() => setClinicSupportTab('chat')}
-                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${clinicSupportTab === 'chat'
+                    className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${clinicSupportTab === 'chat'
                       ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
                       : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
                       }`}
                   >
-                    Chat
+                    <span>Chat</span>
+                    {unreadClinicMessagesCount > 0 && (
+                      <span className="bg-rose-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center animate-pulse">
+                        {unreadClinicMessagesCount}
+                      </span>
+                    )}
                   </button>
                 </div>
 
@@ -1604,9 +1756,21 @@ export const ParentPortal = () => {
                           {m.text}
                         </div>
                         <div className="flex items-center gap-2 justify-end px-1">
-                          <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp}</span>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">{m.timestamp || 'Just now'}</span>
                           {m.role === 'parent' && (
-                            <Check size={10} className="text-emerald-400" strokeWidth={3} />
+                            m.status === 'sending' ? (
+                              <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" title="Sending..." />
+                            ) : m.status === 'failed' ? (
+                              <span className="flex items-center gap-1 text-rose-500 font-black text-[9px] uppercase" title="Failed to send">
+                                <ShieldAlert size={12} />
+                                Not Sent
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="Sent" />
+                                <Check size={10} className="text-emerald-450" strokeWidth={3} />
+                              </span>
+                            )
                           )}
                         </div>
                       </div>
