@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, Users, BookOpen, CheckCircle2, AlertCircle, Calendar, RefreshCw } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import * as vicePrincipalService from '../services/vicePrincipalService';
-import api from '../services/api';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface VpGradeGroup {
@@ -79,6 +78,14 @@ export const VPCommunication = () => {
     return list;
   };
 
+  const formatEthiopianTimestamp = (sentAtStr: string) => {
+    const date = new Date(sentAtStr);
+    if (isNaN(date.getTime())) return '';
+    const datePart = formatEthiopianLabel(date);
+    const timePart = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    return `${datePart}, ${timePart}`;
+  };
+
   useEffect(() => {
     const weeks = getRecentThursdays();
     setRecentWeeks(weeks);
@@ -130,56 +137,14 @@ export const VPCommunication = () => {
     setLoadingData(true);
     setError(null);
     try {
-      // Fetch summary via API endpoint (which we will build next)
-      // For now, let's execute a GET request. If it fails (e.g. 404 since it's not created yet),
-      // we gracefully fall back to mock UI data so the UI is fully functional and mockable for the user's validation.
-      const response = await api.get(`/vice-principal/communication-logs/summary`, {
-        params: {
-          sectionId: selectedSection.id,
-          weekEnding: selectedWeek
-        }
-      }).catch((apiErr) => {
-        console.warn('Backend API endpoint not found yet. Using mock UI data.', apiErr);
-        return null;
-      });
-
-      if (response && response.data && response.data.success) {
-        setSummaryData(response.data.data);
-      } else {
-        // Fallback mock data: simulate student roster and communication log statuses
-        // Retrieve student names from database or mock them if students not fetched
-        let studentRoster: any[] = [];
-        try {
-          studentRoster = await vicePrincipalService.getStudentsBySection(selectedSection.id);
-        } catch (rosterErr) {
-          console.error('Failed to load real students roster, using fallback', rosterErr);
-        }
-
-        const fallbackStudents = studentRoster.length > 0 
-          ? studentRoster.map((s, index) => ({
-              id: s.id || `st-${index}`,
-              name: s.name || `Student ${index + 1}`,
-              parentName: s.parentName || `Parent of ${s.name || `Student ${index + 1}`}`,
-              sent: index % 3 !== 0, // mock: 2/3 of parents received it
-              sentAt: index % 3 !== 0 ? new Date().toISOString() : null
-            }))
-          : [
-              { id: '1', name: 'Abebe Kebede', parentName: 'Kebede Alula', sent: true, sentAt: new Date().toISOString() },
-              { id: '2', name: 'Chala Bekele', parentName: 'Bekele Tolosa', sent: true, sentAt: new Date().toISOString() },
-              { id: '3', name: 'Aster Desta', parentName: 'Desta Hailu', sent: false, sentAt: null },
-              { id: '4', name: 'Marta Alemu', parentName: 'Alemu Lemma', sent: true, sentAt: new Date().toISOString() },
-              { id: '5', name: 'Tewodros Yohannes', parentName: 'Yohannes Kassa', sent: false, sentAt: null }
-            ];
-
-        setSummaryData({
-          homeroomTeacher: 'Mstr. Kassa Hailu',
-          totalStudents: fallbackStudents.length,
-          sentCount: fallbackStudents.filter(s => s.sent).length,
-          students: fallbackStudents
-        });
-      }
+      const data = await vicePrincipalService.getCommunicationSummary(
+        selectedSection.id,
+        selectedWeek
+      );
+      setSummaryData(data);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch communication book summary.');
+      const msg = err.response?.data?.message || err.message || 'Failed to fetch communication book summary.';
+      setError(msg);
       showToast('Error loading communication book summary.', 'error');
     } finally {
       setLoadingData(false);
@@ -439,10 +404,7 @@ export const VPCommunication = () => {
                         {/* Sent Timestamp */}
                         <td className="px-8 py-4 whitespace-nowrap text-right text-slate-500 dark:text-slate-400 text-xs font-medium">
                           {student.sent && student.sentAt ? (
-                            new Date(student.sentAt).toLocaleString([], {
-                              dateStyle: 'medium',
-                              timeStyle: 'short'
-                            })
+                            formatEthiopianTimestamp(student.sentAt)
                           ) : (
                             <span className="text-slate-400 dark:text-slate-600">&mdash;</span>
                           )}

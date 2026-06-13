@@ -229,3 +229,9 @@ export const getStaffAbsentCount = async (date?: string) => {
   return response.data.data;
 };
 
+export const getCommunicationSummary = async (sectionId: string, weekEnding: string) => {
+  const params = new URLSearchParams({ sectionId, weekEnding });
+  const response = await api.get(`/vice-principal/communication-logs/summary?${params}`);
+  return response.data.data;
+};
+
