@@ -51,7 +51,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
   const [selectedDayNumber, setSelectedDayNumber] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-    title: '', date: '', type: 'Academic', description: '', branchId: ''
+    title: '', date: '', endDate: '', type: 'Academic', description: '', branchId: ''
   });
 
   const fetchEvents = useCallback(async () => {
@@ -87,7 +87,11 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
   const getEventsForDay = (d: number) => {
     const gregIso = gregIsoForEthDay(ecYear, ecMonth, d);
     if (!gregIso) return [];
-    return events.filter(e => e.date?.slice(0, 10) === gregIso);
+    return events.filter(e => {
+      const start = e.date?.slice(0, 10);
+      const end = (e.end_date || e.date)?.slice(0, 10);
+      return gregIso >= start && gregIso <= end;
+    });
   };
 
   const isToday = (d: number) => {
@@ -97,12 +101,13 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
   // Month events list (sidebar)
   const monthEvents = events.filter(e => {
     if (!e.date) return false;
-    const gregIso = e.date.slice(0, 10);
+    const start = e.date.slice(0, 10);
+    const end = (e.end_date || e.date).slice(0, 10);
     // Check any day in this ec month
     const firstDay = gregIsoForEthDay(ecYear, ecMonth, 1);
     const lastDay  = gregIsoForEthDay(ecYear, ecMonth, totalDays);
     if (!firstDay || !lastDay) return false;
-    return gregIso >= firstDay && gregIso <= lastDay;
+    return start <= lastDay && end >= firstDay;
   });
 
   // Modal helpers
@@ -110,7 +115,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
     setEditingEvent(null);
     const todayEth = gregorianToEthiopian(new Date());
     const todayEthStr = `${todayEth.year}-${String(todayEth.month).padStart(2,'0')}-${String(todayEth.day).padStart(2,'0')}`;
-    setForm({ title: '', date: todayEthStr, type: 'Academic', description: '', branchId: '' });
+    setForm({ title: '', date: todayEthStr, endDate: '', type: 'Academic', description: '', branchId: '' });
     setFormError('');
     setShowModal(true);
   };
@@ -121,9 +126,15 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
       const ethD = gregorianToEthiopian(new Date(ev.date));
       ethDateStr = `${ethD.year}-${String(ethD.month).padStart(2,'0')}-${String(ethD.day).padStart(2,'0')}`;
     }
+    let ethEndDateStr = '';
+    if (ev.end_date) {
+      const ethEndD = gregorianToEthiopian(new Date(ev.end_date));
+      ethEndDateStr = `${ethEndD.year}-${String(ethEndD.month).padStart(2,'0')}-${String(ethEndD.day).padStart(2,'0')}`;
+    }
     setForm({
       title: ev.title ?? '',
       date: ethDateStr,
+      endDate: ethEndDateStr,
       type: ev.type ?? 'Academic',
       description: ev.description ?? '',
       branchId: ev.branch_id ?? '',
@@ -134,13 +145,25 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.date) {
-      setFormError('Title and date are required.');
+      setFormError('Title and start date are required.');
       return;
     }
     const gregDate = ethiopianToGregorianIso(form.date);
     if (!gregDate) {
-      setFormError('Please select a valid Ethiopian date.');
+      setFormError('Please select a valid Ethiopian start date.');
       return;
+    }
+    let gregEndDate = null;
+    if (form.endDate) {
+      gregEndDate = ethiopianToGregorianIso(form.endDate);
+      if (!gregEndDate) {
+        setFormError('Please select a valid Ethiopian end date.');
+        return;
+      }
+      if (gregEndDate < gregDate) {
+        setFormError('End date must be on or after start date.');
+        return;
+      }
     }
     setSaving(true);
     setFormError('');
@@ -148,6 +171,7 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
       const payload = {
         title: form.title.trim(),
         date: gregDate,
+        endDate: gregEndDate || undefined,
         type: form.type,
         description: form.description.trim() || undefined,
         branchId: form.branchId || null,
@@ -328,12 +352,31 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
             ) : (
               <div className="space-y-3">
                 {monthEvents.map(ev => {
-                  const ethDate = gregorianToEthiopian(new Date(ev.date));
+                  const ethStart = gregorianToEthiopian(new Date(ev.date));
+                  const hasRange = ev.end_date && ev.end_date.slice(0, 10) !== ev.date.slice(0, 10);
+                  const ethEnd = hasRange ? gregorianToEthiopian(new Date(ev.end_date)) : null;
                   return (
                     <div key={ev.id} className="flex gap-3 items-start p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group">
-                      <div className="text-center px-2 border-r border-slate-200 dark:border-slate-700 flex-shrink-0">
-                        <p className="text-base font-black text-blue-600 dark:text-blue-400">{ethDate.day}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">{ETH_MONTHS[ethDate.month - 1]?.slice(0, 3)}</p>
+                      <div className="text-center px-2 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 min-w-[60px]">
+                        {ethEnd ? (
+                          ethStart.month === ethEnd.month ? (
+                            <>
+                              <p className="text-sm font-black text-blue-600 dark:text-blue-400">{ethStart.day}-{ethEnd.day}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase">{ETH_MONTHS[ethStart.month - 1]?.slice(0, 3)}</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 leading-tight">{ETH_MONTHS[ethStart.month - 1]?.slice(0, 3)} {ethStart.day}</p>
+                              <p className="text-[8px] text-slate-400 font-bold uppercase my-0.5">to</p>
+                              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 leading-tight">{ETH_MONTHS[ethEnd.month - 1]?.slice(0, 3)} {ethEnd.day}</p>
+                            </>
+                          )
+                        ) : (
+                          <>
+                            <p className="text-base font-black text-blue-600 dark:text-blue-400">{ethStart.day}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">{ETH_MONTHS[ethStart.month - 1]?.slice(0, 3)}</p>
+                          </>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{ev.title}</p>
@@ -409,10 +452,18 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Date (Ethiopian Calendar) *</label>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Start Date (Ethiopian Calendar) *</label>
                 <EthiopianDatePicker
                   value={form.date}
                   onChange={val => setForm(f => ({ ...f, date: val }))}
+                  placeholder="YYYY-MM-DD"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">End Date (Ethiopian Calendar - Optional)</label>
+                <EthiopianDatePicker
+                  value={form.endDate}
+                  onChange={val => setForm(f => ({ ...f, endDate: val }))}
                   placeholder="YYYY-MM-DD"
                 />
               </div>
