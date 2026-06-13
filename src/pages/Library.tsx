@@ -228,7 +228,7 @@ export const Library = () => {
   const overdueLoans = loans.filter(l => !l.returned_at && new Date(l.due_date) < new Date());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Library Management</h2>
