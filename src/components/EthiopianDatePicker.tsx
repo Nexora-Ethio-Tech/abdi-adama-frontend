@@ -168,7 +168,7 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
                   onChange={(e) => setViewYear(Number(e.target.value))}
                   className="bg-transparent text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest border-none p-0 focus:ring-0 cursor-pointer outline-none"
                 >
-                  {Array.from({ length: 21 }, (_, i) => 2010 + i).map((yr) => (
+                  {Array.from({ length: 36 }, (_, i) => 2000 + i).map((yr) => (
                     <option key={yr} value={yr} className="bg-white dark:bg-slate-900 text-slate-850 dark:text-white font-bold">
                       {yr} E.C.
                     </option>
