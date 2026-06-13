@@ -11,10 +11,25 @@ const ETH_MONTHS = [
 ];
 
 const EVENT_COLORS: Record<string, string> = {
-  Academic:  'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
-  Meeting:   'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  Event:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
-  Holiday:   'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-300',
+  Academic:         'bg-blue-100   text-blue-700   dark:bg-blue-900/30   dark:text-blue-300',
+  Meeting:          'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  Event:            'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  Holiday:          'bg-amber-100  text-amber-700  dark:bg-amber-900/30  dark:text-amber-300',
+  'Summer Break':   'bg-rose-100   text-rose-700   dark:bg-rose-900/30   dark:text-rose-300',
+  'Semester Break': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+  'Exam Day':       'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+  'Half-Day':       'bg-sky-100    text-sky-700    dark:bg-sky-900/30    dark:text-sky-300',
+};
+
+const CELL_BG_COLORS: Record<string, string> = {
+  Academic:         'bg-blue-50/20 dark:bg-blue-950/5 border-blue-100/40 dark:border-blue-900/10',
+  Meeting:          'bg-purple-50/20 dark:bg-purple-950/5 border-purple-100/40 dark:border-purple-900/10',
+  Event:            'bg-emerald-50/20 dark:bg-emerald-950/5 border-emerald-100/40 dark:border-emerald-900/10',
+  Holiday:          'bg-amber-50/30 dark:bg-amber-950/5 border-amber-100/40 dark:border-amber-900/10',
+  'Summer Break':   'bg-rose-50/30 dark:bg-rose-950/5 border-rose-100/40 dark:border-rose-900/10',
+  'Semester Break': 'bg-orange-50/30 dark:bg-orange-950/5 border-orange-100/40 dark:border-orange-900/10',
+  'Exam Day':       'bg-indigo-50/30 dark:bg-indigo-950/5 border-indigo-100/40 dark:border-indigo-900/10',
+  'Half-Day':       'bg-sky-50/30 dark:bg-sky-950/5 border-sky-100/40 dark:border-sky-900/10',
 };
 
 function daysInEthMonth(y: number, m: number) {
@@ -272,6 +287,8 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
               {Array.from({ length: totalDays }, (_, i) => i + 1).map(day => {
                 const dayEvents = getEventsForDay(day);
                 const today = isToday(day);
+                const primaryEvent = dayEvents[0];
+                const cellBgClass = primaryEvent ? (CELL_BG_COLORS[primaryEvent.type] || 'bg-slate-50/20 dark:bg-slate-800/5') : '';
                 return (
                   <div
                     key={day}
@@ -282,7 +299,9 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
                       }
                     }}
                     className={`border-b border-r border-slate-100 dark:border-slate-800 p-1 group transition-colors ${
-                      today ? 'bg-blue-50 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      today
+                        ? 'bg-blue-50 dark:bg-blue-950/20 ring-2 ring-blue-500 ring-inset'
+                        : cellBgClass || 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     } ${compact ? 'h-14 md:h-16' : 'h-24 md:h-28'} ${dayEvents.length > 0 ? 'cursor-pointer' : ''}`}
                   >
                     <span className={`font-bold inline-flex items-center justify-center rounded-full ${compact ? 'text-xs w-5 h-5' : 'text-sm w-7 h-7'} ${
