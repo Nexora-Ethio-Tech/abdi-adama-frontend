@@ -14,7 +14,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useUser } from '../context/UserContext';
-// IMPORTANT: Adjust the path below to point to wherever your 'api' instance is exported
 import api from '../services/api'; 
 
 type Message = {

@@ -161,7 +161,7 @@ export const LandingPage = () => {
               <h4 className="text-xs font-black uppercase tracking-[0.3em] text-slate-900 dark:text-white mb-6">{t('landing.footer.quickLinks')}</h4>
               <ul className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
                 {Object.entries(t('landing.footer.links', { returnObjects: true }) as any).map(([key, label]) => (
-                  <li key={key}><a href="#" className="hover:text-school-primary transition-colors font-bold uppercase tracking-widest text-[10px]">{label as string}</a></li>
+                  <li key={key}><span onClick={() => navigate(key)} className="hover:text-school-primary transition-colors font-bold uppercase tracking-widest text-[10px]">{label as string}</span></li>
                 ))}
               </ul>
             </div>
