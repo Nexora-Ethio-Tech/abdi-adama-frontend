@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   GraduationCap,
   Clock,
   Download,
+  Upload,
   X
 } from 'lucide-react';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
@@ -41,6 +42,52 @@ export const StudentRecordPage = () => {
   const [docUrl, setDocUrl] = useState<string | null>(null);
   const [docLoading, setDocLoading] = useState(false);
   const [docError, setDocError] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replacingDocId, setReplacingDocId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const triggerFileSelect = (appId: string) => {
+    setReplacingDocId(appId);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !replacingDocId) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('transcript', file);
+
+    setUploading(true);
+    try {
+      await api.post(`/school-admin/applications/${replacingDocId}/transcript/replace`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (studentId) {
+        const data = await getStudentAdmissionRecord(studentId);
+        setRecord(data);
+      }
+      alert('Document re-uploaded successfully!');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to replace document';
+      alert(msg);
+    } finally {
+      setUploading(false);
+      setReplacingDocId(null);
+    }
+  };
 
   useEffect(() => {
     if (!studentId) return;
@@ -418,6 +465,22 @@ export const StudentRecordPage = () => {
                               >
                                 <Download size={14} /> Download
                               </a>
+                              <button
+                                type="button"
+                                disabled={uploading}
+                                onClick={() => triggerFileSelect(app.id)}
+                                className="px-4 py-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-xs font-bold flex items-center gap-2 disabled:opacity-50"
+                              >
+                                {uploading && replacingDocId === app.id ? (
+                                  <>
+                                    <Loader2 className="animate-spin" size={14} /> Re-uploading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Upload size={14} /> Re-upload/Edit
+                                  </>
+                                )}
+                              </button>
                             </>
                           )}
                         </div>
@@ -463,6 +526,14 @@ export const StudentRecordPage = () => {
           </div>
         </div>
       )}
+      {/* Hidden file input for re-uploading documents */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".pdf,.png,.jpg,.jpeg"
+        className="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   );
 };
