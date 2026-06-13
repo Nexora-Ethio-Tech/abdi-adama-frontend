@@ -46,6 +46,7 @@ export const Attendance = () => {
   const [showSubModal, setShowSubModal] = useState(false);
   const [editRecord, setEditRecord] = useState<StaffAttendanceRecord | null>(null);
   const [editSaving, setEditSaving] = useState(false);
+  const [staffSaving, setStaffSaving] = useState(false);
   const [absentTeacher, setAbsentTeacher] = useState<any>(null);
   const [isProxyAnalysisRunning, setIsProxyAnalysisRunning] = useState(false);
   const [proxySuggestions, setProxySuggestions] = useState<string[]>([]);
@@ -208,6 +209,31 @@ export const Attendance = () => {
       alert('Failed to save manual attendance. Please try again.');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const handleSaveAllStaffAttendance = async () => {
+    if (staffAttendance.length === 0) return;
+    setStaffSaving(true);
+    try {
+      const records = staffAttendance.map((record) => ({
+        userId: record.id,
+        status: record.status.toLowerCase().replace(' ', '-').replace('present-(late)', 'late'),
+        sign_in_time: record.signInTime || undefined,
+        lunch_out_time: record.lunchOutTime || undefined,
+        lunch_in_time: record.lunchInTime || undefined,
+        sign_out_time: record.signOutTime || undefined,
+      }));
+      await api.post('/school-admin/staff-attendance/bulk', {
+        date: selectedDate,
+        records,
+      });
+      alert(`Attendance records for ${formatEthiopianLabel(selectedDate)} saved successfully!`);
+    } catch (error: any) {
+      console.error('Failed to bulk-save staff attendance:', error);
+      alert('Failed to save staff attendance: ' + (error?.response?.data?.message || error.message || 'Unknown error'));
+    } finally {
+      setStaffSaving(false);
     }
   };
 
@@ -796,6 +822,50 @@ export const Attendance = () => {
 
       {!isVP && attendanceMode === 'staff' && (
         <div className="space-y-6">
+
+          {/* Staff Attendance: Date Picker + Save Button */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-wrap gap-4 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="space-y-1">
+                <label htmlFor="staffAttendanceDate" className="text-[10px] font-bold text-slate-500 uppercase">View Date (Ethiopian Calendar)</label>
+                <div className="flex flex-col gap-1">
+                  <input
+                    id="staffAttendanceDate"
+                    type="text"
+                    value={selectedDate}
+                    placeholder="YYYY-MM-DD (Ethiopian)"
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-[9px] text-slate-500 dark:text-slate-400">{formatEthiopianLabel(selectedDate)}</span>
+                </div>
+              </div>
+              <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Total Staff</label>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{staffAttendance.length} Members</p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Present</label>
+                <p className="text-sm font-bold text-emerald-600">{staffSummary.present} Staff</p>
+              </div>
+            </div>
+            {isAdmin && (
+              <button
+                type="button"
+                id="saveStaffAttendanceBtn"
+                onClick={handleSaveAllStaffAttendance}
+                disabled={staffSaving || staffAttendance.length === 0}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-lg font-bold text-sm shadow-lg shadow-blue-100 dark:shadow-none transition-all"
+              >
+                {staffSaving ? (
+                  <><Loader2 size={14} className="animate-spin" /> Saving...</>
+                ) : (
+                  <><Check size={14} /> Save Attendance Records</>
+                )}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Teachers Present</p>
@@ -814,7 +884,9 @@ export const Attendance = () => {
           <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100">Staff Biometric Attendance</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Filter staff by today’s presence and biometric status.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                {formatEthiopianLabel(selectedDate)} — Filter staff by today’s presence and biometric status.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {[
