@@ -90,7 +90,6 @@ export default function About() {
             <VisionMissionSection />
             <CommunitySection />
             <PromiseSection />
-            <SchoolLifeSection id="school-life" />
             <TeamSection />
         </>
     )
