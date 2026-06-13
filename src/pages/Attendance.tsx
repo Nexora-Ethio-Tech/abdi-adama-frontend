@@ -689,9 +689,10 @@ export const Attendance = () => {
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="h-10 w-px bg-slate-100 dark:bg-slate-800 hidden md:block" />
             <div className="space-y-1">
-              <label htmlFor="attendanceDate" className="text-[10px] font-bold text-slate-500 uppercase">Attendance Date (Ethiopian)</label>
+              <label htmlFor="attendanceDate" className="text-[10px] font-bold text-slate-500 uppercase cursor-pointer">Attendance Date (Ethiopian)</label>
               <div className="flex flex-col gap-1 w-52">
                 <EthiopianDatePicker
+                  id="attendanceDate"
                   value={selectedDate}
                   onChange={setSelectedDate}
                   placeholder="YYYY-MM-DD"

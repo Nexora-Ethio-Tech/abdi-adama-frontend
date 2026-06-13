@@ -150,9 +150,11 @@ export const VPAttendanceOversight = () => {
   return (
     <div className="space-y-6 p-6 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 min-h-screen max-w-[95vw] xl:max-w-[1400px] mx-auto">
       {/* Header */}
-      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
-        <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
+      <section className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl relative">
+        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(99,102,241,0.2),_transparent_50%)]" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl transform translate-x-20 -translate-y-20" />
+        </div>
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.25em] text-indigo-400 mb-2">Daily Attendance Monitoring</p>
@@ -165,11 +167,12 @@ export const VPAttendanceOversight = () => {
           </div>
           {/* Date Picker */}
           <div className="flex-shrink-0 mt-2">
-            <label htmlFor="vpAbsenceDatePicker" className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5">
+            <label htmlFor="vpAbsenceDatePicker" className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5 cursor-pointer">
               <CalendarDays size={12} className="inline mr-1" />
               View Absences For
             </label>
             <EthiopianDatePicker
+              id="vpAbsenceDatePicker"
               value={selectedDate}
               onChange={(v) => setSelectedDate(v)}
               placeholder="YYYY-MM-DD"
