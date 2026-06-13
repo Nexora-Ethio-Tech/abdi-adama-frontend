@@ -180,7 +180,7 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
             </section>
             
             {/* Updates / Posts Section */}
-            {(isLoading || publicPosts.length > 0) && (
+            {(isLoading || publicPosts?.length > 0) && (
                 <section
                     id="updates"
                     className="py-16 md:py-24 bg-slate-50 dark:bg-slate-900"
