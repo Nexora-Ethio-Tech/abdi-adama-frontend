@@ -1,4 +1,4 @@
-import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText, RefreshCw } from 'lucide-react';
+import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText, RefreshCw, UserCog } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import studentService, { type UpdateStudentData } from '../services/studentService';
@@ -70,6 +70,7 @@ export const Students = () => {
   const [assigningSection, setAssigningSection] = useState(false);
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [activeStatusDropdownStudentId, setActiveStatusDropdownStudentId] = useState<string | null>(null);
 
   const [editFormData, setEditFormData] = useState<any>({});
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -115,6 +116,18 @@ export const Students = () => {
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+  };
+
+  const handleUpdateStatus = async (studentUserId: string, newStatus: string) => {
+    try {
+      await studentService.updateStudent(studentUserId, { status: newStatus as any });
+      setStudents(prev => prev.map(s => s.userId === studentUserId ? { ...s, status: newStatus } : s));
+      showToast(`Status updated to ${newStatus} successfully!`, 'success');
+    } catch (err: any) {
+      showToast(getErrorMessage(err, 'Failed to update student status'), 'error');
+    } finally {
+      setActiveStatusDropdownStudentId(null);
+    }
   };
 
   const getErrorMessage = (err: any, fallback: string) => {
@@ -792,6 +805,67 @@ export const Students = () => {
                             >
                               <GraduationCap size={16} />
                             </button>
+                            <div className="relative inline-block">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveStatusDropdownStudentId(
+                                    activeStatusDropdownStudentId === student.id ? null : student.id
+                                  );
+                                }}
+                                className={`p-2 rounded-lg transition-colors ${
+                                  activeStatusDropdownStudentId === student.id
+                                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                                    : 'hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-600 dark:text-purple-400'
+                                }`}
+                                title="Change Status"
+                                aria-label="Change status"
+                              >
+                                <UserCog size={16} />
+                              </button>
+                              
+                              {activeStatusDropdownStudentId === student.id && (
+                                <>
+                                  <div 
+                                    className="fixed inset-0 z-30 bg-transparent cursor-default" 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveStatusDropdownStudentId(null);
+                                    }}
+                                  />
+                                  <div className="absolute right-0 mt-2 w-48 rounded-xl bg-white dark:bg-slate-800 shadow-2xl border border-slate-200 dark:border-slate-700 z-40 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                                    <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-700/50 mb-1">
+                                      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Change Status</p>
+                                    </div>
+                                    {[
+                                      { name: 'Active', color: 'bg-green-500', text: 'text-green-700 dark:text-green-400', bg: 'hover:bg-green-50 dark:hover:bg-green-950/20' },
+                                      { name: 'Inactive', color: 'bg-slate-400', text: 'text-slate-700 dark:text-slate-400', bg: 'hover:bg-slate-50 dark:hover:bg-slate-800/50' },
+                                      { name: 'Suspended', color: 'bg-red-500', text: 'text-red-700 dark:text-red-400', bg: 'hover:bg-red-50 dark:hover:bg-red-950/20' },
+                                      { name: 'Graduated', color: 'bg-blue-500', text: 'text-blue-700 dark:text-blue-400', bg: 'hover:bg-blue-50 dark:hover:bg-blue-950/20' }
+                                    ].map((opt) => (
+                                      <button
+                                        key={opt.name}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUpdateStatus(student.userId, opt.name);
+                                        }}
+                                        className={`w-full px-3 py-2 flex items-center justify-between text-left text-sm font-semibold transition-colors ${opt.bg} ${opt.text}`}
+                                      >
+                                        <div className="flex items-center gap-2.5">
+                                          <span className={`h-2.5 w-2.5 rounded-full ${opt.color}`} />
+                                          <span>{opt.name}</span>
+                                        </div>
+                                        {student.status === opt.name && (
+                                          <Check size={14} className="text-slate-600 dark:text-slate-400" />
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                             <button
                               type="button"
                               onClick={() => openEditModal(student)}
