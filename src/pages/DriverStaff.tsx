@@ -1,12 +1,13 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock, Edit2, Loader2 } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Clock, Edit2, Loader2, FileText, Download, Upload } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher, updateUser, resetUserPIN } from '../services/schoolAdminService';
+import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher, updateUser, resetUserPIN, replaceUserDocument } from '../services/schoolAdminService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
+import api from '../services/api';
 
 export const DriverStaff = () => {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export const DriverStaff = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
 
   useEffect(() => {
     fetchDriverStaff();
@@ -66,9 +69,13 @@ export const DriverStaff = () => {
         userId: person.user_id || person.id,
         branchId: person.branch_id,
         createdAt: person.created_at,
-        staffProfile: person.staff_profile
+        staffProfile: person.staff_profile,
+        document_file_name: person.document_file_name,
+        document_file_size: person.document_file_size,
+        document_mime_type: person.document_mime_type,
       }));
       setDriverStaff(staff);
+      return staff;
     } catch (err: any) {
       console.error('Failed to fetch driver staff:', err);
       setError(err.response?.data?.error?.message || 'Failed to load driver staff');
@@ -237,6 +244,11 @@ export const DriverStaff = () => {
       hasError = true;
     }
 
+    if (!selectedFile) {
+      alert('Please upload a document. Document upload is mandatory for staff registration.');
+      return;
+    }
+
     if (hasError) return;
 
     setCreating(true);
@@ -257,7 +269,7 @@ export const DriverStaff = () => {
           experienceYears: formData.experienceYears,
           registeredAt: new Date().toISOString()
         }
-      });
+      }, selectedFile);
 
       const newStaff = {
         id: result.data.user.id,
@@ -277,6 +289,7 @@ export const DriverStaff = () => {
       });
 
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
+      setSelectedFile(null);
       setPhoneError('');
       setEmergencyPhoneError('');
       setShowAddModal(false);
@@ -573,6 +586,29 @@ export const DriverStaff = () => {
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Staff Document (Mandatory, PDF or Image, max 2MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert('File size exceeds the 2MB limit.');
+                          e.target.value = '';
+                          setSelectedFile(null);
+                        } else {
+                          setSelectedFile(file);
+                        }
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg dark:bg-slate-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
               </div>
               <div className="flex gap-2 pt-4">
                 <button
@@ -600,6 +636,13 @@ export const DriverStaff = () => {
         title="Driver Details"
         staff={selectedStaff}
         onClose={() => setSelectedStaff(null)}
+        onRefresh={async () => {
+          const freshList = await fetchDriverStaff();
+          if (freshList) {
+            const updated = freshList.find((s: any) => s.id === selectedStaff.id);
+            if (updated) setSelectedStaff(updated);
+          }
+        }}
       />
 
       {/* Success Modal */}

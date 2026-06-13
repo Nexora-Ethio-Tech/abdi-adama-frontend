@@ -1,12 +1,13 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Wallet, Edit2, Loader2 } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Wallet, Edit2, Loader2, FileText, Download, Upload } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
 import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher, updateUser, resetUserPIN } from '../services/schoolAdminService';
+import { registerUser, getBranchUsers, approveTeacher, revokeTeacher, deleteTeacher, updateUser, resetUserPIN, replaceUserDocument } from '../services/schoolAdminService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
+import api from '../services/api';
 
 export const FinanceStaff = () => {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export const FinanceStaff = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
 
   useEffect(() => {
     fetchFinanceStaff();
@@ -66,9 +69,13 @@ export const FinanceStaff = () => {
         userId: person.user_id || person.id,
         branchId: person.branch_id,
         createdAt: person.created_at,
-        staffProfile: person.staff_profile
+        staffProfile: person.staff_profile,
+        document_file_name: person.document_file_name,
+        document_file_size: person.document_file_size,
+        document_mime_type: person.document_mime_type,
       }));
       setFinanceStaff(staff);
+      return staff;
     } catch (err: any) {
       console.error('Failed to fetch finance staff:', err);
       setError(err.response?.data?.error?.message || 'Failed to load finance staff');
@@ -240,6 +247,11 @@ export const FinanceStaff = () => {
       hasError = true;
     }
 
+    if (!selectedFile) {
+      alert('Please upload a document. Document upload is mandatory for staff registration.');
+      return;
+    }
+
     if (hasError) return;
 
     setCreating(true);
@@ -259,7 +271,7 @@ export const FinanceStaff = () => {
           experienceYears: formData.experienceYears,
           registeredAt: new Date().toISOString()
         }
-      });
+      }, selectedFile);
 
       const transformedData = {
         user: {
@@ -273,6 +285,7 @@ export const FinanceStaff = () => {
 
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '' });
+      setSelectedFile(null);
       setPhoneError('');
       setEmergencyPhoneError('');
       setSuccessModal({ show: true, data: transformedData });
@@ -340,7 +353,7 @@ export const FinanceStaff = () => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {financeStaff.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
                   No finance clerks found. Add your first finance clerk.
                 </td>
               </tr>
@@ -554,6 +567,29 @@ export const FinanceStaff = () => {
                     className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">
+                    Staff Document (Mandatory, PDF or Image, max 2MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert('File size exceeds the 2MB limit.');
+                          e.target.value = '';
+                          setSelectedFile(null);
+                        } else {
+                          setSelectedFile(file);
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
               </div>
 
               <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3">
@@ -594,6 +630,13 @@ export const FinanceStaff = () => {
         title="Finance Clerk Details"
         staff={selectedStaff}
         onClose={() => setSelectedStaff(null)}
+        onRefresh={async () => {
+          const freshList = await fetchFinanceStaff();
+          if (freshList) {
+            const updated = freshList.find((s: any) => s.id === selectedStaff.id);
+            if (updated) setSelectedStaff(updated);
+          }
+        }}
       />
 
       {/* Success Modal */}

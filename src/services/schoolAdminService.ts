@@ -141,8 +141,38 @@ export const getDashboard = async (): Promise<SchoolAdminDashboard> => {
 };
 
 // User Registration
-export const registerUser = async (data: RegisterUserData): Promise<RegisterUserResponse> => {
-  const response = await api.post('/school-admin/register-user', data);
+export const registerUser = async (data: RegisterUserData, file?: File): Promise<RegisterUserResponse> => {
+  if (file) {
+    const formData = new FormData();
+    formData.append('document', file);
+    Object.keys(data).forEach((key) => {
+      const value = (data as any)[key];
+      if (typeof value === 'object' && value !== null) {
+        formData.append(key, JSON.stringify(value));
+      } else {
+        formData.append(key, String(value));
+      }
+    });
+    const response = await api.post('/school-admin/register-user', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } else {
+    const response = await api.post('/school-admin/register-user', data);
+    return response.data;
+  }
+};
+
+export const replaceUserDocument = async (userId: string, file: File): Promise<any> => {
+  const formData = new FormData();
+  formData.append('document', file);
+  const response = await api.post(`/school-admin/users/${userId}/document/replace`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 

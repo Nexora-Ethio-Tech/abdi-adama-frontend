@@ -1,9 +1,10 @@
-import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Eye, Edit2, Loader2 } from 'lucide-react';
+import { UserPlus, X, Check, ArrowLeft, MoreVertical, CheckCircle, XCircle, Trash2, Printer, Eye, Edit2, Loader2, FileText, Download, Upload } from 'lucide-react';
 import PhoneInput from '../components/PhoneInput';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
-import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher, promoteTeacher, updateUser, resetUserPIN, removeTeacherPromotion } from '../services/schoolAdminService';
+import { registerUser, getBranchTeachers, approveTeacher, revokeTeacher, deleteTeacher, promoteTeacher, updateUser, resetUserPIN, removeTeacherPromotion, replaceUserDocument } from '../services/schoolAdminService';
+import api from '../services/api';
 import classService from '../services/classService';
 import { StaffProfileModal } from '../components/StaffProfileModal';
 import subjectService, { CourseWithGrade } from '../services/subjectService';
@@ -119,6 +120,9 @@ export const Teachers = () => {
   const [resettingPassword, setResettingPassword] = useState(false);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+
   const [showPromoteModal, setShowPromoteModal] = useState(false);
   const [promotionTarget, setPromotionTarget] = useState<any | null>(null);
   const [promotionForm, setPromotionForm] = useState<{
@@ -383,10 +387,14 @@ export const Teachers = () => {
           // VP-specific fields
           classesAssigned: teacher.classes_assigned || '0',
           plansSubmitted: teacher.plans_submitted || '0',
-          plansPending: teacher.plans_pending || '0'
+          plansPending: teacher.plans_pending || '0',
+          document_file_name: teacher.document_file_name,
+          document_file_size: teacher.document_file_size,
+          document_mime_type: teacher.document_mime_type,
         };
       });
       setTeachers(teachers);
+      return teachers;
     } catch (err: any) {
       console.error('Failed to fetch teachers:', err);
       setError(err.response?.data?.error?.message || 'Failed to load teachers');
@@ -552,6 +560,11 @@ export const Teachers = () => {
       hasError = true;
     }
 
+    if (!selectedFile) {
+      alert('Please upload a document. Document upload is mandatory for staff registration.');
+      return;
+    }
+
     if (hasError) return;
 
     setCreating(true);
@@ -571,7 +584,7 @@ export const Teachers = () => {
           experienceYears: formData.experienceYears,
           registeredAt: new Date().toISOString()
         }
-      });
+      }, selectedFile);
 
       // Transform to match expected structure
       const transformedData = {
@@ -586,6 +599,7 @@ export const Teachers = () => {
 
       setShowAddModal(false);
       setFormData({ name: '', email: '', phoneNumber: '', emergencyContactName: '', emergencyContactPhone: '', educationLevel: '', specialty: '', dob: '', previousSchool: '', experienceYears: '', role: 'teacher' });
+      setSelectedFile(null);
       setPhoneError('');
       setEmergencyPhoneError('');
       setSuccessModal({ show: true, data: transformedData });
@@ -746,7 +760,7 @@ export const Teachers = () => {
                             {teacher.status}
                           </span>
                         )}
-                      </td>
+                        </td>
                       {isVP && (
                         <>
                           <td className="px-6 py-4 text-center">
@@ -1140,6 +1154,29 @@ export const Teachers = () => {
                     placeholder="e.g. 5"
                   />
                 </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">
+                    Staff Document (Mandatory, PDF or Image, max 2MB)
+                  </label>
+                  <input
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert('File size exceeds the 2MB limit.');
+                          e.target.value = '';
+                          setSelectedFile(null);
+                        } else {
+                          setSelectedFile(file);
+                        }
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
@@ -1180,6 +1217,13 @@ export const Teachers = () => {
         title="Teacher Staff Details"
         staff={selectedStaff}
         onClose={() => setSelectedStaff(null)}
+        onRefresh={async () => {
+          const freshList = await fetchTeachers();
+          if (freshList) {
+            const updated = freshList.find((t: any) => t.id === selectedStaff.id);
+            if (updated) setSelectedStaff(updated);
+          }
+        }}
       />
 
       {/* Promote Modal */}
