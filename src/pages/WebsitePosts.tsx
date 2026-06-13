@@ -81,13 +81,13 @@ export const WebsitePosts = () => {
             <div className="p-12 col-span-full flex justify-center items-center text-slate-500">
               <Loader2 size={32} className="animate-spin text-purple-500" />
             </div>
-          ) : posts.length === 0 ? (
+          ) : posts?.length === 0 ? (
             <div className="p-12 col-span-full text-center text-slate-500 text-sm">
               <Megaphone size={40} className="mx-auto text-slate-300 mb-4" />
               {t('websitePosts.noPosts')}
             </div>
           ) : (
-            posts.map((post) => {
+            posts?.map((post) => {
               const isVideo = post.media_type === 'video';
 
               return (
