@@ -22,7 +22,7 @@ function formatEthDateStr(ethStr: string): string {
 }
 
 type AttendanceMode = 'student' | 'staff' | null;
-type StaffAttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Present (Late)';
+type StaffAttendanceStatus = 'Present' | 'Absent' | 'Late' | 'Half Day' | 'Present (Late)' | 'Pending' | 'Weekend' | 'Holiday';
 
 interface StaffAttendanceRecord {
   id: string;
@@ -128,12 +128,14 @@ export const Attendance = () => {
           const mappedRecords: StaffAttendanceRecord[] = response.data.data.map((item: any) => {
             const rawStatus = (item.attendance_status || '').toLowerCase();
             const isLateArrival = !!item.is_late_arrival;
-            let status: StaffAttendanceStatus = 'Absent';
+            let status: StaffAttendanceStatus = 'Pending';
             if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
             else if (rawStatus === 'present') status = 'Present';
             else if (rawStatus === 'late') status = 'Late';
             else if (rawStatus === 'half-day') status = 'Half Day';
             else if (rawStatus === 'absent') status = 'Absent';
+            else if (item.day_off_type === 'Weekend') status = 'Weekend';
+            else if (item.day_off_type === 'Holiday') status = 'Holiday';
             return {
               id: item.id,
               name: item.name,
@@ -188,12 +190,14 @@ export const Attendance = () => {
           const mappedRecords: StaffAttendanceRecord[] = refreshResponse.data.data.map((item: any) => {
             const rawStatus = (item.attendance_status || '').toLowerCase();
             const isLateArrival = !!item.is_late_arrival;
-            let status: StaffAttendanceStatus = 'Absent';
+            let status: StaffAttendanceStatus = 'Pending';
             if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
             else if (rawStatus === 'present') status = 'Present';
             else if (rawStatus === 'late') status = 'Late';
             else if (rawStatus === 'half-day') status = 'Half Day';
             else if (rawStatus === 'absent') status = 'Absent';
+            else if (item.day_off_type === 'Weekend') status = 'Weekend';
+            else if (item.day_off_type === 'Holiday') status = 'Holiday';
             return {
               id: item.id,
               name: item.name,
@@ -331,7 +335,9 @@ export const Attendance = () => {
 
   const filteredStaff = staffAttendance.filter((record) => {
     if (staffFilter === 'all') return true;
-    if (staffFilter === 'pending') return !record.signInTime;
+    if (staffFilter === 'pending') {
+      return !record.signInTime && record.status !== 'Weekend' && record.status !== 'Holiday';
+    }
     return record.status.toLowerCase() === staffFilter;
   });
 
@@ -340,7 +346,7 @@ export const Attendance = () => {
       summary.present += record.status === 'Present' ? 1 : 0;
       summary.absent += record.status === 'Absent' ? 1 : 0;
       summary.late += (record.status === 'Late' || record.status === 'Present (Late)') ? 1 : 0;
-      summary.pendingSignIn += record.signInTime ? 0 : 1;
+      summary.pendingSignIn += (record.signInTime || record.status === 'Weekend' || record.status === 'Holiday') ? 0 : 1;
       summary.total += 1;
       return summary;
     },
@@ -997,6 +1003,9 @@ export const Attendance = () => {
                             ${record.status === 'Half Day' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : ''}
                             ${record.status === 'Late' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : ''}
                             ${record.status === 'Absent' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' : ''}
+                            ${record.status === 'Pending' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' : ''}
+                            ${record.status === 'Weekend' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : ''}
+                            ${record.status === 'Holiday' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : ''}
                           `}>
                             {record.status}
                           </span>
