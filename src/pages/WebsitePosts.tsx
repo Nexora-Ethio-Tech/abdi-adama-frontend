@@ -16,7 +16,6 @@ interface PublicPost {
 export const WebsitePosts = () => {
   const { t } = useTranslation();
 
-  // Local state for fetching and managing posts
   const [posts, setPosts] = useState<PublicPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
