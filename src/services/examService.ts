@@ -141,7 +141,7 @@ export const saveTeacherExam = async (examData: {
 };
 
 export const updateTeacherExam = async (examId: string, updateData: any): Promise<any> => {
-  const response = await api.patch(`/teacher/exams/${examId}`, updateData);
+  const response = await api.post(`/teacher/exams/${examId}`, updateData);
   return response.data.data;
 };
 

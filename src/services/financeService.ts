@@ -327,7 +327,7 @@ const financeClerkService = {
 
   // 5. Update Student Fee Status
   updateFeeStatus: async (studentId: string, data: UpdateFeeStatusRequest): Promise<StudentFeeInfo> => {
-    const response = await api.patch(`/finance-clerk/students/${studentId}/fee-status`, data);
+    const response = await api.post(`/finance-clerk/students/${studentId}/fee-status`, data);
     return response.data.data;
   },
 
@@ -356,12 +356,12 @@ const financeClerkService = {
 
   // 9. Approve a pending application (finalize registration)
   approveApplication: async (applicationId: string, data: { amount?: number; reference?: string; parentDigitalId?: string }) => {
-    const response = await api.patch(`/finance-clerk/applications/${applicationId}/approve`, data);
+    const response = await api.post(`/finance-clerk/applications/${applicationId}/approve`, data);
     return response.data.data;
   },
   // 9b. Return an application to School Admin with a reason
   removeApplication: async (applicationId: string, data: { reason: string }) => {
-    const response = await api.patch(`/finance-clerk/applications/${applicationId}/remove`, data);
+    const response = await api.post(`/finance-clerk/applications/${applicationId}/remove`, data);
     return response.data.data;
   },
 

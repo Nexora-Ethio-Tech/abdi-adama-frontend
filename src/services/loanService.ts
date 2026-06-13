@@ -67,7 +67,7 @@ const loanService = {
    * Cancels/voids an active loan.
    */
   cancelLoan: async (id: string): Promise<Loan> => {
-    const response = await api.patch(`/loans/${id}/cancel`);
+    const response = await api.post(`/loans/${id}/cancel`);
     return response.data.data;
   },
 

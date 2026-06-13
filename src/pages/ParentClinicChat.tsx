@@ -75,7 +75,7 @@ export const ParentClinicChat = () => {
           is_read: m.is_read ?? m.read ?? false
         }));
         setMessages(msgs);
-        await api.patch('/clinic/chat/read', { student_id: selectedChildId });
+        await api.post('/clinic/chat/read', { student_id: selectedChildId });
         window.dispatchEvent(new Event('clinic-notification-update'));
       } catch (err) {
         console.error('Failed to fetch messages:', err);

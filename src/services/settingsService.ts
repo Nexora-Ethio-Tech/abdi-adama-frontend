@@ -135,7 +135,7 @@ const settingsService = {
   },
 
   activateAcademicYear: async (id: string) => {
-    const response = await api.patch(`/super-admin/academic-years/${id}/activate`);
+    const response = await api.post(`/super-admin/academic-years/${id}/activate`);
     return response.data.data;
   },
 };

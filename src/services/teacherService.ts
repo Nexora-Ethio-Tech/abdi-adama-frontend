@@ -87,7 +87,7 @@ export const updateGrade = async (gradeId: string, data: {
   type?: string;
   weight?: string;
 }) => {
-  const response = await api.patch(`/teacher/grades/${gradeId}`, data);
+  const response = await api.post(`/teacher/grades/${gradeId}`, data);
   return response.data;
 };
 

@@ -434,7 +434,7 @@ export const ParentPortal = () => {
 
         // If chat tab is active, mark them read immediately
         if (clinicSupportTab === 'chat') {
-          api.patch('/clinic/chat/read', { student_id: selectedChild.id })
+          api.post('/clinic/chat/read', { student_id: selectedChild.id })
             .then(() => {
               window.dispatchEvent(new Event('clinic-notification-update'));
             })
@@ -509,7 +509,7 @@ export const ParentPortal = () => {
     if (selectedChild && activePortalTab === 'clinic' && clinicSupportTab === 'chat' && chatMessages.length > 0) {
       const hasUnread = chatMessages.some(m => (m.role === 'clinic' || m.sender_role === 'clinic') && !(m.is_read ?? m.read));
       if (hasUnread) {
-        api.patch('/clinic/chat/read', { student_id: selectedChild.id })
+        api.post('/clinic/chat/read', { student_id: selectedChild.id })
           .then(() => {
             setChatMessages(prev => prev.map(m => m.role === 'clinic' ? { ...m, is_read: true, read: true } : m));
             window.dispatchEvent(new Event('clinic-notification-update'));
