@@ -339,11 +339,12 @@ export const Attendance = () => {
     (summary, record) => {
       summary.present += record.status === 'Present' ? 1 : 0;
       summary.absent += record.status === 'Absent' ? 1 : 0;
+      summary.late += (record.status === 'Late' || record.status === 'Present (Late)') ? 1 : 0;
       summary.pendingSignIn += record.signInTime ? 0 : 1;
       summary.total += 1;
       return summary;
     },
-    { present: 0, absent: 0, pendingSignIn: 0, total: 0 }
+    { present: 0, absent: 0, late: 0, pendingSignIn: 0, total: 0 }
   );
 
   const handleAttendanceModeChange = (mode: AttendanceMode) => {
@@ -884,10 +885,15 @@ export const Attendance = () => {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Teachers Present</p>
               <p className="mt-3 text-3xl font-black text-slate-900 dark:text-slate-100">{staffSummary.present}</p>
+            </div>
+            <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-amber-100 dark:border-amber-900/30">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500 dark:text-amber-400">Late Present</p>
+              <p className="mt-3 text-3xl font-black text-amber-600 dark:text-amber-400">{staffSummary.late}</p>
+              <p className="mt-1.5 text-[10px] font-bold text-amber-400 dark:text-amber-500/70 uppercase tracking-wider">Arrived Late Today</p>
             </div>
             <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Teachers Absent</p>
