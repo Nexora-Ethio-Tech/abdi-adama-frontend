@@ -38,7 +38,7 @@ import NavBar from './LandingSections/NavBar';
 import { branchService } from '../services/branchService';
 import Hero from './LandingSections/Hero';
 
-const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: { showAdmission: boolean, scrolled: boolean, displaySchoolName: string, setShowAdmission: (show: boolean) => void }) => {
+const Home = ({ showAdmission, scrolled, setScrolled, displaySchoolName, setShowAdmission }: { showAdmission: boolean, scrolled: boolean, setScrolled: React.Dispatch<React.SetStateAction<boolean>>, displaySchoolName: string, setShowAdmission: (show: boolean) => void }) => {
 
 
   if (showAdmission) {
@@ -84,8 +84,6 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 overflow-x-hidden">
-      {/* Premium Navbar */}
-      {/* Hero Section */}
       <Hero setShowAdmission={setShowAdmission} />
       {/* Stats Section */}
       <section className="py-20 relative z-20">
@@ -111,14 +109,14 @@ const Home = ({ showAdmission, scrolled, displaySchoolName, setShowAdmission }: 
         </div>
       </section>
 
-      {/* Founder's Message */}
-
-
-      {/* Programs Section */}
-
-
-      {/* ═══ NEW SECTIONS FROM SCHOOL OWNER ═══ */}
-      <Chatbot />
+      <div className='block sm:hidden'>
+        <About />
+        <Programs setShowAdmission={setShowAdmission} />
+        <SchoolLife showAdmission={showAdmission} setShowAdmission={setShowAdmission} displaySchoolName={displaySchoolName} />
+        <Branches setScrolled={setScrolled} />
+        <div />
+        <Chatbot />
+      </div>
     </div>
   );
 };
@@ -135,7 +133,7 @@ export const LandingPage = () => {
     <>
       <NavBar scrolled={scrolled} />
       <Routes>
-        <Route path="/" element={<Home showAdmission={showAdmission} scrolled={scrolled} displaySchoolName={displaySchoolName} setShowAdmission={setShowAdmission} />} />
+        <Route path="/" element={<Home setScrolled={setScrolled} showAdmission={showAdmission} scrolled={scrolled} displaySchoolName={displaySchoolName} setShowAdmission={setShowAdmission} />} />
         <Route path="/about" element={<About />} />
         <Route path="/programs" element={<Programs setShowAdmission={setShowAdmission} />} />
         <Route path="/school-life" element={<SchoolLife showAdmission={showAdmission} setShowAdmission={setShowAdmission} displaySchoolName={displaySchoolName} />} />
