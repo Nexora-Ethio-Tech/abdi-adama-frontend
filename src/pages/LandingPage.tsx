@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
 import { StudentRegistration } from '../components/StudentRegistration';
-import { Chatbot } from '../components/Chatbot';
 import logo from '../assets/logo.jpg';
 import SchoolLife from './LandingSections/SchoolLife';
 import { useUser } from '../context/UserContext';
@@ -115,7 +114,6 @@ const Home = ({ showAdmission, scrolled, setScrolled, displaySchoolName, setShow
         <SchoolLife showAdmission={showAdmission} setShowAdmission={setShowAdmission} displaySchoolName={displaySchoolName} />
         <Branches setScrolled={setScrolled} />
         <div />
-        <Chatbot />
       </div>
     </div>
   );

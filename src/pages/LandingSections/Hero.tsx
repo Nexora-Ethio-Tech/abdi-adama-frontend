@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { useScroll, useTransform, useSpring, motion } from 'framer-motion';
 import {
     ArrowRight,
@@ -20,19 +21,49 @@ import {
     GraduationCap,
     Lock
 } from 'lucide-react';
-import { useStore } from '../../context/useStore';
 import { useUser } from '../../context/UserContext';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { formatEthiopianLabel } from '../../utils/ethiopianCalendar';
+import { API_BASE_URL } from '../../config/api';
 
-
+// Define the interface matching your new PostgreSQL table
+interface PublicPost {
+    id: string;
+    post_text: string;
+    image_url: string;
+    media_type: 'image' | 'video';
+    created_at: string;
+}
 
 export default function Hero({ setShowAdmission }: { setShowAdmission: (show: boolean) => void }) {
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const { schoolName, schoolMotto, registrationOpen } = useUser();
-    const { publicPosts } = useStore();
+
+    const [publicPosts, setPublicPosts] = useState<PublicPost[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchPosts = async () => {
+            try {
+                setIsLoading(true);
+                const response = await fetch(`${API_BASE_URL}/guest/public-post`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setPublicPosts(data.data);
+                } else {
+                    console.error('Failed to fetch public posts');
+                }
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPosts();
+    }, []);
 
     const { scrollY } = useScroll();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
@@ -147,8 +178,9 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
                     </div>
                 </div>
             </section>
+            
             {/* Updates / Posts Section */}
-            {publicPosts.length > 0 && (
+            {(isLoading || publicPosts.length > 0) && (
                 <section
                     id="updates"
                     className="py-16 md:py-24 bg-slate-50 dark:bg-slate-900"
@@ -204,81 +236,120 @@ export default function Hero({ setShowAdmission }: { setShowAdmission: (show: bo
 
                     <div
                         className="
-        updates-scroll
-        px-4 sm:px-6
-        pb-8
+                            updates-scroll
+                            px-4 sm:px-6
+                            pb-8
 
-        grid grid-cols-1 sm:grid-cols-2 gap-6
+                            grid grid-cols-1 sm:grid-cols-2 gap-6
 
-        md:flex md:gap-6
-        md:overflow-x-auto
-        md:snap-x md:snap-mandatory
-        md:hide-scrollbar
-        md:pl-[calc(50vw-40rem+1.5rem)]
-        md:pr-6
-      "
+                            md:flex md:gap-6
+                            md:overflow-x-auto
+                            md:snap-x md:snap-mandatory
+                            md:hide-scrollbar
+                            md:pl-[calc(50vw-40rem+1.5rem)]
+                            md:pr-6
+                        "
                     >
-                        {publicPosts.map((post) => (
-                            <div
-                                key={post.id}
-                                className="
-            snap-start
-            w-full
-            md:w-[400px]
-            md:shrink-0
+                        {isLoading ? (
+                            /* Skeleton Loaders */
+                            Array.from({ length: 3 }).map((_, idx) => (
+                                <div
+                                    key={`skeleton-${idx}`}
+                                    className="
+                                        snap-start
+                                        w-full
+                                        md:w-[400px]
+                                        md:shrink-0
 
-            bg-white
-            dark:bg-slate-950
+                                        bg-white
+                                        dark:bg-slate-950
 
-            rounded-3xl
-            border border-slate-100 dark:border-slate-800
-            shadow-xl
-            overflow-hidden
+                                        rounded-3xl
+                                        border border-slate-100 dark:border-slate-800
+                                        shadow-xl
+                                        overflow-hidden
 
-            group
-            hover:-translate-y-2
-            transition-all duration-500
-
-            flex flex-col
-          "
-                            >
-                                <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-900 overflow-hidden">
-                                    {post.type === 'image' ? (
-                                        <img
-                                            src={post.mediaUrl}
-                                            alt="Update"
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                        />
-                                    ) : (
-                                        <iframe
-                                            src={post.mediaUrl}
-                                            title="Update media"
-                                            className="w-full h-full pointer-events-none"
-                                        />
-                                    )}
-
-                                    <div className="absolute top-4 left-4">
-                                        <span className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-black uppercase tracking-widest rounded-full text-school-primary shadow-sm">
-                                            {formatEthiopianLabel(post.timestamp)}
-                                        </span>
+                                        flex flex-col
+                                        animate-pulse
+                                    "
+                                >
+                                    <div className="relative aspect-[4/3] bg-slate-200 dark:bg-slate-800" />
+                                    <div className="p-5 md:p-6 flex-1 flex flex-col space-y-3">
+                                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6" />
+                                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-4/6" />
+                                        
+                                        <div className="mt-auto pt-6 flex items-center gap-2">
+                                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-24" />
+                                        </div>
                                     </div>
                                 </div>
+                            ))
+                        ) : (
+                            /* Actual Data */
+                            publicPosts.map((post) => (
+                                <div
+                                    key={post.id}
+                                    className="
+                                        snap-start
+                                        w-full
+                                        md:w-[400px]
+                                        md:shrink-0
 
-                                <div className="p-5 md:p-6 flex-1 flex flex-col">
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium line-clamp-3">
-                                        {post.description}
-                                    </p>
+                                        bg-white
+                                        dark:bg-slate-950
 
-                                    <div className="mt-auto pt-6 flex items-center gap-2 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest group-hover:text-school-primary transition-colors cursor-pointer w-fit">
-                                        {t('landing.readMore')}
-                                        <ArrowRight
-                                            size={14}
-                                            className="group-hover:translate-x-1 transition-transform"
-                                        />
+                                        rounded-3xl
+                                        border border-slate-100 dark:border-slate-800
+                                        shadow-xl
+                                        overflow-hidden
+
+                                        group
+                                        hover:-translate-y-2
+                                        transition-all duration-500
+
+                                        flex flex-col
+                                    "
+                                >
+                                    <div className="relative aspect-[4/3] bg-slate-100 dark:bg-slate-900 overflow-hidden">
+                                        {/* Mapped to new DB schema properties */}
+                                        {post.media_type === 'image' ? (
+                                            <img
+                                                src={post.image_url}
+                                                alt="Update"
+                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                            />
+                                        ) : (
+                                            <iframe
+                                                src={post.image_url}
+                                                title="Update media"
+                                                className="w-full h-full pointer-events-none"
+                                            />
+                                        )}
+
+                                        <div className="absolute top-4 left-4">
+                                            <span className="px-3 py-1 bg-white/90 dark:bg-slate-900/90 backdrop-blur text-[10px] font-black uppercase tracking-widest rounded-full text-school-primary shadow-sm">
+                                                {formatEthiopianLabel(post.created_at || new Date().toISOString())}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-5 md:p-6 flex-1 flex flex-col">
+                                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium line-clamp-3">
+                                            {post.post_text}
+                                        </p>
+
+                                        <div className="mt-auto pt-6 flex items-center gap-2 text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest group-hover:text-school-primary transition-colors cursor-pointer w-fit">
+                                            {t('landing.readMore')}
+                                            <ArrowRight
+                                                size={14}
+                                                className="group-hover:translate-x-1 transition-transform"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        )}
                     </div>
                 </section>
             )}
