@@ -49,6 +49,7 @@ export interface TransportStudentInfo {
   grade: string;
   bus_fee: number;
   is_bus_user: boolean;
+  bus_start_date?: string | null;
   route_id: string | null;
   route_name: string | null;
   driver_id: string | null;
@@ -153,6 +154,7 @@ export interface AssignTransportRequest {
   studentId: string;
   driverId: string;
   transportFee: number;
+  busStartDay?: number; // Optional: day of month when student starts using bus
 }
 
 export interface StopTransportRequest {
