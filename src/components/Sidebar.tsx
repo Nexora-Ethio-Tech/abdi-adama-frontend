@@ -154,6 +154,7 @@ export const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           { icon: FileText, label: t('nav.transcripts'), path: '/vp-transcripts' },
           { icon: CalendarCheck, label: 'Attendance Oversight', path: '/vp-attendance' },
           { icon: ClipboardList, label: 'Grade Management', path: '/vp-grade-management' },
+          { icon: BookOpen, label: 'Communication Book', path: '/vp-communication' },
         ];
       case 'teacher':
         return [

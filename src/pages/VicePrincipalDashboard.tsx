@@ -1,4 +1,4 @@
-import { Users, GraduationCap, Clock, ChevronRight, BarChart3, Lock, CheckCircle2, Unlock } from 'lucide-react';
+import { Users, GraduationCap, Clock, ChevronRight, BarChart3, Lock, CheckCircle2, Unlock, BookOpen } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -112,7 +112,7 @@ export const VicePrincipalDashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           to="/vp-attendance"
           className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-emerald-500/10"
@@ -141,7 +141,6 @@ export const VicePrincipalDashboard = () => {
           <p className="text-blue-50/90 text-sm font-medium">Process and view student grades by section</p>
         </Link>
 
-
         <Link
           to="/vp-transcripts"
           className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-indigo-500/10"
@@ -154,6 +153,20 @@ export const VicePrincipalDashboard = () => {
           </div>
           <h3 className="font-bold text-lg mb-1">Transcripts & Record Archive</h3>
           <p className="text-indigo-50/90 text-sm font-medium">Verify student histories and transcripts</p>
+        </Link>
+
+        <Link
+          to="/vp-communication"
+          className="bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group shadow-md shadow-violet-500/10"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 bg-white/20 rounded-2xl">
+              <BookOpen size={24} />
+            </div>
+            <ChevronRight className="group-hover:translate-x-1.5 transition-transform" size={20} />
+          </div>
+          <h3 className="font-bold text-lg mb-1">Communication Book</h3>
+          <p className="text-violet-50/90 text-sm font-medium">Audit weekly parent logs status</p>
         </Link>
       </div>
 
