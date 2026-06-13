@@ -13,14 +13,16 @@ interface EthiopianDatePickerProps {
   placeholder?: string;
   className?: string;
   title?: string;
+  id?: string;
 }
 
 export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
   value,
   onChange,
   placeholder = 'YYYY-MM-DD',
-  className = ''
-  , title
+  className = '',
+  title,
+  id
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,12 +116,14 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
       <div className="relative">
         <input
           type="text"
+          id={id}
           placeholder={placeholder}
           title={title}
           value={value}
           onChange={handleInputChange}
           onClick={() => setIsOpen(true)}
-          className={`w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${className}`}
+          onFocus={() => setIsOpen(true)}
+          className={`w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all ${className}`}
         />
         <CalendarIcon 
           size={16} 

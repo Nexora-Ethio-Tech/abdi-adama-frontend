@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useEffect, useCallback } from 'react';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
-import { ethiopianToGregorianIso, gregorianToEthiopian, formatEthiopianLabel, getTodayEthiopianDate, getEthiopianYear } from '../utils/ethiopianCalendar';
+import { ethiopianToGregorianIso, gregorianToEthiopian, getTodayEthiopianDate, getEthiopianYear } from '../utils/ethiopianCalendar';
 import { API_HOST_URL } from '../config/api';
 
 const API = API_HOST_URL || '';
@@ -43,15 +43,41 @@ type NetProfitSummary = {
   netProfit: number;
 };
 
-const formatDateTime = (value: string) => {
+/**
+ * Parse a date value safely in LOCAL time so plain YYYY-MM-DD strings
+ * (from PostgreSQL DATE columns) are not shifted by the UTC offset.
+ */
+const parseDateLocal = (value: string): Date | null => {
+  if (!value) return null;
+  // Plain date string YYYY-MM-DD → parse as local midnight to avoid UTC shift
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  // ISO datetime string → use Date constructor (UTC-based, but includes time)
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  const label = formatEthiopianLabel(parsed);
-  const timeStr = parsed.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-  return `${label} · ${timeStr}`;
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDateTime = (value: string) => {
+  if (!value) return value;
+  const date = parseDateLocal(value);
+  if (!date) return value;
+
+  // Format as Ethiopian label using local date parts
+  const { year, month, day } = gregorianToEthiopian(date);
+  const ETHIOPIAN_MONTHS = [
+    'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+    'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
+  ];
+  const label = `${day} ${ETHIOPIAN_MONTHS[month - 1]} ${year} E.C.`;
+
+  // Add time only for full datetime strings
+  let timeStr = '';
+  if (value.includes('T')) {
+    timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  }
+  return timeStr ? `${label} · ${timeStr}` : label;
 };
 
 export const Finance = () => {
@@ -101,9 +127,23 @@ export const Finance = () => {
         fetch(`${API}/api/finance/transactions`, { headers: authHeaders() }),
         fetch(`${API}/api/finance/audit`, { headers: authHeaders() })
       ]);
-      if (sumRes.ok) setDbSummary(await sumRes.json());
-      if (txRes.ok) setDbTransactions(await txRes.json());
-      if (auditRes.ok) setDbAuditLogs(await auditRes.json());
+      if (sumRes.ok) {
+        setDbSummary(await sumRes.json());
+      } else {
+        console.error('Finance summary fetch failed:', sumRes.status, await sumRes.text());
+      }
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setDbTransactions(Array.isArray(txData) ? txData : []);
+      } else {
+        console.error('Finance transactions fetch failed:', txRes.status, await txRes.text());
+      }
+      if (auditRes.ok) {
+        const auditData = await auditRes.json();
+        setDbAuditLogs(Array.isArray(auditData) ? auditData : []);
+      } else {
+        console.error('Finance audit fetch failed:', auditRes.status, await auditRes.text());
+      }
     } catch (err) {
       console.error('Failed to fetch finance data', err);
     }
@@ -113,12 +153,13 @@ export const Finance = () => {
 
   const matchesRange = (timestamp: string) => {
     if (!timestamp) return true;
-    const current = new Date(timestamp);
+    // Use local time parsing to avoid UTC shift on plain date strings
+    const current = parseDateLocal(timestamp);
     const fromGregStr = ethiopianToGregorianIso(fromDateTime);
     const toGregStr = ethiopianToGregorianIso(toDateTime);
     const from = fromGregStr ? new Date(fromGregStr + 'T00:00:00') : null;
     const to = toGregStr ? new Date(toGregStr + 'T23:59:59') : null;
-    if (!from || !to || Number.isNaN(current.getTime()) || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    if (!current || !from || !to || Number.isNaN(current.getTime()) || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
       return true;
     }
     return current >= from && current <= to;
@@ -166,22 +207,34 @@ export const Finance = () => {
   };
 
   const handleExport = () => {
+    const ETHIOPIAN_MONTHS_EXP = [
+      'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+      'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
+    ];
+    const toEthDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const d = parseDateLocal(dateStr);
+      if (!d) return dateStr;
+      const { year, month, day } = gregorianToEthiopian(d);
+      return `${day} ${ETHIOPIAN_MONTHS_EXP[month - 1]} ${year} E.C.`;
+    };
+
     const dataToExport = activeView === 'audit'
       ? filteredAuditLogs.map(log => ({
         Target: log.studentName,
         ID: log.studentId,
         Action: log.actionLabel,
         ProcessedBy: log.approverName,
-        Timestamp: log.timestamp,
-        Amount: log.direction === 'In' ? 'Income' : 'Expense'
+        Date_EC: toEthDate(log.timestamp),
+        Direction: log.direction === 'In' ? 'Income' : 'Expense'
       }))
       : filteredTransactions.map(tx => ({
         Category: tx.type,
         Description: tx.student_name,
         ApprovedBy: tx.verified_by,
-        Date: tx.date,
+        Date_EC: toEthDate(tx.date),
         Type: tx.type,
-        Amount: tx.amount
+        'Amount (ETB)': tx.amount
       }));
 
     exportToCSV(dataToExport, activeView === 'audit' ? 'Finance_Audit_Log' : 'Finance_Ledger');
@@ -841,11 +894,14 @@ export const Finance = () => {
             <form className="p-6 space-y-4" onSubmit={async (e) => {
               e.preventDefault();
               const f = new FormData(e.currentTarget);
+              // Use local YYYY-MM-DD to avoid UTC offset causing previous day to be saved
+              const now = new Date();
+              const localDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
               const data = {
                 student_name: f.get('desc'),
                 amount: Number(f.get('amount')),
                 type: f.get('type'),
-                date: new Date().toISOString(),
+                date: localDateStr,
                 verified_by: user?.name || 'Unknown',
                 branch_id: (user as any).branch_id || 'B001',
                 student_id: null

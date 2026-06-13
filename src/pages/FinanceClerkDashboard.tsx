@@ -89,6 +89,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [transportData, setTransportData] = useState({
     driverId: '',
     transportFee: 0,
+    busStartDay: 0, // Day of month when student starts using bus (1-30)
   });
   const [stopDaysUsed, setStopDaysUsed] = useState(0);
 
@@ -436,11 +437,14 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       || null;
     const policyFee = policy ? Number(policy.bus_fee || 0) : 0;
     const driverId = student.driver_id || transportDrivers[0]?.id || '';
+    const todayDate = new Date();
+    const currentDay = todayDate.getDate();
     setTransportStudent(student);
     setTransportData({
       driverId,
       // Use ONLY the Super Admin configured policy fee (or 0 if not set)
       transportFee: policyFee,
+      busStartDay: currentDay, // Default to today's day of month
     });
     setShowTransportModal(true);
   };
@@ -476,8 +480,15 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const openStopTransportModal = (student: TransportStudentInfo) => {
     setStopTransportStudent(student);
     try {
-      const eth = getEthiopianDate(new Date());
-      setStopDaysUsed(Number(eth.day));
+      const stopEth = getEthiopianDate(new Date());
+      let days = Number(stopEth.day);
+      if (student.bus_start_date) {
+        const startEth = getEthiopianDate(new Date(student.bus_start_date));
+        if (startEth.year === stopEth.year && startEth.month === stopEth.month) {
+          days = stopEth.day - startEth.day + 1;
+        }
+      }
+      setStopDaysUsed(Math.min(30, Math.max(0, days)));
     } catch (e) {
       // Fallback to 0 if conversion fails
       setStopDaysUsed(0);
@@ -529,6 +540,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         studentId: transportStudent.id,
         driverId: transportData.driverId,
         transportFee: finalFee,
+        busStartDay: transportData.busStartDay, // Pass the start day
       });
       setSuccess('Transport assignment saved successfully');
       setShowTransportModal(false);
@@ -2255,6 +2267,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     setTransportData({
                       driverId: e.target.value,
                       transportFee: transportData.transportFee,
+                      busStartDay: transportData.busStartDay,
                     });
                   }}
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
@@ -2280,6 +2293,20 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                   className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none cursor-not-allowed"
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Set by Super Admin policy. Cannot be edited.</p>
+              </div>
+              <div>
+                <label htmlFor="bus-start-day" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Bus Start Day (1-30) *</label>
+                <input
+                  id="bus-start-day"
+                  type="number"
+                  required
+                  min="1"
+                  max="30"
+                  value={transportData.busStartDay}
+                  onChange={(e) => setTransportData({ ...transportData, busStartDay: Number(e.target.value) })}
+                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">The day of the month when the student starts using the bus. When stopping, they will only be charged for days between start and stop.</p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button

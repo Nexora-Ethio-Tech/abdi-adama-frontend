@@ -53,6 +53,7 @@ const VPAttendanceOversight = lazy(() => import('./pages/VPAttendanceOversight')
 const VPGradeLocks = lazy(() => import('./pages/VPGradeLocks').then((m) => ({ default: m.VPGradeLocks })));
 const VPGradeManagement = lazy(() => import('./pages/VPGradeManagement').then((m) => ({ default: m.VPGradeManagement })));
 const VPTranscripts = lazy(() => import('./pages/VPTranscripts').then((m) => ({ default: m.VPTranscripts })));
+const VPCommunication = lazy(() => import('./pages/VPCommunication').then((m) => ({ default: m.VPCommunication })));
 const FinanceClerkDashboard = lazy(() => import('./pages/FinanceClerkDashboard').then((m) => ({ default: m.FinanceClerkDashboard })));
 const FinanceStaff = lazy(() => import('./pages/FinanceStaff').then((m) => ({ default: m.FinanceStaff })));
 const LibrarianStaff = lazy(() => import('./pages/LibrarianStaff').then((m) => ({ default: m.LibrarianStaff })));
@@ -263,6 +264,12 @@ function App() {
               <Route path="vp-attendance" element={
                 <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
                   <VPAttendanceOversight />
+                </ProtectedRoute>
+              } />
+
+              <Route path="vp-communication" element={
+                <ProtectedRoute allowedRoles={['vice-principal', 'super-admin']}>
+                  <VPCommunication />
                 </ProtectedRoute>
               } />
 
