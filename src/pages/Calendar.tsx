@@ -347,19 +347,6 @@ export const Calendar = ({ compact = false }: { compact?: boolean }) => {
 
         {/* Sidebar */}
         <div className={compact ? "space-y-3" : "space-y-5"}>
-          {/* Legend */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3">Event Types</h4>
-            <div className="space-y-2">
-              {Object.entries(EVENT_COLORS).map(([type, cls]) => (
-                <div key={type} className="flex items-center gap-2">
-                  <span className={`inline-block w-3 h-3 rounded-sm flex-shrink-0 ${cls.split(' ')[0]}`} />
-                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{type}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {/* This Month's Events */}
           <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
             <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider mb-4 flex items-center gap-2">
