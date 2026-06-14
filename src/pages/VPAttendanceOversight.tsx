@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone, CalendarDays } from 'lucide-react';
+import { Users, MessageSquare, Send, Loader, CheckCircle, AlertCircle, Phone } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import api from '../services/api';
-import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
-import { ethiopianToGregorianIso, getTodayEthiopianDate } from '../utils/ethiopianCalendar';
+import { getTodayEthiopianDate } from '../utils/ethiopianCalendar';
 
 interface AbsentStudent {
   id: string;
@@ -14,6 +13,7 @@ interface AbsentStudent {
   parentPhone: string;
   studentId: string;
   roomTeacher: string;
+  status: string;
 }
 
 interface SMSMessage {
@@ -26,13 +26,14 @@ interface SMSMessage {
 export const VPAttendanceOversight = () => {
   const { user } = useUser();
 
-  // Use Ethiopian date picker; default to today's Ethiopian date
-  const [selectedDate, setSelectedDate] = useState<string>(getTodayEthiopianDate());
+  // Default to today's Ethiopian date
+  const [selectedDate] = useState<string>(getTodayEthiopianDate());
   const [absentStudents, setAbsentStudents] = useState<AbsentStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectAll, setSelectAll] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [notifiedStudents, setNotifiedStudents] = useState<Set<string>>(new Set());
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [smsMessage, setSmsMessage] = useState(
     'Your child is absent from school today. Please contact the school if you have any questions.'
@@ -56,11 +57,11 @@ export const VPAttendanceOversight = () => {
     setError(null);
     setSelectedStudents(new Set());
     setSelectAll(false);
+    setNotifiedStudents(new Set());
     try {
-      // Convert Ethiopian date (YYYY-MM-DD E.C.) to Gregorian ISO before sending to backend
-      const queryDate = selectedDate ? ethiopianToGregorianIso(selectedDate) : undefined;
+      // Send Ethiopian date directly (YYYY-MM-DD E.C.) to backend
       const response = await api.get('/vice-principal/attendance/absences-today', {
-        params: { date: queryDate },
+        params: { date: selectedDate },
         headers: {
           'Cache-Control': 'no-cache',
           Pragma: 'no-cache'
@@ -130,6 +131,13 @@ export const VPAttendanceOversight = () => {
       setSmsStatus('sent');
       showToast(`SMS sent to ${selectedStudents.size} parent(s) successfully!`, 'success');
 
+      // Record successfully notified students
+      setNotifiedStudents(prev => {
+        const next = new Set(prev);
+        selectedStudents.forEach(id => next.add(id));
+        return next;
+      });
+
       // Reset modal after 2 seconds
       setTimeout(() => {
         setShowSMSModal(false);
@@ -162,28 +170,8 @@ export const VPAttendanceOversight = () => {
               Absence Oversight & Parent Notifications
             </h1>
             <p className="text-slate-400 text-sm max-w-2xl font-medium leading-relaxed">
-              Monitor student absences by date and send instant SMS notifications to parents.
+              Monitor student absences and send instant SMS notifications to parents.
             </p>
-          </div>
-          {/* Date Picker */}
-          <div className="flex-shrink-0 mt-2">
-            <label htmlFor="vpAbsenceDatePicker" className="block text-xs font-bold uppercase tracking-widest text-indigo-400 mb-1.5 cursor-pointer">
-              <CalendarDays size={12} className="inline mr-1" />
-              View Absences For
-            </label>
-            <EthiopianDatePicker
-              id="vpAbsenceDatePicker"
-              value={selectedDate}
-              onChange={(v) => setSelectedDate(v)}
-              placeholder="YYYY-MM-DD"
-              title="Select absence date (Ethiopian calendar)"
-              className="w-full"
-            />
-            {selectedDate && (
-              <p className="mt-1 text-xs text-indigo-300 font-medium text-center">
-                {selectedDate.split('-').reverse().join('-')}
-              </p>
-            )}
           </div>
         </div>
       </section>
@@ -197,8 +185,10 @@ export const VPAttendanceOversight = () => {
                 <AlertCircle className="text-red-600 dark:text-red-400" size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Absent on {selectedDate}</p>
-                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{absentStudents.length}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Absent Today</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">
+                  {absentStudents.filter(s => s.status === 'absent').length}
+                </p>
               </div>
             </div>
           </div>
@@ -221,8 +211,8 @@ export const VPAttendanceOversight = () => {
                 <Phone className="text-purple-600 dark:text-purple-400" size={24} />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Parents to Notify</p>
-                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{selectedStudents.size}</p>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Parents Notified</p>
+                <p className="text-3xl font-black text-slate-900 dark:text-white mt-1">{notifiedStudents.size}</p>
               </div>
             </div>
           </div>
@@ -304,9 +294,20 @@ export const VPAttendanceOversight = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 mb-2">
                       <h3 className="font-bold text-slate-900 dark:text-white text-lg">{student.name}</h3>
-                      <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold uppercase tracking-widest">
-                        {student.grade} - {student.section}
-                      </span>
+                      <div className="flex gap-2 flex-wrap">
+                        <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-xs font-bold uppercase tracking-widest">
+                          {student.grade} - {student.section}
+                        </span>
+                        {student.status && (
+                          <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-widest ${
+                            student.status === 'absent' 
+                              ? 'bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/40' 
+                              : 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-900/40'
+                          }`}>
+                            {student.status}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                       <div>
