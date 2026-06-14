@@ -159,13 +159,8 @@ export const AuditorDashboard = () => {
     localStorage.setItem('auditor_selected_branch', branchId);
   };
 
-  const registrationFeeTransactions = dashboard?.recentTransactions.filter((transaction) => {
-    const isRegistration = transaction.type?.toLowerCase().includes('registration');
-    const verifiedByFinance = transaction.verified_by?.toLowerCase().includes('finance');
-    return isRegistration && verifiedByFinance;
-  }) ?? [];
-
-  const registrationFeeTotal = registrationFeeTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const regFeeCount = dashboard?.registrationFees.count ?? 0;
+  const regFeeTotal = dashboard?.registrationFees.total ?? 0;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -246,8 +241,8 @@ export const AuditorDashboard = () => {
             <OverviewCard
               accent="emerald"
               title="Registration Fee"
-              value={registrationFeeTransactions.length}
-              subtitle={`${registrationFeeTotal.toLocaleString()} ETB collected`}
+              value={regFeeCount}
+              subtitle={`${regFeeTotal.toLocaleString()} ETB collected`}
               icon={DollarSign}
             />
           </div>
