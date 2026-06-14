@@ -76,7 +76,7 @@ export const formatSemester = (sem: 1 | 2): string =>
  */
 export function getAvailableECYears(count = 4): number[] {
   const current = getCurrentECYear();
-  return Array.from({ length: count }, (_, i) => current - i);
+  return Array.from({ length: count }, (_, i) => current - i).filter(y => y >= 2018);
 }
 
 /**

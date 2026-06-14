@@ -111,7 +111,7 @@ export const VPGradeManagement = () => {
       console.log(`[VPGradeManagement] Fetching data for section: ${section.id}, Year: ${yearToUse}, Semester: ${semNum} (${semToUse})`);
 
       const [studentsData, coursesData, gradesData] = await Promise.all([
-        vicePrincipalService.getStudentsBySection(section.id),
+        vicePrincipalService.getStudentsBySection(section.id, yearToUse),
         vicePrincipalService.getCoursesBySection(section.id),
         vicePrincipalService.getSectionGrades(section.id, yearToUse, semNum)
       ]);

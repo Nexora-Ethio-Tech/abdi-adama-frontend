@@ -52,8 +52,12 @@ export const toggleGradeLock = async (data: {
 };
 
 // Student Transcript
-export const getStudentTranscript = async (studentId: string) => {
-  const response = await api.get(`/vice-principal/students/${studentId}/transcript`);
+export const getStudentTranscript = async (studentId: string, academicYear?: string, semester?: number) => {
+  const params = new URLSearchParams();
+  if (academicYear) params.append('academicYear', academicYear);
+  if (semester !== undefined) params.append('semester', String(semester));
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api.get(`/vice-principal/students/${studentId}/transcript${queryString}`);
   return response.data.data;
 };
 
@@ -115,8 +119,11 @@ export const getGradesAndSections = async () => {
   return response.data.data;
 };
 
-export const getStudentsBySection = async (sectionId: string) => {
-  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/students`);
+export const getStudentsBySection = async (sectionId: string, academicYear?: string) => {
+  const params = new URLSearchParams();
+  if (academicYear) params.append('academicYear', academicYear);
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api.get(`/vice-principal/grade-management/sections/${sectionId}/students${queryString}`);
   return response.data.data;
 };
 

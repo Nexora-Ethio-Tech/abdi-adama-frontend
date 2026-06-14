@@ -2,6 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronRight, ChevronDown, Download, FileText, Loader2, Printer, Search, Users, X } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 import { TranscriptTemplate, TranscriptTemplateData } from '../components/TranscriptTemplate';
+import {
+  getCurrentECYear,
+  getCurrentSemester,
+  formatSemester,
+  getAvailableGregorianYears,
+  gregorianToECYear,
+  ecYearToGregorian
+} from '../utils/ethiopianCalendar';
 
 type GradeSection = {
   grade_name: string;
@@ -65,6 +73,10 @@ export const VPTranscripts = () => {
   const [loadingSectionStudents, setLoadingSectionStudents] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedYear, setSelectedYear] = useState<string>(() => ecYearToGregorian(getCurrentECYear()));
+  const [selectedSemester, setSelectedSemester] = useState<string>(() => formatSemester(getCurrentSemester()));
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
+
   useEffect(() => {
     const loadHierarchy = async () => {
       try {
@@ -111,7 +123,7 @@ export const VPTranscripts = () => {
 
       try {
         setLoadingSectionStudents(true);
-        const students = await vicePrincipalService.getStudentsBySection(selectedSection);
+        const students = await vicePrincipalService.getStudentsBySection(selectedSection, selectedYear);
         setSectionStudents(students || []);
       } catch (err: any) {
         console.error('Failed to load section students:', err);
@@ -123,7 +135,7 @@ export const VPTranscripts = () => {
     };
 
     loadStudents();
-  }, [selectedSection]);
+  }, [selectedSection, selectedYear]);
 
   const openTranscript = async (lookupValue: string, displayLabel?: string) => {
     const trimmedLookup = lookupValue.trim();
@@ -133,7 +145,9 @@ export const VPTranscripts = () => {
       setLoading(true);
       setError(null);
       setLookupLabel(displayLabel || trimmedLookup);
-      const data = await vicePrincipalService.getStudentTranscript(trimmedLookup);
+      setActiveStudentId(trimmedLookup);
+      const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+      const data = await vicePrincipalService.getStudentTranscript(trimmedLookup, selectedYear, semNum);
       setTranscript(data as StudentTranscript);
     } catch (err: any) {
       console.error('Transcript fetch failed:', err);
@@ -161,17 +175,26 @@ export const VPTranscripts = () => {
         await openTranscript(single.digitalId || single.id, single.name);
       } else {
         setTranscript(null);
+        setActiveStudentId(null);
       }
     } catch (err: any) {
       console.error('Student search failed:', err);
       setSearchResults([]);
       setTranscript(null);
+      setActiveStudentId(null);
       setLookupLabel(query);
       setError(null);
     } finally {
       setSearching(false);
     }
   };
+
+  useEffect(() => {
+    if (activeStudentId) {
+      const activeName = transcript?.studentName || lookupLabel;
+      openTranscript(activeStudentId, activeName);
+    }
+  }, [selectedYear, selectedSemester]);
 
   const templateData = useMemo<TranscriptTemplateData | null>(() => {
     if (transcript) {
@@ -350,6 +373,50 @@ export const VPTranscripts = () => {
               </div>
             ) : (
               <div className="space-y-3">
+                {/* Academic Year Dropdown */}
+                <div>
+                  <label htmlFor="vp-transcript-year" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    Academic Year
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="vp-transcript-year"
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(e.target.value)}
+                      className="w-full appearance-none px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer pr-10"
+                    >
+                      {getAvailableGregorianYears().map((year) => {
+                        const ecYear = gregorianToECYear(year);
+                        return (
+                          <option key={year} value={year}>
+                            {ecYear} E.C. ({year})
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Semester Dropdown */}
+                <div>
+                  <label htmlFor="vp-transcript-semester" className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
+                    Semester
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="vp-transcript-semester"
+                      value={selectedSemester}
+                      onChange={(e) => setSelectedSemester(e.target.value)}
+                      className="w-full appearance-none px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-800 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer pr-10"
+                    >
+                      <option>First Semester</option>
+                      <option>Second Semester</option>
+                    </select>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
                 {/* Grade Dropdown */}
                 <div>
                   <label className="block text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">
