@@ -17,9 +17,25 @@
 
 // ─── Core conversion ──────────────────────────────────────────────────────────
 
-/** Return the Ethiopian Calendar year for a given JS Date. */
+/**
+ * East Africa Time offset (UTC+3, no DST).
+ * Converts any Date to its EAT equivalent by shifting UTC ms.
+ * The returned Date's getUTC* methods reflect EAT local time.
+ */
+const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+const toEATDate = (date: Date): Date =>
+  new Date(date.getTime() + EAT_OFFSET_MS);
+
+/** Construct a plain Date (local-time) from EAT-shifted UTC parts. */
+const eatToLocalProxy = (date: Date): Date => {
+  const eat = toEATDate(date);
+  return new Date(eat.getUTCFullYear(), eat.getUTCMonth(), eat.getUTCDate());
+};
+
+/** Return the Ethiopian Calendar year for a given JS Date, evaluated in EAT. */
 export function getEthiopianYear(date: Date = new Date()): number {
-  return gregorianToEthiopian(date).year;
+  return gregorianToEthiopian(eatToLocalProxy(date)).year;
 }
 
 /** Return the current Ethiopian Calendar year. */
@@ -129,30 +145,51 @@ export function parseEthiopianDateString(value: string): { year: number; month: 
 }
 
 /**
- * Convert a Gregorian Date (or Date string) to Ethiopian calendar parts.
+ * Convert a Gregorian Date or date string to Ethiopian calendar parts.
+ * - If given a Date object, uses its LOCAL time components.
+ * - If given a string:
+ *   - Plain YYYY-MM-DD → parsed as local midnight (no UTC shift).
+ *   - ISO datetime (contains 'T') → the UTC timestamp is shifted to EAT (+3h)
+ *     before extraction, so stored UTC timestamps display the correct EAT day.
  */
 export function gregorianToEthiopian(date: Date | string): { year: number; month: number; day: number } {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return { year: 2018, month: 1, day: 1 };
-  
-  const useUtc = typeof date === 'string';
-  const year = useUtc ? d.getUTCFullYear() : d.getFullYear();
-  const month = (useUtc ? d.getUTCMonth() : d.getMonth()) + 1;
-  const day = useUtc ? d.getUTCDate() : d.getDate();
-  
+  let year: number, month: number, day: number;
+
+  if (typeof date === 'string') {
+    if (date.includes('T') || date.endsWith('Z')) {
+      // ISO datetime: shift to EAT before reading date parts
+      const parsed = new Date(date);
+      if (isNaN(parsed.getTime())) return { year: 2018, month: 1, day: 1 };
+      const eat = new Date(parsed.getTime() + EAT_OFFSET_MS);
+      year = eat.getUTCFullYear();
+      month = eat.getUTCMonth() + 1;
+      day = eat.getUTCDate();
+    } else {
+      // Plain YYYY-MM-DD: parse as local date to avoid UTC shift
+      const parts = date.split('-').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return { year: 2018, month: 1, day: 1 };
+      year = parts[0]; month = parts[1]; day = parts[2];
+    }
+  } else {
+    if (isNaN(date.getTime())) return { year: 2018, month: 1, day: 1 };
+    year = date.getFullYear();
+    month = date.getMonth() + 1;
+    day = date.getDate();
+  }
+
   const a = Math.floor((14 - month) / 12);
   const y = year + 4800 - a;
   const m = month + 12 * a - 3;
-  
+
   const jdn = day + Math.floor((153 * m + 2) / 5) + 365 * y + Math.floor(y / 4) - Math.floor(y / 100) + Math.floor(y / 400) - 32045;
-  
+
   const r = (jdn - 1723856) % 1461;
   const n = (r % 365) + 365 * Math.floor(r / 1460);
-  
+
   const ethYear = 4 * Math.floor((jdn - 1723856) / 1461) + Math.floor(r / 365) - Math.floor(r / 1460);
   const ethMonth = Math.floor(n / 30) + 1;
   const ethDay = (n % 30) + 1;
-  
+
   return { year: ethYear, month: ethMonth, day: ethDay };
 }
 
@@ -211,21 +248,21 @@ export function formatEthiopianLabel(dateInput: string | Date | null): string {
 
 /**
  * Get today's date as an Ethiopian Calendar ISO string (YYYY-MM-DD format).
- * Replaces: new Date().toISOString().split('T')[0]
+ * Uses EAT (UTC+3) to determine "today" regardless of the browser's timezone.
  */
 export function getTodayEthiopianDate(): string {
-  const today = new Date();
-  const { year, month, day } = gregorianToEthiopian(today);
+  const eatProxy = eatToLocalProxy(new Date());
+  const { year, month, day } = gregorianToEthiopian(eatProxy);
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 /**
  * Get current month as Ethiopian Calendar ISO string (YYYY-MM format).
- * Replaces: new Date().toISOString().slice(0, 7)
+ * Uses EAT (UTC+3) to determine "today" regardless of the browser's timezone.
  */
 export function getCurrentEthiopianMonth(): string {
-  const today = new Date();
-  const { year, month } = gregorianToEthiopian(today);
+  const eatProxy = eatToLocalProxy(new Date());
+  const { year, month } = gregorianToEthiopian(eatProxy);
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 

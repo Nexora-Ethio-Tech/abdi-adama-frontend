@@ -61,21 +61,25 @@ const parseDateLocal = (value: string): Date | null => {
 
 const formatDateTime = (value: string) => {
   if (!value) return value;
-  const date = parseDateLocal(value);
-  if (!date) return value;
 
-  // Format as Ethiopian label using local date parts
-  const { year, month, day } = gregorianToEthiopian(date);
+  // For Ethiopian label: pass the raw string to gregorianToEthiopian.
+  // It will shift ISO datetime strings to EAT before converting, so stored
+  // UTC timestamps display the correct East Africa day.
+  const { year, month, day } = gregorianToEthiopian(value);
   const ETHIOPIAN_MONTHS = [
     'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
     'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
   ];
   const label = `${day} ${ETHIOPIAN_MONTHS[month - 1]} ${year} E.C.`;
 
-  // Add time only for full datetime strings
+  // Add time display (EAT) only for full datetime strings
   let timeStr = '';
   if (value.includes('T')) {
-    timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const EAT_OFFSET_MS = 3 * 60 * 60 * 1000;
+    const eatDate = new Date(new Date(value).getTime() + EAT_OFFSET_MS);
+    const hh = String(eatDate.getUTCHours()).padStart(2, '0');
+    const mm = String(eatDate.getUTCMinutes()).padStart(2, '0');
+    timeStr = `${hh}:${mm}`;
   }
   return timeStr ? `${label} · ${timeStr}` : label;
 };
