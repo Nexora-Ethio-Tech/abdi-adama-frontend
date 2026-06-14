@@ -144,7 +144,7 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 mt-2 z-50 w-72 p-4 bg-white/90 dark:bg-slate-950/95 backdrop-blur-md border border-slate-200/60 dark:border-slate-850 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-top-2">
+        <div className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mt-2 z-50 w-72 p-4 bg-white/90 dark:bg-slate-950/95 backdrop-blur-md border border-slate-200/60 dark:border-slate-850 rounded-3xl shadow-2xl animate-in fade-in slide-in-from-top-2">
           {/* Header row */}
           <div className="flex items-center justify-between mb-4">
             <button

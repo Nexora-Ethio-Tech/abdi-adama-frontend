@@ -30,7 +30,7 @@ export const markAttendance = async (data: {
   date: string;
   attendanceRecords: Array<{
     studentId: string;
-    status: 'present' | 'absent' | 'late' | 'excused';
+    status: 'present' | 'absent' | 'excused';
   }>;
 }) => {
   const response = await api.post('/teacher/attendance', data);
