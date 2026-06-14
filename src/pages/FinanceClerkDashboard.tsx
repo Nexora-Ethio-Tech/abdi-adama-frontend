@@ -175,14 +175,13 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         return;
       }
 
-      const [dashboardData, studentsData, overdueData, staffData, pendingApplications] = await Promise.all([
+      // Fire all API calls in parallel instead of two sequential batches
+      const [dashboardData, studentsData, overdueData, staffData, pendingApplications, transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getDashboard(),
         financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined, grade: gradeFilter || undefined }),
         financeClerkService.getOverduePayments(),
         payrollService.getAllProfiles().catch(() => []),
         financeClerkService.getPendingApplications(),
-      ]);
-      const [transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
         financeClerkService.getTransportDrivers(),
         financeClerkService.getTransportPolicies(),
