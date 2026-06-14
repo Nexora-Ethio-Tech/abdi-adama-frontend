@@ -2066,8 +2066,11 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               <div>
                 <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-3">Payment Types *</label>
                 <div className="grid grid-cols-1 gap-2">
-                  {outstandingData ? (
+                   {outstandingData ? (
                     (() => {
+                      const approvedDeduction = Number(outstandingData.approvedDeduction || 0);
+                      const hasActiveDeduction = approvedDeduction > 0;
+
                       const payableFees = outstandingData.fees.filter((f: any) => {
                         if (f.feeType === 'bus' && !outstandingData.usesTransport) return false;
                         if (f.feeType === 'registration') return false;
@@ -2084,49 +2087,92 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                         );
                       }
 
-                      return payableFees.map((f: any) => {
-                        const label = f.feeType === 'monthly' ? 'Monthly Tuition' : f.feeType === 'bus' ? 'Bus Fee' : f.feeType === 'penalty' ? 'Penalty Fee' : f.feeType === 'registration' ? 'Registration Fee' : f.feeType;
-                        const checked = selectedPaymentTypes.includes(label);
+                      // Find the raw monthly fee (before deduction) from fees
+                      const monthlyFeeEntry = outstandingData.fees.find((f: any) => f.feeType === 'monthly');
+                      const rawMonthlyFee = monthlyFeeEntry ? Number(monthlyFeeEntry.due) + approvedDeduction : approvedDeduction;
 
-                        return (
-                          <label key={f.feeType} className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
-                            <div className="flex items-center gap-3 min-w-0">
-                              <input type="checkbox" checked={checked} onChange={() => handleCheckboxChange(label)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
-                              <div className="min-w-0">
-                                <div className="text-xs font-black text-slate-900 dark:text-slate-100">{label}</div>
-                                <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
-                                  Due: {Number(f.due).toLocaleString()} ETB • Paid: {Number(f.paid).toLocaleString()} ETB
-                                  {f.source ? <span className="block text-[10px] text-slate-500 dark:text-slate-400">Source: {f.source}</span> : null}
-                                </div>
+                      return (
+                        <>
+                          {/* ── Fee Deduction Banner ─────────────────────────────── */}
+                          {hasActiveDeduction && (
+                            <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-400 dark:border-emerald-600 flex items-start gap-2">
+                              <span className="text-emerald-600 dark:text-emerald-400 text-lg leading-none mt-0.5">✅</span>
+                              <div className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                                <p className="font-black">Fee Deduction Applied Automatically</p>
+                                <p className="mt-0.5">
+                                  Standard fee: <span className="font-bold">{rawMonthlyFee.toLocaleString()} ETB</span>
+                                  {' '}— Approved deduction: <span className="font-bold text-red-600 dark:text-red-400">−{approvedDeduction.toLocaleString()} ETB</span>
+                                  {' '}= Payable: <span className="font-bold">{(rawMonthlyFee - approvedDeduction).toLocaleString()} ETB</span>
+                                </p>
+                                <p className="mt-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                                  ⚠️ This deduction is valid for this month only. A new request must be submitted next month.
+                                </p>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end gap-1">
-                              <div className="text-xs font-black text-slate-900 dark:text-slate-100">Remaining {Number(f.remaining).toLocaleString()} ETB</div>
-                              <input
-                                type="number"
-                                min="0"
-                                max={Number(f.remaining || 0)}
-                                step="0.01"
-                                value={paymentAmounts[f.feeType] ?? Number(f.remaining || 0)}
-                                disabled={!checked}
-                                onChange={(e) => {
-                                  const value = Number(e.target.value || 0);
-                                  const clamped = Math.max(0, Math.min(value, Number(f.remaining || 0)));
-                                  const next: Record<string, number> = { ...paymentAmounts, [f.feeType]: clamped };
-                                  setPaymentAmounts(next);
-                                  let total = 0;
-                                  for (const selected of selectedPaymentTypes) {
-                                    const selectedKey = selected === 'Monthly Tuition' ? 'monthly' : selected === 'Bus Fee' ? 'bus' : selected === 'Penalty Fee' ? 'penalty' : selected === 'Registration Fee' ? 'registration' : selected;
-                                    total += Number(next[selectedKey] || 0);
-                                  }
-                                  setPaymentData((prev) => ({ ...prev, amount: total }));
-                                }}
-                                className="w-28 px-2 py-1 rounded-lg border-2 border-slate-500 bg-white text-slate-900 dark:bg-slate-700 dark:text-white dark:border-slate-400 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
-                              />
-                            </div>
-                          </label>
-                        );
-                      });
+                          )}
+
+                          {payableFees.map((f: any) => {
+                            const label = f.feeType === 'monthly' ? 'Monthly Tuition' : f.feeType === 'bus' ? 'Bus Fee' : f.feeType === 'penalty' ? 'Penalty Fee' : f.feeType === 'registration' ? 'Registration Fee' : f.feeType;
+                            const checked = selectedPaymentTypes.includes(label);
+                            // Lock the monthly fee amount when there is an approved deduction
+                            const isMonthlyWithDeduction = f.feeType === 'monthly' && hasActiveDeduction;
+
+                            return (
+                              <label key={f.feeType} className={`flex items-center justify-between gap-3 p-3 rounded-xl border-2 ${checked ? 'bg-white border-blue-600 dark:bg-slate-900 dark:border-blue-400' : 'bg-slate-100 border-slate-400 dark:bg-slate-800 dark:border-slate-600'}`}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <input type="checkbox" checked={checked} onChange={() => handleCheckboxChange(label)} className="w-4 h-4 rounded text-blue-600 border-slate-500 focus:ring-blue-500 cursor-pointer" />
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-black text-slate-900 dark:text-slate-100">
+                                      {label}
+                                      {isMonthlyWithDeduction && (
+                                        <span className="ml-1 px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-black">DEDUCTION APPLIED</span>
+                                      )}
+                                    </div>
+                                    <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                                      {isMonthlyWithDeduction
+                                        ? <>Original: {rawMonthlyFee.toLocaleString()} ETB • Deducted: {approvedDeduction.toLocaleString()} ETB</>
+                                        : <>Due: {Number(f.due).toLocaleString()} ETB • Paid: {Number(f.paid).toLocaleString()} ETB</>
+                                      }
+                                      {f.source ? <span className="block text-[10px] text-slate-500 dark:text-slate-400">Source: {f.source}</span> : null}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  <div className="text-xs font-black text-slate-900 dark:text-slate-100">Remaining {Number(f.remaining).toLocaleString()} ETB</div>
+                                  {isMonthlyWithDeduction ? (
+                                    /* Locked: deduction-adjusted amount cannot be manually changed */
+                                    <div className="w-28 px-2 py-1 rounded-lg border-2 border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 text-xs font-black text-right cursor-not-allowed select-none">
+                                      {Number(f.remaining).toLocaleString()} ETB
+                                    </div>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={Number(f.remaining || 0)}
+                                      step="0.01"
+                                      value={paymentAmounts[f.feeType] ?? Number(f.remaining || 0)}
+                                      disabled={!checked}
+                                      onChange={(e) => {
+                                        const value = Number(e.target.value || 0);
+                                        const clamped = Math.max(0, Math.min(value, Number(f.remaining || 0)));
+                                        const next: Record<string, number> = { ...paymentAmounts, [f.feeType]: clamped };
+                                        setPaymentAmounts(next);
+                                        let total = 0;
+                                        for (const selected of selectedPaymentTypes) {
+                                          const selectedKey = selected === 'Monthly Tuition' ? 'monthly' : selected === 'Bus Fee' ? 'bus' : selected === 'Penalty Fee' ? 'penalty' : selected === 'Registration Fee' ? 'registration' : selected;
+                                          total += Number(next[selectedKey] || 0);
+                                        }
+                                        setPaymentData((prev) => ({ ...prev, amount: total }));
+                                      }}
+                                      className="w-28 px-2 py-1 rounded-lg border-2 border-slate-500 bg-white text-slate-900 dark:bg-slate-700 dark:text-white dark:border-slate-400 text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
+                                    />
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </>
+                      );
                     })()
                   ) : isLoadingOutstanding ? (
                     <div className="col-span-full p-6 flex flex-col items-center justify-center gap-3">
