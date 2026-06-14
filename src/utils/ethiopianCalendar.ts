@@ -240,10 +240,12 @@ const ETHIOPIAN_MONTHS_LABELS = [
  */
 export function formatEthiopianLabel(dateInput: string | Date | null): string {
   if (!dateInput) return '';
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  if (isNaN(date.getTime())) return '';
-  const { year, month, day } = gregorianToEthiopian(date);
-  return `${day} ${ETHIOPIAN_MONTHS_LABELS[month - 1]} ${year} E.C.`;
+  try {
+    const { year, month, day } = gregorianToEthiopian(dateInput);
+    return `${day} ${ETHIOPIAN_MONTHS_LABELS[month - 1]} ${year} E.C.`;
+  } catch {
+    return '';
+  }
 }
 
 /**
