@@ -701,14 +701,30 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   });
 
   const filteredOverdueStudents = overdueStudents.filter(student => {
-    // If no search term, show all overdue students
-    if (!searchTerm.trim()) return true;
+    // Search filter
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      const matchesSearch = (
+        (student.name || '').toLowerCase().includes(q) ||
+        (student.digital_id || '').toLowerCase().includes(q) ||
+        (student.id || '').toLowerCase().includes(q)
+      );
+      if (!matchesSearch) return false;
+    }
 
-    return (
-      (student.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (student.digital_id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (student.id || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Grade filter
+    if (gradeFilter) {
+      const studentGradeNum = (student.grade || '').replace(/\D/g, '');
+      const filterGradeNum = gradeFilter.replace(/\D/g, '');
+      if (studentGradeNum !== filterGradeNum) return false;
+    }
+
+    // Fee status filter
+    if (feeStatusFilter) {
+      if ((student.fee_status || 'standard') !== feeStatusFilter) return false;
+    }
+
+    return true;
   });
 
   const displayedStudents = activeTab === 'all' ? filteredStudents : filteredOverdueStudents;
