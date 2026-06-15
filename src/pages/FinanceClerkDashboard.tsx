@@ -1731,7 +1731,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                               </button>
                             )}
                             <button
-                              onClick={() => openPaymentModal(student, activeTab === 'overdue' ? getCurrentEthiopianMonth() : undefined)}
+                              onClick={() => openPaymentModal(student, (activeTab === 'overdue' && student.overdue_months?.length > 0) ? student.overdue_months[0] : undefined)}
                               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
                             >
                               Record Payment
@@ -1815,7 +1815,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                     </div>
 
                     <button
-                      onClick={() => openPaymentModal(student, isOverdueTab ? getCurrentEthiopianMonth() : undefined)}
+                      onClick={() => openPaymentModal(student, (isOverdueTab && student.overdue_months?.length > 0) ? student.overdue_months[0] : undefined)}
                       className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
                     >
                       Record Payment
