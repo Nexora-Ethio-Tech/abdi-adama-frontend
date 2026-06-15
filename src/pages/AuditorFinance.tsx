@@ -62,8 +62,8 @@ export const AuditorFinance = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [feeReductionFilter, setFeeReductionFilter] = useState<'pending' | 'approved' | 'rejected' | ''>('');
-  const [showRegistrationFeeOnly, setShowRegistrationFeeOnly] = useState(false);
-  const [registrationFeeStatus, setRegistrationFeeStatus] = useState<'all' | 'paid' | 'pending'>('all');
+  // Transaction category filter: 'all' | 'registration' | 'monthly'
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'registration' | 'monthly'>('all');
   const [transactionStartEth, setTransactionStartEth] = useState('');
   const [transactionEndEth, setTransactionEndEth] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
@@ -89,7 +89,7 @@ export const AuditorFinance = () => {
     setReductionPage(1);
     setFinancePage(1);
     setAuditPage(1);
-  }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth, auditCategoryFilter, auditDirectionFilter, showRegistrationFeeOnly, registrationFeeStatus]);
+  }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth, auditCategoryFilter, auditDirectionFilter, transactionTypeFilter]);
 
   // Sync URL (?tab=) and legacy paths with activeTab
   useEffect(() => {
@@ -436,13 +436,17 @@ export const AuditorFinance = () => {
     (payment.student_id || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const registrationFeePayments = filteredPayments.filter((payment) => {
-    const isRegistration = (payment.type || '').toLowerCase().includes('registration');
-    const matchesStatus = registrationFeeStatus === 'all' || (payment.status || '').toLowerCase() === registrationFeeStatus;
-    return isRegistration && matchesStatus;
+  const displayedPayments = filteredPayments.filter((payment) => {
+    const type = (payment.type || '').toLowerCase();
+    if (transactionTypeFilter === 'registration') {
+      return type.includes('registration');
+    }
+    if (transactionTypeFilter === 'monthly') {
+      // Monthly Payment = monthly tuition, bus fee, penalty fee — anything that is NOT registration
+      return !type.includes('registration');
+    }
+    return true; // 'all'
   });
-
-  const displayedPayments = showRegistrationFeeOnly ? registrationFeePayments : filteredPayments;
 
   const filteredFeeReductions = feeReductions.filter(reduction =>
     (reduction.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -654,33 +658,37 @@ export const AuditorFinance = () => {
                   onChange={setTransactionEndEth}
                 />
               </div>
-              <div className="flex items-center gap-2 pb-0.5">
-                <button
-                  onClick={() => {
-                    setShowRegistrationFeeOnly((prev) => !prev);
-                    setRegistrationFeeStatus('all');
-                  }}
-                  className={`px-5 py-2.5 ${showRegistrationFeeOnly ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-blue-600 text-white hover:bg-blue-700'} active:scale-95 font-bold rounded-xl transition-all shadow-md uppercase tracking-wide`}
-                >
-                  {showRegistrationFeeOnly ? 'All Fees' : 'Registration Fee'}
-                </button>
-                {showRegistrationFeeOnly && (
-                  <select
-                    title="Filter registration fee payments"
-                    value={registrationFeeStatus}
-                    onChange={(e) => setRegistrationFeeStatus(e.target.value as 'all' | 'paid' | 'pending')}
-                    className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-900 text-slate-800 dark:text-white text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Students</option>
-                    <option value="paid">Paid</option>
-                    <option value="pending">Pending</option>
-                  </select>
-                )}
+              <div className="flex items-center gap-2 pb-0.5 flex-wrap">
+                {/* ── Category filter buttons ─────────────────────── */}
+                <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl gap-0.5">
+                  {(['all', 'registration', 'monthly'] as const).map((filter) => {
+                    const labels: Record<string, string> = {
+                      all: 'All Fees',
+                      registration: 'Registration',
+                      monthly: 'Monthly Payment',
+                    };
+                    const isActive = transactionTypeFilter === filter;
+                    return (
+                      <button
+                        key={filter}
+                        type="button"
+                        onClick={() => setTransactionTypeFilter(filter)}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                          isActive
+                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700'
+                            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        {labels[filter]}
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   onClick={handleApplyTransactionFilter}
                   className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-blue-500/25 uppercase tracking-wide"
                 >
-                  Apply
+                  Apply Date
                 </button>
                 <button
                   onClick={handleClearTransactionFilter}
@@ -692,7 +700,7 @@ export const AuditorFinance = () => {
                   onClick={handleExportTransactions}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-bold rounded-xl transition-all shadow-md shadow-emerald-500/25 uppercase tracking-wide"
                 >
-                  Export Transactions
+                  Export
                 </button>
               </div>
             </div>
@@ -781,9 +789,18 @@ export const AuditorFinance = () => {
         <div className="p-0 overflow-x-auto">
           {activeTab === 'transactions' && (
             <div>
-              {showRegistrationFeeOnly && (
-                <div className="mb-4 p-4 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold">
-                  Showing registration fee payments only{registrationFeeStatus !== 'all' ? ` (${registrationFeeStatus.charAt(0).toUpperCase() + registrationFeeStatus.slice(1)})` : ''}.
+              {transactionTypeFilter !== 'all' && (
+                <div className="mb-4 p-4 rounded-3xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-sm font-semibold flex items-center gap-2">
+                  <Filter size={14} className="text-blue-500 shrink-0" />
+                  {transactionTypeFilter === 'registration'
+                    ? 'Showing Registration Fee transactions only.'
+                    : 'Showing Monthly Payment transactions only (Monthly Tuition, Bus Fee, Penalty Fee).'}
+                  <button
+                    onClick={() => setTransactionTypeFilter('all')}
+                    className="ml-auto text-xs text-blue-600 hover:underline font-bold"
+                  >
+                    Clear filter
+                  </button>
                 </div>
               )}
               <table className="w-full text-left">
