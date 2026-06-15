@@ -708,19 +708,13 @@ export const Teachers = () => {
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Email</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Digital ID</th>
                   <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                  {isVP && (
-                    <>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Today</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Attendance</th>
-                    </>
-                  )}
                   {isAdmin && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {teachers.length === 0 ? (
                   <tr>
-                    <td colSpan={isVP ? (isAdmin ? 7 : 6) : (isAdmin ? 5 : 4)} className="px-6 py-12 text-center text-slate-500">
+                    <td colSpan={isAdmin ? 5 : 4} className="px-6 py-12 text-center text-slate-500">
                       No teachers found. Register your first teacher.
                     </td>
                   </tr>
@@ -761,31 +755,6 @@ export const Teachers = () => {
                           </span>
                         )}
                         </td>
-                      {isVP && (
-                        <>
-                          <td className="px-6 py-4 text-center">
-                            {teacher.todayAttendanceStatus ? (
-                              teacher.todayAttendanceStatus !== 'absent' ? (
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 font-black">✓</span>
-                              ) : (
-                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700 font-black">✗</span>
-                              )
-                            ) : (
-                              <span className="text-slate-300 dark:text-slate-600 font-black">—</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceTeacher(teacher)}
-                              className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
-                              title="View monthly attendance"
-                            >
-                              <Eye size={18} />
-                            </button>
-                          </td>
-                        </>
-                      )}
                       {isAdmin && (
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">

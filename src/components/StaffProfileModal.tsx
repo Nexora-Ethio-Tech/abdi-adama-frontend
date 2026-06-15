@@ -55,6 +55,20 @@ export const StaffProfileModal = ({ open, title, staff, onClose, onRefresh }: St
     ['Status', staff.status],
   ];
 
+  const handleView = async () => {
+    try {
+      const res = await api.get(`/school-admin/users/${resolvedUserId}/document`, {
+        responseType: 'blob'
+      });
+      const url = URL.createObjectURL(res.data);
+      window.open(url, '_blank');
+      // Revoke after a short delay to allow the new tab to load
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      alert('Failed to open document');
+    }
+  };
+
   const handleDownload = async () => {
     try {
       const res = await api.get(`/school-admin/users/${resolvedUserId}/document`, {
@@ -133,14 +147,13 @@ export const StaffProfileModal = ({ open, title, staff, onClose, onRefresh }: St
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <a
-                  href={`/api/school-admin/users/${resolvedUserId}/document`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={handleView}
                   className="px-3 py-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg text-xs font-bold flex items-center gap-1.5"
                 >
                   <FileText size={14} /> View
-                </a>
+                </button>
                 <button
                   type="button"
                   onClick={handleDownload}
