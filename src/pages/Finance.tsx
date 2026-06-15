@@ -111,6 +111,7 @@ export const Finance = () => {
   const [dbSummary, setDbSummary] = useState<any>(null);
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
   const [dbAuditLogs, setDbAuditLogs] = useState<AuditLogItem[]>([]);
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'registration' | 'monthly'>('all');
   const [txCategory, setTxCategory] = useState('Student Fee');
   const [customCategory, setCustomCategory] = useState('');
   const [auditFilter, setAuditFilter] = useState<'In' | 'Out'>('In');
@@ -192,12 +193,24 @@ export const Finance = () => {
     const matchesSearch =
       (tx.student_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (tx.verified_by || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesRange(tx.date) && matchesSearch;
+    if (!matchesRange(tx.date) || !matchesSearch) return false;
+
+    if (activeView === 'main') {
+      const type = (tx.type || '').toLowerCase();
+      if (transactionTypeFilter === 'registration') {
+        return type.includes('registration');
+      }
+      if (transactionTypeFilter === 'monthly') {
+        // Monthly tuition, bus fee, penalty fee — anything that is NOT registration
+        return !type.includes('registration');
+      }
+    }
+    return true;
   });
 
   const calculateNetProfit = () => {
     const totalIn = filteredTransactions
-      .filter(tx => tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee')
+      .filter(tx => tx.type !== 'Expense')
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
     const totalOut = filteredTransactions
       .filter(tx => tx.type === 'Expense')
@@ -290,19 +303,19 @@ export const Finance = () => {
 
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
           <p className="text-slate-500 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{t('finance.pendingFees')}</p>
-          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.pending_fees || 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
+          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.pending_fees_count ?? dbSummary?.pending_fees ?? 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">Students</span></h3>
           <div className="mt-8 flex items-center gap-2 text-amber-500 text-[10px] font-black uppercase tracking-widest bg-amber-50 dark:bg-amber-900/20 w-fit px-3 py-1 rounded-full">
             <ArrowDownRight size={14} />
-            <span>5.2% {t('finance.attention')}</span>
+            <span>Unpaid Monthly Fee</span>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
           <p className="text-slate-500 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Monthly Fees</p>
-          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.monthly_fees || 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
+          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.monthly_fees_collected ?? dbSummary?.monthly_fees ?? 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
           <div className="mt-8 flex items-center gap-2 text-purple-500 text-[10px] font-black uppercase tracking-widest bg-purple-50 dark:bg-purple-900/20 w-fit px-3 py-1 rounded-full">
             <ArrowUpRight size={14} />
-            <span>Tuition Revenue</span>
+            <span>{(dbSummary?.monthly_fees_paid_count ?? 0).toLocaleString()} Students Paid</span>
           </div>
         </div>
 
@@ -317,61 +330,92 @@ export const Finance = () => {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
-            <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar border border-slate-200 dark:border-slate-700">
-              <button
-                onClick={() => setActiveView('main')}
-                className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'main' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-              >
-                {isAdmin ? t('finance.summaries') : t('finance.transactions')}
-              </button>
-              {isAdmin && (
+        <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex flex-col gap-6 bg-slate-50/50 dark:bg-slate-800/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
+              <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1 rounded-2xl overflow-x-auto no-scrollbar border border-slate-200 dark:border-slate-700">
                 <button
-                  onClick={() => setActiveView('audit')}
-                  className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'audit' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                  onClick={() => setActiveView('main')}
+                  className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'main' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                 >
-                  {t('finance.systemAudit')}
+                  {isAdmin ? t('finance.summaries') : t('finance.transactions')}
                 </button>
-              )}
-              {isClerk && (
+                {isAdmin && (
+                  <button
+                    onClick={() => setActiveView('audit')}
+                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'audit' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                  >
+                    {t('finance.systemAudit')}
+                  </button>
+                )}
+                {isClerk && (
+                  <button
+                    onClick={() => setActiveView('registration')}
+                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'registration' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                  >
+                    📋 Registrations
+                  </button>
+                )}
+              </div>
+              {canCreateTransaction && (
                 <button
-                  onClick={() => setActiveView('registration')}
-                  className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'registration' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                  onClick={() => setShowForm(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest active:scale-95"
                 >
-                  📋 Registrations
+                  <Plus size={16} />
+                  <span>New TX</span>
                 </button>
               )}
             </div>
-            {canCreateTransaction && (
+            <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+              <div className="relative flex-1 sm:flex-none group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
+                <input
+                  type="text"
+                  placeholder={t('finance.searchLedger')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-12 pr-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none w-full sm:w-64 transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
+                />
+              </div>
               <button
-                onClick={() => setShowForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl transition-all shadow-lg shadow-blue-500/20 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest active:scale-95"
+                onClick={handleExport}
+                className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-2 whitespace-nowrap bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-2xl border border-blue-100 dark:border-blue-800"
               >
-                <Plus size={16} />
-                <span>New TX</span>
+                <FileText size={16} />
+                <span>{t('finance.export')}</span>
               </button>
-            )}
-          </div>
-          <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-none group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={16} />
-              <input
-                type="text"
-                placeholder={t('finance.searchLedger')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 pr-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none w-full sm:w-64 transition-all focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500"
-              />
             </div>
-            <button
-              onClick={handleExport}
-              className="text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:underline flex items-center gap-2 whitespace-nowrap bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-2xl border border-blue-100 dark:border-blue-800"
-            >
-              <FileText size={16} />
-              <span>{t('finance.export')}</span>
-            </button>
           </div>
+          {activeView === 'main' && (
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-2">Filter Type:</span>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 border border-slate-200/50 dark:border-slate-700">
+                {(['all', 'registration', 'monthly'] as const).map((filter) => {
+                  const labels: Record<string, string> = {
+                    all: 'All',
+                    registration: 'Registration Fee',
+                    monthly: 'Monthly Fee',
+                  };
+                  const isActive = transactionTypeFilter === filter;
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setTransactionTypeFilter(filter)}
+                      className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                        isActive
+                          ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-md border border-slate-250 dark:border-slate-700'
+                          : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {labels[filter]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 flex flex-col lg:flex-row gap-4 lg:items-end lg:justify-between">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full lg:w-[480px]">
@@ -769,9 +813,9 @@ export const Finance = () => {
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type !== 'Expense' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type !== 'Expense' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -784,7 +828,7 @@ export const Finance = () => {
                       </td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type !== 'Expense' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
@@ -796,9 +840,9 @@ export const Finance = () => {
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
+                          <div className={`p-2.5 rounded-xl shadow-sm group-hover/row:scale-110 transition-transform duration-300 ${tx.type !== 'Expense' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'
                             }`}>
-                            {tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                            {tx.type !== 'Expense' ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
                           </div>
                           <span className="font-medium text-slate-800">{tx.type}</span>
                         </div>
@@ -806,7 +850,7 @@ export const Finance = () => {
                       <td className="px-6 py-4 text-slate-600">{tx.student_name}</td>
                       <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
-                      <td className={`px-6 py-4 text-right font-bold ${tx.type === 'Income' || tx.type.startsWith('Payment') || tx.type === 'Registration Fee' ? 'text-emerald-600' : 'text-rose-600'
+                      <td className={`px-6 py-4 text-right font-bold ${tx.type !== 'Expense' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
                         {tx.type === 'Expense' && '-'}
                         {tx.amount.toLocaleString()} ETB
