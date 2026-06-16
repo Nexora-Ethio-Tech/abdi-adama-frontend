@@ -4,7 +4,7 @@ import {
   Wallet, Users, AlertCircle, CheckCircle, XCircle, Search,
   Clock, ShieldCheck, ArrowUpRight, Eye, FileText,
   TrendingUp, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon,
-  BarChart3, ArrowDownRight, Filter
+  BarChart3, ArrowDownRight, Filter, Building
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
 import { useStore } from '../context/useStore';
@@ -14,7 +14,8 @@ import auditorService, {
   type Transaction,
   type FeeReduction,
   type FinancialReport,
-  type AuditTrailEntry
+  type AuditTrailEntry,
+  type Branch
 } from '../services/auditorService';
 import { exportToExcel } from '../utils/exportUtils';
 import {
@@ -23,10 +24,10 @@ import {
 } from '../utils/ethiopianCalendar';
 import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
-type AuditorFinanceTab = 'transactions' | 'fee-reductions' | 'finance';
+type AuditorFinanceTab = 'transactions' | 'fee-reductions' | 'other-transactions' | 'finance';
 
 const tabFromSearch = (tab: string | null): AuditorFinanceTab => {
-  if (tab === 'fee-reductions' || tab === 'audit' || tab === 'finance') return tab === 'audit' ? 'finance' : tab;
+  if (tab === 'fee-reductions' || tab === 'other-transactions' || tab === 'audit' || tab === 'finance') return tab === 'audit' ? 'finance' : tab;
   return 'transactions';
 };
 
@@ -49,6 +50,7 @@ export const AuditorFinance = () => {
     }
   }, [selectedBranchId, setSelectedBranchId]);
 
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [activeTab, setActiveTab] = useState<AuditorFinanceTab>(
     location.pathname === '/special-students'
       ? 'fee-reductions'
@@ -57,6 +59,9 @@ export const AuditorFinance = () => {
   const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
   const [payments, setPayments] = useState<Transaction[]>([]);
   const [feeReductions, setFeeReductions] = useState<FeeReduction[]>([]);
+  const [otherTransactions, setOtherTransactions] = useState<any[]>([]);
+  const [txTypeFilter, setTxTypeFilter] = useState('');
+  const [pendingTxTypeFilter, setPendingTxTypeFilter] = useState(''); // staged before Apply
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -76,11 +81,37 @@ export const AuditorFinance = () => {
   const [auditCategoryFilter, setAuditCategoryFilter] = useState<'Fees' | 'Staff' | 'Other' | ''>('');
   const [auditDirectionFilter, setAuditDirectionFilter] = useState<'In' | 'Out' | ''>('');
 
+  // Load branches list on mount for Auditor role
+  useEffect(() => {
+    const fetchBranches = async () => {
+      try {
+        const branchList = await auditorService.getBranches();
+        setBranches(branchList);
+
+        const saved = localStorage.getItem('auditor_selected_branch');
+        const currentSelection = selectedBranchId || saved;
+        const exists = branchList.some(b => b.id === currentSelection);
+
+        if (branchList.length > 0 && (!currentSelection || !exists)) {
+          const firstBranchId = branchList[0].id;
+          setSelectedBranchId(firstBranchId);
+          localStorage.setItem('auditor_selected_branch', firstBranchId);
+        } else if (exists && selectedBranchId !== currentSelection) {
+          setSelectedBranchId(currentSelection);
+        }
+      } catch (err: any) {
+        console.error('Failed to load branches:', err);
+      }
+    };
+    fetchBranches();
+  }, [selectedBranchId, setSelectedBranchId]);
+
   // Pagination states
   const [transactionPage, setTransactionPage] = useState(1);
   const [reductionPage, setReductionPage] = useState(1);
   const [financePage, setFinancePage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
+  const [otherTxPage, setOtherTxPage] = useState(1);
   const itemsPerPage = 10;
 
   // Reset pagination when active tab or filters change
@@ -89,6 +120,7 @@ export const AuditorFinance = () => {
     setReductionPage(1);
     setFinancePage(1);
     setAuditPage(1);
+    setOtherTxPage(1);
   }, [searchQuery, feeReductionFilter, activeTab, transactionStartEth, transactionEndEth, auditCategoryFilter, auditDirectionFilter, transactionTypeFilter]);
 
   // Sync URL (?tab=) and legacy paths with activeTab
@@ -219,10 +251,11 @@ export const AuditorFinance = () => {
       const params = buildPaymentQueryParams();
       params.branchId = effectiveBranchId;
       console.log('📊 [AuditorDashboard] Fetching with params:', params);
-      const [dashboardData, paymentsData, feeReductionsData] = await Promise.all([
+      const [dashboardData, paymentsData, feeReductionsData, otherTxData] = await Promise.all([
         auditorService.getDashboard(effectiveBranchId),
         auditorService.getPayments(params),
-        auditorService.getFeeReductions({ branchId: effectiveBranchId, status: feeReductionFilter || undefined })
+        auditorService.getFeeReductions({ branchId: effectiveBranchId, status: feeReductionFilter || undefined }),
+        auditorService.getOtherTransactions({ branchId: effectiveBranchId }).catch(() => [])
       ]);
       console.log('✅ [AuditorDashboard] Dashboard:', dashboardData);
       console.log('✅ [AuditorDashboard] Payments fetched:', paymentsData?.length || 0, paymentsData);
@@ -230,6 +263,7 @@ export const AuditorFinance = () => {
       setDashboard(dashboardData);
       setPayments(paymentsData);
       setFeeReductions(feeReductionsData);
+      setOtherTransactions(otherTxData || []);
     } catch (err: any) {
       console.error('❌ [AuditorDashboard] Error:', err);
       setError(err.response?.data?.error?.message || err.message || 'Failed to fetch data');
@@ -474,6 +508,20 @@ export const AuditorFinance = () => {
   const startFinanceIndex = (financePage - 1) * itemsPerPage;
   const paginatedAuditTrail = filteredAuditTrail.slice(startFinanceIndex, startFinanceIndex + itemsPerPage);
 
+  const filteredOtherTransactions = otherTransactions.filter(tx => {
+    const term = searchQuery.toLowerCase();
+    const typeMatch = !txTypeFilter || tx.type === txTypeFilter;
+    const searchMatch = !term ||
+      (tx.type || '').toLowerCase().includes(term) ||
+      (tx.description || '').toLowerCase().includes(term) ||
+      (tx.recorded_by_name || '').toLowerCase().includes(term);
+    return typeMatch && searchMatch;
+  });
+
+  const totalOtherTxPages = Math.ceil(filteredOtherTransactions.length / itemsPerPage);
+  const startOtherTxIndex = (otherTxPage - 1) * itemsPerPage;
+  const paginatedOtherTransactions = filteredOtherTransactions.slice(startOtherTxIndex, startOtherTxIndex + itemsPerPage);
+
   if (loading && !dashboard) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -498,10 +546,36 @@ export const AuditorFinance = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {branches.length > 0 && (
+            <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-2xl shadow-sm w-full md:w-auto">
+              <Building className="w-5 h-5 text-blue-600 shrink-0" />
+              <div className="flex flex-col w-full">
+                <span className="text-[10px] font-black uppercase text-slate-400">Selected Branch</span>
+                <select
+                  title="Select branch to audit"
+                  value={selectedBranchId || ''}
+                  onChange={(e) => {
+                    const branchId = e.target.value;
+                    setSelectedBranchId(branchId);
+                    localStorage.setItem('auditor_selected_branch', branchId);
+                  }}
+                  className="bg-transparent text-sm font-bold text-slate-800 dark:text-white outline-none focus:ring-0 cursor-pointer pr-4 w-full"
+                >
+                  <option value="" disabled>Select a branch</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={() => setShowReportModal(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2"
+            className="w-full md:w-auto bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-sm uppercase tracking-wide hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 active:scale-95 flex items-center gap-2 justify-center"
           >
             <FileText size={18} />
             Generate Report
@@ -526,8 +600,8 @@ export const AuditorFinance = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-2">Total Payments</p>
-              <p className="text-3xl font-black">{dashboard?.totalPayments.count || 0}</p>
-              <p className="text-blue-100 text-xs font-bold mt-1">{dashboard?.totalPayments.total.toLocaleString() || 0} ETB</p>
+              <p className="text-3xl font-black">{dashboard?.totalPayments?.count ?? 0}</p>
+              <p className="text-blue-100 text-xs font-bold mt-1">{(dashboard?.totalPayments?.total ?? 0).toLocaleString()} ETB</p>
             </div>
             <div className="p-3 bg-white/20 rounded-2xl">
               <Wallet className="w-8 h-8" />
@@ -539,8 +613,8 @@ export const AuditorFinance = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Monthly Payments</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.monthlyPayments.count || 0}</p>
-              <p className="text-slate-500 text-xs font-bold mt-1">{dashboard?.monthlyPayments.total.toLocaleString() || 0} ETB</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.monthlyPayments?.count ?? 0}</p>
+              <p className="text-slate-500 text-xs font-bold mt-1">{(dashboard?.monthlyPayments?.total ?? 0).toLocaleString()} ETB</p>
             </div>
             <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-2xl">
               <TrendingUp className="w-8 h-8" />
@@ -568,7 +642,7 @@ export const AuditorFinance = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Recent Transactions</p>
-              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.recentTransactions.length || 0}</p>
+              <p className="text-3xl font-black text-slate-900 dark:text-white">{dashboard?.recentTransactions?.length ?? 0}</p>
               <p className="text-slate-500 text-xs font-bold mt-1">Last 5</p>
             </div>
             <div className="p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-600 rounded-2xl">
@@ -582,7 +656,7 @@ export const AuditorFinance = () => {
       <div className="bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
         {/* Row 1: Tab switcher + search/filter */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-fit">
+          <div className="flex flex-wrap p-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl w-full md:w-fit gap-1 md:gap-0">
             <button
               type="button"
               onClick={() => handleTabChange('transactions')}
@@ -596,6 +670,13 @@ export const AuditorFinance = () => {
               className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'fee-reductions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
             >
               Fee Reductions ({feeReductions.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('other-transactions')}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-wide transition-all ${activeTab === 'other-transactions' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-md border border-slate-200 dark:border-slate-700' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+            >
+              Other Transactions ({otherTransactions.length})
             </button>
             <button
               type="button"
@@ -622,6 +703,27 @@ export const AuditorFinance = () => {
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
               </select>
+            )}
+            {activeTab === 'other-transactions' && (
+              <>
+                <select
+                  title="Filter other transactions by type"
+                  value={pendingTxTypeFilter}
+                  onChange={(e) => setPendingTxTypeFilter(e.target.value)}
+                  className="px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-white font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">All Types</option>
+                  {Array.from(new Set(otherTransactions.map(t => t.type))).map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => { setTxTypeFilter(pendingTxTypeFilter); setOtherTxPage(1); }}
+                  className="px-4 py-2.5 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-sm font-bold rounded-xl transition-all uppercase tracking-wide"
+                >
+                  Apply Filter
+                </button>
+              </>
             )}
             <div className="relative flex-1 md:w-80">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -820,7 +922,7 @@ export const AuditorFinance = () => {
                       <td className="px-6 py-3.5">
                         <div className="flex items-center gap-2.5">
                           <div className="w-9 h-9 bg-blue-50 dark:bg-blue-900/15 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-sm">
-                            {payment.student_name[0]}
+                            {payment.student_name?.[0] ?? '?'}
                           </div>
                           <div>
                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{payment.student_name}</p>
@@ -1063,9 +1165,127 @@ export const AuditorFinance = () => {
               )}
             </div>
           )}
+          {activeTab === 'other-transactions' && (
+            <div>
+              <table className="w-full text-left min-w-[900px]">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Date</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Category</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Amount</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Verified By</th>
+                    <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Description/Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {paginatedOtherTransactions.map((tx) => (
+                    <tr key={tx.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(tx.date)}</p>
+                        <div className="flex gap-1.5 mt-0.5">
+                          <span className="text-[10px] text-slate-400">{tx.date}</span>
+                          <span className="text-[10px] text-slate-400/80">&bull;</span>
+                          <span className="text-[10px] text-slate-400">{new Date(tx.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className="px-2.5 py-1 rounded-lg bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-100/50 dark:border-blue-900/30">
+                          {tx.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                          tx.amount < 0
+                            ? 'bg-rose-50/50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-900/30'
+                            : 'bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30'
+                        }`}>
+                          {tx.amount < 0 ? 'Expense' : 'Income'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <div className={`flex items-center gap-1 font-extrabold text-sm ${
+                          tx.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {Math.abs(tx.amount).toLocaleString()} ETB
+                        </div>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-350">{tx.recorded_by_name || tx.verified_by || '—'}</p>
+                      </td>
+                      <td className="px-6 py-3.5">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">{tx.description || tx.details || '—'}</p>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredOtherTransactions.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-12 text-center">
+                        <Wallet className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No other transactions found.</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Pagination Footer */}
+              {filteredOtherTransactions.length > 0 && (
+                <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/20 dark:bg-slate-950/10 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  <p className="text-xs font-semibold text-slate-400">
+                    Showing {startOtherTxIndex + 1} to {Math.min(filteredOtherTransactions.length, startOtherTxIndex + itemsPerPage)} of {filteredOtherTransactions.length} transactions
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      title="Previous page"
+                      disabled={otherTxPage === 1}
+                      onClick={() => setOtherTxPage(otherTxPage - 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronLeftIcon size={14} />
+                    </button>
+
+                    {Array.from({ length: totalOtherTxPages }, (_, i) => i + 1).map((pg) => {
+                      if (totalOtherTxPages > 5 && Math.abs(otherTxPage - pg) > 1 && pg !== 1 && pg !== totalOtherTxPages) {
+                        if (pg === 2 || pg === totalOtherTxPages - 1) {
+                          return <span key={pg} className="px-1 text-slate-400 text-xs font-bold">...</span>;
+                        }
+                        return null;
+                      }
+                      return (
+                        <button
+                          key={pg}
+                          type="button"
+                          onClick={() => setOtherTxPage(pg)}
+                          className={`w-7 h-7 rounded-lg text-xs font-black transition-all ${otherTxPage === pg
+                            ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                            }`}
+                        >
+                          {pg}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      title="Next page"
+                      disabled={otherTxPage === totalOtherTxPages || totalOtherTxPages === 0}
+                      onClick={() => setOtherTxPage(otherTxPage + 1)}
+                      className="p-1.5 border border-slate-200 dark:border-slate-800 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent transition-all text-slate-600 dark:text-slate-400"
+                    >
+                      <ChevronRightIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === 'finance' && (
             <div>
-              <table className="w-full text-left">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[800px]">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
                     <th className="px-6 py-4.5 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Date</th>
@@ -1082,7 +1302,7 @@ export const AuditorFinance = () => {
                     <tr key={entry.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors group">
                       <td className="px-6 py-3.5">
                         <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(entry.timestamp)}</p>
-                        <p className="text-[10px] text-slate-400 mt-1">{new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">{(() => { const d = entry.timestamp ? new Date(entry.timestamp) : null; return d && !isNaN(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'; })()}</p>
                       </td>
                       <td className="px-6 py-3.5">
                         <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{entry.student_name || 'N/A'}</p>
@@ -1120,6 +1340,7 @@ export const AuditorFinance = () => {
                   )}
                 </tbody>
               </table>
+              </div>
 
               {/* Student Finance Pagination Footer */}
               {filteredAuditTrail.length > 0 && (

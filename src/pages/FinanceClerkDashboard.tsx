@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DollarSign, TrendingUp, Users, AlertCircle, Plus, X, Search, Receipt, CreditCard, MessageSquare } from 'lucide-react';
-import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportStudentInfo, type TransportFeePolicy, type TransportDriverInfo } from '../services/financeService';
+import financeClerkService, { type FinanceClerkDashboard as FinanceClerkDashboardType, type StudentFeeInfo, type RecordPaymentRequest, type TransportStudentInfo, type TransportFeePolicy, type TransportDriverInfo, type ManualTransaction } from '../services/financeService';
 import payrollService, { type EmployeePayrollProfile } from '../services/payrollService';
 import { Breadcrumbs } from '../components/Breadcrumbs';
 import FinanceClerkRegistration from '../components/FinanceClerkRegistration';
 import AssetList from '../components/AssetList';
-import { getTodayEthiopianDate, getCurrentEthiopianMonth, formatEthiopianLabel } from '../utils/ethiopianCalendar';
+import { getTodayEthiopianDate, getCurrentEthiopianMonth, formatEthiopianLabel, ethiopianToGregorianIso } from '../utils/ethiopianCalendar';
+import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 
 // Ethiopian month names (index 0 = month 1 "Meskerem")
 const ETHIOPIAN_MONTHS = [
@@ -31,17 +32,19 @@ function getSelectableMonths() {
   return list;
 }
 
-type ManualTransaction = {
-  id: string;
-  category: 'expense' | 'income';
-  type: string;
-  amount: number;
-  details: string;
-  date: string;
-  createdAt: string;
+const formatEthiopianDateString = (ethDateStr: string) => {
+  if (!ethDateStr) return '';
+  const parts = ethDateStr.split('-');
+  if (parts.length !== 3) return ethDateStr;
+  const y = parseInt(parts[0]);
+  const m = parseInt(parts[1]);
+  const d = parseInt(parts[2]);
+  if (isNaN(y) || isNaN(m) || isNaN(d) || m < 1 || m > 13) return ethDateStr;
+  return `${d} ${ETHIOPIAN_MONTHS[m - 1]} ${y} E.C.`;
 };
 
-export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory' }) => {
+
+export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory' | 'other-transactions' }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isCollectionsView = location.pathname === '/finance-dashboard';
@@ -56,7 +59,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory'>(
+  const [activeTab, setActiveTab] = useState<'all' | 'overdue' | 'registrations' | 'staff-payments' | 'aid-requests' | 'transport' | 'inventory' | 'other-transactions'>(
     (initialTab as any) || (location.pathname === '/finance-dashboard' ? 'all' : 'all')
   );
   const isInventoryTab = activeTab === 'inventory';
@@ -132,16 +135,12 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     type: 'Materials Bought',
     amount: 0,
     details: '',
-    date: getTodayEthiopianDate(),
+    date: getTodayEthiopianDate(), // Ethiopian date
   });
-  const [manualTransactions, setManualTransactions] = useState<ManualTransaction[]>(() => {
-    try {
-      const saved = localStorage.getItem('manual_finance_transactions');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [manualTransactions, setManualTransactions] = useState<ManualTransaction[]>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+  const [txTypeFilter, setTxTypeFilter] = useState('');
+  const [pendingTxTypeFilter, setPendingTxTypeFilter] = useState(''); // staged filter before Apply
 
   // Global items-per-page options
   const perPageOptions = [10, 25, 50];
@@ -154,7 +153,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab');
-    const nextTab = tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport', 'inventory'].includes(tab)
+    const nextTab = tab && ['all', 'overdue', 'registrations', 'staff-payments', 'aid-requests', 'transport', 'inventory', 'other-transactions'].includes(tab)
       ? (tab as any)
       : 'all';
 
@@ -176,7 +175,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       }
 
       // Fire all API calls in parallel instead of two sequential batches
-      const [dashboardData, studentsData, overdueData, staffData, pendingApplications, transportStudentsData, transportDriversData, transportPoliciesData] = await Promise.all([
+      const [dashboardData, studentsData, overdueData, staffData, pendingApplications, transportStudentsData, transportDriversData, transportPoliciesData, manualTxData] = await Promise.all([
         financeClerkService.getDashboard(),
         financeClerkService.getStudentsFees({ search: searchTerm, feeStatus: feeStatusFilter || undefined, grade: gradeFilter || undefined }),
         financeClerkService.getOverduePayments(),
@@ -185,6 +184,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         financeClerkService.getTransportStudents({ search: transportSearchTerm, status: transportStatusFilter }),
         financeClerkService.getTransportDrivers(),
         financeClerkService.getTransportPolicies(),
+        financeClerkService.getManualTransactions().catch(() => []),
       ]);
       setDashboard(dashboardData);
       setStudents(studentsData);
@@ -194,6 +194,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       setTransportStudents(transportStudentsData);
       setTransportDrivers(transportDriversData);
       setTransportPolicies(transportPoliciesData);
+      setManualTransactions(manualTxData || []);
       setStudentPage(1);
       setTransportPage(1);
     } catch (err: any) {
@@ -590,29 +591,40 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
       type: 'Materials Bought',
       amount: 0,
       details: '',
-      date: getTodayEthiopianDate(),
+      date: getTodayEthiopianDate(), // Ethiopian date
     });
   };
 
-  const handleRecordTransaction = (e: React.FormEvent) => {
+  const handleRecordTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newTransaction: ManualTransaction = {
-      id: crypto.randomUUID(),
-      category: transactionData.category,
-      type: transactionData.type,
-      amount: transactionData.amount,
-      details: transactionData.details.trim(),
-      date: transactionData.date,
-      createdAt: new Date().toISOString(),
-    };
-
-    const updated = [newTransaction, ...manualTransactions];
-    setManualTransactions(updated);
-    localStorage.setItem('manual_finance_transactions', JSON.stringify(updated));
-    setSuccess('Transaction recorded successfully!');
-    setShowTransactionModal(false);
-    resetTransactionForm();
-    setTimeout(() => setSuccess(null), 3000);
+    try {
+      setIsLoadingTransactions(true);
+      // Convert Ethiopian date to Gregorian ISO before sending to the backend
+      const dateInGregorian = ethiopianToGregorianIso(transactionData.date) || transactionData.date;
+      await financeClerkService.recordManualTransaction({
+        category: transactionData.category as any,
+        type: transactionData.type,
+        amount: transactionData.amount,
+        details: transactionData.details.trim(),
+        date: dateInGregorian,
+      });
+      // Refresh the transactions list and dashboard from API
+      const [updated] = await Promise.all([
+        financeClerkService.getManualTransactions(),
+      ]);
+      setManualTransactions(updated);
+      // Also refresh dashboard so Today's Collection stat updates
+      financeClerkService.getDashboard().then(d => setDashboard(d)).catch(() => {});
+      setSuccess('Transaction recorded successfully!');
+      setShowTransactionModal(false);
+      resetTransactionForm();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || 'Failed to record transaction');
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setIsLoadingTransactions(false);
+    }
   };
 
   const openAidRequestPicker = () => {
@@ -774,6 +786,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     inventory: 'Inventory',
     'aid-requests': 'Request Aid',
     transport: 'Transport Management',
+    'other-transactions': 'Other Transactions',
   } as const;
   const headerSubtitleMap = {
     all: 'Collect student fees and manage payment records',
@@ -783,6 +796,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
     inventory: 'Track school inventory and keep records current',
     'aid-requests': 'Create and track aid requests sent to the auditor',
     transport: 'Assign students to drivers and manage transport fees',
+    'other-transactions': 'Income, expenses, and manually recorded transactions',
   } as const;
 
   if (loading && !dashboard) {
@@ -922,7 +936,7 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
         )}
       </div>
 
-      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments') && (
+      {isCollectionsView && (activeTab === 'all' || activeTab === 'registrations' || activeTab === 'staff-payments' || activeTab === 'other-transactions') && (
         <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto no-scrollbar">
           <button
             onClick={() => { setActiveTab('all'); setStudentPage(1); }}
@@ -950,6 +964,15 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               }`}
           >
             Staff Payments ({staffProfiles.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('other-transactions')}
+            className={`px-6 py-3 font-bold text-sm transition-all whitespace-nowrap ${activeTab === 'other-transactions'
+              ? 'text-blue-600 border-b-2 border-blue-600'
+              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+              }`}
+          >
+            Other Transactions ({manualTransactions.length})
           </button>
         </div>
       )}
@@ -1312,33 +1335,88 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
             </div>
           </div>
 
-          {dashboard && dashboard.recentTransactions.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="font-bold text-slate-900 dark:text-white text-lg">Recent Transactions</h3>
-                <p className="text-slate-500 text-xs mt-1">Last 10 payment records</p>
-              </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {dashboard.recentTransactions.map((tx) => (
-                  <div key={tx.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-xl">
-                        <CreditCard className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900 dark:text-white text-sm">{tx.student_name}</p>
-                        <p className="text-xs text-slate-500">{tx.type} • {formatEthiopianLabel(tx.date)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-black text-emerald-600 text-lg">{tx.amount.toLocaleString()} ETB</p>
-                      <p className="text-xs text-slate-500">by {tx.verified_by}</p>
-                    </div>
+          {dashboard && dashboard.recentTransactions.length > 0 && (() => {
+            // Merge recentTransactions with today's manual transactions so manual entries appear in Today's Collections
+            const todayGregorian = new Date().toISOString().slice(0, 10);
+            const todayManual = manualTransactions.filter(t => t.date === todayGregorian);
+            const manualIds = new Set(todayManual.map(t => t.id));
+            const mergedTxs = [
+              ...dashboard.recentTransactions,
+              ...todayManual.filter(t => !manualIds.has(t.id) || true).map(t => ({
+                id: t.id,
+                student_id: null as any,
+                student_name: t.type, // use transaction type as label for manual entries
+                amount: Math.abs(t.amount),
+                type: t.category === 'expense' ? `Expense – ${t.type}` : `Income – ${t.type}`,
+                date: t.date,
+                verified_by: t.verified_by || t.recorded_by_name || 'Finance Clerk',
+                branch_id: '',
+                created_at: t.created_at || '',
+              }))
+            ];
+            // De-duplicate by id, sort by created_at desc, take top 10
+            const seen = new Set<string>();
+            const uniqueMerged = mergedTxs.filter(tx => {
+              if (seen.has(tx.id)) return false;
+              seen.add(tx.id);
+              return true;
+            }).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 10);
+
+            return (
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white text-lg">Today's Collections</h3>
+                    <p className="text-slate-500 text-xs mt-1">{formatEthiopianLabel(todayGregorian)} — all transactions recorded today</p>
                   </div>
-                ))}
+                  <span className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-black uppercase tracking-wider">
+                    {uniqueMerged.length} Entries
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {uniqueMerged.map((tx) => {
+                    const isManualExpense = tx.type.startsWith('Expense –');
+                    const isManualIncome = tx.type.startsWith('Income –');
+                    const isManual = isManualExpense || isManualIncome;
+                    return (
+                      <div key={tx.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-xl ${
+                            isManualExpense
+                              ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'
+                              : isManualIncome
+                                ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600'
+                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                          }`}>
+                            <CreditCard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-white text-sm">
+                              {isManual ? tx.type.split(' – ')[1] : (tx.student_name || tx.type)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {isManual
+                                ? (isManualExpense ? '↓ Expense' : '↑ Income')
+                                : tx.type
+                              } • {formatEthiopianLabel(tx.date)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`font-black text-lg ${
+                            isManualExpense ? 'text-rose-600' : 'text-emerald-600'
+                          }`}>
+                            {isManualExpense ? '-' : ''}{tx.amount.toLocaleString()} ETB
+                          </p>
+                          <p className="text-xs text-slate-500">by {tx.verified_by}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
 
@@ -1535,6 +1613,175 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
               </>
             );
           })()}
+        </div>
+      )}
+
+      {activeTab === 'other-transactions' && (
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-lg">Other Transactions</h3>
+              <p className="text-slate-500 text-xs mt-1">Income, expenses, and other manually recorded transactions</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <select
+                aria-label="Filter by transaction type"
+                value={pendingTxTypeFilter}
+                onChange={(e) => setPendingTxTypeFilter(e.target.value)}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">All Types</option>
+                {Array.from(new Set(manualTransactions.map(t => t.type).filter((v): v is string => !!v && v.trim() !== ''))).map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => { setTxTypeFilter(pendingTxTypeFilter); }}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-700 hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Apply Filter
+              </button>
+              {txTypeFilter !== '' && (
+                <button
+                  onClick={() => { setTxTypeFilter(''); setPendingTxTypeFilter(''); }}
+                  className="flex items-center gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setShowTransactionModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                <Plus size={14} /> Record Transaction
+              </button>
+            </div>
+          </div>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 p-6 border-b border-slate-100 dark:border-slate-800">
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Total Income</p>
+              <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">
+                {manualTransactions.filter(t => t.category !== 'expense').reduce((s, t) => s + t.amount, 0).toLocaleString()} ETB
+              </p>
+            </div>
+            <div className="bg-rose-50 dark:bg-rose-900/20 rounded-2xl p-4">
+              <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-1">Total Expenses</p>
+              <p className="text-2xl font-black text-rose-700 dark:text-rose-300">
+                {manualTransactions.filter(t => t.category === 'expense').reduce((s, t) => s + t.amount, 0).toLocaleString()} ETB
+              </p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 col-span-2 md:col-span-1">
+              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Net Balance</p>
+              <p className={`text-2xl font-black ${
+                manualTransactions.filter(t => t.category !== 'expense').reduce((s, t) => s + t.amount, 0) -
+                manualTransactions.filter(t => t.category === 'expense').reduce((s, t) => s + t.amount, 0) >= 0
+                  ? 'text-blue-700 dark:text-blue-300' : 'text-rose-700 dark:text-rose-300'
+              }`}>
+                {(
+                  manualTransactions.filter(t => t.category !== 'expense').reduce((s, t) => s + t.amount, 0) -
+                  manualTransactions.filter(t => t.category === 'expense').reduce((s, t) => s + t.amount, 0)
+                ).toLocaleString()} ETB
+              </p>
+            </div>
+          </div>
+
+          {/* Transactions Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/10">
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Date</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Type</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Category</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Amount</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Verified By</th>
+                  <th className="px-6 py-4 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Description/Details</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {(() => {
+                  const displayedTx = txTypeFilter !== ''
+                    ? manualTransactions.filter(t => t.type && t.type.trim() === txTypeFilter.trim())
+                    : manualTransactions;
+                  return displayedTx.map((tx) => (
+                  <tr key={tx.id} className="hover:bg-slate-50/40 dark:hover:bg-slate-850/20 transition-colors">
+                    <td className="px-6 py-3.5">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{formatEthiopianLabel(tx.date)}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{tx.date}</p>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-bold uppercase tracking-wider">
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                        tx.category === 'expense'
+                          ? 'bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-900/30'
+                          : 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100/50 dark:border-emerald-900/30'
+                      }`}>
+                        {tx.category === 'expense' ? '↓ Expense' : '↑ Income'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <div className={`flex items-center gap-1 font-extrabold text-sm ${
+                        tx.category === 'expense' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                      }`}>
+                        {tx.amount.toLocaleString()} ETB
+                      </div>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <p className="text-sm font-medium text-slate-600 dark:text-slate-350">{tx.verified_by || '—'}</p>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate">{tx.details || '—'}</p>
+                    </td>
+                  </tr>
+                  ));
+                })()}
+                {(() => {
+                  const filteredCount = txTypeFilter !== ''
+                    ? manualTransactions.filter(t => t.type && t.type.trim() === txTypeFilter.trim()).length
+                    : manualTransactions.length;
+                  if (manualTransactions.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center">
+                          <Receipt className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No transactions recorded yet.</p>
+                          <button
+                            onClick={() => setShowTransactionModal(true)}
+                            className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all"
+                          >
+                            Record First Transaction
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  if (filteredCount === 0 && txTypeFilter !== '') {
+                    return (
+                      <tr>
+                        <td colSpan={6} className="p-12 text-center">
+                          <Receipt className="w-12 h-12 text-slate-300 dark:text-slate-750 mx-auto mb-3" />
+                          <p className="text-slate-500 dark:text-slate-400 text-xs font-semibold">No transactions match the selected type.</p>
+                          <button
+                            onClick={() => { setTxTypeFilter(''); setPendingTxTypeFilter(''); }}
+                            className="mt-3 px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                          >
+                            Clear Filter
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  }
+                  return null;
+                })()}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -1921,15 +2168,20 @@ export const FinanceClerkDashboard = ({ initialTab }: { initialTab?: 'all' | 'ov
                 />
               </div>
               <div>
-                <label htmlFor="transaction-date" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Transaction Date *</label>
-                <input
+                <label htmlFor="transaction-date" className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  Transaction Date *
+                  {transactionData.date && (
+                    <span className="ml-2 text-xs font-normal text-blue-600 dark:text-blue-400">
+                      ({formatEthiopianDateString(transactionData.date)})
+                    </span>
+                  )}
+                </label>
+                <EthiopianDatePicker
                   id="transaction-date"
-                  type="date"
-                  required
                   value={transactionData.date}
-                  onChange={(e) => setTransactionData({ ...transactionData, date: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  onChange={(val) => setTransactionData({ ...transactionData, date: val })}
                 />
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Select the transaction date in the Ethiopian Calendar.</p>
               </div>
               <div className="flex gap-3 pt-4">
                 <button

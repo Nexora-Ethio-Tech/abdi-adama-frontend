@@ -110,30 +110,24 @@ export const Finance = () => {
 
   const [paymentStatus, setPaymentStatus] = useState<Record<string, PaymentLog[]>>({});
 
-  const [activeView, setActiveView] = useState<'main' | 'audit' | 'registration'>('main');
+  const [activeView, setActiveView] = useState<'main' | 'other-transactions' | 'registration'>('main');
   const [dbSummary, setDbSummary] = useState<any>(null);
   const [dbTransactions, setDbTransactions] = useState<any[]>([]);
-  const [dbAuditLogs, setDbAuditLogs] = useState<AuditLogItem[]>([]);
   const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'registration' | 'monthly'>('all');
+  const [verifiedByFilter, setVerifiedByFilter] = useState('');
   const [txCategory, setTxCategory] = useState('Student Fee');
   const [customCategory, setCustomCategory] = useState('');
-  const [auditFilter, setAuditFilter] = useState<'In' | 'Out'>('In');
-  const [auditCategory, setAuditCategory] = useState<'Fees' | 'Staff'>('Fees');
-  const [auditSection, setAuditSection] = useState('all');
-  const [auditPage, setAuditPage] = useState(0);
-  const [auditActionType, setAuditActionType] = useState('all');
-  const [auditUserRole, setAuditUserRole] = useState('all');
-  const [auditMinAmount, setAuditMinAmount] = useState('');
-  const [auditMaxAmount, setAuditMaxAmount] = useState('');
-  const AUDIT_PAGE_SIZE = 10;
+  const [otherTxPage, setOtherTxPage] = useState(0);
+  const OTHER_TX_PAGE_SIZE = 10;
+  const [mainTxPage, setMainTxPage] = useState(0);
+  const MAIN_TX_PAGE_SIZE = 15;
 
   const fetchData = useCallback(async () => {
     if (!isAdmin) return; // finance-clerk uses /finance-dashboard, not this page
     try {
-      const [sumRes, txRes, auditRes] = await Promise.all([
+      const [sumRes, txRes] = await Promise.all([
         fetch(`${API}/api/finance/summary`, { headers: authHeaders() }),
-        fetch(`${API}/api/finance/transactions`, { headers: authHeaders() }),
-        fetch(`${API}/api/finance/audit`, { headers: authHeaders() })
+        fetch(`${API}/api/finance/transactions`, { headers: authHeaders() })
       ]);
       if (sumRes.ok) {
         setDbSummary(await sumRes.json());
@@ -145,12 +139,6 @@ export const Finance = () => {
         setDbTransactions(Array.isArray(txData) ? txData : []);
       } else {
         console.error('Finance transactions fetch failed:', txRes.status, await txRes.text());
-      }
-      if (auditRes.ok) {
-        const auditData = await auditRes.json();
-        setDbAuditLogs(Array.isArray(auditData) ? auditData : []);
-      } else {
-        console.error('Finance audit fetch failed:', auditRes.status, await auditRes.text());
       }
     } catch (err) {
       console.error('Failed to fetch finance data', err);
@@ -173,35 +161,38 @@ export const Finance = () => {
     return current >= from && current <= to;
   };
 
-  const allAuditLogs = dbAuditLogs;
+  // Derive unique verified_by names from ALL student-fee transactions
+  const uniqueVerifiedBy = Array.from(
+    new Set(
+      dbTransactions
+        .filter(tx => tx.student_id && tx.verified_by)
+        .map(tx => (tx.verified_by as string).trim())
+        .filter(Boolean)
+    )
+  ).sort();
 
-  const sectionOptions = Array.from(new Set(allAuditLogs.map(log => log.section))).sort();
+  useEffect(() => {
+    setOtherTxPage(0);
+    setMainTxPage(0);
+  }, [searchTerm, fromDateTime, toDateTime, verifiedByFilter, transactionTypeFilter]);
 
-  const filteredAuditLogs = allAuditLogs.filter((log) => {
+  const otherTransactions = dbTransactions.filter(tx => !tx.student_id);
+
+  const filteredOtherTransactions = otherTransactions.filter((tx) => {
     const matchesSearch =
-      (log.studentName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.modifiedBy || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (log.approverName || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSectionFilter = auditSection === 'all' || log.section === auditSection;
-    const matchesActionFilter = auditActionType === 'all' || !log.actionType || log.actionType === auditActionType;
-    const matchesRoleFilter = auditUserRole === 'all' || !log.userRole || log.userRole === auditUserRole;
+      (tx.type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tx.description || tx.details || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tx.verified_by || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (tx.branch_name || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const amountNum = Number(log.amount || 0);
-    const matchesMinAmount = !auditMinAmount || amountNum >= Number(auditMinAmount);
-    const matchesMaxAmount = !auditMaxAmount || amountNum <= Number(auditMaxAmount);
-
-    return (
-      log.direction === auditFilter &&
-      log.category === auditCategory &&
-      matchesSectionFilter &&
-      matchesActionFilter &&
-      matchesRoleFilter &&
-      matchesMinAmount &&
-      matchesMaxAmount &&
-      matchesRange(log.timestamp) &&
-      matchesSearch
-    );
+    return matchesRange(tx.date) && matchesSearch;
   });
+
+  const totalOtherPages = Math.ceil(filteredOtherTransactions.length / OTHER_TX_PAGE_SIZE);
+  const paginatedOtherTransactions = filteredOtherTransactions.slice(
+    otherTxPage * OTHER_TX_PAGE_SIZE,
+    (otherTxPage + 1) * OTHER_TX_PAGE_SIZE
+  );
 
   const filteredTransactions = dbTransactions.filter((tx) => {
     const matchesSearch =
@@ -209,18 +200,26 @@ export const Finance = () => {
       (tx.verified_by || '').toLowerCase().includes(searchTerm.toLowerCase());
     if (!matchesRange(tx.date) || !matchesSearch) return false;
 
+    // Verified By filter (only for student-fee transactions)
+    if (verifiedByFilter && (tx.verified_by || '').trim() !== verifiedByFilter) return false;
+
     if (activeView === 'main') {
       const type = (tx.type || '').toLowerCase();
       if (transactionTypeFilter === 'registration') {
         return type.includes('registration');
       }
       if (transactionTypeFilter === 'monthly') {
-        // Monthly tuition, bus fee, penalty fee — anything that is NOT registration
         return !type.includes('registration');
       }
     }
     return true;
   });
+
+  const paginatedMainTransactions = filteredTransactions.slice(
+    mainTxPage * MAIN_TX_PAGE_SIZE,
+    (mainTxPage + 1) * MAIN_TX_PAGE_SIZE
+  );
+  const totalMainPages = Math.ceil(filteredTransactions.length / MAIN_TX_PAGE_SIZE);
 
   const calculateNetProfit = () => {
     const totalIn = filteredTransactions
@@ -250,14 +249,15 @@ export const Finance = () => {
       return `${day} ${ETHIOPIAN_MONTHS_EXP[month - 1]} ${year} E.C.`;
     };
 
-    const dataToExport = activeView === 'audit'
-      ? filteredAuditLogs.map(log => ({
-        Target: log.studentName,
-        ID: log.studentId,
-        Action: log.actionLabel,
-        ProcessedBy: log.approverName,
-        Date_EC: toEthDate(log.timestamp),
-        Direction: log.direction === 'In' ? 'Income' : 'Expense'
+    const dataToExport = activeView === 'other-transactions'
+      ? filteredOtherTransactions.map(tx => ({
+        Date_EC: toEthDate(tx.date),
+        Type: tx.type,
+        Category: tx.amount < 0 ? 'Expense' : 'Income',
+        Branch: tx.branch_name || 'Global',
+        'Amount (ETB)': tx.amount,
+        VerifiedBy: tx.verified_by,
+        Description: tx.description || tx.details || ''
       }))
       : filteredTransactions.map(tx => ({
         Category: tx.type,
@@ -268,7 +268,7 @@ export const Finance = () => {
         'Amount (ETB)': tx.amount
       }));
 
-    exportToCSV(dataToExport, activeView === 'audit' ? 'Finance_Audit_Log' : 'Finance_Ledger');
+    exportToCSV(dataToExport, activeView === 'other-transactions' ? 'Other_Transactions' : 'Finance_Ledger');
   };
 
   const togglePayment = (id: string) => {
@@ -356,10 +356,10 @@ export const Finance = () => {
                 </button>
                 {isAdmin && (
                   <button
-                    onClick={() => setActiveView('audit')}
-                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'audit' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                    onClick={() => setActiveView('other-transactions')}
+                    className={`px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeView === 'other-transactions' ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xl' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                   >
-                    {t('finance.systemAudit')}
+                    Other Transactions
                   </button>
                 )}
                 {isClerk && (
@@ -402,8 +402,9 @@ export const Finance = () => {
             </div>
           </div>
           {activeView === 'main' && (
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mr-2">Filter Type:</span>
+            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              {/* ── Fee Type filter ── */}
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Type:</span>
               <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 border border-slate-200/50 dark:border-slate-700">
                 {(['all', 'registration', 'monthly'] as const).map((filter) => {
                   const labels: Record<string, string> = {
@@ -428,6 +429,44 @@ export const Finance = () => {
                   );
                 })}
               </div>
+
+              {/* ── Verified By filter ── */}
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Verified By:</span>
+                <div className="relative">
+                  <select
+                    id="verifiedByFilter"
+                    value={verifiedByFilter}
+                    onChange={(e) => { setVerifiedByFilter(e.target.value); setMainTxPage(0); }}
+                    className="pl-3 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none cursor-pointer min-w-[160px]"
+                  >
+                    <option value="">All Officers</option>
+                    {uniqueVerifiedBy.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </span>
+                </div>
+                {verifiedByFilter && (
+                  <button
+                    type="button"
+                    onClick={() => { setVerifiedByFilter(''); setMainTxPage(0); }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/40 rounded-lg text-[10px] font-black uppercase tracking-wide hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Active filter summary badge */}
+              {verifiedByFilter && (
+                <span className="ml-auto px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full">
+                  {filteredTransactions.length} result{filteredTransactions.length !== 1 ? 's' : ''} for "{verifiedByFilter}"
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -477,217 +516,100 @@ export const Finance = () => {
             <div className="p-6">
               <FinanceClerkRegistration />
             </div>
-          ) : activeView === 'audit' ? (
+          ) : activeView === 'other-transactions' ? (
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
-                {/* Filter Header */}
                 <div className="px-5 py-3 bg-gradient-to-r from-slate-800 to-slate-700 flex items-center gap-2">
-                  <Filter size={14} className="text-blue-300" />
-                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Audit Filters</span>
-                  <span className="ml-auto text-[10px] font-bold text-slate-300">{filteredAuditLogs.length} results</span>
+                  <CreditCard size={14} className="text-blue-300" />
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Other Transactions</span>
+                  <span className="ml-auto text-[10px] font-bold text-slate-300">{filteredOtherTransactions.length} results</span>
                 </div>
 
-                {/* Filter Body */}
-                <div className="p-5 space-y-4">
-                  {/* Row 1: Direction + Category */}
-                  <div className="flex flex-wrap items-end gap-6">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.direction')}</label>
-                      <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
-                        <button
-                          onClick={() => { setAuditFilter('In'); setAuditPage(0); }}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditFilter === 'In' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          💰 Money In
-                        </button>
-                        <button
-                          onClick={() => { setAuditFilter('Out'); setAuditPage(0); }}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditFilter === 'Out' ? 'bg-rose-500 text-white shadow-md shadow-rose-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          📤 Money Out
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('finance.category')}</label>
-                      <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-100 dark:border-slate-700">
-                        <button
-                          onClick={() => { setAuditCategory('Fees'); setAuditPage(0); }}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditCategory === 'Fees' ? 'bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          🎓 Fees
-                        </button>
-                        <button
-                          onClick={() => { setAuditCategory('Staff'); setAuditPage(0); }}
-                          className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${auditCategory === 'Staff' ? 'bg-purple-600 text-white shadow-md shadow-purple-200 dark:shadow-none' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          👤 Staff
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Dropdowns + Amount Range */}
-                  <div className="flex flex-wrap items-end gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Section</label>
-                      <div className="relative">
-                        <select
-                          value={auditSection}
-                          onChange={(e) => { setAuditSection(e.target.value); setAuditPage(0); }}
-                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
-                        >
-                          <option value="all">{t('finance.all')} Sections</option>
-                          {sectionOptions.map((section) => (
-                            <option key={section} value={section}>{section}</option>
-                          ))}
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Action</label>
-                      <div className="relative">
-                        <select
-                          value={auditActionType}
-                          onChange={(e) => { setAuditActionType(e.target.value); setAuditPage(0); }}
-                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
-                        >
-                          <option value="all">All Actions</option>
-                          <option value="Created">Created</option>
-                          <option value="Updated">Updated</option>
-                          <option value="Deleted">Deleted</option>
-                          <option value="Refunded">Refunded</option>
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Role</label>
-                      <div className="relative">
-                        <select
-                          value={auditUserRole}
-                          onChange={(e) => { setAuditUserRole(e.target.value); setAuditPage(0); }}
-                          className="appearance-none pl-3 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all cursor-pointer"
-                        >
-                          <option value="all">All Roles</option>
-                          <option value="Admin">Admin</option>
-                          <option value="Accountant">Accountant</option>
-                          <option value="Vice Principal">Vice Principal</option>
-                        </select>
-                        <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Range</label>
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl">
-                        <input
-                          type="number"
-                          placeholder="Min"
-                          value={auditMinAmount}
-                          onChange={(e) => { setAuditMinAmount(e.target.value); setAuditPage(0); }}
-                          className="w-20 px-2 py-1 bg-white dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
-                        />
-                        <span className="text-slate-300 dark:text-slate-500 font-black text-xs">→</span>
-                        <input
-                          type="number"
-                          placeholder="Max"
-                          value={auditMaxAmount}
-                          onChange={(e) => { setAuditMaxAmount(e.target.value); setAuditPage(0); }}
-                          className="w-20 px-2 py-1 bg-white dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
-                        />
-                        <span className="text-[10px] text-slate-400 font-black">ETB</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {(() => {
-                const pagedAuditLogs = filteredAuditLogs.slice(auditPage * AUDIT_PAGE_SIZE, (auditPage + 1) * AUDIT_PAGE_SIZE);
-                const totalPages = Math.ceil(filteredAuditLogs.length / AUDIT_PAGE_SIZE);
-                const startRow = auditPage * AUDIT_PAGE_SIZE + 1;
-                const endRow = Math.min((auditPage + 1) * AUDIT_PAGE_SIZE, filteredAuditLogs.length);
-                return (
-                  <>
-                    <table className="w-full text-left text-sm min-w-[800px]">
-                      <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                        <tr>
-                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('finance.transactionTarget')}</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('finance.actionTaken')}</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('finance.processedBy')}</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Amount (ETB)</th>
-                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">{t('finance.timestamp')}</th>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm min-w-[800px]">
+                    <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                      <tr>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Date</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Type</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Category</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Branch</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Amount (ETB)</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Verified By</th>
+                        <th className="px-6 py-4.5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Description/Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                      {paginatedOtherTransactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
+                          <td className="px-6 py-4 text-slate-500 text-xs">
+                            {formatDateTime(tx.date)}
+                          </td>
+                          <td className="px-6 py-4 text-slate-800 dark:text-slate-200 font-medium">
+                            {tx.type}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                              tx.amount < 0
+                                ? 'bg-rose-50 text-rose-600 border border-rose-100/50'
+                                : 'bg-emerald-50 text-emerald-600 border border-emerald-100/50'
+                            }`}>
+                              {tx.amount < 0 ? 'Expense' : 'Income'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 text-xs">
+                            {tx.branch_name || 'Global'}
+                          </td>
+                          <td className={`px-6 py-4 text-right font-bold text-xs ${
+                            tx.amount < 0 ? 'text-rose-600' : 'text-emerald-600'
+                          }`}>
+                            {tx.amount < 0 ? '-' : ''}{Math.abs(tx.amount).toLocaleString()} ETB
+                          </td>
+                          <td className="px-6 py-4 text-slate-550 font-semibold text-xs">
+                            {tx.verified_by || '—'}
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate">
+                            {tx.description || tx.details || '—'}
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                        {pagedAuditLogs.map((log, i) => (
-                          <tr key={i} className="hover:bg-slate-50/50 transition-colors border-l-4 border-transparent hover:border-blue-600">
-                            <td className="px-6 py-4">
-                              <span className="font-medium text-slate-600">{log.studentName}</span>
-                              <span className="text-[10px] text-slate-400 ml-2">({log.studentId})</span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${log.direction === 'In' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-                                }`}>
-                                {log.actionLabel}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-[10px] font-bold text-blue-600">
-                                  {log.approverName[0]}
-                                </div>
-                                <span className="font-bold text-blue-700">{log.approverName}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-200">
-                              {log.amount ? `${Number(log.amount).toLocaleString()} ETB` : '—'}
-                            </td>
-                            <td className="px-6 py-4 text-right text-slate-500 font-mono text-[10px]">{formatDateTime(log.timestamp)}</td>
-                          </tr>
-                        ))}
-                        {filteredAuditLogs.length === 0 && (
-                          <tr>
-                            <td colSpan={5} className="px-6 py-10 text-center text-sm font-semibold text-slate-400">
-                              No audit transactions found for the selected filters.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                    {filteredAuditLogs.length > 0 && (
-                      <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 flex items-center justify-between">
-                        <span className="text-xs font-bold text-slate-500">
-                          {startRow}–{endRow} of {filteredAuditLogs.length}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setAuditPage(p => Math.max(0, p - 1))}
-                            disabled={auditPage === 0}
-                            className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600"
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <span className="text-xs font-bold text-slate-600">
-                            Page {auditPage + 1} of {totalPages}
-                          </span>
-                          <button
-                            onClick={() => setAuditPage(p => Math.min(totalPages - 1, p + 1))}
-                            disabled={auditPage >= totalPages - 1}
-                            className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600"
-                          >
-                            <ChevronRight size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                      ))}
+                      {filteredOtherTransactions.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-12 text-center text-slate-400">
+                            No other transactions found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredOtherTransactions.length > 0 && (
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500">
+                      {otherTxPage * OTHER_TX_PAGE_SIZE + 1}–{Math.min(filteredOtherTransactions.length, (otherTxPage + 1) * OTHER_TX_PAGE_SIZE)} of {filteredOtherTransactions.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setOtherTxPage(p => Math.max(0, p - 1))}
+                        disabled={otherTxPage === 0}
+                        className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <span className="text-xs font-bold text-slate-600">
+                        Page {otherTxPage + 1} of {totalOtherPages}
+                      </span>
+                      <button
+                        onClick={() => setOtherTxPage(p => Math.min(totalOtherPages - 1, p + 1))}
+                        disabled={otherTxPage >= totalOtherPages - 1}
+                        className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           ) : isClerk ? (
             <table className="w-full text-left text-sm min-w-[800px]">
@@ -808,6 +730,7 @@ export const Finance = () => {
               </tbody>
             </table>
           ) : (
+            <>
             <table className="w-full text-left text-sm min-w-[700px]">
               <thead className="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                 <tr>
@@ -827,7 +750,7 @@ export const Finance = () => {
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                 {isAdmin ? (
-                  filteredTransactions.map((tx) => (
+                  paginatedMainTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -844,7 +767,11 @@ export const Finance = () => {
                           Branch: {tx.branch_name}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-slate-500 font-semibold">{tx.verified_by}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          {tx.verified_by || '—'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-slate-500">{formatDateTime(tx.date)}</td>
                       <td className={`px-6 py-4 text-right font-bold ${tx.type !== 'Expense' ? 'text-emerald-600' : 'text-rose-600'
                         }`}>
@@ -854,7 +781,7 @@ export const Finance = () => {
                     </tr>
                   ))
                 ) : (
-                  filteredTransactions.map((tx) => (
+                  paginatedMainTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-all duration-200 group/row border-l-4 border-transparent hover:border-blue-500">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -878,13 +805,57 @@ export const Finance = () => {
                 )}
                 {filteredTransactions.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-sm font-semibold text-slate-400">
-                      No transactions found in the database.
+                    <td colSpan={6} className="px-6 py-10 text-center">
+                      <p className="text-sm font-semibold text-slate-400">
+                        {verifiedByFilter
+                          ? `No transactions found for "${verifiedByFilter}". Try selecting a different finance officer.`
+                          : 'No transactions found in the database.'}
+                      </p>
+                      {verifiedByFilter && (
+                        <button
+                          type="button"
+                          onClick={() => { setVerifiedByFilter(''); setMainTxPage(0); }}
+                          className="mt-3 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
+                        >
+                          Clear Filter
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            {/* Pagination footer */}
+            {filteredTransactions.length > MAIN_TX_PAGE_SIZE && (
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <span className="text-xs font-semibold text-slate-500">
+                  Showing {mainTxPage * MAIN_TX_PAGE_SIZE + 1}–{Math.min(filteredTransactions.length, (mainTxPage + 1) * MAIN_TX_PAGE_SIZE)} of {filteredTransactions.length} transactions
+                  {verifiedByFilter && <span className="ml-1 text-blue-500">for "{verifiedByFilter}"</span>}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMainTxPage(p => Math.max(0, p - 1))}
+                    disabled={mainTxPage === 0}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600 dark:text-slate-400"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                    Page {mainTxPage + 1} of {totalMainPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setMainTxPage(p => Math.min(totalMainPages - 1, p + 1))}
+                    disabled={mainTxPage >= totalMainPages - 1}
+                    className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600 dark:text-slate-400"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>

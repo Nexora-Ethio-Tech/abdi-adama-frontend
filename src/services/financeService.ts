@@ -25,6 +25,19 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface ManualTransaction {
+  id: string;
+  category: 'expense' | 'income' | 'other';
+  type: string;
+  amount: number;
+  details: string;
+  date: string;
+  verified_by?: string;
+  recorded_by_name?: string;
+  description?: string;
+  created_at?: string;
+}
+
 export interface StudentFeeInfo {
   id: string;
   name: string;
@@ -387,6 +400,23 @@ const financeClerkService = {
       message
     });
     return response.data;
+  },
+
+  // 13. Record a manual transaction
+  recordManualTransaction: async (data: Omit<ManualTransaction, 'id'>): Promise<any> => {
+    const response = await api.post('/finance-clerk/transactions', data);
+    return response.data.data;
+  },
+
+  // 14. Get manual transactions
+  getManualTransactions: async (params?: { startDate?: string; endDate?: string; type?: string }): Promise<ManualTransaction[]> => {
+    const response = await api.get('/finance-clerk/transactions', { params });
+    return (response.data.data || []).map((item: any) => ({
+      ...item,
+      category: item.amount < 0 ? 'expense' : 'income',
+      details: item.description || item.details || '',
+      amount: Math.abs(parseFloat(item.amount)) || 0,
+    }));
   }
 
 };

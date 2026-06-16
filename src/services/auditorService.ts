@@ -261,7 +261,7 @@ const auditorService = {
   // 6. Get Audit Trail
   getAuditTrail: async (params?: AuditTrailQueryParams): Promise<AuditTrailEntry[]> => {
     const response = await api.get('/auditor/audit-trail', { params });
-    return response.data.data;
+    return response.data.data || [];
   },
 
   // 7. Get Collections
