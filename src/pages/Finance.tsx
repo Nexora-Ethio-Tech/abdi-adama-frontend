@@ -44,6 +44,13 @@ type NetProfitSummary = {
   totalIn: number;
   totalOut: number;
   netProfit: number;
+  breakdown?: {
+    totalIn: number;
+    totalExpenses: number;
+    totalPayroll: number;
+    totalLoans: number;
+    totalOut: number;
+  };
 };
 
 /**
@@ -105,6 +112,7 @@ export const Finance = () => {
   const [fromDateTime, setFromDateTime] = useState(`${currentECYear}-01-01`);
   const [toDateTime, setToDateTime] = useState(todayEth);
   const [netProfitSummary, setNetProfitSummary] = useState<NetProfitSummary | null>(null);
+  const [netProfitLoading, setNetProfitLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [enrollmentQueue, setEnrollmentQueue] = useState<any[]>([]);
 
@@ -241,45 +249,32 @@ export const Finance = () => {
   );
   const totalMainPages = Math.ceil(filteredTransactions.length / MAIN_TX_PAGE_SIZE);
 
-  const calculateNetProfit = () => {
-    // Build Gregorian boundaries from the Ethiopian date pickers
-    const fromGregStr = ethiopianToGregorianIso(fromDateTime);
-    const toGregStr = ethiopianToGregorianIso(toDateTime);
-    const fromDate = fromGregStr ? new Date(fromGregStr + 'T00:00:00') : null;
-    const toDate = toGregStr ? new Date(toGregStr + 'T23:59:59') : null;
+  const calculateNetProfit = async () => {
+    try {
+      setNetProfitLoading(true);
+      const fromGregStr = ethiopianToGregorianIso(fromDateTime);
+      const toGregStr = ethiopianToGregorianIso(toDateTime);
 
-    const inRange = (timestamp: string): boolean => {
-      if (!timestamp) return true;
-      if (!fromDate || !toDate) return true;
-      const d = parseDateLocal(timestamp);
-      if (!d || isNaN(d.getTime())) return true;
-      return d >= fromDate && d <= toDate;
-    };
+      const params: Record<string, string> = {};
+      if (fromGregStr) params.startDate = fromGregStr;
+      if (toGregStr) params.endDate = toGregStr;
 
-    let totalIn = 0;
-    let totalOut = 0;
+      const queryStr = new URLSearchParams(params).toString();
+      const res = await fetch(`${API}/api/finance/net-profit?${queryStr}`, {
+        headers: authHeaders()
+      });
 
-    for (const tx of dbTransactions) {
-      if (!inRange(tx.date)) continue;
-
-      const amt = Number(tx.amount ?? 0);
-      const typeLower = (tx.type ?? '').toLowerCase();
-      const isExpenseType = typeLower === 'expense';
-
-      if (isExpenseType || amt < 0) {
-        // Outgoing money — expense type OR negative amount
-        totalOut += Math.abs(amt);
+      if (res.ok) {
+        const body = await res.json();
+        setNetProfitSummary(body.data);
       } else {
-        // Incoming money — positive amount, non-expense type
-        totalIn += amt;
+        console.error('Failed to calculate net profit:', res.status, await res.text());
       }
+    } catch (err) {
+      console.error('Failed to calculate net profit', err);
+    } finally {
+      setNetProfitLoading(false);
     }
-
-    setNetProfitSummary({
-      totalIn,
-      totalOut,
-      netProfit: totalIn - totalOut
-    });
   };
 
   const handleExport = () => {
@@ -543,24 +538,44 @@ export const Finance = () => {
             </div>
           </div>
           {isAdmin && activeView === 'main' && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 lg:ml-auto">
-              <button
-                onClick={calculateNetProfit}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
-              >
-                Net Profit Calculator
-              </button>
-              {netProfitSummary && (
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100 text-[10px] font-bold text-emerald-700">
-                    IN: {netProfitSummary.totalIn.toLocaleString()} ETB
+            <div className="flex flex-col gap-3 lg:ml-auto w-full lg:w-auto">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-end">
+                <button
+                  onClick={calculateNetProfit}
+                  disabled={netProfitLoading}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition-colors"
+                >
+                  {netProfitLoading ? 'Calculating…' : 'Net Profit Calculator'}
+                </button>
+                {netProfitSummary && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="px-3 py-2 bg-emerald-50 rounded-lg border border-emerald-100 text-[10px] font-bold text-emerald-700">
+                      IN: {netProfitSummary.totalIn.toLocaleString()} ETB
+                    </div>
+                    <div className="px-3 py-2 bg-rose-50 rounded-lg border border-rose-100 text-[10px] font-bold text-rose-700">
+                      OUT: {netProfitSummary.totalOut.toLocaleString()} ETB
+                    </div>
+                    <div className={`px-3 py-2 rounded-lg border text-[10px] font-bold ${netProfitSummary.netProfit >= 0 ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
+                      PROFIT: {netProfitSummary.netProfit.toLocaleString()} ETB
+                    </div>
                   </div>
-                  <div className="px-3 py-2 bg-rose-50 rounded-lg border border-rose-100 text-[10px] font-bold text-rose-700">
-                    OUT: {netProfitSummary.totalOut.toLocaleString()} ETB
-                  </div>
-                  <div className={`px-3 py-2 rounded-lg border text-[10px] font-bold ${netProfitSummary.netProfit >= 0 ? 'bg-blue-50 border-blue-100 text-blue-700' : 'bg-amber-50 border-amber-100 text-amber-700'}`}>
-                    PROFIT: {netProfitSummary.netProfit.toLocaleString()} ETB
-                  </div>
+                )}
+              </div>
+              {netProfitSummary?.breakdown && (
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest self-center">Breakdown:</span>
+                  <span className="px-2.5 py-1 bg-emerald-50 rounded-lg text-[10px] font-bold text-emerald-700">
+                    Fees &amp; Income: {netProfitSummary.breakdown.totalIn.toLocaleString()} ETB
+                  </span>
+                  <span className="px-2.5 py-1 bg-rose-50 rounded-lg text-[10px] font-bold text-rose-700">
+                    Expenses: {netProfitSummary.breakdown.totalExpenses.toLocaleString()} ETB
+                  </span>
+                  <span className="px-2.5 py-1 bg-orange-50 rounded-lg text-[10px] font-bold text-orange-700">
+                    Payroll: {netProfitSummary.breakdown.totalPayroll.toLocaleString()} ETB
+                  </span>
+                  <span className="px-2.5 py-1 bg-purple-50 rounded-lg text-[10px] font-bold text-purple-700">
+                    Loans: {netProfitSummary.breakdown.totalLoans.toLocaleString()} ETB
+                  </span>
                 </div>
               )}
             </div>
