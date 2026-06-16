@@ -35,6 +35,9 @@ interface AuditLogItem extends PaymentLog {
   category: 'Fees' | 'Staff';
   direction: 'In' | 'Out';
   actionLabel: string;
+  amount?: number;
+  actionType?: string;
+  userRole?: string;
 }
 
 type NetProfitSummary = {
@@ -180,10 +183,21 @@ export const Finance = () => {
       (log.modifiedBy || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.approverName || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSectionFilter = auditSection === 'all' || log.section === auditSection;
+    const matchesActionFilter = auditActionType === 'all' || !log.actionType || log.actionType === auditActionType;
+    const matchesRoleFilter = auditUserRole === 'all' || !log.userRole || log.userRole === auditUserRole;
+    
+    const amountNum = Number(log.amount || 0);
+    const matchesMinAmount = !auditMinAmount || amountNum >= Number(auditMinAmount);
+    const matchesMaxAmount = !auditMaxAmount || amountNum <= Number(auditMaxAmount);
+
     return (
       log.direction === auditFilter &&
       log.category === auditCategory &&
       matchesSectionFilter &&
+      matchesActionFilter &&
+      matchesRoleFilter &&
+      matchesMinAmount &&
+      matchesMaxAmount &&
       matchesRange(log.timestamp) &&
       matchesSearch
     );
@@ -605,6 +619,7 @@ export const Finance = () => {
                           <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('finance.transactionTarget')}</th>
                           <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">{t('finance.actionTaken')}</th>
                           <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{t('finance.processedBy')}</th>
+                          <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">Amount (ETB)</th>
                           <th className="px-6 py-5 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-right">{t('finance.timestamp')}</th>
                         </tr>
                       </thead>
@@ -629,12 +644,15 @@ export const Finance = () => {
                                 <span className="font-bold text-blue-700">{log.approverName}</span>
                               </div>
                             </td>
+                            <td className="px-6 py-4 text-right font-bold text-slate-700 dark:text-slate-200">
+                              {log.amount ? `${Number(log.amount).toLocaleString()} ETB` : '—'}
+                            </td>
                             <td className="px-6 py-4 text-right text-slate-500 font-mono text-[10px]">{formatDateTime(log.timestamp)}</td>
                           </tr>
                         ))}
                         {filteredAuditLogs.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-6 py-10 text-center text-sm font-semibold text-slate-400">
+                            <td colSpan={5} className="px-6 py-10 text-center text-sm font-semibold text-slate-400">
                               No audit transactions found for the selected filters.
                             </td>
                           </tr>
