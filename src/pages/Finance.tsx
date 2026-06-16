@@ -176,7 +176,23 @@ export const Finance = () => {
     setMainTxPage(0);
   }, [searchTerm, fromDateTime, toDateTime, verifiedByFilter, transactionTypeFilter]);
 
-  const otherTransactions = dbTransactions.filter(tx => !tx.student_id);
+  const isRegistrationType = (type: string) => {
+    const t = (type || '').toLowerCase();
+    return t.includes('registration');
+  };
+
+  const isStudentFeeType = (type: string) => {
+    const t = (type || '').toLowerCase();
+    return t.includes('monthly') ||
+           t.includes('tuition') ||
+           t.includes('bus') ||
+           t.includes('penalty') ||
+           t.includes('payment');
+  };
+
+  const otherTransactions = dbTransactions.filter(
+    tx => !tx.student_id && !isStudentFeeType(tx.type) && !isRegistrationType(tx.type)
+  );
 
   const filteredOtherTransactions = otherTransactions.filter((tx) => {
     const matchesSearch =
@@ -195,6 +211,10 @@ export const Finance = () => {
   );
 
   const filteredTransactions = dbTransactions.filter((tx) => {
+    // Only student-related transactions
+    const isStudentRelated = tx.student_id || isStudentFeeType(tx.type) || isRegistrationType(tx.type);
+    if (!isStudentRelated) return false;
+
     const matchesSearch =
       (tx.student_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (tx.verified_by || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -223,11 +243,11 @@ export const Finance = () => {
 
   const calculateNetProfit = () => {
     const totalIn = filteredTransactions
-      .filter(tx => tx.type !== 'Expense')
+      .filter(tx => tx.type !== 'Expense' && tx.type?.toLowerCase() !== 'expense' && Number(tx.amount) >= 0)
       .reduce((sum, tx) => sum + Number(tx.amount), 0);
     const totalOut = filteredTransactions
-      .filter(tx => tx.type === 'Expense')
-      .reduce((sum, tx) => sum + Number(tx.amount), 0);
+      .filter(tx => tx.type === 'Expense' || tx.type?.toLowerCase() === 'expense' || Number(tx.amount) < 0)
+      .reduce((sum, tx) => sum + Math.abs(Number(tx.amount)), 0);
 
     setNetProfitSummary({
       totalIn,
@@ -300,7 +320,7 @@ export const Finance = () => {
           {t('finance.back')}
         </button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-900/20 relative overflow-hidden group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
           <div className="relative z-10">
             <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-2">{t('finance.totalRevenue')}</p>
@@ -330,6 +350,15 @@ export const Finance = () => {
           <div className="mt-8 flex items-center gap-2 text-purple-500 text-[10px] font-black uppercase tracking-widest bg-purple-50 dark:bg-purple-900/20 w-fit px-3 py-1 rounded-full">
             <ArrowUpRight size={14} />
             <span>{(dbSummary?.monthly_fees_paid_count ?? 0).toLocaleString()} Students Paid</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-100 dark:border-slate-800 group hover:-translate-y-2 hover:shadow-2xl transition-all duration-500">
+          <p className="text-slate-500 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Other Transactions</p>
+          <h3 className="text-4xl font-black tracking-tight text-slate-800 dark:text-white">{(dbSummary?.other_transactions_collected ?? 0).toLocaleString()} <span className="text-sm font-bold text-slate-400">ETB</span></h3>
+          <div className="mt-8 flex items-center gap-2 text-indigo-500 text-[10px] font-black uppercase tracking-widest bg-indigo-50 dark:bg-indigo-900/20 w-fit px-3 py-1 rounded-full">
+            <ArrowUpRight size={14} />
+            <span>Non-Student Tx</span>
           </div>
         </div>
 
