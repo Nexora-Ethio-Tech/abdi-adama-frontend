@@ -590,7 +590,7 @@ export const Students = () => {
             setFilterGrade(val);
             if (!val) setFilterSection('');
           }}
-          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
@@ -601,7 +601,7 @@ export const Students = () => {
           aria-label="Filter by section"
           value={filterSection}
           onChange={(e) => setFilterSection(e.target.value)}
-          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Sections</option>
           {[1, 2, 3, 4, 5, 6].map((section) => (
@@ -612,7 +612,7 @@ export const Students = () => {
           aria-label="Filter by status"
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Status</option>
           <option value="Active">Active</option>
@@ -625,7 +625,7 @@ export const Students = () => {
             type="button"
             onClick={handleAutoDistribute}
             disabled={autoDistributing || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition-colors whitespace-nowrap"
             title={`Auto-distribute all unassigned Grade ${filterGrade} students across available sections`}
           >
             {autoDistributing ? (
@@ -672,7 +672,7 @@ export const Students = () => {
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
               {/* Bulk Actions Bar */}
               {selectedStudentIds.size > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-6 py-4 flex items-center justify-between">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <Check size={20} className="text-blue-600" />
                     <span className="font-bold text-sm text-blue-700 dark:text-blue-300">
@@ -682,14 +682,14 @@ export const Students = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={openBulkAssignModal}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold"
                     >
                       <GraduationCap size={16} />
                       Assign Section
                     </button>
                     <button
                       onClick={() => setSelectedStudentIds(new Set())}
-                      className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 transition-colors text-sm font-bold"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 transition-colors text-sm font-bold"
                     >
                       Clear
                     </button>
@@ -697,7 +697,8 @@ export const Students = () => {
                 </div>
               )}
 
-              <table className="w-full text-left">
+              <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[800px]">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">
@@ -891,6 +892,7 @@ export const Students = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </>
