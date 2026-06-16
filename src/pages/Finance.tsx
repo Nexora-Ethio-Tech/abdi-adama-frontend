@@ -242,12 +242,38 @@ export const Finance = () => {
   const totalMainPages = Math.ceil(filteredTransactions.length / MAIN_TX_PAGE_SIZE);
 
   const calculateNetProfit = () => {
-    const totalIn = filteredTransactions
-      .filter(tx => tx.type !== 'Expense' && tx.type?.toLowerCase() !== 'expense' && Number(tx.amount) >= 0)
-      .reduce((sum, tx) => sum + Number(tx.amount), 0);
-    const totalOut = filteredTransactions
-      .filter(tx => tx.type === 'Expense' || tx.type?.toLowerCase() === 'expense' || Number(tx.amount) < 0)
-      .reduce((sum, tx) => sum + Math.abs(Number(tx.amount)), 0);
+    // Build Gregorian boundaries from the Ethiopian date pickers
+    const fromGregStr = ethiopianToGregorianIso(fromDateTime);
+    const toGregStr = ethiopianToGregorianIso(toDateTime);
+    const fromDate = fromGregStr ? new Date(fromGregStr + 'T00:00:00') : null;
+    const toDate = toGregStr ? new Date(toGregStr + 'T23:59:59') : null;
+
+    const inRange = (timestamp: string): boolean => {
+      if (!timestamp) return true;
+      if (!fromDate || !toDate) return true;
+      const d = parseDateLocal(timestamp);
+      if (!d || isNaN(d.getTime())) return true;
+      return d >= fromDate && d <= toDate;
+    };
+
+    let totalIn = 0;
+    let totalOut = 0;
+
+    for (const tx of dbTransactions) {
+      if (!inRange(tx.date)) continue;
+
+      const amt = Number(tx.amount ?? 0);
+      const typeLower = (tx.type ?? '').toLowerCase();
+      const isExpenseType = typeLower === 'expense';
+
+      if (isExpenseType || amt < 0) {
+        // Outgoing money — expense type OR negative amount
+        totalOut += Math.abs(amt);
+      } else {
+        // Incoming money — positive amount, non-expense type
+        totalIn += amt;
+      }
+    }
 
     setNetProfitSummary({
       totalIn,
