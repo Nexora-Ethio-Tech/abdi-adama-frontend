@@ -320,6 +320,23 @@ const auditorService = {
       recorded_by_name: item.recorded_by_name || item.verified_by || 'Finance Clerk',
       amount: parseFloat(item.amount) || 0,
     }));
+  },
+
+  // 11. Get Net Profit
+  getNetProfit: async (branchId: string, params?: { startDate?: string; endDate?: string }): Promise<{
+    totalIn: number;
+    totalOut: number;
+    netProfit: number;
+    breakdown: {
+      totalIn: number;
+      totalExpenses: number;
+      totalPayroll: number;
+      totalLoans: number;
+      totalOut: number;
+    };
+  }> => {
+    const response = await api.get('/auditor/net-profit', { params: { branchId, ...params } });
+    return response.data.data;
   }
 };
 

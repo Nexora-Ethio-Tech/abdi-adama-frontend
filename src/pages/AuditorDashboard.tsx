@@ -11,6 +11,7 @@ import {
   Landmark,
   UserSquare2,
   Building,
+  BarChart3,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import auditorService, { type AuditorDashboard as AuditorDashboardData, type Branch } from '../services/auditorService';
@@ -97,6 +98,7 @@ export const AuditorDashboard = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const { selectedBranchId, setSelectedBranchId } = useStore();
   const [dashboard, setDashboard] = useState<AuditorDashboardData | null>(null);
+  const [otherTransactions, setOtherTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -142,8 +144,12 @@ export const AuditorDashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await auditorService.getDashboard(selectedBranchId);
+        const [data, otherData] = await Promise.all([
+          auditorService.getDashboard(selectedBranchId),
+          auditorService.getOtherTransactions({ branchId: selectedBranchId }).catch(() => [])
+        ]);
         setDashboard(data);
+        setOtherTransactions(otherData || []);
       } catch (err: any) {
         setError(err.response?.data?.error?.message || err.message || 'Failed to load dashboard');
       } finally {
@@ -161,6 +167,7 @@ export const AuditorDashboard = () => {
 
   const regFeeCount = dashboard?.registrationFees.count ?? 0;
   const regFeeTotal = dashboard?.registrationFees.total ?? 0;
+  const otherNet = otherTransactions.reduce((s, t) => s + Number(t.amount ?? 0), 0);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -233,10 +240,10 @@ export const AuditorDashboard = () => {
             />
             <OverviewCard
               accent="purple"
-              title="Recent Activity"
-              value={dashboard?.recentTransactions.length ?? 0}
-              subtitle="Latest transactions"
-              icon={ShieldCheck}
+              title="Other Transactions"
+              value={`${otherNet >= 0 ? '+' : ''}${otherNet.toLocaleString()} ETB`}
+              subtitle={`${otherTransactions.length} non-student tx`}
+              icon={BarChart3}
             />
             <OverviewCard
               accent="emerald"
