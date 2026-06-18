@@ -100,6 +100,6 @@ export default defineConfig(({ mode }) => {
         },
 
         // Base path - set to './' for relative paths (important for deployment)
-        base: './'
+        base: '/'
     };
 });
