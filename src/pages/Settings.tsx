@@ -90,8 +90,8 @@ export const Settings = () => {
   const [generalSaving, setGeneralSaving] = useState(false);
   const [branchGradeFees, setBranchGradeFees] = useState<BranchGradeFee[]>([]);
   const [feeBranchId, setFeeBranchId] = useState('');
-  const [feeGrade, setFeeGrade] = useState('KG');
-  const [feeGrades, setFeeGrades] = useState<string[]>(['KG']);
+  const [feeGrade, setFeeGrade] = useState('KG 1');
+  const [feeGrades, setFeeGrades] = useState<string[]>(['KG 1']);
   const [feeMonthly, setFeeMonthly] = useState(5000);
   const [feeRegistration, setFeeRegistration] = useState(2500);
   const [feeBus, setFeeBus] = useState(1200);
@@ -1537,7 +1537,7 @@ export const Settings = () => {
                               disabled={role !== 'super-admin'}
                               className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
                             >
-                              {['KG', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>Grade {g}</option>)}
+                              {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => <option key={g} value={g}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>)}
                             </select>
                           </div>
                           <div className="space-y-1">

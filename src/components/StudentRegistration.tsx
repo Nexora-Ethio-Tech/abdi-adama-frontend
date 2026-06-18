@@ -645,7 +645,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
     setShowGradeModal(true);
   };
 
-  const gradeOptions = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
+  const gradeOptions = ['KG 1', 'KG 2', 'KG 3', ...Array.from({ length: 12 }, (_, i) => `${i + 1}`)];
 
   const handlePass = (appId: string) => {
     const app = pendingApps.find(a => a.id === appId);
@@ -1200,16 +1200,9 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">Last Grade Completed <span className="text-rose-500">*</span></label>
-                    <input
+                    <select
                       name="grade"
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="e.g. 9"
-                      onKeyDown={(e) => {
-                        if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
-                          e.preventDefault();
-                        }
-                      }}
+                      required
                       onChange={(e) => {
                         if (e.target.value.trim()) {
                           setValidationErrors(prev => {
@@ -1222,7 +1215,16 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                       className={`w-full px-4 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-sm outline-none focus:ring-2 ${validationErrors.grade
                         ? 'border-rose-300 focus:ring-rose-500 dark:border-rose-700'
                         : 'border-slate-200 dark:border-slate-700 focus:ring-blue-500'
-                        }`} />
+                        }`}
+                    >
+                      <option value="">Select Last Grade Completed</option>
+                      <option value="KG 1">KG 1</option>
+                      <option value="KG 2">KG 2</option>
+                      <option value="KG 3">KG 3</option>
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1)).map(g => (
+                        <option key={g} value={g}>Grade {g}</option>
+                      ))}
+                    </select>
                     {validationErrors.grade && <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1"><AlertTriangle size={12} /> {validationErrors.grade}</p>}
                   </div>
                 </div>
@@ -1638,7 +1640,7 @@ export const StudentRegistration = ({ isAdminView = true, onCreated }: StudentRe
                         : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
                         }`}
                     >
-                      Grade {grade}
+                      {grade.startsWith('KG') ? grade : `Grade ${grade}`}
                     </button>
                   ))}
                 </div>

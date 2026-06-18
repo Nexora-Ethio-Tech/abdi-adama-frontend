@@ -122,6 +122,14 @@ export const Classes = () => {
     return match ? match[1] : '';
   };
 
+  const extractGradeName = (value?: string | null) => {
+    const val = String(value || '').trim();
+    if (val.startsWith('Grade ')) {
+      return val.replace(/^Grade\s+/i, '');
+    }
+    return val;
+  };
+
   const formatClassSectionDisplay = (section?: string | null) => {
     if (!section) return 'Section -';
     const trimmed = section.trim();
@@ -137,7 +145,7 @@ export const Classes = () => {
     setCreating(true);
     try {
       const response = await classService.createClass({
-        name: `Grade ${createForm.grade}`,
+        name: createForm.grade.startsWith('KG') ? createForm.grade : `Grade ${createForm.grade}`,
         section: `Section ${createForm.section}`,
         capacity: createForm.capacity
       });
@@ -160,7 +168,7 @@ export const Classes = () => {
     setUpdating(true);
     try {
       const updatePayload: UpdateClassData = {};
-      if (editForm.grade) updatePayload.name = `Grade ${editForm.grade}`;
+      if (editForm.grade) updatePayload.name = editForm.grade.startsWith('KG') ? editForm.grade : `Grade ${editForm.grade}`;
       if (editForm.section) updatePayload.section = `Section ${editForm.section}`;
       if (editForm.capacity !== undefined) updatePayload.capacity = editForm.capacity;
 
@@ -228,7 +236,7 @@ export const Classes = () => {
   const openEditModal = (classItem: Class) => {
     setSelectedClass(classItem);
     setEditForm({
-      grade: extractDigits(classItem.name),
+      grade: extractGradeName(classItem.name),
       section: extractDigits(classItem.section),
       capacity: classItem.capacity
     });
@@ -376,15 +384,17 @@ export const Classes = () => {
             <form className="p-6 space-y-4" onSubmit={handleCreateClass}>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
-                <input
-                  type="number"
-                  min="1"
+                <select
                   value={createForm.grade}
-                  onChange={(e) => setCreateForm({ ...createForm, grade: e.target.value.replace(/\D/g, '') })}
-                  placeholder="1"
+                  onChange={(e) => setCreateForm({ ...createForm, grade: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   required
-                />
+                >
+                  <option value="">Select Grade</option>
+                  {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+                    <option key={g} value={g}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -454,14 +464,17 @@ export const Classes = () => {
             <form className="p-6 space-y-4" onSubmit={handleUpdateClass}>
               <div>
                 <label className="text-xs font-bold text-slate-500 uppercase">Grade</label>
-                <input
-                  type="number"
-                  min="1"
-                  title="Class grade"
+                <select
                   value={editForm.grade || ''}
-                  onChange={(e) => setEditForm({ ...editForm, grade: e.target.value.replace(/\D/g, '') })}
+                  onChange={(e) => setEditForm({ ...editForm, grade: e.target.value })}
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                  required
+                >
+                  <option value="">Select Grade</option>
+                  {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+                    <option key={g} value={g}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

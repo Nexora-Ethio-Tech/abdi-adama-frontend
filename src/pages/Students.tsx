@@ -18,13 +18,19 @@ export const Students = () => {
 
   const formatGradeDisplay = (grade?: string | null) => {
     const trimmed = String(grade || '').trim();
+    if (/^kg/i.test(trimmed)) {
+      return trimmed;
+    }
     const match = trimmed.match(/(\d{1,2})/);
     return match ? `Grade ${match[1]}` : trimmed || '-';
   };
 
   const getGradeNumber = (grade?: string | null) => {
-    const match = String(grade || '').trim().match(/(\d{1,2})/);
-    return match ? match[1] : '';
+    const trimmed = String(grade || '').trim();
+    if (trimmed.startsWith('Grade ')) {
+      return trimmed.replace(/^Grade\s+/i, '');
+    }
+    return trimmed;
   };
 
   const formatSectionDisplay = (section?: string | null) => {
@@ -593,8 +599,8 @@ export const Students = () => {
           className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Grades</option>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-            <option key={g} value={String(g)}>Grade {g}</option>
+          {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+            <option key={g} value={String(g)}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>
           ))}
         </select>
         <select
@@ -1057,8 +1063,8 @@ export const Students = () => {
                   className="w-full mt-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select Grade</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(g => (
-                    <option key={g} value={`Grade ${g}`}>Grade {g}</option>
+                  {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+                    <option key={g} value={g.startsWith('KG') ? g : `Grade ${g}`}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>
                   ))}
                 </select>
               </div>

@@ -131,16 +131,9 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
 
   const addGrade = (gradeName?: string) => {
     let input = (gradeName || '').trim();
-    // create a unique internal key
+    if (!input) return;
     const key = `grade_${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
-    let display = '';
-    if (!input) {
-      display = `Untitled Grade`;
-    } else {
-      // If user entered a plain number like '10', convert to 'Grade 10'
-      display = /^\d+$/.test(input) ? `Grade ${input}` : input;
-    }
-    setGradeMap(prev => ({ ...prev, [key]: { displayName: display, sections: [], courses: [] } }));
+    setGradeMap(prev => ({ ...prev, [key]: { displayName: input, sections: [], courses: [] } }));
     setNewGradeInput('');
     // scroll to bottom so newly added grade is visible
     setTimeout(() => {
@@ -435,13 +428,17 @@ export const TimetableStructureEditor: React.FC<Props> = ({ classes, teachers, i
           <p className="text-xs text-slate-400 mt-1">Teachers available: <span className="font-bold text-slate-700">{teachers.length}</span></p>
         </div>
         <div className="flex items-center gap-2">
-          <input
-            placeholder="Grade number (e.g. 10) or name"
+          <select
             value={newGradeInput}
             onChange={(e) => setNewGradeInput(e.target.value)}
-            className="px-3 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm w-40"
-          />
-          <button onClick={() => addGrade(newGradeInput)} className="px-3 py-1 bg-indigo-600 text-white rounded-md text-sm">Add Grade</button>
+            className="px-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm w-40"
+          >
+            <option value="">Select Grade</option>
+            {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+              <option key={g} value={g.startsWith('KG') ? g : `Grade ${g}`}>{g.startsWith('KG') ? g : `Grade ${g}`}</option>
+            ))}
+          </select>
+          <button onClick={() => addGrade(newGradeInput)} className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-bold">Add Grade</button>
         </div>
       </div>
 
