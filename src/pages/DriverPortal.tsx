@@ -18,8 +18,9 @@ export const DriverPortal = () => {
   const { user } = useUser();
   const { notices, setNotices, deleteNotice } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'manifest' | 'announcements'>('manifest');
+  const [activeTab, setActiveTab] = useState<'manifest' | 'announcements' | 'school-notifications'>('manifest');
   const [manifest, setManifest] = useState<ManifestItem[]>([]);
+  const [schoolNotifications, setSchoolNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
@@ -61,11 +62,26 @@ export const DriverPortal = () => {
     }
   };
 
+  const fetchSchoolNotifications = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/driver/school-announcements');
+      setSchoolNotifications(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch school announcements:', err);
+      setError('Failed to load school notifications');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'manifest') {
       fetchManifest();
     } else if (activeTab === 'announcements') {
       fetchNotices();
+    } else if (activeTab === 'school-notifications') {
+      fetchSchoolNotifications();
     }
   }, [activeTab]);
 
@@ -192,6 +208,13 @@ export const DriverPortal = () => {
           <Megaphone size={18} />
           Announcements
         </button>
+        <button
+          onClick={() => setActiveTab('school-notifications')}
+          className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-black transition-all ${activeTab === 'school-notifications' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}
+        >
+          <AlertCircle size={18} />
+          School Notifications
+        </button>
       </div>
 
       {/* Manifest Tab */}
@@ -281,6 +304,59 @@ export const DriverPortal = () => {
             {driverNotices.length === 0 && (
               <div className="text-center py-8 text-slate-400">
                 <p className="font-bold italic">No announcements posted yet</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* School Notifications Tab */}
+      {activeTab === 'school-notifications' && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">School Notifications</h3>
+            <button onClick={fetchSchoolNotifications} className="text-orange-600 hover:rotate-180 transition-transform duration-500">
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {schoolNotifications.map((notice, i) => (
+              <div key={i} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                      notice.priority === 'High' 
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' 
+                        : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                    }`}>
+                      {notice.priority || 'Normal'} Priority
+                    </span>
+                    {notice.category && (
+                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold rounded-full">
+                        {notice.category}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-400 font-bold">
+                      {new Date(notice.timestamp).toLocaleDateString(undefined, { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                </div>
+                <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">{notice.title}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{notice.content}</p>
+                <p className="text-[10px] text-slate-400 mt-2 font-medium">Posted by: {notice.posted_by_name || 'School Admin'}</p>
+              </div>
+            ))}
+            {schoolNotifications.length === 0 && !loading && (
+              <div className="text-center py-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
+                <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"><AlertCircle size={28} className="text-slate-400" /></div>
+                <p className="font-bold text-slate-500 dark:text-slate-400">No school notifications yet</p>
               </div>
             )}
           </div>

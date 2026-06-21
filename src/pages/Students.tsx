@@ -703,7 +703,7 @@ export const Students = () => {
                 </div>
               )}
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto min-h-[280px]">
               <table className="w-full text-left min-w-[800px]">
                 <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
                   <tr>

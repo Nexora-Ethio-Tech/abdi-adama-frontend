@@ -12,6 +12,12 @@ export const getTeacherSchedule = async () => {
   return response.data.data;
 };
 
+// ─── Announcements ────────────────────────────────────────────────────────────
+export const getSchoolAnnouncements = async () => {
+  const response = await api.get('/teacher/announcements');
+  return response.data.data;
+};
+
 // ─── Classes ──────────────────────────────────────────────────────────────────
 export const getMyClasses = async (purpose?: 'grades' | 'attendance') => {
   const params = purpose ? `?purpose=${purpose}` : '';
@@ -313,6 +319,7 @@ const teacherService = {
   getDepartmentHeads,
   getDeptPlans,
   reviewDeptPlan,
+  getSchoolAnnouncements,
 };
 
 export default teacherService;

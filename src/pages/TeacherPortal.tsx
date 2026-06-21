@@ -15,7 +15,8 @@ import {
   reviewDeptPlan,
   submitCommunicationLog,
   getCommunicationLogs,
-  getCommunicationLogsByWeek
+  getCommunicationLogsByWeek,
+  getSchoolAnnouncements
 } from '../services/teacherService';
 import {
   getTeacherExams,
@@ -50,6 +51,7 @@ export const TeacherPortal = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'exams' | 'dept-tasks'>('overview');
   const [dashboard, setDashboard] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<any>(null);
@@ -248,16 +250,18 @@ export const TeacherPortal = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dash, planList, classList, examsData, courseList] = await Promise.all([
+      const [dash, planList, classList, examsData, courseList, announcementList] = await Promise.all([
         getTeacherDashboard().catch(() => null),
         getMyWeeklyPlans().catch(() => []),
         getMyClasses('grades').catch(() => []),
         getTeacherExams().catch(() => ({ draftExams: [], publishedExams: [] })),
-        getTeacherCoursesForExams().catch(() => [])   // real assigned courses from DB
+        getTeacherCoursesForExams().catch(() => []),   // real assigned courses from DB
+        getSchoolAnnouncements().catch(() => [])
       ]);
       setDashboard(dash);
       setPlans(Array.isArray(planList) ? planList : []);
       setMyClasses(Array.isArray(classList) ? classList : []);
+      setAnnouncements(Array.isArray(announcementList) ? announcementList : []);
 
       const rawCourses = Array.isArray(courseList) ? courseList : [];
       if (rawCourses.length === 0) {
@@ -923,6 +927,57 @@ export const TeacherPortal = () => {
                         </Link>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* School Announcements */}
+          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden mt-6">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-white">Announcements from School Administration</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Important notifications and updates from the administration</p>
+              </div>
+              <span className="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full text-xs font-bold">{announcements.length} announcement{announcements.length !== 1 ? 's' : ''}</span>
+            </div>
+            {announcements.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="bg-slate-50 dark:bg-slate-800 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"><AlertCircle size={28} className="text-slate-400" /></div>
+                <p className="font-bold text-slate-500 dark:text-slate-400">No announcements yet</p>
+                <p className="text-xs text-slate-400 mt-1">Check back later for any updates from school administration.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {announcements.map((ann: any) => (
+                  <div key={ann.id} className="p-8 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-all">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                        ann.priority === 'High' 
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' 
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      }`}>
+                        {ann.priority || 'Normal'} Priority
+                      </span>
+                      {ann.category && (
+                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-bold rounded-full">
+                          {ann.category}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-slate-400 ml-auto font-medium">
+                        {new Date(ann.timestamp).toLocaleDateString(undefined, { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">{ann.title}</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">{ann.content}</p>
+                    <p className="text-[10px] text-slate-400 mt-2 font-medium">Posted by: {ann.posted_by_name || 'School Admin'}</p>
                   </div>
                 ))}
               </div>
