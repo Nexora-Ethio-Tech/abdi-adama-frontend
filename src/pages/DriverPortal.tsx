@@ -5,6 +5,7 @@ import { useUser } from '../context/UserContext';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../context/useStore';
 import api from '../services/api';
+import { formatEthiopianLabel } from '../utils/ethiopianCalendar';
 
 interface ManifestItem {
   student_name: string;
@@ -286,7 +287,7 @@ export const DriverPortal = () => {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-full">Logistics</span>
-                    <span className="text-[10px] text-slate-400 font-bold">{notice.time}</span>
+                    <span className="text-[10px] text-slate-400 font-bold">{formatEthiopianLabel(notice.time)} {new Date(notice.time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                   <button
                     onClick={() => handleDeleteNotice(notice.id)}
@@ -338,13 +339,7 @@ export const DriverPortal = () => {
                       </span>
                     )}
                     <span className="text-[10px] text-slate-400 font-bold">
-                      {new Date(notice.timestamp).toLocaleDateString(undefined, { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatEthiopianLabel(notice.timestamp)} {new Date(notice.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
                 </div>

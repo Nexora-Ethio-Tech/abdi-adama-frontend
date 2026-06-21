@@ -966,13 +966,7 @@ export const TeacherPortal = () => {
                         </span>
                       )}
                       <span className="text-[10px] text-slate-400 ml-auto font-medium">
-                        {new Date(ann.timestamp).toLocaleDateString(undefined, { 
-                          year: 'numeric', 
-                          month: 'short', 
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {formatEthiopianLabel(ann.timestamp)} {new Date(ann.timestamp).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                     <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm mb-1">{ann.title}</h4>
