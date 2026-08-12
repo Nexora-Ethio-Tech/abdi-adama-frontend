@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2, Shield } from 'lucide-react';
+import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2, Shield, Lock, Unlock, Clock, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 import { toggleGradeSubmission } from '../services/vicePrincipalService';
 import { useUser } from '../context/UserContext';
@@ -52,6 +52,21 @@ interface StudentGrade {
   grades: Record<string, any>;
 }
 
+interface GradeSubmissionRecord {
+  id: string;
+  course_id: string;
+  teacher_id: string;
+  course_name: string;
+  course_code: string;
+  teacher_name: string;
+  submission_type: string;
+  academic_year: string;
+  semester: number;
+  submitted_at: string;
+  is_locked: boolean;
+  submission_stage: string;
+}
+
 export const VPGradeManagement = () => {
   const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
@@ -70,14 +85,76 @@ export const VPGradeManagement = () => {
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
+  // Submissions & Re-submission Unlock State
+  const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
+  const [submissions, setSubmissions] = useState<GradeSubmissionRecord[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
+  const fetchSubmissions = useCallback(async () => {
+    try {
+      setLoadingSubmissions(true);
+      const data = await vicePrincipalService.getGradeSubmissions();
+      setSubmissions(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch grade submissions:', err);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchGradesAndSections();
-  }, []);
+    fetchSubmissions();
+  }, [fetchSubmissions]);
+
+  const handleUnlockSubmission = async (sub: GradeSubmissionRecord) => {
+    const currentActiveYear = ecYearToGregorian(getCurrentECYear());
+    const currentActiveSemNum = getCurrentSemester();
+
+    // Active semester & year check
+    if (sub.academic_year !== currentActiveYear || Number(sub.semester) !== Number(currentActiveSemNum)) {
+      showToast('Unlock denied: Grade submission belongs to a past semester or academic year.', 'error');
+      return;
+    }
+
+    // 30-day window check
+    const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+    const submittedTime = new Date(sub.submitted_at).getTime();
+    if (Date.now() - submittedTime > THIRTY_DAYS_MS) {
+      showToast('Unlock denied: Grade submission is older than 30 days.', 'error');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to unlock grade submission for "${sub.course_name}" (${sub.submission_type}) by ${sub.teacher_name}?\n\nThis will grant edit permission back to the teacher so they can correct and resubmit scores.`)) {
+      return;
+    }
+
+    setUnlockingId(sub.id);
+    try {
+      const res = await vicePrincipalService.unlockGradeSubmission({
+        courseId: sub.course_id,
+        submissionType: sub.submission_type,
+        academicYear: sub.academic_year,
+        semester: sub.semester,
+      });
+      showToast(res.message || 'Submission successfully unlocked for teacher.', 'success');
+      fetchSubmissions();
+      if (selectedSection && selectedGradeGroup) {
+        handleSectionSelect(selectedGradeGroup, selectedSection, selectedYear, selectedSemester);
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Failed to unlock grade submission';
+      showToast(message, 'error');
+    } finally {
+      setUnlockingId(null);
+    }
+  };
 
   const fetchGradesAndSections = async () => {
     try {
@@ -301,12 +378,12 @@ export const VPGradeManagement = () => {
           </div>
           <div>
             <p className={`text-sm font-black uppercase tracking-tight ${gradeSubmissionOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-              Grade Submission {gradeSubmissionOpen ? 'Open' : 'Closed'}
+              Grade Submission Window: {gradeSubmissionOpen ? 'OPEN' : 'CLOSED'}
             </p>
             <p className={`text-[10px] font-medium ${gradeSubmissionOpen ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>
               {gradeSubmissionOpen
-                ? 'Teachers can currently submit grades for their sections.'
-                : 'Grade submission is disabled. Contact the Vice Principal to re-open.'}
+                ? 'Teachers can currently enter and submit grades for their assigned courses.'
+                : 'System-wide grade submission is closed. Teachers cannot submit new grades.'}
             </p>
           </div>
         </div>
@@ -315,7 +392,169 @@ export const VPGradeManagement = () => {
         </div>
       </div>
 
-      {/* Academic Period Filter */}
+      {/* Navigation Sub-Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          onClick={() => setActiveTab('section-grades')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === 'section-grades'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <BarChart3 size={15} />
+          Section Grade Processing
+        </button>
+        <button
+          onClick={() => setActiveTab('submissions-review')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+            activeTab === 'submissions-review'
+              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <KeyRound size={15} />
+          Teacher Submissions & Re-submission Permissions
+          {submissions.filter((s) => s.is_locked).length > 0 && (
+            <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-extrabold">
+              {submissions.filter((s) => s.is_locked).length} Locked
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* SUBMISSIONS REVIEW & RE-SUBMISSION UNLOCK PANEL */}
+      {activeTab === 'submissions-review' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <KeyRound className="text-indigo-600" size={20} />
+                  Teacher Grade Submissions & Unlock Permissions
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Grant re-submission permission to teachers who mistakenly submitted incomplete grades.
+                  <span className="font-semibold text-amber-600 dark:text-amber-400 ml-1">
+                    (Strict Security Rule: Active Semester Only &amp; &le; 30 Days From Submission)
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => fetchSubmissions()}
+                disabled={loadingSubmissions}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all"
+              >
+                <RefreshCw size={14} className={loadingSubmissions ? 'animate-spin' : ''} />
+                Refresh Submissions
+              </button>
+            </div>
+
+            {loadingSubmissions ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
+              </div>
+            ) : submissions.length === 0 ? (
+              <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                <Lock className="mx-auto text-slate-400 mb-3" size={32} />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No Grade Submissions Found</p>
+                <p className="text-xs text-slate-400 mt-1">When teachers submit their assessment grades, they will appear here for review and unlock control.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <th className="py-3 px-4">Course & Code</th>
+                      <th className="py-3 px-4">Teacher Name</th>
+                      <th className="py-3 px-4">Assessment Type</th>
+                      <th className="py-3 px-4">Academic Period</th>
+                      <th className="py-3 px-4">Submitted At</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">VP Permission Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {submissions.map((sub) => {
+                      const currentActiveYear = ecYearToGregorian(getCurrentECYear());
+                      const currentActiveSemNum = getCurrentSemester();
+                      const isActivePeriod = sub.academic_year === currentActiveYear && Number(sub.semester) === Number(currentActiveSemNum);
+
+                      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+                      const submittedTime = new Date(sub.submitted_at).getTime();
+                      const isWithin30Days = Date.now() - submittedTime <= THIRTY_DAYS_MS;
+                      const isEligibleToUnlock = sub.is_locked && isActivePeriod && isWithin30Days;
+
+                      return (
+                        <tr key={sub.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-4 px-4">
+                            <p className="font-bold text-sm text-slate-800 dark:text-white">{sub.course_name}</p>
+                            <p className="text-xs text-slate-400">{sub.course_code}</p>
+                          </td>
+                          <td className="py-4 px-4 font-semibold text-sm text-slate-700 dark:text-slate-300">
+                            {sub.teacher_name}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold uppercase tracking-wider">
+                              {sub.submission_type}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4 text-xs font-medium text-slate-600 dark:text-slate-400">
+                            {gregorianToECYear(sub.academic_year)} E.C. &bull; Semester {sub.semester}
+                          </td>
+                          <td className="py-4 px-4 text-xs text-slate-500">
+                            <div className="flex items-center gap-1">
+                              <Clock size={13} className="text-slate-400" />
+                              {new Date(sub.submitted_at).toLocaleString()}
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            {sub.is_locked ? (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-full text-xs font-extrabold border border-rose-200 dark:border-rose-800">
+                                <Lock size={12} />
+                                Locked
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-extrabold border border-emerald-200 dark:border-emerald-800">
+                                <Unlock size={12} />
+                                Unlocked (Teacher Editable)
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            {isEligibleToUnlock ? (
+                              <button
+                                onClick={() => handleUnlockSubmission(sub)}
+                                disabled={unlockingId === sub.id}
+                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
+                              >
+                                <KeyRound size={14} />
+                                {unlockingId === sub.id ? 'Unlocking...' : 'Unlock & Grant Edit'}
+                              </button>
+                            ) : sub.is_locked ? (
+                              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800" title="Security Rule: Cannot unlock past semester or submissions older than 30 days.">
+                                <AlertTriangle size={13} />
+                                {!isActivePeriod ? 'Past Semester (Locked)' : '30-Day Window Expired'}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Teacher Can Edit</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SECTION GRADE PROCESSING CONTENT */}
+      {activeTab === 'section-grades' && (
+        <>
+          {/* Academic Period Filter */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row gap-6 items-end">
           <div className="flex-1">
@@ -601,6 +840,8 @@ export const VPGradeManagement = () => {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
 
       {/* Toast Notification */}

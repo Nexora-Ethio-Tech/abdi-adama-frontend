@@ -57,6 +57,23 @@ export const toggleGradeSubmission = async (open: boolean): Promise<void> => {
   return response.data;
 };
 
+// Unlock Grade Submission for a specific course & assessment (grant edit permission back to teacher)
+export const unlockGradeSubmission = async (data: {
+  courseId: string;
+  submissionType: string;
+  academicYear?: string;
+  semester?: number;
+}) => {
+  const response = await api.post('/vice-principal/unlock-grade-submission', data);
+  return response.data;
+};
+
+// Fetch submitted grades across the branch for VP review & unlock management
+export const getGradeSubmissions = async () => {
+  const response = await api.get('/vice-principal/grade-submissions');
+  return response.data.data;
+};
+
 
 // Student Transcript
 export const getStudentTranscript = async (studentId: string, academicYear?: string, semester?: number) => {
