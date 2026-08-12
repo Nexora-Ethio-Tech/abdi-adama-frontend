@@ -23,7 +23,7 @@ type ScoreMap = Record<string, Record<string, number | ''>>;
 export const GradeEntry = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { gradesLocked } = useUser();
+  const { gradesLocked, gradeSubmissionOpen } = useUser();
 
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -159,7 +159,7 @@ export const GradeEntry = () => {
   };
 
   const handleSave = async () => {
-    if (gradesLocked || !selectedCourseId || periodBlocked) return;
+    if (gradesLocked || !gradeSubmissionOpen || !selectedCourseId || periodBlocked) return;
     setSaving(true);
     setSaveError('');
     try {
@@ -199,7 +199,7 @@ export const GradeEntry = () => {
   };
 
   const handleSubmitGrades = async () => {
-    if (gradesLocked || !selectedCourseId) return;
+    if (gradesLocked || !gradeSubmissionOpen || !selectedCourseId) return;
     // Confirm with user
     if (!window.confirm('Are you sure you want to Submit? Once submitted, these grades will be LOCKED and visible to the administration, parents, and students. You will not be able to edit them.')) return;
     
@@ -371,7 +371,7 @@ export const GradeEntry = () => {
           )}
         </div>
 
-        {!gradesLocked && !isLoading && (
+        {!gradesLocked && gradeSubmissionOpen && !isLoading && (
           <div className="flex gap-3">
             <button
               onClick={handleSave}
@@ -409,6 +409,16 @@ export const GradeEntry = () => {
           <div>
             <p className="font-bold text-sm">Grade Insertion is Currently Locked</p>
             <p className="text-xs opacity-80">The administration has closed the window for grade entry. You can view scores but cannot modify them.</p>
+          </div>
+        </div>
+      )}
+
+      {!gradeSubmissionOpen && !gradesLocked && (
+        <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 p-4 rounded-xl flex items-center gap-3 text-rose-800 dark:text-rose-300">
+          <Lock size={20} className="text-rose-500 flex-shrink-0" />
+          <div>
+            <p className="font-bold text-sm">Grade Submission is Closed</p>
+            <p className="text-xs opacity-80">Grade submission has been closed by the Vice Principal. You cannot submit or save grades at this time. Please talk to your VP for permission.</p>
           </div>
         </div>
       )}
@@ -471,7 +481,7 @@ export const GradeEntry = () => {
                           return (
                             <td key={method.id} className="px-4 py-4">
                               <input
-                                disabled={gradesLocked || isLocked}
+                                disabled={gradesLocked || !gradeSubmissionOpen || isLocked}
                                 type="number"
                                 min={0}
                                 max={method.maxWeight}
