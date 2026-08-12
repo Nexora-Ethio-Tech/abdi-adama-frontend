@@ -59,18 +59,66 @@ export const GradeEntry = () => {
   const initialSubject = searchParams.get('subject');
 
   // Load students and grading config when a class is selected
-  const handleSelectClass = useCallback(async (cls: TeacherClass, courseId: string, subject: string) => {
+  // Helper to load existing grades for the selected class, course, academic year and semester
+  const loadGradesForPeriod = useCallback(async (courseId: string, gradeLevel: string, year: string, semesterLabel: 'First Semester' | 'Second Semester') => {
+    setLoadingMethods(true);
+    const semNum = semesterLabel === 'First Semester' ? 1 : 2;
+
+    try {
+      const methods = await getGradingConfigsForGrade(gradeLevel);
+      if (methods.length === 0) {
+        setSaveError(`No grading configuration found for Grade ${gradeLevel}. Please ask your admin to configure it in Settings.`);
+        setGradingMethods([]);
+      } else {
+        setGradingMethods(methods);
+      }
+
+      // Prefill existing grades for this course and period
+      try {
+        const [existing, submissions] = await Promise.all([
+          getCourseGrades(courseId, year, semNum),
+          getGradeSubmissions()
+        ]);
+        const prefill: ScoreMap = {};
+        const locks = new Set<string>();
+        for (const g of (existing || [])) {
+          if (!prefill[g.student_id]) prefill[g.student_id] = {};
+          prefill[g.student_id][g.type] = g.score ?? '';
+          if (g.is_submitted) {
+            locks.add(g.type);
+          }
+        }
+        // Also check explicit submissions in case there were no grades entered when it was locked
+        for (const sub of (submissions || [])) {
+          if (
+            sub.course_id === courseId &&
+            (!sub.academic_year || sub.academic_year === year) &&
+            (sub.semester === undefined || sub.semester === null || Number(sub.semester) === semNum) &&
+            sub.is_locked
+          ) {
+            locks.add(sub.submission_type);
+          }
+        }
+        setScores(prefill);
+        setLockedMethods(locks);
+      } catch { /* no prefill */ }
+    } catch (err: any) {
+      setSaveError(`Could not load grading components: ${err?.message || 'Unknown error'}. Please try again.`);
+      setGradingMethods([]);
+    } finally {
+      setLoadingMethods(false);
+    }
+  }, []);
+
+  const handleSelectClass = useCallback((cls: TeacherClass, courseId: string, subjectName: string) => {
     setSelectedClass(cls);
     setSelectedCourseId(courseId);
-    setSelectedSubject(subject);
-    setStudents([]);
-    setGradingMethods([]);
+    setSelectedSubject(subjectName);
     setScores({});
     setLockedMethods(new Set());
     setSaveError('');
 
     setLoadingStudents(true);
-    setLoadingMethods(true);
 
     const rosterClassId = (cls as any).class_id || cls.id;
     getClassStudents(rosterClassId)
@@ -78,49 +126,17 @@ export const GradeEntry = () => {
       .catch(() => setStudents([]))
       .finally(() => setLoadingStudents(false));
 
-    // Load grading methods for this grade level, then prefill existing grades
     const gradeLevel = cls.gradeLevel || (cls as any).grade_level || cls.name?.replace(/\D/g, '') || 'default';
-    getGradingConfigsForGrade(gradeLevel)
-      .then(async (methods) => {
-        if (methods.length === 0) {
-          setSaveError(`No grading configuration found for Grade ${gradeLevel}. Please ask your admin to configure it in Settings.`);
-          setGradingMethods([]);
-        } else {
-          setGradingMethods(methods);
-        }
+    loadGradesForPeriod(courseId, gradeLevel, selectedYear, selectedSemester);
+  }, [selectedYear, selectedSemester, loadGradesForPeriod]);
 
-        // Prefill existing grades for this course
-        try {
-          const [existing, submissions] = await Promise.all([
-            getCourseGrades(courseId),
-            getGradeSubmissions()
-          ]);
-          const prefill: ScoreMap = {};
-          const locks = new Set<string>();
-          for (const g of (existing || [])) {
-            if (!prefill[g.student_id]) prefill[g.student_id] = {};
-            // match by type (method id)
-            prefill[g.student_id][g.type] = g.score ?? '';
-            if (g.is_submitted) {
-              locks.add(g.type);
-            }
-          }
-          // Also check explicit submissions in case there were no grades entered when it was locked
-          for (const sub of (submissions || [])) {
-            if (sub.course_id === courseId) {
-              locks.add(sub.submission_type);
-            }
-          }
-          setScores(prefill);
-          setLockedMethods(locks);
-        } catch { /* no prefill */ }
-      })
-      .catch((err) => {
-        setSaveError(`Could not load grading components: ${err?.message || 'Unknown error'}. Please try again.`);
-        setGradingMethods([]);
-      })
-      .finally(() => setLoadingMethods(false));
-  }, []);
+  // Re-load grades whenever teacher switches selectedYear or selectedSemester
+  useEffect(() => {
+    if (selectedClass && selectedCourseId) {
+      const gradeLevel = selectedClass.gradeLevel || (selectedClass as any).grade_level || selectedClass.name?.replace(/\D/g, '') || 'default';
+      loadGradesForPeriod(selectedCourseId, gradeLevel, selectedYear, selectedSemester);
+    }
+  }, [selectedYear, selectedSemester]);
 
   // Load teacher's classes on mount
   useEffect(() => {
@@ -210,27 +226,28 @@ export const GradeEntry = () => {
       await handleSave();
       
       // 2. Lock all unlocked methods
+      const semNum = selectedSemester === 'First Semester' ? 1 : 2;
       const newLocks = new Set(lockedMethods);
-                for (const method of gradingMethods) {
-            if (!lockedMethods.has(method.id)) {
-              // Check if there are actually any scores for this method to prevent empty submissions
-              const hasScores = students.some(s => scores[s.id]?.[method.id] !== '' && scores[s.id]?.[method.id] !== undefined);
-              if (hasScores) {
-                try {
-                  await submitCourseGrades(selectedCourseId, method.id);
-                  newLocks.add(method.id);
-                } catch (err: any) {
-                  // If already submitted and locked, just add to locks and continue
-                  const errMsg = err?.response?.data?.error?.message || err?.response?.data?.message || '';
-                  if (errMsg.includes('already been submitted')) {
-                    newLocks.add(method.id);
-                  } else {
-                    throw err;
-                  }
-                }
+      for (const method of gradingMethods) {
+        if (!lockedMethods.has(method.id)) {
+          // Check if there are actually any scores for this method to prevent empty submissions
+          const hasScores = students.some(s => scores[s.id]?.[method.id] !== '' && scores[s.id]?.[method.id] !== undefined);
+          if (hasScores) {
+            try {
+              await submitCourseGrades(selectedCourseId, method.id, { academicYear: selectedYear, semester: semNum });
+              newLocks.add(method.id);
+            } catch (err: any) {
+              // If already submitted and locked, just add to locks and continue
+              const errMsg = err?.response?.data?.error?.message || err?.response?.data?.message || '';
+              if (errMsg.includes('already been submitted')) {
+                newLocks.add(method.id);
+              } else {
+                throw err;
               }
             }
           }
+        }
+      }
       setLockedMethods(newLocks);
       setSubmitted(true);
       setTimeout(() => setSubmitted(false), 3000);
