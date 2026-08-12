@@ -58,6 +58,8 @@ interface UserContextType {
   setGradesLocked: (locked: boolean) => void;
   registrationOpen: boolean;
   setRegistrationOpen: (open: boolean) => void;
+  gradeSubmissionOpen: boolean;
+  setGradeSubmissionOpen: (open: boolean) => void;
   schoolName: MultilingualText;
   setSchoolName: (name: MultilingualText) => void;
   schoolMotto: MultilingualText;
@@ -88,6 +90,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [gradesLocked, setGradesLocked] = useState(false);
   const [registrationOpen, setRegistrationOpen] = useState(() => {
     return localStorage.getItem('registration_open') !== 'false';
+  });
+  const [gradeSubmissionOpen, setGradeSubmissionOpen] = useState(() => {
+    return localStorage.getItem('grade_submission_open') !== 'false';
   });
 
   const [schoolName, setSchoolName] = useState<MultilingualText>(() => {
@@ -155,6 +160,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
         if (settings.registration_open !== undefined) {
           setRegistrationOpen(settings.registration_open !== 'false');
+        }
+        if (settings.grade_submission_open !== undefined) {
+          setGradeSubmissionOpen(settings.grade_submission_open !== 'false');
         }
       } catch {
         // Keep local defaults if API unavailable
@@ -295,6 +303,10 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('registration_open', registrationOpen.toString());
   }, [registrationOpen]);
 
+  useEffect(() => {
+    localStorage.setItem('grade_submission_open', gradeSubmissionOpen.toString());
+  }, [gradeSubmissionOpen]);
+
   const role = user?.role || null;
 
 
@@ -383,6 +395,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setGradesLocked,
       registrationOpen,
       setRegistrationOpen,
+      gradeSubmissionOpen,
+      setGradeSubmissionOpen,
       schoolName,
       setSchoolName,
       schoolMotto,

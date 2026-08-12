@@ -51,6 +51,13 @@ export const toggleGradeLock = async (data: {
   return response.data;
 };
 
+// Grade Submission Window Toggle (open/close for all teachers in branch)
+export const toggleGradeSubmission = async (open: boolean): Promise<void> => {
+  const response = await api.post('/vice-principal/grade-submission-settings', { open });
+  return response.data;
+};
+
+
 // Student Transcript
 export const getStudentTranscript = async (studentId: string, academicYear?: string, semester?: number) => {
   const params = new URLSearchParams();

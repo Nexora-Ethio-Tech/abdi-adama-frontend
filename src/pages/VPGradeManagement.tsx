@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2, Shield } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
+import { toggleGradeSubmission } from '../services/vicePrincipalService';
+import { useUser } from '../context/UserContext';
 import {
   getCurrentECYear,
   ecYearToGregorian,
@@ -51,6 +53,7 @@ interface StudentGrade {
 }
 
 export const VPGradeManagement = () => {
+  const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedGradeGroup, setSelectedGradeGroup] = useState<VpGradeGroup | null>(null);
@@ -63,6 +66,7 @@ export const VPGradeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [loadingSectionData, setLoadingSectionData] = useState(false);
   const [generatingResults, setGeneratingResults] = useState(false);
+  const [togglingSubmission, setTogglingSubmission] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
@@ -94,6 +98,21 @@ export const VPGradeManagement = () => {
       showToast(message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Toggle grade submission open/closed
+  const handleToggleGradeSubmission = async (newValue: boolean) => {
+    setTogglingSubmission(true);
+    try {
+      await toggleGradeSubmission(newValue);
+      setGradeSubmissionOpen(newValue);
+      showToast(`Grade submission is now ${newValue ? 'open' : 'closed'}.`, 'success');
+    } catch (err: any) {
+      console.error('Failed to toggle grade submission:', err);
+      showToast(err.response?.data?.message || 'Failed to update grade submission status.', 'error');
+    } finally {
+      setTogglingSubmission(false);
     }
   };
 
@@ -263,6 +282,38 @@ export const VPGradeManagement = () => {
           </p>
         </div>
       </section>
+
+      {/* Grade Submission Window Toggle */}
+      <div
+        onClick={() => !togglingSubmission && handleToggleGradeSubmission(!gradeSubmissionOpen)}
+        title={gradeSubmissionOpen ? 'Click to close grade submission' : 'Click to open grade submission'}
+        className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between cursor-pointer select-none hover:opacity-90 active:scale-[0.99] ${
+          togglingSubmission ? 'opacity-60 cursor-wait' : ''
+        } ${
+          gradeSubmissionOpen
+            ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10'
+            : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-xl text-white ${gradeSubmissionOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+            <Shield size={18} />
+          </div>
+          <div>
+            <p className={`text-sm font-black uppercase tracking-tight ${gradeSubmissionOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+              Grade Submission {gradeSubmissionOpen ? 'Open' : 'Closed'}
+            </p>
+            <p className={`text-[10px] font-medium ${gradeSubmissionOpen ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>
+              {gradeSubmissionOpen
+                ? 'Teachers can currently submit grades for their sections.'
+                : 'Grade submission is disabled. Contact the Vice Principal to re-open.'}
+            </p>
+          </div>
+        </div>
+        <div className={`w-12 h-6 rounded-full relative transition-colors ${gradeSubmissionOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${gradeSubmissionOpen ? 'right-1' : 'left-1'}`} />
+        </div>
+      </div>
 
       {/* Academic Period Filter */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
