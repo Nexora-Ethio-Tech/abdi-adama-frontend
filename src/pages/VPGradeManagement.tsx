@@ -65,6 +65,8 @@ interface GradeSubmissionRecord {
   submitted_at: string;
   is_locked: boolean;
   submission_stage: string;
+  grade_level?: string;
+  section_name?: string;
 }
 
 export const VPGradeManagement = () => {
@@ -94,6 +96,8 @@ export const VPGradeManagement = () => {
   // Submission filter state
   const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'unlocked' | 'not_submitted'>('all');
   const [submissionSearch, setSubmissionSearch] = useState('');
+  const [selectedSubmissionGrade, setSelectedSubmissionGrade] = useState<string>('all');
+  const [selectedSubmissionSection, setSelectedSubmissionSection] = useState<string>('all');
 
   // Section grade status filter state
   const [sectionGradeFilter, setSectionGradeFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
@@ -456,83 +460,170 @@ export const VPGradeManagement = () => {
             </div>
 
             {/* Filter Bar */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-6">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search by teacher or course name..."
-                  value={submissionSearch}
-                  onChange={(e) => setSubmissionSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                />
-              </div>
-              {/* Status Filter Tabs */}
-              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
-                <Filter size={13} className="text-slate-400 ml-1" />
-                {([
-                  { key: 'all',           label: 'All',           color: 'text-slate-600' },
-                  { key: 'submitted',     label: 'Submitted',     color: 'text-rose-600' },
-                  { key: 'not_submitted', label: 'Not Submitted', color: 'text-amber-600' },
-                  { key: 'unlocked',      label: 'Unlocked',      color: 'text-emerald-600' },
-                ] as const).map(({ key, label }) => {
-                  const submittedCount = submissions.filter(s => s.is_locked || s.submission_stage === 'submitted').length;
-                  const notSubmittedCount = submissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length;
-                  const unlockedCount = submissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length;
-                  const count = key === 'submitted' ? submittedCount : key === 'not_submitted' ? notSubmittedCount : unlockedCount;
+            {(() => {
+              // Helper to format grade display name cleanly
+              const formatGradeDisplay = (g?: string) => {
+                if (!g) return '';
+                const cleaned = g.replace(/^Grade\s*/i, '').trim();
+                return cleaned ? `Grade ${cleaned}` : '';
+              };
 
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSubmissionFilter(key)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
-                        submissionFilter === key
-                          ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                      }`}
-                    >
-                      {label}
-                      {key !== 'all' && (
-                        <span className="ml-1 opacity-70">
-                          ({count})
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              // Extract unique grades from submissions
+              const availableSubmissionGrades = Array.from(
+                new Set(
+                  submissions
+                    .map(s => formatGradeDisplay(s.grade_level))
+                    .filter(Boolean)
+                )
+              ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
-            {/* Summary Chips */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Total Courses: {submissions.length}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                <Lock size={11} />
-                Submitted &amp; Locked: {submissions.filter(s => s.is_locked || s.submission_stage === 'submitted').length}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                <AlertTriangle size={11} />
-                Not Submitted / Pending: {submissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
-                <Unlock size={11} />
-                Unlocked (Editable): {submissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length}
-              </span>
-            </div>
+              // Extract unique sections from submissions for the selected grade
+              const availableSubmissionSections = Array.from(
+                new Set(
+                  submissions
+                    .filter(s => {
+                      if (selectedSubmissionGrade === 'all') return true;
+                      return formatGradeDisplay(s.grade_level) === selectedSubmissionGrade;
+                    })
+                    .map(s => s.section_name)
+                    .filter(Boolean)
+                )
+              ).sort();
+
+              // Active grade/section scoped dataset for tab counter metrics
+              const scopedSubmissions = submissions.filter(s => {
+                if (selectedSubmissionGrade !== 'all' && formatGradeDisplay(s.grade_level) !== selectedSubmissionGrade) return false;
+                if (selectedSubmissionSection !== 'all' && s.section_name !== selectedSubmissionSection) return false;
+                return true;
+              });
+
+              return (
+                <>
+                  <div className="flex flex-col lg:flex-row gap-3 mb-4">
+                    {/* Search */}
+                    <div className="relative flex-1">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search by teacher, course, grade or section..."
+                        value={submissionSearch}
+                        onChange={(e) => setSubmissionSearch(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                      />
+                    </div>
+
+                    {/* Grade Level Dropdown Filter */}
+                    <div className="relative min-w-[160px]">
+                      <BookOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <select
+                        value={selectedSubmissionGrade}
+                        onChange={(e) => {
+                          setSelectedSubmissionGrade(e.target.value);
+                          setSelectedSubmissionSection('all');
+                        }}
+                        className="w-full pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+                      >
+                        <option value="all">All Grade Levels</option>
+                        {availableSubmissionGrades.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+
+                    {/* Section Dropdown Filter */}
+                    <div className="relative min-w-[150px]">
+                      <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      <select
+                        value={selectedSubmissionSection}
+                        onChange={(e) => setSelectedSubmissionSection(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+                      >
+                        <option value="all">All Sections</option>
+                        {availableSubmissionSections.map(sec => (
+                          <option key={sec} value={sec}>{sec}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+
+                    {/* Status Filter Tabs */}
+                    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 overflow-x-auto">
+                      <Filter size={13} className="text-slate-400 ml-1 shrink-0" />
+                      {([
+                        { key: 'all',           label: 'All' },
+                        { key: 'submitted',     label: 'Submitted' },
+                        { key: 'not_submitted', label: 'Not Submitted' },
+                        { key: 'unlocked',      label: 'Unlocked' },
+                      ] as const).map(({ key, label }) => {
+                        const submittedCount = scopedSubmissions.filter(s => s.is_locked || s.submission_stage === 'submitted' || s.submission_stage === 'finalized').length;
+                        const notSubmittedCount = scopedSubmissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length;
+                        const unlockedCount = scopedSubmissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length;
+                        const count = key === 'submitted' ? submittedCount : key === 'not_submitted' ? notSubmittedCount : unlockedCount;
+
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setSubmissionFilter(key)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${
+                              submissionFilter === key
+                                ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                            }`}
+                          >
+                            {label}
+                            {key !== 'all' && (
+                              <span className="ml-1 opacity-70">
+                                ({count})
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Summary Chips */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      <span className="w-2 h-2 rounded-full bg-slate-400" />
+                      Total Courses: {scopedSubmissions.length}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                      <Lock size={11} />
+                      Submitted &amp; Locked: {scopedSubmissions.filter(s => s.is_locked || s.submission_stage === 'submitted' || s.submission_stage === 'finalized').length}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                      <AlertTriangle size={11} />
+                      Not Submitted / Pending: {scopedSubmissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+                      <Unlock size={11} />
+                      Unlocked (Editable): {scopedSubmissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
 
             {loadingSubmissions ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
               </div>
             ) : (() => {
+              const formatGradeDisplay = (g?: string) => {
+                if (!g) return '';
+                const cleaned = g.replace(/^Grade\s*/i, '').trim();
+                return cleaned ? `Grade ${cleaned}` : '';
+              };
+
               const filtered = submissions
                 .filter(sub => {
+                  if (selectedSubmissionGrade !== 'all' && formatGradeDisplay(sub.grade_level) !== selectedSubmissionGrade) return false;
+                  if (selectedSubmissionSection !== 'all' && sub.section_name !== selectedSubmissionSection) return false;
+
                   const isNotSubmitted = sub.submission_stage === 'not_submitted' || !sub.submitted_at;
-                  const isSubmitted = sub.is_locked || sub.submission_stage === 'submitted';
+                  const isSubmitted = sub.is_locked || sub.submission_stage === 'submitted' || sub.submission_stage === 'finalized';
                   const isUnlocked = !sub.is_locked && !isNotSubmitted;
                   
                   if (submissionFilter === 'submitted') return isSubmitted;
@@ -542,19 +633,24 @@ export const VPGradeManagement = () => {
                 })
                 .filter(sub => {
                   const q = submissionSearch.toLowerCase();
-                  return !q || sub.teacher_name.toLowerCase().includes(q) || sub.course_name.toLowerCase().includes(q) || sub.course_code.toLowerCase().includes(q);
+                  return !q || 
+                    sub.teacher_name.toLowerCase().includes(q) || 
+                    sub.course_name.toLowerCase().includes(q) || 
+                    sub.course_code.toLowerCase().includes(q) ||
+                    (sub.grade_level && sub.grade_level.toLowerCase().includes(q)) ||
+                    (sub.section_name && sub.section_name.toLowerCase().includes(q));
                 });
 
               return filtered.length === 0 ? (
                 <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
                   <Lock className="mx-auto text-slate-400 mb-3" size={32} />
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                    {submissions.length === 0 ? 'No Grade Submissions Found' : 'No results match your filter'}
+                    {submissions.length === 0 ? 'No Grade Submissions Found' : 'No results match your selected filters'}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
                     {submissions.length === 0
                       ? 'When teachers submit grades, they will appear here.'
-                      : 'Try changing the filter or search term.'}
+                      : 'Try selecting a different Grade Level, Section, or search term.'}
                   </p>
                 </div>
               ) : (
@@ -563,6 +659,7 @@ export const VPGradeManagement = () => {
                     <thead>
                       <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                         <th className="py-3 px-4">Course & Code</th>
+                        <th className="py-3 px-4">Grade & Section</th>
                         <th className="py-3 px-4">Teacher Name</th>
                         <th className="py-3 px-4">Assessment Type</th>
                         <th className="py-3 px-4">Academic Period</th>
@@ -581,6 +678,7 @@ export const VPGradeManagement = () => {
                         const isWithin30Days = submittedTime > 0 && (Date.now() - submittedTime <= THIRTY_DAYS_MS);
                         const isEligibleToUnlock = sub.is_locked && isActivePeriod && isWithin30Days;
                         const isNotSubmitted = sub.submission_stage === 'not_submitted' || !sub.submitted_at;
+                        const formattedGrade = formatGradeDisplay(sub.grade_level);
 
                         return (
                           <tr key={sub.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${
@@ -589,6 +687,23 @@ export const VPGradeManagement = () => {
                             <td className="py-4 px-4">
                               <p className="font-bold text-sm text-slate-800 dark:text-white">{sub.course_name}</p>
                               <p className="text-xs text-slate-400">{sub.course_code}</p>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {formattedGrade && (
+                                  <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-bold text-xs">
+                                    {formattedGrade}
+                                  </span>
+                                )}
+                                {sub.section_name && (
+                                  <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded font-bold text-xs">
+                                    {sub.section_name}
+                                  </span>
+                                )}
+                                {!formattedGrade && !sub.section_name && (
+                                  <span className="text-xs text-slate-400 italic">General</span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex items-center gap-2">
