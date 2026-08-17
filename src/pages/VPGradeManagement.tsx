@@ -472,29 +472,35 @@ export const VPGradeManagement = () => {
               <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
                 <Filter size={13} className="text-slate-400 ml-1" />
                 {([
-                  { key: 'all',          label: 'All',          color: 'text-slate-600' },
-                  { key: 'submitted',    label: 'Submitted',    color: 'text-rose-600' },
-                  { key: 'unlocked',     label: 'Unlocked',     color: 'text-emerald-600' },
-                ] as const).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setSubmissionFilter(key)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
-                      submissionFilter === key
-                        ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
-                    }`}
-                  >
-                    {label}
-                    {key !== 'all' && (
-                      <span className="ml-1 opacity-70">
-                        ({key === 'submitted'
-                          ? submissions.filter(s => s.is_locked).length
-                          : submissions.filter(s => !s.is_locked).length})
-                      </span>
-                    )}
-                  </button>
-                ))}
+                  { key: 'all',           label: 'All',           color: 'text-slate-600' },
+                  { key: 'submitted',     label: 'Submitted',     color: 'text-rose-600' },
+                  { key: 'not_submitted', label: 'Not Submitted', color: 'text-amber-600' },
+                  { key: 'unlocked',      label: 'Unlocked',      color: 'text-emerald-600' },
+                ] as const).map(({ key, label }) => {
+                  const submittedCount = submissions.filter(s => s.is_locked || s.submission_stage === 'submitted').length;
+                  const notSubmittedCount = submissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length;
+                  const unlockedCount = submissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length;
+                  const count = key === 'submitted' ? submittedCount : key === 'not_submitted' ? notSubmittedCount : unlockedCount;
+
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setSubmissionFilter(key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                        submissionFilter === key
+                          ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      }`}
+                    >
+                      {label}
+                      {key !== 'all' && (
+                        <span className="ml-1 opacity-70">
+                          ({count})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -502,15 +508,19 @@ export const VPGradeManagement = () => {
             <div className="flex flex-wrap gap-2 mb-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300">
                 <span className="w-2 h-2 rounded-full bg-slate-400" />
-                Total: {submissions.length}
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-full text-[11px] font-bold text-rose-700 dark:text-rose-400">
-                <Lock size={11} />
-                Submitted & Locked: {submissions.filter(s => s.is_locked).length}
+                Total Courses: {submissions.length}
               </span>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                <Lock size={11} />
+                Submitted &amp; Locked: {submissions.filter(s => s.is_locked || s.submission_stage === 'submitted').length}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                <AlertTriangle size={11} />
+                Not Submitted / Pending: {submissions.filter(s => s.submission_stage === 'not_submitted' || !s.submitted_at).length}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
                 <Unlock size={11} />
-                Unlocked (Editable): {submissions.filter(s => !s.is_locked).length}
+                Unlocked (Editable): {submissions.filter(s => !s.is_locked && s.submission_stage !== 'not_submitted' && s.submitted_at).length}
               </span>
             </div>
 
@@ -521,8 +531,13 @@ export const VPGradeManagement = () => {
             ) : (() => {
               const filtered = submissions
                 .filter(sub => {
-                  if (submissionFilter === 'submitted') return sub.is_locked;
-                  if (submissionFilter === 'unlocked') return !sub.is_locked;
+                  const isNotSubmitted = sub.submission_stage === 'not_submitted' || !sub.submitted_at;
+                  const isSubmitted = sub.is_locked || sub.submission_stage === 'submitted';
+                  const isUnlocked = !sub.is_locked && !isNotSubmitted;
+                  
+                  if (submissionFilter === 'submitted') return isSubmitted;
+                  if (submissionFilter === 'not_submitted') return isNotSubmitted;
+                  if (submissionFilter === 'unlocked') return isUnlocked;
                   return true;
                 })
                 .filter(sub => {
@@ -562,13 +577,14 @@ export const VPGradeManagement = () => {
                         const currentActiveSemNum = getCurrentSemester();
                         const isActivePeriod = sub.academic_year === currentActiveYear && Number(sub.semester) === Number(currentActiveSemNum);
                         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-                        const submittedTime = new Date(sub.submitted_at).getTime();
-                        const isWithin30Days = Date.now() - submittedTime <= THIRTY_DAYS_MS;
+                        const submittedTime = sub.submitted_at ? new Date(sub.submitted_at).getTime() : 0;
+                        const isWithin30Days = submittedTime > 0 && (Date.now() - submittedTime <= THIRTY_DAYS_MS);
                         const isEligibleToUnlock = sub.is_locked && isActivePeriod && isWithin30Days;
+                        const isNotSubmitted = sub.submission_stage === 'not_submitted' || !sub.submitted_at;
 
                         return (
                           <tr key={sub.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${
-                            !sub.is_locked ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : ''
+                            isNotSubmitted ? 'bg-amber-50/30 dark:bg-amber-900/10' : !sub.is_locked ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : ''
                           }`}>
                             <td className="py-4 px-4">
                               <p className="font-bold text-sm text-slate-800 dark:text-white">{sub.course_name}</p>
@@ -591,16 +607,25 @@ export const VPGradeManagement = () => {
                               {gregorianToECYear(sub.academic_year)} E.C. &bull; Semester {sub.semester}
                             </td>
                             <td className="py-4 px-4 text-xs text-slate-500">
-                              <div className="flex items-center gap-1">
-                                <Clock size={13} className="text-slate-400" />
-                                {new Date(sub.submitted_at).toLocaleString()}
-                              </div>
+                              {sub.submitted_at ? (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={13} className="text-slate-400" />
+                                  {new Date(sub.submitted_at).toLocaleString()}
+                                </div>
+                              ) : (
+                                <span className="text-amber-600 dark:text-amber-400 italic font-semibold">Not yet submitted</span>
+                              )}
                             </td>
                             <td className="py-4 px-4">
-                              {sub.is_locked ? (
+                              {isNotSubmitted ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-extrabold border border-amber-200 dark:border-amber-800">
+                                  <AlertTriangle size={12} />
+                                  Not Submitted
+                                </span>
+                              ) : sub.is_locked ? (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-full text-xs font-extrabold border border-rose-200 dark:border-rose-800">
                                   <Lock size={12} />
-                                  Submitted & Locked
+                                  Submitted &amp; Locked
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-extrabold border border-emerald-200 dark:border-emerald-800">
@@ -610,7 +635,11 @@ export const VPGradeManagement = () => {
                               )}
                             </td>
                             <td className="py-4 px-4 text-right">
-                              {isEligibleToUnlock ? (
+                              {isNotSubmitted ? (
+                                <span className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center justify-end gap-1">
+                                  <AlertTriangle size={13} /> Pending Submission
+                                </span>
+                              ) : isEligibleToUnlock ? (
                                 <button
                                   onClick={() => handleUnlockSubmission(sub)}
                                   disabled={unlockingId === sub.id}
