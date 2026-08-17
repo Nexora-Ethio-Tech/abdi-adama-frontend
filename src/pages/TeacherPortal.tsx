@@ -16,7 +16,12 @@ import {
   submitCommunicationLog,
   getCommunicationLogs,
   getCommunicationLogsByWeek,
-  getSchoolAnnouncements
+  getSchoolAnnouncements,
+  submitAnnualPlan,
+  getMyAnnualPlans,
+  updateAnnualPlan,
+  getDeptAnnualPlans,
+  reviewDeptAnnualPlan
 } from '../services/teacherService';
 import {
   getTeacherExams,
@@ -91,6 +96,43 @@ export const TeacherPortal = () => {
   const [reviewingPlanId, setReviewingPlanId] = useState<string | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
   const [deptPlans, setDeptPlans] = useState<any[]>([]);
+
+  // Dept tasks sub-tab: weekly | annual
+  const [deptTaskSubTab, setDeptTaskSubTab] = useState<'weekly' | 'annual'>('weekly');
+
+  // Annual Plan states
+  const [annualPlans, setAnnualPlans] = useState<any[]>([]);
+  const [deptAnnualPlans, setDeptAnnualPlans] = useState<any[]>([]);
+  const [isAnnualModalOpen, setIsAnnualModalOpen] = useState(false);
+  const [editingAnnualPlan, setEditingAnnualPlan] = useState<any>(null);
+  const [annualSearch, setAnnualSearch] = useState('');
+  const [annualDeptFilter, setAnnualDeptFilter] = useState('Pending');
+  const [annualReviewRating, setAnnualReviewRating] = useState(0);
+  const [annualReviewFeedback, setAnnualReviewFeedback] = useState('');
+  const [selectedAnnualForView, setSelectedAnnualForView] = useState<any | null>(null);
+
+  const MONTHS = ['September','October','November','December','January','February','March','April','May','June'];
+  const defaultAnnualItems = () => MONTHS.flatMap(month =>
+    [1,2,3,4].map(week => ({
+      month, week,
+      noOfPeriods: '', unit: '', mainContent: '', subContent: '',
+      competence: '', teachingMethod: '', teachingAid: '', evaluation: '', remark: ''
+    }))
+  );
+
+  const emptyAnnualForm = {
+    academicYear: '2018 E.C.',
+    subject: '',
+    grade: '',
+    courseId: '',
+    workingDaysYear: 180,
+    periodsYear: 160,
+    periodsWeek: 4,
+    durationPeriod: '45 minutes',
+    status: 'Pending' as 'Pending' | 'Draft',
+    items: defaultAnnualItems()
+  };
+  const [annualForm, setAnnualForm] = useState(emptyAnnualForm);
 
   const filteredDeptPlans = deptPlans.filter(plan => {
     const teacherName = plan.teacher_name || plan.teacherName || '';
@@ -314,6 +356,24 @@ export const TeacherPortal = () => {
     }
   }, []);
 
+  const fetchDeptAnnualPlans = useCallback(async () => {
+    try {
+      const data = await getDeptAnnualPlans().catch(() => []);
+      setDeptAnnualPlans(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch dept annual plans:', err);
+    }
+  }, []);
+
+  const fetchMyAnnualPlans = useCallback(async () => {
+    try {
+      const data = await getMyAnnualPlans().catch(() => []);
+      setAnnualPlans(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch annual plans:', err);
+    }
+  }, []);
+
 
 
   useEffect(() => {
@@ -325,8 +385,12 @@ export const TeacherPortal = () => {
   useEffect(() => {
     if (activeTab === 'dept-tasks') {
       fetchDeptPlans();
+      fetchDeptAnnualPlans();
     }
-  }, [activeTab, fetchDeptPlans]);
+    if (activeTab === 'plans') {
+      fetchMyAnnualPlans();
+    }
+  }, [activeTab, fetchDeptPlans, fetchDeptAnnualPlans, fetchMyAnnualPlans]);
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get('tab');
@@ -996,6 +1060,16 @@ export const TeacherPortal = () => {
               </button>
               <button
                 type="button"
+                onClick={() => { setWeeklyPlanSubTab('annual-plans' as any); fetchMyAnnualPlans(); }}
+                className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${(weeklyPlanSubTab as any) === 'annual-plans'
+                    ? 'border-violet-600 text-violet-600'
+                    : 'border-transparent text-slate-400 hover:text-slate-600'
+                  }`}
+              >
+                📅 Annual Plans
+              </button>
+              <button
+                type="button"
                 onClick={() => setWeeklyPlanSubTab('communication-book')}
                 className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${weeklyPlanSubTab === 'communication-book'
                     ? 'border-emerald-600 text-emerald-600'
@@ -1026,7 +1100,77 @@ export const TeacherPortal = () => {
             </div>
           </div>
 
-          {weeklyPlanSubTab === 'communication-book' ? (
+          {(weeklyPlanSubTab as any) === 'annual-plans' ? (
+            /* ── Annual Plans Sub-Tab ── */
+            <div className="animate-in fade-in duration-200 space-y-6">
+              {/* Header */}
+              <div className="bg-gradient-to-br from-violet-600 to-purple-700 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-10 opacity-10"><FileText size={160} /></div>
+                <div className="relative z-10">
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-200 mb-2 block">Yearly Lesson Plan</span>
+                  <h2 className="text-3xl font-black mb-1 tracking-tight">Annual Plans</h2>
+                  <p className="text-violet-100 font-medium text-sm">Submit your full-year curriculum plan for Department Head review.</p>
+                </div>
+              </div>
+
+              {/* My Annual Plans List */}
+              <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
+                <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-black text-slate-800 dark:text-white">My Annual Plans</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">{annualPlans.length} plan(s) submitted</p>
+                  </div>
+                  <button
+                    onClick={() => { setEditingAnnualPlan(null); setAnnualForm(emptyAnnualForm); setIsAnnualModalOpen(true); }}
+                    className="flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg"
+                  >
+                    <Plus size={16} /> New Annual Plan
+                  </button>
+                </div>
+
+                {annualPlans.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <div className="bg-violet-50 dark:bg-violet-900/20 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"><FileText size={28} className="text-violet-400" /></div>
+                    <p className="font-bold text-slate-500">No annual plans yet</p>
+                    <p className="text-xs text-slate-400 mt-1">Create your first yearly lesson plan and submit it for department head review.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {annualPlans.map((plan: any) => (
+                      <div key={plan.id} className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <p className="font-black text-slate-800 dark:text-white text-sm">{plan.subject} — {plan.grade}</p>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                              plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                              : plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                              : plan.status === 'Draft' ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                            }`}>{plan.status}</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1">Academic Year: {plan.academic_year} · {Array.isArray(plan.items) ? plan.items.length : 0} weeks planned</p>
+                          {plan.feedback && <p className="text-xs text-orange-600 mt-1 italic">Feedback: "{plan.feedback}"</p>}
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          {(plan.status === 'Draft' || plan.status === 'Revision Required') && (
+                            <button
+                              onClick={() => { setEditingAnnualPlan(plan); setAnnualForm({ ...emptyAnnualForm, ...plan, items: Array.isArray(plan.items) && plan.items.length > 0 ? plan.items : defaultAnnualItems() }); setIsAnnualModalOpen(true); }}
+                              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white text-xs font-black rounded-xl transition-all"
+                            >
+                              Edit & Submit
+                            </button>
+                          )}
+                          {plan.status === 'Approved' && (
+                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-black"><CheckCircle2 size={14} /> Approved</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : weeklyPlanSubTab === 'communication-book' ? (
             <div className="animate-in fade-in duration-200 space-y-6">
 
               {/* ── Header Banner ── */}
@@ -1452,13 +1596,112 @@ export const TeacherPortal = () => {
       ) : activeTab === 'dept-tasks' ? (
         /* Department Tasks Tab */
         <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden animate-in fade-in duration-200">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
             <div>
               <h2 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Department Tasks</h2>
-              <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Manage and review weekly plans submitted by teachers in your department</p>
+              <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mt-1">Manage and review plans submitted by teachers in your department</p>
             </div>
           </div>
 
+          {/* Dept-tasks sub-tabs: Weekly | Annual */}
+          <div className="flex gap-6 mb-8 border-b border-slate-200 dark:border-slate-700">
+            <button
+              onClick={() => setDeptTaskSubTab('weekly')}
+              className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                deptTaskSubTab === 'weekly' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              📋 Weekly Plans
+            </button>
+            <button
+              onClick={() => { setDeptTaskSubTab('annual'); fetchDeptAnnualPlans(); }}
+              className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+                deptTaskSubTab === 'annual' ? 'border-violet-600 text-violet-600' : 'border-transparent text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              📅 Annual Plans
+            </button>
+          </div>
+
+          {deptTaskSubTab === 'annual' ? (
+            /* ── Annual Plans Review (Dept Head) ── */
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search by teacher or subject…"
+                    value={annualSearch}
+                    onChange={e => setAnnualSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+                <select
+                  title="Filter annual plans by status"
+                  value={annualDeptFilter}
+                  onChange={e => setAnnualDeptFilter(e.target.value)}
+                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-violet-500 text-slate-700 dark:text-white"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Revision Required">Revision Required</option>
+                </select>
+              </div>
+
+              {deptAnnualPlans.filter(p => {
+                const name = (p.teacher_name || '').toLowerCase();
+                const subj = (p.subject || '').toLowerCase();
+                const q = annualSearch.toLowerCase();
+                const matchSearch = !annualSearch || name.includes(q) || subj.includes(q);
+                const matchStatus = annualDeptFilter === 'All' || p.status === annualDeptFilter;
+                return matchSearch && matchStatus;
+              }).length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="text-slate-300 dark:text-slate-700 mx-auto mb-4" size={40} />
+                  <p className="text-slate-500 font-bold">No annual plans to review.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {deptAnnualPlans.filter(p => {
+                    const name = (p.teacher_name || '').toLowerCase();
+                    const subj = (p.subject || '').toLowerCase();
+                    const q = annualSearch.toLowerCase();
+                    const matchSearch = !annualSearch || name.includes(q) || subj.includes(q);
+                    const matchStatus = annualDeptFilter === 'All' || p.status === annualDeptFilter;
+                    return matchSearch && matchStatus;
+                  }).map((plan: any) => (
+                    <div
+                      key={plan.id}
+                      onClick={() => { setSelectedAnnualForView(plan); setAnnualReviewRating(plan.rating || 0); setAnnualReviewFeedback(plan.feedback || ''); }}
+                      className="bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-800 transition-all p-6 space-y-4 cursor-pointer group relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 w-2 h-full bg-violet-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="border-b border-slate-200 dark:border-slate-700 pb-3">
+                        <h3 className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight group-hover:text-violet-600 transition-colors">{plan.teacher_name}</h3>
+                        <p className="text-xs text-slate-500 font-bold mt-1">{plan.subject} — {plan.grade}</p>
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <p className="text-slate-500">Academic Year: <span className="font-bold text-slate-700 dark:text-slate-300">{plan.academic_year}</span></p>
+                        <p className="text-slate-500">Weeks: <span className="font-bold text-slate-700 dark:text-slate-300">{Array.isArray(plan.items) ? plan.items.length : 0}</span></p>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                          plan.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : plan.status === 'Revision Required' ? 'bg-orange-100 text-orange-600' : 'bg-amber-100 text-amber-600'
+                        }`}>{plan.status}</span>
+                        {plan.rating ? (
+                          <div className="flex gap-0.5">{[1,2,3,4,5].map(s => <Star key={s} size={11} className={s <= plan.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-300'} />)}</div>
+                        ) : null}
+                      </div>
+                      <div className="text-center pt-1"><span className="text-[10px] font-black text-violet-600 uppercase tracking-widest group-hover:underline">Review Annual Plan →</span></div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Filter Bar */}
           <div className="flex flex-col md:flex-row gap-4 mb-6">
             <input
@@ -1573,6 +1816,8 @@ export const TeacherPortal = () => {
               ))
             )}
           </div>
+            </>
+          )} {/* end deptTaskSubTab conditional */}
         </div>
       ) : null}
 
@@ -2141,6 +2386,340 @@ export const TeacherPortal = () => {
           </div>
         </div>
       )}
+
+      {/* ── Annual Plan Editor Modal (Teacher) ── */}
+      {isAnnualModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-6xl my-4">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-violet-600 to-purple-700 rounded-t-[2rem]">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-white/20 text-white rounded-2xl"><FileText size={20} /></div>
+                <div>
+                  <h3 className="font-black text-white uppercase tracking-tight">
+                    {editingAnnualPlan ? 'Edit Annual Plan' : 'New Yearly Lesson Plan'}
+                  </h3>
+                  <p className="text-xs text-violet-200 font-bold uppercase tracking-widest">Submit for Department Head review</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setIsAnnualModalOpen(false); setEditingAnnualPlan(null); }}
+                className="p-2 hover:bg-white/20 rounded-xl text-white transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              {/* Revision notice */}
+              {editingAnnualPlan?.status === 'Revision Required' && editingAnnualPlan?.feedback && (
+                <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800/50 rounded-2xl flex gap-3">
+                  <AlertCircle size={18} className="text-orange-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-black text-orange-800 uppercase tracking-wider">Department Head Feedback</p>
+                    <p className="text-sm text-orange-700 mt-1">"{editingAnnualPlan.feedback}"</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Header Metadata */}
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">📋 Plan Header Information</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Academic Year</label>
+                    <input value={annualForm.academicYear} onChange={e => setAnnualForm(f => ({ ...f, academicYear: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Subject</label>
+                    <select value={annualForm.courseId} onChange={e => {
+                      const c = myCourses.find((x: any) => x.id === e.target.value);
+                      setAnnualForm(f => ({ ...f, courseId: e.target.value, subject: c?.name || f.subject }));
+                    }} className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500">
+                      <option value="">Select course…</option>
+                      {myCourses.map((c: any) => <option key={c.id} value={c.id}>{c.name}{c.class_name ? ` — ${c.class_name}` : ''}</option>)}
+                    </select>
+                    {!annualForm.courseId && (
+                      <input placeholder="Or type subject…" value={annualForm.subject} onChange={e => setAnnualForm(f => ({ ...f, subject: e.target.value }))}
+                        className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Grade</label>
+                    <input value={annualForm.grade} onChange={e => setAnnualForm(f => ({ ...f, grade: e.target.value }))}
+                      placeholder="e.g. Grade 9" className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Duration / Period</label>
+                    <input value={annualForm.durationPeriod} onChange={e => setAnnualForm(f => ({ ...f, durationPeriod: e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Working Days/Year</label>
+                    <input type="number" value={annualForm.workingDaysYear} onChange={e => setAnnualForm(f => ({ ...f, workingDaysYear: +e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Periods / Year</label>
+                    <input type="number" value={annualForm.periodsYear} onChange={e => setAnnualForm(f => ({ ...f, periodsYear: +e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-slate-500">Periods / Week</label>
+                    <input type="number" value={annualForm.periodsWeek} onChange={e => setAnnualForm(f => ({ ...f, periodsWeek: +e.target.value }))}
+                      className="w-full mt-1 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-violet-500" />
+                  </div>
+                </div>
+              </div>
+
+              {/* 11-Column Matrix */}
+              <div>
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">📅 Yearly Matrix — September to June</h4>
+                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <table className="w-full text-left min-w-[1400px] text-xs">
+                    <thead>
+                      <tr className="bg-violet-600 text-white">
+                        {['Month','Week','# Periods','Unit','Main Content','Sub Content','Competence (Learning Outcome)','Teaching Method','Teaching Aid','Evaluation','Remark'].map(h => (
+                          <th key={h} className="px-3 py-3 font-black uppercase tracking-wide whitespace-nowrap border-r border-violet-500 last:border-r-0">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {annualForm.items.map((item, idx) => {
+                        const isFirstWeekOfMonth = item.week === 1;
+                        const monthRows = annualForm.items.filter(i => i.month === item.month).length;
+                        return (
+                          <tr key={idx} className={`border-b border-slate-100 dark:border-slate-700 ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'}`}>
+                            {isFirstWeekOfMonth ? (
+                              <td className="px-3 py-2 font-black text-violet-700 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/10 border-r border-slate-200 dark:border-slate-700 whitespace-nowrap" rowSpan={monthRows}>
+                                {item.month}
+                              </td>
+                            ) : null}
+                            <td className="px-3 py-2 border-r border-slate-100 dark:border-slate-700 text-center font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">Week {item.week}</td>
+                            {['noOfPeriods','unit','mainContent','subContent','competence','teachingMethod','teachingAid','evaluation','remark'].map(field => (
+                              <td key={field} className="px-1 py-1 border-r border-slate-100 dark:border-slate-700 last:border-r-0">
+                                <input
+                                  type="text"
+                                  value={(item as any)[field]}
+                                  onChange={e => {
+                                    const newItems = [...annualForm.items];
+                                    (newItems[idx] as any)[field] = e.target.value;
+                                    setAnnualForm(f => ({ ...f, items: newItems }));
+                                  }}
+                                  className="w-full px-2 py-1.5 bg-transparent border border-transparent hover:border-violet-300 focus:border-violet-500 focus:bg-white dark:focus:bg-slate-800 rounded-lg outline-none transition-all text-slate-800 dark:text-slate-200 min-w-[80px]"
+                                  placeholder="—"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3 justify-end">
+              <button
+                onClick={() => { setIsAnnualModalOpen(false); setEditingAnnualPlan(null); }}
+                className="px-6 py-3 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    const payload = { ...annualForm, status: 'Draft' };
+                    if (editingAnnualPlan) { await updateAnnualPlan(editingAnnualPlan.id, payload); }
+                    else { await submitAnnualPlan(payload); }
+                    showToast('Draft saved!', 'success');
+                    setIsAnnualModalOpen(false); setEditingAnnualPlan(null);
+                    fetchMyAnnualPlans();
+                  } catch (e: any) { showToast(e?.message || 'Failed to save draft', 'error'); }
+                  finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="flex items-center gap-2 px-6 py-3 bg-slate-600 hover:bg-slate-700 disabled:opacity-60 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all"
+              >
+                <Save size={16} /> Save Draft
+              </button>
+              <button
+                onClick={async () => {
+                  if (!annualForm.subject && !annualForm.courseId) { showToast('Please enter a subject or select a course.', 'error'); return; }
+                  if (!annualForm.grade) { showToast('Please enter a grade.', 'error'); return; }
+                  try {
+                    setSubmitting(true);
+                    const payload = { ...annualForm, status: 'Pending' };
+                    if (editingAnnualPlan) { await updateAnnualPlan(editingAnnualPlan.id, payload); }
+                    else { await submitAnnualPlan(payload); }
+                    showToast('Annual plan submitted for review!', 'success');
+                    setIsAnnualModalOpen(false); setEditingAnnualPlan(null);
+                    fetchMyAnnualPlans();
+                  } catch (e: any) { showToast(e?.message || 'Failed to submit plan', 'error'); }
+                  finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="flex items-center gap-2 px-8 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-violet-500/20"
+              >
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                Submit for Review
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Annual Plan Review Modal (Dept Head) ── */}
+      {selectedAnnualForView && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-5xl my-4">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-gradient-to-r from-slate-800 to-slate-900 rounded-t-[2rem]">
+              <div>
+                <h3 className="font-black text-white uppercase tracking-tight text-lg">Annual Plan Review</h3>
+                <p className="text-xs text-slate-400 mt-0.5 font-bold">
+                  {selectedAnnualForView.teacher_name} · {selectedAnnualForView.subject} · {selectedAnnualForView.grade}
+                </p>
+              </div>
+              <button onClick={() => setSelectedAnnualForView(null)} className="p-2 hover:bg-white/10 rounded-xl text-white transition-all"><X size={20} /></button>
+            </div>
+
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* Plan Summary */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 dark:bg-slate-800 rounded-2xl p-4">
+                {[
+                  { label: 'Academic Year', value: selectedAnnualForView.academic_year },
+                  { label: 'Subject', value: selectedAnnualForView.subject },
+                  { label: 'Grade', value: selectedAnnualForView.grade },
+                  { label: 'Periods / Week', value: selectedAnnualForView.periods_week },
+                  { label: 'Working Days / Year', value: selectedAnnualForView.working_days_year },
+                  { label: 'Total Periods / Year', value: selectedAnnualForView.periods_year },
+                  { label: 'Duration / Period', value: selectedAnnualForView.duration_period },
+                  { label: 'Weeks Planned', value: Array.isArray(selectedAnnualForView.items) ? selectedAnnualForView.items.length : 0 },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-[9px] font-black uppercase text-slate-400">{label}</p>
+                    <p className="font-bold text-slate-800 dark:text-white text-sm mt-0.5">{value || '—'}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Matrix Preview */}
+              {Array.isArray(selectedAnnualForView.items) && selectedAnnualForView.items.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">📅 Yearly Matrix</h4>
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <table className="w-full text-left min-w-[1200px] text-xs">
+                      <thead>
+                        <tr className="bg-slate-800 text-white">
+                          {['Month','Week','# Periods','Unit','Main Content','Sub Content','Competence','Method','Aid','Evaluation','Remark'].map(h => (
+                            <th key={h} className="px-3 py-2.5 font-black uppercase tracking-wide whitespace-nowrap border-r border-slate-700 last:border-r-0">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedAnnualForView.items.map((item: any, idx: number) => {
+                          const isFirst = item.week === 1;
+                          const monthRows = selectedAnnualForView.items.filter((i: any) => i.month === item.month).length;
+                          return (
+                            <tr key={idx} className={`border-b border-slate-100 dark:border-slate-700 ${idx % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50 dark:bg-slate-800/30'}`}>
+                              {isFirst ? (
+                                <td className="px-3 py-2 font-black text-violet-700 dark:text-violet-400 whitespace-nowrap border-r border-slate-200 dark:border-slate-700 bg-violet-50 dark:bg-violet-900/10" rowSpan={monthRows}>{item.month}</td>
+                              ) : null}
+                              <td className="px-3 py-2 text-center font-bold text-slate-500 border-r border-slate-100 dark:border-slate-700 whitespace-nowrap">Week {item.week}</td>
+                              {['noOfPeriods','unit','mainContent','subContent','competence','teachingMethod','teachingAid','evaluation','remark'].map(f => (
+                                <td key={f} className="px-3 py-2 text-slate-700 dark:text-slate-300 border-r border-slate-100 dark:border-slate-700 last:border-r-0">{item[f] || <span className="text-slate-300">—</span>}</td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Review Panel */}
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">✍️ Your Review</h4>
+                {/* Star Rating */}
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Rating (1–5 Stars)</p>
+                  <div className="flex gap-2">
+                    {[1,2,3,4,5].map(star => (
+                      <button key={star} onClick={() => setAnnualReviewRating(star)}
+                        className={`p-1.5 rounded-xl transition-all ${annualReviewRating >= star ? 'text-amber-400 hover:text-amber-500' : 'text-slate-300 hover:text-amber-300'}`}>
+                        <Star size={24} className={annualReviewRating >= star ? 'fill-amber-400' : ''} />
+                      </button>
+                    ))}
+                    {annualReviewRating > 0 && (
+                      <span className="self-center text-xs font-black text-amber-600">{['','Poor','Fair','Good','Very Good','Excellent'][annualReviewRating]}</span>
+                    )}
+                  </div>
+                </div>
+                {/* Feedback */}
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Feedback / Comments</label>
+                  <textarea
+                    rows={4}
+                    value={annualReviewFeedback}
+                    onChange={e => setAnnualReviewFeedback(e.target.value)}
+                    placeholder="Write your detailed feedback here…"
+                    className="w-full mt-2 px-4 py-3 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-sm outline-none focus:border-violet-500 transition-all resize-none text-slate-800 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex gap-3 justify-end flex-wrap">
+              <button onClick={() => setSelectedAnnualForView(null)}
+                className="px-6 py-3 border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+                Close
+              </button>
+              <button
+                onClick={async () => {
+                  if (!annualReviewFeedback.trim()) { showToast('Feedback is required when requesting revision.', 'error'); return; }
+                  try {
+                    setSubmitting(true);
+                    await reviewDeptAnnualPlan(selectedAnnualForView.id, { status: 'Revision Required', feedback: annualReviewFeedback, rating: annualReviewRating || undefined });
+                    showToast('Revision request sent.', 'success');
+                    setSelectedAnnualForView(null);
+                    fetchDeptAnnualPlans();
+                  } catch (e: any) { showToast(e?.message || 'Failed', 'error'); }
+                  finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all">
+                <XCircle size={16} /> Request Revision
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setSubmitting(true);
+                    const fb = annualReviewFeedback.trim() || 'Approved by Department Head';
+                    await reviewDeptAnnualPlan(selectedAnnualForView.id, { status: 'Approved', feedback: fb, rating: annualReviewRating || undefined });
+                    showToast('Annual plan approved!', 'success');
+                    setSelectedAnnualForView(null);
+                    fetchDeptAnnualPlans();
+                  } catch (e: any) { showToast(e?.message || 'Failed', 'error'); }
+                  finally { setSubmitting(false); }
+                }}
+                disabled={submitting}
+                className="flex items-center gap-2 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-emerald-500/20">
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Approve Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

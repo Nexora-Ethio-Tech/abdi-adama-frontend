@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2, Shield, Lock, Unlock, Clock, AlertTriangle, KeyRound, RefreshCw } from 'lucide-react';
+import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2, Shield, Lock, Unlock, Clock, AlertTriangle, KeyRound, RefreshCw, Search, Filter } from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
 import { toggleGradeSubmission } from '../services/vicePrincipalService';
 import { useUser } from '../context/UserContext';
@@ -90,6 +90,13 @@ export const VPGradeManagement = () => {
   const [submissions, setSubmissions] = useState<GradeSubmissionRecord[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
+
+  // Submission filter state
+  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'unlocked' | 'not_submitted'>('all');
+  const [submissionSearch, setSubmissionSearch] = useState('');
+
+  // Section grade status filter state
+  const [sectionGradeFilter, setSectionGradeFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
@@ -393,33 +400,31 @@ export const VPGradeManagement = () => {
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl">
         <button
           onClick={() => setActiveTab('section-grades')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+          className={`flex items-center justify-center gap-2.5 py-3 px-5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${
             activeTab === 'section-grades'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <BarChart3 size={15} />
-          Section Grade Processing
+          <BarChart3 size={16} />
+          1. Section Grade Processing &amp; Completion Filter
         </button>
         <button
           onClick={() => setActiveTab('submissions-review')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${
+          className={`flex items-center justify-center gap-2.5 py-3 px-5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${
             activeTab === 'submissions-review'
-              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/60 dark:border-slate-700'
+              : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
           }`}
         >
-          <KeyRound size={15} />
-          Teacher Submissions & Re-submission Permissions
-          {submissions.filter((s) => s.is_locked).length > 0 && (
-            <span className="ml-1 px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded-full font-extrabold">
-              {submissions.filter((s) => s.is_locked).length} Locked
-            </span>
-          )}
+          <KeyRound size={16} />
+          2. Teacher Submissions &amp; Re-submission Filter
+          <span className="ml-1 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] rounded-full font-black">
+            {submissions.length} Total
+          </span>
         </button>
       </div>
 
@@ -434,9 +439,9 @@ export const VPGradeManagement = () => {
                   Teacher Grade Submissions & Unlock Permissions
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Grant re-submission permission to teachers who mistakenly submitted incomplete grades.
+                  Filter submissions to detect who has and hasn't submitted grades.
                   <span className="font-semibold text-amber-600 dark:text-amber-400 ml-1">
-                    (Strict Security Rule: Active Semester Only &amp; &le; 30 Days From Submission)
+                    (Unlock Rule: Active Semester Only &amp; &le; 30 Days From Submission)
                   </span>
                 </p>
               </div>
@@ -446,107 +451,191 @@ export const VPGradeManagement = () => {
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all"
               >
                 <RefreshCw size={14} className={loadingSubmissions ? 'animate-spin' : ''} />
-                Refresh Submissions
+                Refresh
               </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-6">
+              {/* Search */}
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by teacher or course name..."
+                  value={submissionSearch}
+                  onChange={(e) => setSubmissionSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                />
+              </div>
+              {/* Status Filter Tabs */}
+              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0">
+                <Filter size={13} className="text-slate-400 ml-1" />
+                {([
+                  { key: 'all',          label: 'All',          color: 'text-slate-600' },
+                  { key: 'submitted',    label: 'Submitted',    color: 'text-rose-600' },
+                  { key: 'unlocked',     label: 'Unlocked',     color: 'text-emerald-600' },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setSubmissionFilter(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                      submissionFilter === key
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    {label}
+                    {key !== 'all' && (
+                      <span className="ml-1 opacity-70">
+                        ({key === 'submitted'
+                          ? submissions.filter(s => s.is_locked).length
+                          : submissions.filter(s => !s.is_locked).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Summary Chips */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-slate-400" />
+                Total: {submissions.length}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-full text-[11px] font-bold text-rose-700 dark:text-rose-400">
+                <Lock size={11} />
+                Submitted & Locked: {submissions.filter(s => s.is_locked).length}
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                <Unlock size={11} />
+                Unlocked (Editable): {submissions.filter(s => !s.is_locked).length}
+              </span>
             </div>
 
             {loadingSubmissions ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mb-3" />
               </div>
-            ) : submissions.length === 0 ? (
-              <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                <Lock className="mx-auto text-slate-400 mb-3" size={32} />
-                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No Grade Submissions Found</p>
-                <p className="text-xs text-slate-400 mt-1">When teachers submit their assessment grades, they will appear here for review and unlock control.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      <th className="py-3 px-4">Course & Code</th>
-                      <th className="py-3 px-4">Teacher Name</th>
-                      <th className="py-3 px-4">Assessment Type</th>
-                      <th className="py-3 px-4">Academic Period</th>
-                      <th className="py-3 px-4">Submitted At</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4 text-right">VP Permission Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {submissions.map((sub) => {
-                      const currentActiveYear = ecYearToGregorian(getCurrentECYear());
-                      const currentActiveSemNum = getCurrentSemester();
-                      const isActivePeriod = sub.academic_year === currentActiveYear && Number(sub.semester) === Number(currentActiveSemNum);
+            ) : (() => {
+              const filtered = submissions
+                .filter(sub => {
+                  if (submissionFilter === 'submitted') return sub.is_locked;
+                  if (submissionFilter === 'unlocked') return !sub.is_locked;
+                  return true;
+                })
+                .filter(sub => {
+                  const q = submissionSearch.toLowerCase();
+                  return !q || sub.teacher_name.toLowerCase().includes(q) || sub.course_name.toLowerCase().includes(q) || sub.course_code.toLowerCase().includes(q);
+                });
 
-                      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-                      const submittedTime = new Date(sub.submitted_at).getTime();
-                      const isWithin30Days = Date.now() - submittedTime <= THIRTY_DAYS_MS;
-                      const isEligibleToUnlock = sub.is_locked && isActivePeriod && isWithin30Days;
+              return filtered.length === 0 ? (
+                <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <Lock className="mx-auto text-slate-400 mb-3" size={32} />
+                  <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                    {submissions.length === 0 ? 'No Grade Submissions Found' : 'No results match your filter'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {submissions.length === 0
+                      ? 'When teachers submit grades, they will appear here.'
+                      : 'Try changing the filter or search term.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        <th className="py-3 px-4">Course & Code</th>
+                        <th className="py-3 px-4">Teacher Name</th>
+                        <th className="py-3 px-4">Assessment Type</th>
+                        <th className="py-3 px-4">Academic Period</th>
+                        <th className="py-3 px-4">Submitted At</th>
+                        <th className="py-3 px-4">Status</th>
+                        <th className="py-3 px-4 text-right">VP Permission Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {filtered.map((sub) => {
+                        const currentActiveYear = ecYearToGregorian(getCurrentECYear());
+                        const currentActiveSemNum = getCurrentSemester();
+                        const isActivePeriod = sub.academic_year === currentActiveYear && Number(sub.semester) === Number(currentActiveSemNum);
+                        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+                        const submittedTime = new Date(sub.submitted_at).getTime();
+                        const isWithin30Days = Date.now() - submittedTime <= THIRTY_DAYS_MS;
+                        const isEligibleToUnlock = sub.is_locked && isActivePeriod && isWithin30Days;
 
-                      return (
-                        <tr key={sub.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-4 px-4">
-                            <p className="font-bold text-sm text-slate-800 dark:text-white">{sub.course_name}</p>
-                            <p className="text-xs text-slate-400">{sub.course_code}</p>
-                          </td>
-                          <td className="py-4 px-4 font-semibold text-sm text-slate-700 dark:text-slate-300">
-                            {sub.teacher_name}
-                          </td>
-                          <td className="py-4 px-4">
-                            <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold uppercase tracking-wider">
-                              {sub.submission_type}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-xs font-medium text-slate-600 dark:text-slate-400">
-                            {gregorianToECYear(sub.academic_year)} E.C. &bull; Semester {sub.semester}
-                          </td>
-                          <td className="py-4 px-4 text-xs text-slate-500">
-                            <div className="flex items-center gap-1">
-                              <Clock size={13} className="text-slate-400" />
-                              {new Date(sub.submitted_at).toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            {sub.is_locked ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-full text-xs font-extrabold border border-rose-200 dark:border-rose-800">
-                                <Lock size={12} />
-                                Locked
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-extrabold border border-emerald-200 dark:border-emerald-800">
-                                <Unlock size={12} />
-                                Unlocked (Teacher Editable)
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            {isEligibleToUnlock ? (
-                              <button
-                                onClick={() => handleUnlockSubmission(sub)}
-                                disabled={unlockingId === sub.id}
-                                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
-                              >
-                                <KeyRound size={14} />
-                                {unlockingId === sub.id ? 'Unlocking...' : 'Unlock & Grant Edit'}
-                              </button>
-                            ) : sub.is_locked ? (
-                              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800" title="Security Rule: Cannot unlock past semester or submissions older than 30 days.">
-                                <AlertTriangle size={13} />
-                                {!isActivePeriod ? 'Past Semester (Locked)' : '30-Day Window Expired'}
+                        return (
+                          <tr key={sub.id} className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors ${
+                            !sub.is_locked ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : ''
+                          }`}>
+                            <td className="py-4 px-4">
+                              <p className="font-bold text-sm text-slate-800 dark:text-white">{sub.course_name}</p>
+                              <p className="text-xs text-slate-400">{sub.course_code}</p>
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-black">
+                                  {sub.teacher_name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">{sub.teacher_name}</span>
                               </div>
-                            ) : (
-                              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Teacher Can Edit</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                            </td>
+                            <td className="py-4 px-4">
+                              <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold uppercase tracking-wider">
+                                {sub.submission_type}
+                              </span>
+                            </td>
+                            <td className="py-4 px-4 text-xs font-medium text-slate-600 dark:text-slate-400">
+                              {gregorianToECYear(sub.academic_year)} E.C. &bull; Semester {sub.semester}
+                            </td>
+                            <td className="py-4 px-4 text-xs text-slate-500">
+                              <div className="flex items-center gap-1">
+                                <Clock size={13} className="text-slate-400" />
+                                {new Date(sub.submitted_at).toLocaleString()}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              {sub.is_locked ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-full text-xs font-extrabold border border-rose-200 dark:border-rose-800">
+                                  <Lock size={12} />
+                                  Submitted & Locked
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-extrabold border border-emerald-200 dark:border-emerald-800">
+                                  <Unlock size={12} />
+                                  Unlocked (Editable)
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              {isEligibleToUnlock ? (
+                                <button
+                                  onClick={() => handleUnlockSubmission(sub)}
+                                  disabled={unlockingId === sub.id}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                  <KeyRound size={14} />
+                                  {unlockingId === sub.id ? 'Unlocking...' : 'Unlock & Grant Edit'}
+                                </button>
+                              ) : sub.is_locked ? (
+                                <div className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800" title="Cannot unlock: past semester or older than 30 days.">
+                                  <AlertTriangle size={13} />
+                                  {!isActivePeriod ? 'Past Semester' : '30-Day Expired'}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Teacher Can Edit</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -734,27 +823,62 @@ export const VPGradeManagement = () => {
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+          {/* Controls & Submission Status Filter */}
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-white">Grade Actions</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Process and calculate grades for this section</p>
+                <h3 className="font-bold text-slate-800 dark:text-white">Grade Actions &amp; Submission Filter</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Filter students by grade completion or calculate section results</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Student Grade Filter */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <Filter size={13} className="text-slate-400 ml-1" />
+                  <button
+                    onClick={() => setSectionGradeFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                      sectionGradeFilter === 'all'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    All ({studentGrades.length})
+                  </button>
+                  <button
+                    onClick={() => setSectionGradeFilter('complete')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                      sectionGradeFilter === 'complete'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Complete ({studentGrades.filter(s => Object.keys(s.grades).length === courses.length && courses.length > 0).length})
+                  </button>
+                  <button
+                    onClick={() => setSectionGradeFilter('incomplete')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${
+                      sectionGradeFilter === 'incomplete'
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                  >
+                    Incomplete / Missing ({studentGrades.filter(s => Object.keys(s.grades).length < courses.length).length})
+                  </button>
+                </div>
+
                 <button
                   onClick={handleGenerateResults}
                   disabled={generatingResults || students.length === 0}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/10"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/10"
                 >
                   {generatingResults ? 'Generating...' : 'Generate Results'}
                 </button>
                 <button
                   onClick={exportToExcel}
                   disabled={studentGrades.length === 0}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10"
                 >
-                  <Download size={16} />
+                  <Download size={14} />
                   Export Excel
                 </button>
               </div>
@@ -791,7 +915,14 @@ export const VPGradeManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {studentGrades.map((student) => (
+                  {studentGrades
+                    .filter((student) => {
+                      const gradeCount = Object.keys(student.grades).length;
+                      if (sectionGradeFilter === 'complete') return gradeCount === courses.length && courses.length > 0;
+                      if (sectionGradeFilter === 'incomplete') return gradeCount < courses.length;
+                      return true;
+                    })
+                    .map((student) => (
                     <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-800 dark:text-white">{student.name}</div>
