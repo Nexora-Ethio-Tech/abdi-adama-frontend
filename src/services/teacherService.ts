@@ -58,8 +58,8 @@ export const enterGrade = async (data: {
   score: number;
   total: number;
   weight?: string;
-  academicYear?: string;
-  semester?: number;
+  academicYear: string;
+  semester: 1 | 2;
 }) => {
   const response = await api.post('/teacher/grades', data);
   return response.data;
@@ -68,8 +68,8 @@ export const enterGrade = async (data: {
 // Bulk create grades
 export const bulkEnterGrades = async (data: {
   courseId: string;
-  academicYear?: string;
-  semester?: number;
+  academicYear: string;
+  semester: 1 | 2;
   grades: Array<{
     studentId: string;
     type: string;
@@ -263,7 +263,12 @@ export const submitGrade = async (data: SubmitGradeData) => {
   return response.data;
 };
 
-export const saveDraftGrades = async (data: { courseId: string; submissionType: string; academicYear?: string; semester?: number }) => {
+export const saveDraftGrades = async (data: {
+  courseId: string;
+  submissionType: string;
+  academicYear: string;
+  semester: 1 | 2;
+}) => {
   const response = await api.post('/teacher/grades/save-draft', data);
   return response.data;
 };
@@ -271,7 +276,7 @@ export const saveDraftGrades = async (data: { courseId: string; submissionType: 
 export const submitCourseGrades = async (
   courseId: string,
   submissionType: string,
-  period?: { academicYear?: string; semester?: number }
+  period: { academicYear: string; semester: 1 | 2 }
 ) => {
   const response = await api.post('/teacher/grades/submit-course', {
     courseId,
@@ -281,7 +286,12 @@ export const submitCourseGrades = async (
   return response.data;
 };
 
-export const finalizeGradeSubmission = async (data: { courseId: string; submissionType: string; academicYear?: string; semester?: number }) => {
+export const finalizeGradeSubmission = async (data: {
+  courseId: string;
+  submissionType: string;
+  academicYear: string;
+  semester: 1 | 2;
+}) => {
   const response = await api.post('/teacher/grades/finalize-submission', data);
   return response.data;
 };
