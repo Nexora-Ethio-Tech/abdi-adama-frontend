@@ -10,8 +10,8 @@ import { EthiopianDatePicker } from '../components/EthiopianDatePicker';
 import api from '../services/api';
 
 const ETH_MONTHS = [
-  'Meskerem','Tikimt','Hidar','Tahsas','Tir','Yekatit',
-  'Megabit','Miazia','Ginbot','Sene','Hamle','Nehase','Pagume'
+  'Meskerem', 'Tikimt', 'Hidar', 'Tahsas', 'Tir', 'Yekatit',
+  'Megabit', 'Miazia', 'Ginbot', 'Sene', 'Hamle', 'Nehase', 'Pagume'
 ];
 
 /** Format an already-Ethiopian YYYY-MM-DD string → "6 Meskerem 2018 E.C." */
@@ -398,6 +398,280 @@ export const Attendance = () => {
     }, 1200);
   };
 
+  // Staff export date range state
+  const [exportStartDate, setExportStartDate] = useState<string>(selectedDate);
+  const [exportEndDate, setExportEndDate] = useState<string>(selectedDate);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  // Student export date range state
+  const [studentExportStartDate, setStudentExportStartDate] = useState<string>(selectedDate);
+  const [studentExportEndDate, setStudentExportEndDate] = useState<string>(selectedDate);
+  const [isStudentExporting, setIsStudentExporting] = useState<boolean>(false);
+
+  // 2. Add the function to fetch and export the CSV
+  const handleExportReport = async () => {
+    if (!exportStartDate || !exportEndDate) return;
+    setIsExporting(true);
+
+    try {
+      const endpoint = isVP ? '/vice-principal/staff-attendance' : '/school-admin/staff-attendance';
+      const response = await api.get(endpoint, {
+        params: { startDate: exportStartDate, endDate: exportEndDate }
+      });
+
+      if (response.data && response.data.success) {
+        const records = response.data.data;
+
+        const csvRows = [];
+        // 1. Detailed Report Headers
+        csvRows.push(['--- DETAILED DAILY LOGS ---']);
+        csvRows.push(['Date', 'Name', 'Department', 'Role', 'Status', 'Sign In Time', 'Lunch Out Time', 'Lunch In Time', 'Sign Out Time', 'Biometric/Manual']);
+
+        // Object to hold our summary calculations
+        const summaryMap: Record<string, any> = {};
+
+        // Helper function to convert "HH:MM:SS" into total minutes for easy math
+        const timeStrToMinutes = (timeStr?: string) => {
+          if (!timeStr) return null;
+          const parts = timeStr.split(':');
+          if (parts.length < 2) return null;
+          return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        };
+
+        // Helper function to convert total minutes back to a readable "Xh Ym" format
+        const formatMinutes = (totalMins: number) => {
+          if (totalMins <= 0 || isNaN(totalMins)) return '--';
+          const h = Math.floor(totalMins / 60);
+          const m = Math.floor(totalMins % 60);
+          return `${h}h ${m}m`;
+        };
+
+        records.forEach((item: any) => {
+          const rawStatus = (item.attendance_status || '').toLowerCase();
+          const isLateArrival = !!item.is_late_arrival;
+          let status = 'Pending';
+
+          if (rawStatus === 'present' && isLateArrival) status = 'Present (Late)';
+          else if (rawStatus === 'present') status = 'Present';
+          else if (rawStatus === 'late') status = 'Late';
+          else if (rawStatus === 'half-day') status = 'Half Day';
+          else if (rawStatus === 'absent') status = 'Absent';
+          else if (item.day_off_type === 'Weekend') status = 'Weekend';
+          else if (item.day_off_type === 'Holiday') status = 'Holiday';
+
+          const department = item.department || (item.role === 'teacher' ? 'Academics' : item.role);
+          const rowDate = item.attendance_date || exportStartDate;
+
+          // -- CALCULATE DURATION WORKED TODAY --
+          const signInMins = timeStrToMinutes(item.sign_in_time);
+          const lunchOutMins = timeStrToMinutes(item.lunch_out_time);
+          const lunchInMins = timeStrToMinutes(item.lunch_in_time);
+          const signOutMins = timeStrToMinutes(item.sign_out_time);
+
+          let dailyMinutesAttended = 0;
+          if (signInMins !== null) {
+            // Scenario 1: They have all 4 punches (subtract lunch time)
+            if (signOutMins !== null && lunchOutMins !== null && lunchInMins !== null) {
+              dailyMinutesAttended = (lunchOutMins - signInMins) + (signOutMins - lunchInMins);
+            }
+            // Scenario 2: Only sign in and sign out (no lunch taken/recorded)
+            else if (signOutMins !== null) {
+              dailyMinutesAttended = signOutMins - signInMins;
+            }
+            // Scenario 3: Only sign in and lunch out (forgot to come back or punch out)
+            else if (lunchOutMins !== null) {
+              dailyMinutesAttended = lunchOutMins - signInMins;
+            }
+
+            // Handle wrap-around just in case (overnight shift, etc.)
+            if (dailyMinutesAttended < 0) dailyMinutesAttended += 24 * 60;
+          }
+
+          // Push Detailed Row
+          csvRows.push([
+            rowDate,
+            `"${item.name}"`,
+            `"${department}"`,
+            `"${item.role}"`,
+            status,
+            item.sign_in_time || '--',
+            item.lunch_out_time || '--',
+            item.lunch_in_time || '--',
+            item.sign_out_time || '--',
+            item.is_biometric ? 'Biometric' : 'Manual'
+          ]);
+
+          // 2. Build Summary Data
+          if (!summaryMap[item.id]) {
+            summaryMap[item.id] = {
+              name: item.name,
+              department: department,
+              role: item.role,
+              present: 0,
+              late: 0,
+              absent: 0,
+              halfDay: 0,
+              offDays: 0, // Weekends & Holidays
+              totalMinutesLogged: 0, // Track total minutes
+              daysWithDuration: 0    // Track how many days they successfully punched in/out
+            };
+          }
+
+          // Tally up the statuses
+          if (status === 'Present') summaryMap[item.id].present += 1;
+          else if (status === 'Present (Late)' || status === 'Late') summaryMap[item.id].late += 1;
+          else if (status === 'Absent') summaryMap[item.id].absent += 1;
+          else if (status === 'Half Day') summaryMap[item.id].halfDay += 1;
+          else if (status === 'Weekend' || status === 'Holiday') summaryMap[item.id].offDays += 1;
+
+          // Tally up time
+          if (dailyMinutesAttended > 0) {
+            summaryMap[item.id].totalMinutesLogged += dailyMinutesAttended;
+            summaryMap[item.id].daysWithDuration += 1;
+          }
+        });
+
+        // 3. Append Summary Section to the CSV
+        csvRows.push([]); // Blank row for spacing
+        csvRows.push([]); // Blank row for spacing
+        csvRows.push(['--- EMPLOYEE ATTENDANCE SUMMARY ---']);
+        // Added Average Time Attended to Headers
+        csvRows.push(['Name', 'Department', 'Role', 'Total Present (On Time)', 'Total Late', 'Total Half Days', 'Total Absent', 'Total Off Days', 'Average Time Attended / Day']);
+
+        Object.values(summaryMap).forEach((emp: any) => {
+          // Calculate the average minutes per day they were present
+          const averageMinutes = emp.daysWithDuration > 0 ? (emp.totalMinutesLogged / emp.daysWithDuration) : 0;
+          const avgTimeDisplay = formatMinutes(averageMinutes);
+
+          csvRows.push([
+            `"${emp.name}"`,
+            `"${emp.department}"`,
+            `"${emp.role}"`,
+            emp.present,
+            emp.late,
+            emp.halfDay,
+            emp.absent,
+            emp.offDays,
+            avgTimeDisplay // Pushing calculated average (e.g., "8h 15m")
+          ]);
+        });
+
+        // 4. Generate & Download CSV
+        const csvString = csvRows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Staff_Attendance_${exportStartDate}_to_${exportEndDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Failed to export staff attendance:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Export student attendance as CSV for a date range
+  const handleExportStudentAttendance = async () => {
+    if (!studentExportStartDate || !studentExportEndDate) return;
+    setIsStudentExporting(true);
+    try {
+      const response = await api.get('/school-admin/attendance', {
+        params: { startDate: studentExportStartDate, endDate: studentExportEndDate }
+      });
+
+      if (response.data && response.data.success) {
+        const records: any[] = response.data.data || [];
+
+        const csvRows: (string | number)[][] = [];
+
+        // ── Detailed Section ─────────────────────────────────────────────
+        csvRows.push(['--- DETAILED DAILY LOGS ---']);
+        csvRows.push(['Date', 'Student Name', 'Grade / Section', 'Status', 'Remarks']);
+
+        // Summary accumulator keyed by studentId
+        const summaryMap: Record<string, {
+          name: string;
+          grade: string;
+          present: number;
+          absent: number;
+          late: number;
+          excused: number;
+          total: number;
+        }> = {};
+
+        records.forEach((item: any) => {
+          const status = item.status || item.attendance_status || 'Unknown';
+          const studentName = item.studentName || item.student_name || item.name || 'Unknown';
+          const studentId = item.studentId || item.student_id || item.id;
+          const grade = item.className || item.class_name || item.grade || '--';
+          const rowDate = item.date || item.attendance_date || studentExportStartDate;
+          const remarks = item.remarks || '--';
+
+          // Detailed row
+          csvRows.push([
+            rowDate,
+            `"${studentName}"`,
+            `"${grade}"`,
+            status,
+            `"${remarks}"`
+          ]);
+
+          // Build summary
+          if (!summaryMap[studentId]) {
+            summaryMap[studentId] = { name: studentName, grade, present: 0, absent: 0, late: 0, excused: 0, total: 0 };
+          }
+          summaryMap[studentId].total += 1;
+          const normalised = status.toLowerCase();
+          if (normalised === 'present') summaryMap[studentId].present += 1;
+          else if (normalised === 'absent') summaryMap[studentId].absent += 1;
+          else if (normalised === 'late') summaryMap[studentId].late += 1;
+          else if (normalised === 'excused') summaryMap[studentId].excused += 1;
+        });
+
+        // ── Summary Section ──────────────────────────────────────────────
+        csvRows.push([]);
+        csvRows.push([]);
+        csvRows.push(['--- STUDENT ATTENDANCE SUMMARY ---']);
+        csvRows.push(['Student Name', 'Grade / Section', 'Total Days', 'Present', 'Absent', 'Late', 'Excused', 'Attendance Rate']);
+
+        Object.values(summaryMap).forEach((s) => {
+          const rate = s.total > 0 ? ((s.present / s.total) * 100).toFixed(1) + '%' : '0.0%';
+          csvRows.push([
+            `"${s.name}"`,
+            `"${s.grade}"`,
+            s.total,
+            s.present,
+            s.absent,
+            s.late,
+            s.excused,
+            rate
+          ]);
+        });
+
+        // ── Generate & Download ──────────────────────────────────────────
+        const csvString = csvRows.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `Student_Attendance_${studentExportStartDate}_to_${studentExportEndDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Failed to export student attendance:', error);
+      alert('Failed to generate student attendance report. Please try again.');
+    } finally {
+      setIsStudentExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -736,6 +1010,67 @@ export const Attendance = () => {
         </div>
       )}
 
+      {/* ── Student Attendance Export Panel ── */}
+      {!isVP && attendanceMode === 'student' && isAdmin && (
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-end gap-4">
+          <div className="flex-1 w-full sm:w-auto">
+            <label htmlFor="studentExportStartDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Export From
+            </label>
+            <EthiopianDatePicker
+              id="studentExportStartDate"
+              value={studentExportStartDate}
+              onChange={setStudentExportStartDate}
+              placeholder="YYYY-MM-DD"
+              title="Select start date for student export (Ethiopian calendar)"
+            />
+          </div>
+
+          <div className="flex-1 w-full sm:w-auto">
+            <label htmlFor="studentExportEndDate" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+              Export To
+            </label>
+            <EthiopianDatePicker
+              id="studentExportEndDate"
+              value={studentExportEndDate}
+              onChange={setStudentExportEndDate}
+              placeholder="YYYY-MM-DD"
+              title="Select end date for student export (Ethiopian calendar)"
+            />
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <button
+              id="exportStudentAttendanceBtn"
+              onClick={handleExportStudentAttendance}
+              disabled={isStudentExporting || !studentExportStartDate || !studentExportEndDate}
+              className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-white transition-colors
+                ${isStudentExporting || !studentExportStartDate || !studentExportEndDate
+                  ? 'bg-emerald-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800'
+                }`}
+            >
+              {isStudentExporting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export Student CSV
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {!isVP && attendanceMode === 'student' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-300">
           <div className="overflow-x-auto">
@@ -890,6 +1225,63 @@ export const Attendance = () => {
                 )}
               </button>
             )}
+          </div>
+          {/* Export Report Container */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row items-end gap-4">
+            <div className="flex-1 w-full sm:w-auto">
+              <label htmlFor="exportStartDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Start Date
+              </label>
+              <EthiopianDatePicker
+                id="exportStartDate"
+                value={exportStartDate}
+                onChange={setExportStartDate}
+                placeholder="YYYY-MM-DD"
+                title="Select start date for export (Ethiopian calendar)"
+              />
+            </div>
+
+            <div className="flex-1 w-full sm:w-auto">
+              <label htmlFor="exportEndDate" className="block text-sm font-medium text-gray-700 mb-1">
+                End Date
+              </label>
+              <EthiopianDatePicker
+                id="exportEndDate"
+                value={exportEndDate}
+                onChange={setExportEndDate}
+                placeholder="YYYY-MM-DD"
+                title="Select end date for export (Ethiopian calendar)"
+              />
+            </div>
+
+            <div className="w-full sm:w-auto">
+              <button
+                onClick={handleExportReport}
+                disabled={isExporting || !exportStartDate || !exportEndDate}
+                className={`w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-white transition-colors
+        ${isExporting || !exportStartDate || !exportEndDate
+                    ? 'bg-blue-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'
+                  }`}
+              >
+                {isExporting ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export CSV
+                  </>
+                )}
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="rounded-3xl p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800">

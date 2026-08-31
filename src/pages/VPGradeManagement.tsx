@@ -85,6 +85,7 @@ interface VPGradeSubmission {
 
 export const VPGradeManagement = () => {
   const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
+  const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedGradeGroup, setSelectedGradeGroup] = useState<VpGradeGroup | null>(null);
@@ -97,6 +98,7 @@ export const VPGradeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [loadingSectionData, setLoadingSectionData] = useState(false);
   const [generatingResults, setGeneratingResults] = useState(false);
+  const [togglingSubmission, setTogglingSubmission] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
   const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
@@ -111,10 +113,37 @@ export const VPGradeManagement = () => {
   const [unlockWindowDays, setUnlockWindowDays] = useState(60);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
+  // Submissions & Re-submission Unlock State
+  const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
+  const [submissions, setSubmissions] = useState<GradeSubmissionRecord[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
+
+  // Submission filter state
+  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'unlocked' | 'not_submitted'>('all');
+  const [submissionSearch, setSubmissionSearch] = useState('');
+  const [selectedSubmissionGrade, setSelectedSubmissionGrade] = useState<string>('all');
+  const [selectedSubmissionSection, setSelectedSubmissionSection] = useState<string>('all');
+
+  // Section grade status filter state
+  const [sectionGradeFilter, setSectionGradeFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
+
+  const fetchSubmissions = useCallback(async () => {
+    try {
+      setLoadingSubmissions(true);
+      const data = await vicePrincipalService.getGradeSubmissions();
+      setSubmissions(data || []);
+    } catch (err: any) {
+      console.error('Failed to fetch grade submissions:', err);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchGradesAndSections();
@@ -915,8 +944,8 @@ export const VPGradeManagement = () => {
             </div>
           </div>
 
-          {/* Controls */}
-          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
+          {/* Controls & Submission Status Filter */}
+          <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6 space-y-4">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-white">Grade Actions &amp; Completion Filter</h3>
@@ -945,16 +974,16 @@ export const VPGradeManagement = () => {
                 <button
                   onClick={handleGenerateResults}
                   disabled={generatingResults || students.length === 0}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-600/10"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/10"
                 >
                   {generatingResults ? 'Generating...' : 'Generate Results'}
                 </button>
                 <button
                   onClick={exportToExcel}
                   disabled={studentGrades.length === 0}
-                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-emerald-600/10"
                 >
-                  <Download size={16} />
+                  <Download size={14} />
                   Export Excel
                 </button>
               </div>

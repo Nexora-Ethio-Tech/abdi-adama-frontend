@@ -24,6 +24,7 @@ export const GradeEntry = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { gradesLocked, gradeSubmissionOpen } = useUser();
+  const { gradesLocked, gradeSubmissionOpen } = useUser();
 
   const [classes, setClasses] = useState<TeacherClass[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -75,23 +76,16 @@ export const GradeEntry = () => {
 
     setLoadingStudents(true);
     setLoadingMethods(true);
+    const semNum = semesterLabel === 'First Semester' ? 1 : 2;
 
-    const rosterClassId = (cls as any).class_id || cls.id;
-    getClassStudents(rosterClassId)
-      .then((data) => setStudents(data || []))
-      .catch(() => setStudents([]))
-      .finally(() => setLoadingStudents(false));
-
-    // Load grading methods for this grade level, then prefill existing grades
-    const gradeLevel = cls.gradeLevel || (cls as any).grade_level || cls.name?.replace(/\D/g, '') || 'default';
-    getGradingConfigsForGrade(gradeLevel)
-      .then(async (methods) => {
-        if (methods.length === 0) {
-          setSaveError(`No grading configuration found for Grade ${gradeLevel}. Please ask your admin to configure it in Settings.`);
-          setGradingMethods([]);
-        } else {
-          setGradingMethods(methods);
-        }
+    try {
+      const methods = await getGradingConfigsForGrade(gradeLevel);
+      if (methods.length === 0) {
+        setSaveError(`No grading configuration found for Grade ${gradeLevel}. Please ask your admin to configure it in Settings.`);
+        setGradingMethods([]);
+      } else {
+        setGradingMethods(methods);
+      }
 
         // Prefill existing grades for this course
         try {
@@ -431,6 +425,7 @@ export const GradeEntry = () => {
         </div>
 
         {!gradesLocked && gradeSubmissionOpen && !isLoading && (
+        {!gradesLocked && gradeSubmissionOpen && !isLoading && (
           <div className="flex gap-3">
             <button
               onClick={() => void handleSave()}
@@ -540,6 +535,7 @@ export const GradeEntry = () => {
                           return (
                             <td key={method.id} className="px-4 py-4">
                               <input
+                                disabled={gradesLocked || !gradeSubmissionOpen || isLocked}
                                 disabled={gradesLocked || !gradeSubmissionOpen || isLocked}
                                 type="number"
                                 min={0}

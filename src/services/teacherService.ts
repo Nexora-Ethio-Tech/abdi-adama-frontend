@@ -89,6 +89,12 @@ export const getCourseGrades = async (courseId: string, academicYear?: string, s
   if (semester !== undefined) params.append('semester', String(semester));
   const queryString = params.toString() ? `?${params.toString()}` : '';
   const response = await api.get(`/teacher/grades/${courseId}${queryString}`);
+export const getCourseGrades = async (courseId: string, academicYear?: string, semester?: number) => {
+  const params = new URLSearchParams();
+  if (academicYear) params.append('academicYear', academicYear);
+  if (semester !== undefined) params.append('semester', String(semester));
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api.get(`/teacher/grades/${courseId}${queryString}`);
   return response.data.data;
 };
 
@@ -304,6 +310,34 @@ export const getDeptPlans = async (status?: string) => {
 
 export const reviewDeptPlan = async (planId: string, data: { status: string; feedback?: string; rating?: number }) => {
   const response = await api.post(`/teacher/dept-plans/${planId}/review`, data);
+  return response.data;
+};
+
+// ── Annual Plans Frontend API ────────────────────────────────────────────────
+export const submitAnnualPlan = async (data: any) => {
+  const response = await api.post('/teacher/annual-plans', data);
+  return response.data.data;
+};
+
+export const getMyAnnualPlans = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await api.get(`/teacher/annual-plans${params}`);
+  return response.data.data;
+};
+
+export const updateAnnualPlan = async (planId: string, data: any) => {
+  const response = await api.post(`/teacher/annual-plans/${planId}`, data);
+  return response.data.data;
+};
+
+export const getDeptAnnualPlans = async (status?: string) => {
+  const params = status ? `?status=${status}` : '';
+  const response = await api.get(`/teacher/dept-annual-plans${params}`);
+  return response.data.data;
+};
+
+export const reviewDeptAnnualPlan = async (planId: string, data: { status: string; feedback?: string; rating?: number }) => {
+  const response = await api.post(`/teacher/dept-annual-plans/${planId}/review`, data);
   return response.data;
 };
 
