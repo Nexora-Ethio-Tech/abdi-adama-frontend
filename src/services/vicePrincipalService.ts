@@ -36,21 +36,6 @@ export const reviewWeeklyPlan = async (planId: string, data: {
   return response.data;
 };
 
-// Grade Locks
-export const getGradeLocks = async () => {
-  const response = await api.get('/vice-principal/grade-locks');
-  return response.data;
-};
-
-export const toggleGradeLock = async (data: {
-  gradeLevel: string;
-  isLocked: boolean;
-  academicYearId?: string;
-}) => {
-  const response = await api.post('/vice-principal/grade-locks', data);
-  return response.data;
-};
-
 // Student Transcript
 export const getStudentTranscript = async (studentId: string, academicYear?: string, semester?: number) => {
   const params = new URLSearchParams();
