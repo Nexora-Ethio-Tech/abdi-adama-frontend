@@ -1,6 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Download, BarChart3, Users, BookOpen, CheckCircle2 } from 'lucide-react';
+import {
+  ChevronDown,
+  Download,
+  BarChart3,
+  Users,
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  Filter,
+  Lock,
+  Power,
+  RefreshCw,
+  Search,
+  Unlock,
+} from 'lucide-react';
 import * as vicePrincipalService from '../services/vicePrincipalService';
+import { useUser } from '../context/UserContext';
 import {
   getCurrentECYear,
   ecYearToGregorian,
@@ -50,7 +65,26 @@ interface StudentGrade {
   grades: Record<string, any>;
 }
 
+type SubmissionStatusFilter = 'all' | 'submitted' | 'not_submitted' | 'unlocked';
+
+interface VPGradeSubmission {
+  id: string;
+  course_id: string;
+  course_name: string;
+  course_code: string;
+  grade_level?: string | null;
+  section_name?: string | null;
+  teacher_name: string;
+  submission_type: string;
+  academic_year: string;
+  semester: number;
+  submitted_at?: string | null;
+  is_locked: boolean;
+  submission_stage?: string | null;
+}
+
 export const VPGradeManagement = () => {
+  const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedGradeGroup, setSelectedGradeGroup] = useState<VpGradeGroup | null>(null);
@@ -64,6 +98,17 @@ export const VPGradeManagement = () => {
   const [loadingSectionData, setLoadingSectionData] = useState(false);
   const [generatingResults, setGeneratingResults] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
+  const [updatingSubmissionWindow, setUpdatingSubmissionWindow] = useState(false);
+  const [submissions, setSubmissions] = useState<VPGradeSubmission[]>([]);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [unlockingSubmissionId, setUnlockingSubmissionId] = useState<string | null>(null);
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<SubmissionStatusFilter>('all');
+  const [submissionSearch, setSubmissionSearch] = useState('');
+  const [submissionGradeFilter, setSubmissionGradeFilter] = useState('all');
+  const [submissionSectionFilter, setSubmissionSectionFilter] = useState('all');
+  const [unlockWindowDays, setUnlockWindowDays] = useState(60);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -73,7 +118,15 @@ export const VPGradeManagement = () => {
 
   useEffect(() => {
     fetchGradesAndSections();
+    void vicePrincipalService.getGradeSubmissionPolicy()
+      .then((policy) => setUnlockWindowDays(policy.unlockWindowDays))
+      .catch(() => setUnlockWindowDays(60));
   }, []);
+
+  useEffect(() => {
+    const semNum = selectedSemester === 'First Semester' ? 1 : 2;
+    void fetchGradeSubmissions(selectedYear, semNum);
+  }, [selectedYear, selectedSemester]);
 
   const fetchGradesAndSections = async () => {
     try {
@@ -94,6 +147,78 @@ export const VPGradeManagement = () => {
       showToast(message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGradeSubmissions = async (academicYear = selectedYear, semester = selectedSemester === 'First Semester' ? 1 : 2) => {
+    try {
+      setLoadingSubmissions(true);
+      const data = await vicePrincipalService.getVPGradeSubmissions(academicYear, semester);
+      setSubmissions(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch grade submissions:', err);
+      showToast('Failed to fetch teacher grade submissions', 'error');
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  };
+
+  const normalizeGradeLevel = (gradeLevel?: string | null) => {
+    if (!gradeLevel) return '';
+    const normalized = gradeLevel.replace(/^Grade\s*/i, '').trim();
+    return normalized ? `Grade ${normalized}` : '';
+  };
+
+  const isNotSubmitted = (submission: VPGradeSubmission) =>
+    submission.submission_stage === 'not_submitted' || !submission.submitted_at;
+
+  const isSubmittedAndLocked = (submission: VPGradeSubmission) =>
+    submission.is_locked
+    || submission.submission_stage === 'submitted'
+    || submission.submission_stage === 'finalized';
+
+  const currentAcademicYear = ecYearToGregorian(getCurrentECYear());
+  const currentSemester = getCurrentSemester();
+  const unlockWindowMs = unlockWindowDays * 24 * 60 * 60 * 1000;
+
+  const canUnlockSubmission = (submission: VPGradeSubmission) => {
+    if (!submission.is_locked || !submission.submitted_at) return false;
+    const isCurrentPeriod = submission.academic_year === currentAcademicYear
+      && Number(submission.semester) === currentSemester;
+    const submittedAt = new Date(submission.submitted_at).getTime();
+    const age = Date.now() - submittedAt;
+    return isCurrentPeriod && Number.isFinite(submittedAt) && age >= 0 && age <= unlockWindowMs;
+  };
+
+  const handleUnlockSubmission = async (submission: VPGradeSubmission) => {
+    if (!canUnlockSubmission(submission)) {
+      showToast(`Unlock denied: only submissions from the active semester and within ${unlockWindowDays} days can be unlocked.`, 'error');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to unlock "${submission.course_name}" (${submission.submission_type}) for ${submission.teacher_name}?\n\nThis grants the teacher permission to correct and resubmit this assessment.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setUnlockingSubmissionId(submission.id);
+      const response = await vicePrincipalService.unlockGradeSubmission({
+        courseId: submission.course_id,
+        submissionType: submission.submission_type,
+        academicYear: submission.academic_year,
+        semester: Number(submission.semester),
+      });
+      showToast(response.message || 'Submission unlocked successfully', 'success');
+      await fetchGradeSubmissions(submission.academic_year, Number(submission.semester));
+      if (selectedGradeGroup && selectedSection) {
+        await handleSectionSelect(selectedGradeGroup, selectedSection, selectedYear, selectedSemester);
+      }
+    } catch (err: any) {
+      const message = err.response?.data?.message || err.message || 'Failed to unlock grade submission';
+      showToast(message, 'error');
+    } finally {
+      setUnlockingSubmissionId(null);
     }
   };
 
@@ -240,6 +365,290 @@ export const VPGradeManagement = () => {
     }
   };
 
+  const handleSubmissionWindowToggle = async () => {
+    if (updatingSubmissionWindow) return;
+    const nextValue = !gradeSubmissionOpen;
+    try {
+      setUpdatingSubmissionWindow(true);
+      await vicePrincipalService.setGradeSubmissionOpen(nextValue);
+      setGradeSubmissionOpen(nextValue);
+      showToast(`Grade submission is now ${nextValue ? 'open' : 'closed'}.`, 'success');
+    } catch (err: any) {
+      const message = err.response?.data?.message || 'Failed to update grade submission status';
+      showToast(message, 'error');
+    } finally {
+      setUpdatingSubmissionWindow(false);
+    }
+  };
+
+  const isStudentGradeComplete = (student: StudentGrade) =>
+    courses.length > 0 && Object.keys(student.grades).length === courses.length;
+
+  const completeStudentCount = studentGrades.filter(isStudentGradeComplete).length;
+  const incompleteStudentCount = studentGrades.length - completeStudentCount;
+  const visibleStudentGrades = studentGrades.filter((student) => {
+    if (completionFilter === 'complete') return isStudentGradeComplete(student);
+    if (completionFilter === 'incomplete') return !isStudentGradeComplete(student);
+    return true;
+  });
+
+  const submissionGradeOptions = Array.from(new Set(
+    submissions.map((submission) => normalizeGradeLevel(submission.grade_level)).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  const submissionSectionOptions = Array.from(new Set(
+    submissions
+      .filter((submission) => submissionGradeFilter === 'all'
+        || normalizeGradeLevel(submission.grade_level) === submissionGradeFilter)
+      .map((submission) => submission.section_name)
+      .filter((section): section is string => Boolean(section))
+  )).sort();
+
+  const submissionsInSelectedClassFilters = submissions.filter((submission) => {
+    if (submissionGradeFilter !== 'all'
+      && normalizeGradeLevel(submission.grade_level) !== submissionGradeFilter) return false;
+    if (submissionSectionFilter !== 'all'
+      && submission.section_name !== submissionSectionFilter) return false;
+    return true;
+  });
+
+  const visibleSubmissions = submissionsInSelectedClassFilters.filter((submission) => {
+    const notSubmitted = isNotSubmitted(submission);
+    const submitted = isSubmittedAndLocked(submission);
+    const unlocked = !submission.is_locked && !notSubmitted;
+
+    if (submissionStatusFilter === 'submitted' && !submitted) return false;
+    if (submissionStatusFilter === 'not_submitted' && !notSubmitted) return false;
+    if (submissionStatusFilter === 'unlocked' && !unlocked) return false;
+
+    const query = submissionSearch.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      submission.teacher_name,
+      submission.course_name,
+      submission.course_code,
+      submission.grade_level,
+      submission.section_name,
+      submission.submission_type,
+    ].some((value) => value?.toLowerCase().includes(query));
+  });
+
+  const submittedCount = submissionsInSelectedClassFilters.filter(isSubmittedAndLocked).length;
+  const notSubmittedCount = submissionsInSelectedClassFilters.filter(isNotSubmitted).length;
+  const unlockedCount = submissionsInSelectedClassFilters.filter((submission) =>
+    !submission.is_locked && !isNotSubmitted(submission)
+  ).length;
+
+  const renderSubmissionsReview = () => (
+    <div className="space-y-6 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Unlock className="text-indigo-600" size={20} />
+              Teacher Grade Submissions &amp; Unlock Permissions
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Filter submissions to detect who has and has not submitted grades.
+              <span className="font-semibold text-amber-600 dark:text-amber-400 ml-1">
+                (Unlock Rule: Active Semester Only &amp; ≤ {unlockWindowDays} Days From Submission)
+              </span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void fetchGradeSubmissions()}
+            disabled={loadingSubmissions}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all disabled:opacity-60"
+          >
+            <RefreshCw size={14} className={loadingSubmissions ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
+
+        <div className="flex flex-col xl:flex-row gap-3 mb-4">
+          <div className="relative flex-1">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by teacher, course, assessment, grade or section..."
+              value={submissionSearch}
+              onChange={(event) => setSubmissionSearch(event.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            />
+          </div>
+          <div className="relative min-w-[160px]">
+            <BookOpen size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select
+              value={submissionGradeFilter}
+              onChange={(event) => {
+                setSubmissionGradeFilter(event.target.value);
+                setSubmissionSectionFilter('all');
+              }}
+              className="w-full pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+              aria-label="Filter submissions by grade level"
+            >
+              <option value="all">All Grade Levels</option>
+              {submissionGradeOptions.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="relative min-w-[150px]">
+            <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <select
+              value={submissionSectionFilter}
+              onChange={(event) => setSubmissionSectionFilter(event.target.value)}
+              className="w-full pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer"
+              aria-label="Filter submissions by section"
+            >
+              <option value="all">All Sections</option>
+              {submissionSectionOptions.map((section) => <option key={section} value={section}>{section}</option>)}
+            </select>
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl shrink-0 overflow-x-auto">
+            <Filter size={13} className="text-slate-400 ml-1 shrink-0" />
+            {([
+              { key: 'all', label: 'All', count: submissionsInSelectedClassFilters.length },
+              { key: 'submitted', label: 'Submitted', count: submittedCount },
+              { key: 'not_submitted', label: 'Not Submitted', count: notSubmittedCount },
+              { key: 'unlocked', label: 'Unlocked', count: unlockedCount },
+            ] as Array<{ key: SubmissionStatusFilter; label: string; count: number }>).map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setSubmissionStatusFilter(filter.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all whitespace-nowrap ${submissionStatusFilter === filter.key
+                  ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                  }`}
+              >
+                {filter.label}{filter.key !== 'all' ? ` (${filter.count})` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[11px] font-bold text-slate-600 dark:text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-slate-400" /> Total Assessments: {submissionsInSelectedClassFilters.length}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-full text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+            <Lock size={11} /> Submitted &amp; Locked: {submittedCount}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-full text-[11px] font-bold text-amber-700 dark:text-amber-400">
+            <Clock3 size={11} /> Not Submitted / Pending: {notSubmittedCount}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 rounded-full text-[11px] font-bold text-indigo-700 dark:text-indigo-400">
+            <Unlock size={11} /> Unlocked (Editable): {unlockedCount}
+          </span>
+        </div>
+
+        {loadingSubmissions ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="w-10 h-10 border-4 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+          </div>
+        ) : visibleSubmissions.length === 0 ? (
+          <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+            <Lock className="mx-auto text-slate-400 mb-3" size={32} />
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+              {submissions.length === 0 ? 'No Grade Submissions Found' : 'No results match your selected filters'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {submissions.length === 0
+                ? 'Submission records will appear here when courses and assessments are available.'
+                : 'Try a different grade, section, status, or search term.'}
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1180px]">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="py-3 px-4">Course &amp; Code</th>
+                  <th className="py-3 px-4">Grade &amp; Section</th>
+                  <th className="py-3 px-4">Teacher Name</th>
+                  <th className="py-3 px-4">Assessment Type</th>
+                  <th className="py-3 px-4">Academic Period</th>
+                  <th className="py-3 px-4">Submitted At</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">VP Permission Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {visibleSubmissions.map((submission) => {
+                  const notSubmitted = isNotSubmitted(submission);
+                  const canUnlock = canUnlockSubmission(submission);
+                  const samePeriod = submission.academic_year === currentAcademicYear
+                    && Number(submission.semester) === currentSemester;
+                  const gradeLabel = normalizeGradeLevel(submission.grade_level);
+
+                  return (
+                    <tr key={submission.id} className={notSubmitted ? 'bg-amber-50/30 dark:bg-amber-900/10' : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'}>
+                      <td className="py-4 px-4">
+                        <p className="font-bold text-sm text-slate-800 dark:text-white">{submission.course_name}</p>
+                        <p className="text-xs text-slate-400">{submission.course_code}</p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {gradeLabel && <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded font-bold text-xs">{gradeLabel}</span>}
+                          {submission.section_name && <span className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded font-bold text-xs">{submission.section_name}</span>}
+                          {!gradeLabel && !submission.section_name && <span className="text-xs text-slate-400 italic">General</span>}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-black">
+                            {(submission.teacher_name || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-semibold text-sm text-slate-700 dark:text-slate-300">{submission.teacher_name || 'Unknown Teacher'}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4"><span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold uppercase tracking-wider">{submission.submission_type}</span></td>
+                      <td className="py-4 px-4 text-xs font-medium text-slate-600 dark:text-slate-400">{gregorianToECYear(submission.academic_year)} E.C. &bull; Semester {submission.semester}</td>
+                      <td className="py-4 px-4 text-xs text-slate-500">
+                        {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : <span className="text-amber-600 dark:text-amber-400 italic font-semibold">Not yet submitted</span>}
+                      </td>
+                      <td className="py-4 px-4">
+                        {notSubmitted ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-xs font-extrabold border border-amber-200 dark:border-amber-800"><Clock3 size={12} /> Not Submitted</span>
+                        ) : submission.is_locked ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-full text-xs font-extrabold border border-rose-200 dark:border-rose-800"><Lock size={12} /> Submitted &amp; Locked</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-full text-xs font-extrabold border border-emerald-200 dark:border-emerald-800"><Unlock size={12} /> Unlocked (Editable)</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        {notSubmitted ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-bold inline-flex items-center gap-1"><Clock3 size={13} /> Pending Submission</span>
+                        ) : canUnlock ? (
+                          <button
+                            type="button"
+                            onClick={() => void handleUnlockSubmission(submission)}
+                            disabled={unlockingSubmissionId === submission.id}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 disabled:opacity-50"
+                          >
+                            <Unlock size={14} /> {unlockingSubmissionId === submission.id ? 'Unlocking...' : 'Unlock & Grant Edit'}
+                          </button>
+                        ) : submission.is_locked ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800" title={`Cannot unlock: past semester or older than ${unlockWindowDays} days.`}>
+                            <Clock3 size={13} /> {samePeriod ? `${unlockWindowDays}-Day Expired` : 'Past Semester'}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">Teacher Can Edit</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -263,6 +672,68 @@ export const VPGradeManagement = () => {
           </p>
         </div>
       </section>
+
+      <button
+        type="button"
+        onClick={() => void handleSubmissionWindowToggle()}
+        disabled={updatingSubmissionWindow}
+        title={gradeSubmissionOpen ? 'Click to close grade submission' : 'Click to open grade submission'}
+        className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between text-left select-none hover:opacity-90 active:scale-[0.99] disabled:cursor-wait disabled:opacity-60 ${gradeSubmissionOpen
+          ? 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/10'
+          : 'border-rose-200 bg-rose-50 dark:bg-rose-900/10'
+          }`}
+      >
+        <span className="flex items-center gap-3">
+          <span className={`p-2 rounded-xl text-white ${gradeSubmissionOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+            <Power size={18} />
+          </span>
+          <span>
+            <span className={`block text-sm font-black uppercase tracking-tight ${gradeSubmissionOpen ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+              Grade Submission Window: {gradeSubmissionOpen ? 'OPEN' : 'CLOSED'}
+            </span>
+            <span className={`block text-[10px] font-medium ${gradeSubmissionOpen ? 'text-emerald-600 dark:text-emerald-500' : 'text-rose-600 dark:text-rose-500'}`}>
+              {gradeSubmissionOpen
+                ? 'Teachers can currently enter and submit grades for their assigned courses.'
+                : 'System-wide grade submission is closed. Teachers cannot submit new grades.'}
+            </span>
+          </span>
+        </span>
+        <span className={`w-12 h-6 rounded-full relative transition-colors ${gradeSubmissionOpen ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm ${gradeSubmissionOpen ? 'right-1' : 'left-1'}`} />
+        </span>
+      </button>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('section-grades')}
+          className={`flex items-center justify-center gap-2.5 py-3 px-5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${activeTab === 'section-grades'
+            ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/60 dark:border-slate-700'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+        >
+          <BarChart3 size={16} />
+          1. Section Grade Processing &amp; Completion Filter
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('submissions-review')}
+          className={`flex items-center justify-center gap-2.5 py-3 px-5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all ${activeTab === 'submissions-review'
+            ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200/60 dark:border-slate-700'
+            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+        >
+          <Unlock size={16} />
+          2. Teacher Submissions &amp; Re-submission Filter
+          <span className="ml-1 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] rounded-full font-black">
+            {submissions.length} Total
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'submissions-review' && renderSubmissionsReview()}
+
+      <div className={activeTab === 'section-grades' ? 'contents' : 'hidden'}>
 
       {/* Academic Period Filter */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-6 shadow-sm">
@@ -448,10 +919,29 @@ export const VPGradeManagement = () => {
           <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-100 dark:border-slate-800 p-6">
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
               <div>
-                <h3 className="font-bold text-slate-800 dark:text-white">Grade Actions</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Process and calculate grades for this section</p>
+                <h3 className="font-bold text-slate-800 dark:text-white">Grade Actions &amp; Completion Filter</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Filter students by grade completion or calculate section results</p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  {([
+                    { key: 'all', label: `All (${studentGrades.length})` },
+                    { key: 'complete', label: `Complete (${completeStudentCount})` },
+                    { key: 'incomplete', label: `Incomplete / Missing (${incompleteStudentCount})` },
+                  ] as Array<{ key: 'all' | 'complete' | 'incomplete'; label: string }>).map((filter) => (
+                    <button
+                      key={filter.key}
+                      type="button"
+                      onClick={() => setCompletionFilter(filter.key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wide transition-all ${completionFilter === filter.key
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                        }`}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
                 <button
                   onClick={handleGenerateResults}
                   disabled={generatingResults || students.length === 0}
@@ -501,7 +991,7 @@ export const VPGradeManagement = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {studentGrades.map((student) => (
+                  {visibleStudentGrades.map((student) => (
                     <tr key={student.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="font-medium text-slate-800 dark:text-white">{student.name}</div>
@@ -551,6 +1041,8 @@ export const VPGradeManagement = () => {
           )}
         </div>
       )}
+
+      </div>
 
       {/* Toast Notification */}
       {toast.show && (

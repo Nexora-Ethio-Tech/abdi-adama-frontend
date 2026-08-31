@@ -58,6 +58,8 @@ export const enterGrade = async (data: {
   score: number;
   total: number;
   weight?: string;
+  academicYear?: string;
+  semester?: number;
 }) => {
   const response = await api.post('/teacher/grades', data);
   return response.data;
@@ -81,8 +83,12 @@ export const bulkEnterGrades = async (data: {
 };
 
 // Get grades by course
-export const getCourseGrades = async (courseId: string) => {
-  const response = await api.get(`/teacher/grades/${courseId}`);
+export const getCourseGrades = async (courseId: string, academicYear?: string, semester?: number) => {
+  const params = new URLSearchParams();
+  if (academicYear) params.append('academicYear', academicYear);
+  if (semester !== undefined) params.append('semester', String(semester));
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const response = await api.get(`/teacher/grades/${courseId}${queryString}`);
   return response.data.data;
 };
 
@@ -262,8 +268,16 @@ export const saveDraftGrades = async (data: { courseId: string; submissionType: 
   return response.data;
 };
 
-export const submitCourseGrades = async (courseId: string, submissionType: string) => {
-  const response = await api.post('/teacher/grades/submit-course', { courseId, submissionType });
+export const submitCourseGrades = async (
+  courseId: string,
+  submissionType: string,
+  period?: { academicYear?: string; semester?: number }
+) => {
+  const response = await api.post('/teacher/grades/submit-course', {
+    courseId,
+    submissionType,
+    ...period,
+  });
   return response.data;
 };
 
