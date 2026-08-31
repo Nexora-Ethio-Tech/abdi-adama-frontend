@@ -85,7 +85,6 @@ interface VPGradeSubmission {
 
 export const VPGradeManagement = () => {
   const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
-  const { gradeSubmissionOpen, setGradeSubmissionOpen } = useUser();
   const [grades, setGrades] = useState<VpGradeGroup[]>([]);
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [selectedGradeGroup, setSelectedGradeGroup] = useState<VpGradeGroup | null>(null);
@@ -98,7 +97,6 @@ export const VPGradeManagement = () => {
   const [loading, setLoading] = useState(true);
   const [loadingSectionData, setLoadingSectionData] = useState(false);
   const [generatingResults, setGeneratingResults] = useState(false);
-  const [togglingSubmission, setTogglingSubmission] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
   const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
@@ -113,37 +111,10 @@ export const VPGradeManagement = () => {
   const [unlockWindowDays, setUnlockWindowDays] = useState(60);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
-  // Submissions & Re-submission Unlock State
-  const [activeTab, setActiveTab] = useState<'section-grades' | 'submissions-review'>('section-grades');
-  const [submissions, setSubmissions] = useState<GradeSubmissionRecord[]>([]);
-  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
-  const [unlockingId, setUnlockingId] = useState<string | null>(null);
-
-  // Submission filter state
-  const [submissionFilter, setSubmissionFilter] = useState<'all' | 'submitted' | 'unlocked' | 'not_submitted'>('all');
-  const [submissionSearch, setSubmissionSearch] = useState('');
-  const [selectedSubmissionGrade, setSelectedSubmissionGrade] = useState<string>('all');
-  const [selectedSubmissionSection, setSelectedSubmissionSection] = useState<string>('all');
-
-  // Section grade status filter state
-  const [sectionGradeFilter, setSectionGradeFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
-
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
-
-  const fetchSubmissions = useCallback(async () => {
-    try {
-      setLoadingSubmissions(true);
-      const data = await vicePrincipalService.getGradeSubmissions();
-      setSubmissions(data || []);
-    } catch (err: any) {
-      console.error('Failed to fetch grade submissions:', err);
-    } finally {
-      setLoadingSubmissions(false);
-    }
-  }, []);
 
   useEffect(() => {
     fetchGradesAndSections();

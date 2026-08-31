@@ -89,12 +89,6 @@ export const getCourseGrades = async (courseId: string, academicYear?: string, s
   if (semester !== undefined) params.append('semester', String(semester));
   const queryString = params.toString() ? `?${params.toString()}` : '';
   const response = await api.get(`/teacher/grades/${courseId}${queryString}`);
-export const getCourseGrades = async (courseId: string, academicYear?: string, semester?: number) => {
-  const params = new URLSearchParams();
-  if (academicYear) params.append('academicYear', academicYear);
-  if (semester !== undefined) params.append('semester', String(semester));
-  const queryString = params.toString() ? `?${params.toString()}` : '';
-  const response = await api.get(`/teacher/grades/${courseId}${queryString}`);
   return response.data.data;
 };
 
