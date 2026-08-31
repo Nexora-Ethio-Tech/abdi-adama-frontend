@@ -184,8 +184,7 @@ export const Settings = () => {
   const [staffPayoutEdited, setStaffPayoutEdited] = useState(false);
   // Lock target editing after 4th of each Gregorian month
   const isTargetSettingLocked = (() => { const d = new Date().getDate(); return d > 4; })();
-  const [smtpSettings, setSmtpSettings] = useState({ smtp_host: 'smtp.gmail.com', smtp_port: '587', smtp_user: 'abdiadamaschooloffice@gmail.com', smtp_from: 'abdiadamaschooloffice@gmail.com' });
-  const [smtpPass, setSmtpPass] = useState('gdgg eify uzec fhox');
+  const [smtpSettings, setSmtpSettings] = useState({ smtp_host: '', smtp_port: '', smtp_user: '', smtp_from: '' });
   const [smtpTestEmail, setSmtpTestEmail] = useState('');
   const [smtpSaving, setSmtpSaving] = useState(false);
   const [smtpMessage, setSmtpMessage] = useState('');
@@ -641,10 +640,7 @@ export const Settings = () => {
     setSmtpSaving(true);
     setSmtpMessage('');
     try {
-      const payload: Record<string, string> = { ...smtpSettings };
-      if (smtpPass.trim()) payload.smtp_pass = smtpPass;
-      await settingsService.updateSmtpSettings(payload);
-      setSmtpPass('');
+      await settingsService.updateSmtpSettings(smtpSettings);
       setSmtpMessage('SMTP settings saved');
     } catch (err: any) {
       setSmtpMessage(err.response?.data?.error?.message || 'Failed to save SMTP settings');
@@ -1230,15 +1226,8 @@ export const Settings = () => {
                             className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
                           />
                         </div>
-                        <div className="space-y-1 md:col-span-2">
-                          <label htmlFor="smtp-password" className="text-xs font-bold text-slate-500 uppercase">SMTP Password (leave blank to keep current)</label>
-                          <input
-                            id="smtp-password"
-                            type="password"
-                            value={smtpPass}
-                            onChange={(e) => setSmtpPass(e.target.value)}
-                            className="w-full px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm"
-                          />
+                        <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                          SMTP password is managed securely in the server environment as <code>SMTP_PASS</code>. It cannot be viewed or changed here.
                         </div>
                         <div className="space-y-1 md:col-span-2">
                           <label htmlFor="smtp-test-email" className="text-xs font-bold text-slate-500 uppercase">Test recipient email</label>
