@@ -530,6 +530,14 @@ export const Settings = () => {
     setGeneralSaving(true);
     setSuccessMessage('');
     try {
+      const active = academicYears.find((y) => y.is_active);
+      const shouldActivateYear = Boolean(
+        selectedAcademicYearId && (!active || active.id !== selectedAcademicYearId)
+      );
+      if (shouldActivateYear) {
+        await settingsService.activateAcademicYear(selectedAcademicYearId);
+      }
+
       await settingsService.updateSystemSettings({
         school_name_oromic: schoolName.oromic,
         school_name_amharic: schoolName.amharic,
@@ -542,14 +550,9 @@ export const Settings = () => {
         address,
         grades_locked: gradesLocked ? 'true' : 'false',
         registration_open: registrationOpen ? 'true' : 'false',
-        active_academic_year_id: selectedAcademicYearId || '',
       });
-      if (selectedAcademicYearId) {
-        const active = academicYears.find((y) => y.is_active);
-        if (!active || active.id !== selectedAcademicYearId) {
-          await settingsService.activateAcademicYear(selectedAcademicYearId);
-          await loadGeneralSettings();
-        }
+      if (shouldActivateYear) {
+        await loadGeneralSettings();
       }
       setSuccessMessage('System settings saved successfully!');
       setTimeout(() => setSuccessMessage(''), 4000);
