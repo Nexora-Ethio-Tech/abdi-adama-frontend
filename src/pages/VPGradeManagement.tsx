@@ -6,6 +6,8 @@ import {
   Users,
   BookOpen,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Filter,
   Lock,
@@ -108,6 +110,8 @@ export const VPGradeManagement = () => {
   const [submissionSearch, setSubmissionSearch] = useState('');
   const [submissionGradeFilter, setSubmissionGradeFilter] = useState('all');
   const [submissionSectionFilter, setSubmissionSectionFilter] = useState('all');
+  const [submissionPage, setSubmissionPage] = useState(1);
+  const [submissionMaxRows, setSubmissionMaxRows] = useState(10);
   const [unlockWindowDays, setUnlockWindowDays] = useState(60);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
 
@@ -433,6 +437,30 @@ export const VPGradeManagement = () => {
     ].some((value) => value?.toLowerCase().includes(query));
   });
 
+  const submissionTotalPages = Math.max(1, Math.ceil(visibleSubmissions.length / submissionMaxRows));
+  const activeSubmissionPage = Math.min(submissionPage, submissionTotalPages);
+  const submissionFirstRow = (activeSubmissionPage - 1) * submissionMaxRows;
+  const paginatedSubmissions = visibleSubmissions.slice(
+    submissionFirstRow,
+    submissionFirstRow + submissionMaxRows
+  );
+
+  useEffect(() => {
+    setSubmissionPage(1);
+  }, [
+    selectedYear,
+    selectedSemester,
+    submissionSearch,
+    submissionGradeFilter,
+    submissionSectionFilter,
+    submissionStatusFilter,
+    submissionMaxRows,
+  ]);
+
+  useEffect(() => {
+    setSubmissionPage((page) => Math.min(page, submissionTotalPages));
+  }, [submissionTotalPages]);
+
   const submittedCount = submissionsInSelectedClassFilters.filter(isSubmittedAndLocked).length;
   const notSubmittedCount = submissionsInSelectedClassFilters.filter(isNotSubmitted).length;
   const unlockedCount = submissionsInSelectedClassFilters.filter((submission) =>
@@ -576,7 +604,7 @@ export const VPGradeManagement = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {visibleSubmissions.map((submission) => {
+                {paginatedSubmissions.map((submission) => {
                   const notSubmitted = isNotSubmitted(submission);
                   const canUnlock = canUnlockSubmission(submission);
                   const samePeriod = submission.academic_year === currentAcademicYear
@@ -643,6 +671,55 @@ export const VPGradeManagement = () => {
                 })}
               </tbody>
             </table>
+
+            <div className="sticky left-0 flex flex-col gap-3 border-t border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/30 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Showing {submissionFirstRow + 1}&ndash;{Math.min(submissionFirstRow + submissionMaxRows, visibleSubmissions.length)} of {visibleSubmissions.length} matching submissions
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <label htmlFor="submission-max-rows" className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300">
+                  Max rows
+                  <input
+                    id="submission-max-rows"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={submissionMaxRows}
+                    onChange={(event) => {
+                      const nextValue = Number(event.target.value);
+                      setSubmissionMaxRows(Number.isFinite(nextValue) ? Math.min(100, Math.max(1, Math.trunc(nextValue))) : 10);
+                    }}
+                    className="w-20 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-center text-xs font-black text-slate-700 outline-none transition-all focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    aria-label="Maximum submission rows per page"
+                  />
+                </label>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionPage(Math.max(1, activeSubmissionPage - 1))}
+                    disabled={activeSubmissionPage === 1}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
+                    aria-label="Previous submissions page"
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+                  <span className="min-w-20 px-2 text-center text-xs font-black text-slate-700 dark:text-slate-200">
+                    Page {activeSubmissionPage} of {submissionTotalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionPage(Math.min(submissionTotalPages, activeSubmissionPage + 1))}
+                    disabled={activeSubmissionPage === submissionTotalPages}
+                    className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700"
+                    aria-label="Next submissions page"
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
