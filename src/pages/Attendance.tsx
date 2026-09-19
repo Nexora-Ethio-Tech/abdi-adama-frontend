@@ -1741,7 +1741,7 @@ const EditAttendanceTimesModal = ({
   const [lunchInEnd, setLunchInEnd] = useState(windows?.lunchCheckInEnd || '14:00');
   const [leaveStart, setLeaveStart] = useState(windows?.leaveStart || '17:00');
   const [leaveEnd, setLeaveEnd] = useState(windows?.leaveEnd || '18:00');
-  const [applyToAll, setApplyToAll] = useState(false);
+  const [applyToAll, setApplyToAll] = useState(true);
 
   const handleResetDefaults = () => {
     setMorningStart('07:30');
