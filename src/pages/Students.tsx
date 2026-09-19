@@ -92,6 +92,17 @@ export const Students = () => {
   const [loadingBulkSections, setLoadingBulkSections] = useState(false);
   const [autoDistributing, setAutoDistributing] = useState(false);
 
+  // Bulk status update modal state
+  const [showBulkStatusModal, setShowBulkStatusModal] = useState(false);
+  const [bulkTargetStatus, setBulkTargetStatus] = useState<'Active' | 'Inactive' | 'Suspended' | 'Graduated'>('Active');
+  const [bulkUpdatingStatus, setBulkUpdatingStatus] = useState(false);
+
+  // Bulk grade promote modal state
+  const [showBulkPromoteModal, setShowBulkPromoteModal] = useState(false);
+  const [bulkPromoteGrade, setBulkPromoteGrade] = useState('Grade 1');
+  const [bulkResetSection, setBulkResetSection] = useState(true);
+  const [bulkPromotingGrade, setBulkPromotingGrade] = useState(false);
+
   const handlePhoneInput = (value: string) => {
     // Remove any non-digit characters
     let phoneDigits = value.replace(/[^\d]/g, '');
@@ -181,18 +192,80 @@ export const Students = () => {
   };
 
   const selectAllFiltered = () => {
-    const unassignedFiltered = filtered.filter(s => !s.section);
-    if (unassignedFiltered.length === 0) return;
+    if (filtered.length === 0) return;
 
-    const allUnassignedSelected = unassignedFiltered.every(s => selectedStudentIds.has(s.id));
+    const allFilteredSelected = filtered.every(s => selectedStudentIds.has(s.id));
     const newSelected = new Set(selectedStudentIds);
     
-    if (allUnassignedSelected) {
-      unassignedFiltered.forEach(s => newSelected.delete(s.id));
+    if (allFilteredSelected) {
+      filtered.forEach(s => newSelected.delete(s.id));
     } else {
-      unassignedFiltered.forEach(s => newSelected.add(s.id));
+      filtered.forEach(s => newSelected.add(s.id));
     }
     setSelectedStudentIds(newSelected);
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (selectedStudentIds.size === 0) return;
+    setBulkUpdatingStatus(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    const selectedStudentsList = students.filter(s => selectedStudentIds.has(s.id));
+
+    for (const student of selectedStudentsList) {
+      try {
+        await studentService.updateStudent(student.userId || student.id, { status: bulkTargetStatus });
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to update status for student ${student.id}:`, err);
+        failCount++;
+      }
+    }
+
+    setBulkUpdatingStatus(false);
+    setShowBulkStatusModal(false);
+    showToast(
+      `Updated status to ${bulkTargetStatus} for ${successCount} student(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+      failCount === 0 ? 'success' : 'error'
+    );
+    setSelectedStudentIds(new Set());
+    fetchStudents();
+  };
+
+  const handleBulkPromoteGrade = async () => {
+    if (selectedStudentIds.size === 0) return;
+    setBulkPromotingGrade(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    const selectedStudentsList = students.filter(s => selectedStudentIds.has(s.id));
+
+    for (const student of selectedStudentsList) {
+      try {
+        await studentService.updateStudent(student.userId || student.id, { grade: bulkPromoteGrade });
+        if (bulkResetSection && student.section) {
+          try {
+            await removeStudentFromClass(student.userId || student.id);
+          } catch (e) {
+            // Ignore optional section removal failure
+          }
+        }
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to promote student ${student.id}:`, err);
+        failCount++;
+      }
+    }
+
+    setBulkPromotingGrade(false);
+    setShowBulkPromoteModal(false);
+    showToast(
+      `Promoted/Shifted grade to ${bulkPromoteGrade} for ${successCount} student(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+      failCount === 0 ? 'success' : 'error'
+    );
+    setSelectedStudentIds(new Set());
+    fetchStudents();
   };
 
   const openBulkAssignModal = async () => {
@@ -449,13 +522,14 @@ export const Students = () => {
   const handleDelete = async () => {
     if (!confirmDelete.student) return;
     try {
-      // Use userId for deletion to hit the users delete endpoint
-      await studentService.deleteStudent(confirmDelete.student.userId || confirmDelete.student.id);
+      const student = confirmDelete.student;
+      // Pass both student PK id and user_id for proper fallback
+      await studentService.deleteStudent(student.id, student.userId);
       showToast('Student deleted successfully!', 'success');
       setConfirmDelete({ show: false, student: null });
       fetchStudents();
     } catch (err: any) {
-      showToast(err.response?.data?.error?.message || 'Failed to delete student', 'error');
+      showToast(getErrorMessage(err, 'Failed to delete student'), 'error');
     }
   };
 
@@ -678,24 +752,58 @@ export const Students = () => {
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
               {/* Bulk Actions Bar */}
               {selectedStudentIds.size > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 animate-in fade-in duration-200">
                   <div className="flex items-center gap-3">
-                    <Check size={20} className="text-blue-600" />
-                    <span className="font-bold text-sm text-blue-700 dark:text-blue-300">
+                    <input
+                      type="checkbox"
+                      checked={filtered.length > 0 && filtered.every(s => selectedStudentIds.has(s.id))}
+                      onChange={selectAllFiltered}
+                      className="w-4 h-4 rounded text-emerald-500 cursor-pointer accent-emerald-500"
+                      title="Toggle select all visible students"
+                    />
+                    <span className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                      <Check size={18} className="text-emerald-400" />
                       {selectedStudentIds.size} student{selectedStudentIds.size !== 1 ? 's' : ''} selected
                     </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
-                      onClick={openBulkAssignModal}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold"
+                      type="button"
+                      onClick={() => {
+                        setBulkTargetStatus('Active');
+                        setShowBulkStatusModal(true);
+                      }}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-bold shadow-md"
                     >
                       <GraduationCap size={16} />
+                      Shift Status / Graduate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const firstStudent = students.find(s => selectedStudentIds.has(s.id));
+                        const currentGrade = filterGrade ? `Grade ${filterGrade}` : (firstStudent?.grade || 'Grade 1');
+                        setBulkPromoteGrade(currentGrade);
+                        setBulkResetSection(true);
+                        setShowBulkPromoteModal(true);
+                      }}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-bold shadow-md"
+                    >
+                      <RefreshCw size={16} />
+                      Promote / Shift Grade
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openBulkAssignModal}
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-bold shadow-md"
+                    >
+                      <UserPlus size={16} />
                       Assign Section
                     </button>
                     <button
+                      type="button"
                       onClick={() => setSelectedStudentIds(new Set())}
-                      className="flex-1 sm:flex-none px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 transition-colors text-sm font-bold"
+                      className="flex-1 sm:flex-none px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors text-sm font-bold"
                     >
                       Clear
                     </button>
@@ -712,12 +820,11 @@ export const Students = () => {
                         type="checkbox"
                         checked={
                           filtered.length > 0 &&
-                          filtered.filter(s => !s.section).length > 0 &&
-                          filtered.filter(s => !s.section).every(s => selectedStudentIds.has(s.id))
+                          filtered.every(s => selectedStudentIds.has(s.id))
                         }
                         onChange={selectAllFiltered}
                         className="rounded cursor-pointer"
-                        title="Select all visible unassigned students"
+                        title="Select all visible students"
                         aria-label="Select all students"
                       />
                     </th>
@@ -1305,6 +1412,193 @@ export const Students = () => {
                   <>
                     <Check size={16} />
                     Assign Students
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Bulk Status / Graduate Modal */}
+      {showBulkStatusModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-emerald-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black flex items-center gap-2">
+                    <GraduationCap size={24} />
+                    Shift Status / Graduate
+                  </h3>
+                  <p className="text-emerald-100 text-xs font-medium mt-1">{selectedStudentIds.size} student(s) selected</p>
+                </div>
+                <button
+                  onClick={() => setShowBulkStatusModal(false)}
+                  className="p-2 hover:bg-emerald-700 rounded-lg transition-colors"
+                  title="Close"
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  Target Status
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { name: 'Active', desc: 'Normal active student status', color: 'border-green-500 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400' },
+                    { name: 'Inactive', desc: 'Currently inactive / withdrawn', color: 'border-slate-500 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300' },
+                    { name: 'Suspended', desc: 'Temporarily suspended', color: 'border-red-500 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400' },
+                    { name: 'Graduated', desc: 'Mark as graduated alumnus', color: 'border-blue-500 bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400' }
+                  ].map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      onClick={() => setBulkTargetStatus(item.name as any)}
+                      className={`p-3 rounded-xl border text-left font-bold transition-all ${
+                        bulkTargetStatus === item.name
+                          ? `${item.color} ring-2 ring-emerald-500/50`
+                          : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <p className="text-sm font-bold flex items-center justify-between">
+                        {item.name}
+                        {bulkTargetStatus === item.name && <Check size={16} />}
+                      </p>
+                      <p className="text-[11px] font-normal opacity-75 mt-0.5">{item.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkStatusModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-bold text-sm"
+                disabled={bulkUpdatingStatus}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkStatusUpdate}
+                disabled={bulkUpdatingStatus}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 transition-colors font-bold text-sm"
+              >
+                {bulkUpdatingStatus ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    Apply Status
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Promote / Shift Grade Modal */}
+      {showBulkPromoteModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 w-full max-w-md animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="bg-indigo-600 text-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black flex items-center gap-2">
+                    <RefreshCw size={24} />
+                    Promote / Shift Grade
+                  </h3>
+                  <p className="text-indigo-100 text-xs font-medium mt-1">{selectedStudentIds.size} student(s) selected</p>
+                </div>
+                <button
+                  onClick={() => setShowBulkPromoteModal(false)}
+                  className="p-2 hover:bg-indigo-700 rounded-lg transition-colors"
+                  title="Close"
+                  aria-label="Close modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label htmlFor="bulk-promote-grade-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
+                  Target Grade
+                </label>
+                <select
+                  id="bulk-promote-grade-select"
+                  value={bulkPromoteGrade}
+                  onChange={(e) => setBulkPromoteGrade(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-medium focus:ring-2 focus:ring-indigo-500/50 outline-none"
+                >
+                  {['KG 1', 'KG 2', 'KG 3', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map(g => (
+                    <option key={g} value={g.startsWith('KG') ? g : `Grade ${g}`}>
+                      {g.startsWith('KG') ? g : `Grade ${g}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={bulkResetSection}
+                    onChange={(e) => setBulkResetSection(e.target.checked)}
+                    className="h-4 w-4 accent-indigo-600"
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-100">Reset section assignment</p>
+                    <p className="text-[11px] text-slate-500">Unassign section for promoted students so they can be re-assigned in their new grade.</p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowBulkPromoteModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors font-bold text-sm"
+                disabled={bulkPromotingGrade}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkPromoteGrade}
+                disabled={bulkPromotingGrade}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors font-bold text-sm"
+              >
+                {bulkPromotingGrade ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Promoting...
+                  </>
+                ) : (
+                  <>
+                    <Check size={16} />
+                    Promote Grade
                   </>
                 )}
               </button>

@@ -79,9 +79,21 @@ const studentService = {
     return response.data.data;
   },
 
-  deleteStudent: async (id: string): Promise<void> => {
-    // Delete a student by user id using the users endpoint
-    await api.delete(`/school-admin/users/${id}`);
+  deleteStudent: async (studentId: string, userId?: string): Promise<void> => {
+    // Try the dedicated students endpoint first (uses students.id PK)
+    try {
+      await api.delete(`/school-admin/students/${studentId}`);
+      return;
+    } catch (err: any) {
+      // If 404, the route may not exist on the deployed server — fall through
+      if (err.response?.status !== 404) {
+        throw err;
+      }
+    }
+
+    // Fallback: delete via /users endpoint using the user_id (not students.id PK)
+    const deleteId = userId || studentId;
+    await api.delete(`/school-admin/users/${deleteId}`);
   },
 
   assignClass: async (id: string, classId: string): Promise<Student> => {
