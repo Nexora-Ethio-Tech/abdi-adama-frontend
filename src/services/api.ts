@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { invalidateStudentLists } from './studentListCache';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -20,7 +21,14 @@ api.interceptors.request.use(
 
 // Response interceptor - Handle token refresh
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Registration, student edits and section assignments use different services.
+    // Invalidate after successful writes so every entry point refreshes list data.
+    if (!['get', 'head', 'options'].includes(response.config.method?.toLowerCase() || 'get')) {
+      invalidateStudentLists();
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

@@ -1,7 +1,7 @@
 import { Search, Download, UserPlus, X, Edit2, Trash2, Users, ArrowLeft, CheckCircle2, XCircle, Check, Loader2, GraduationCap, FileText, RefreshCw, UserCog } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import studentService, { type UpdateStudentData } from '../services/studentService';
+import studentService, { type StudentListRow } from '../services/studentService';
 import classService from '../services/classService';
 import { getBranchUsers, updateUser, resetUserPIN, assignStudentToClass, removeStudentFromClass, approveTeacher, revokeTeacher } from '../services/schoolAdminService';
 import { useUser } from '../context/UserContext';
@@ -9,10 +9,24 @@ import { StudentRegistration } from '../components/StudentRegistration';
 import * as sectionService from '../services/sectionService';
 import { exportToExcel } from '../utils/exportUtils';
 
+const transformStudent = (s: StudentListRow) => ({
+  id: s.student_id || s.id,
+  userId: s.user_id,
+  digitalId: s.digital_id,
+  firstName: s.name?.split(' ')[0] || '',
+  lastName: s.name?.split(' ').slice(1).join(' ') || '',
+  email: s.email,
+  grade: s.grade,
+  classId: s.class_id,
+  className: s.class_name,
+  section: s.class_section,
+  status: s.status,
+});
+
 export const Students = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { role, user, registrationOpen, setRegistrationOpen } = useUser();
+  const { role, user, selectedBranch, registrationOpen, setRegistrationOpen } = useUser();
   const isSchoolAdmin = role === 'school-admin';
   const canViewStudentRecord = role === 'school-admin' || role === 'super-admin' || role === 'vice-principal';
 
@@ -60,6 +74,25 @@ export const Students = () => {
   const [filterGrade, setFilterGrade] = useState(() => searchParams.get('grade') || '');
   const [filterSection, setFilterSection] = useState(() => searchParams.get('section') || '');
   const [filterStatus, setFilterStatus] = useState(() => searchParams.get('status') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  const [page, setPage] = useState(() => Math.min(1000000, Math.max(1, Math.floor(Number(searchParams.get('page'))) || 1)));
+  const [pageSize, setPageSize] = useState(() => [25, 50, 100].includes(Number(searchParams.get('pageSize'))) ? Number(searchParams.get('pageSize')) : 25);
+  const [pagination, setPagination] = useState({ page: 1, pageSize, total: 0, totalPages: 1 });
+  const [exporting, setExporting] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
+  const requestId = useRef(0);
+  const selectionRequest = useRef(0);
+  const listScope = `${user?.id || ''}:${(user as any)?.branchId || selectedBranch?.id || ''}`;
+  const listBusy = loading || search.trim() !== debouncedSearch;
+
+  useEffect(() => {
+    if (search.trim() === debouncedSearch) return;
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, debouncedSearch]);
   const [activeView, setActiveView] = useState<'students' | 'registration' | 'add'>(() => {
     const view = searchParams.get('view');
     if (view === 'registration' || view === 'add') return view;
@@ -83,7 +116,15 @@ export const Students = () => {
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
   // Bulk section assignment state
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [selectedStudents, setSelectedStudents] = useState<Map<string, any>>(new Map());
+  const selectedStudentIds = new Set(selectedStudents.keys());
+
+  useEffect(() => {
+    selectionRequest.current++;
+    setSelectedStudents(new Map());
+    setSelectingAll(false);
+    return () => { selectionRequest.current++; };
+  }, [search, filterGrade, filterSection, filterStatus, listScope]);
   const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
   const [bulkTargetGrade, setBulkTargetGrade] = useState('');
   const [availableSections, setAvailableSections] = useState<sectionService.SectionInfo[]>([]);
@@ -138,7 +179,12 @@ export const Students = () => {
   const handleUpdateStatus = async (studentUserId: string, newStatus: string) => {
     try {
       await studentService.updateStudent(studentUserId, { status: newStatus as any });
-      setStudents(prev => prev.map(s => s.userId === studentUserId ? { ...s, status: newStatus } : s));
+      if (filterStatus) {
+        await fetchStudents();
+      } else {
+        setStudents(prev => prev.map(s => s.userId === studentUserId ? { ...s, status: newStatus } : s));
+      }
+      setSelectedStudents(prev => new Map([...prev].map(([id, s]) => [id, s.userId === studentUserId ? { ...s, status: newStatus } : s])));
       showToast(`Status updated to ${newStatus} successfully!`, 'success');
     } catch (err: any) {
       showToast(getErrorMessage(err, 'Failed to update student status'), 'error');
@@ -163,6 +209,8 @@ export const Students = () => {
     if (filterSection) params.set('section', filterSection);
     if (filterStatus) params.set('status', filterStatus);
     if (activeView !== 'students') params.set('view', activeView);
+    if (page > 1) params.set('page', String(page));
+    if (pageSize !== 25) params.set('pageSize', String(pageSize));
     const qs = params.toString();
     return `/students${qs ? `?${qs}` : ''}`;
   };
@@ -178,31 +226,46 @@ export const Students = () => {
     if (filterSection) next.set('section', filterSection);
     if (filterStatus) next.set('status', filterStatus);
     if (activeView !== 'students') next.set('view', activeView);
+    if (page > 1) next.set('page', String(page));
+    if (pageSize !== 25) next.set('pageSize', String(pageSize));
     setSearchParams(next, { replace: true });
-  }, [search, filterGrade, filterSection, filterStatus, activeView, setSearchParams]);
+  }, [search, filterGrade, filterSection, filterStatus, activeView, page, pageSize, setSearchParams]);
 
   const toggleStudentSelection = (studentId: string) => {
-    const newSelected = new Set(selectedStudentIds);
-    if (newSelected.has(studentId)) {
-      newSelected.delete(studentId);
-    } else {
-      newSelected.add(studentId);
-    }
-    setSelectedStudentIds(newSelected);
+    setSelectedStudents(prev => {
+      const next = new Map(prev);
+      if (next.has(studentId)) next.delete(studentId);
+      else {
+        const student = students.find(s => s.id === studentId);
+        if (student) next.set(studentId, student);
+      }
+      return next;
+    });
   };
 
   const selectAllFiltered = () => {
-    if (filtered.length === 0) return;
+    setSelectedStudents(prev => {
+      const next = new Map(prev);
+      const allSelected = students.every(s => next.has(s.id));
+      students.forEach(s => allSelected ? next.delete(s.id) : next.set(s.id, s));
+      return next;
+    });
+  };
 
-    const allFilteredSelected = filtered.every(s => selectedStudentIds.has(s.id));
-    const newSelected = new Set(selectedStudentIds);
-    
-    if (allFilteredSelected) {
-      filtered.forEach(s => newSelected.delete(s.id));
-    } else {
-      filtered.forEach(s => newSelected.add(s.id));
+  const selectAllMatching = async () => {
+    const version = ++selectionRequest.current;
+    setSelectingAll(true);
+    setSelectedStudents(new Map());
+    try {
+      const rows = await studentService.getMatchingStudents({ search: debouncedSearch, grade: filterGrade, section: filterSection, status: filterStatus });
+      if (version === selectionRequest.current) {
+        setSelectedStudents(new Map(rows.map(row => { const student = transformStudent(row); return [student.id, student]; })));
+      }
+    } catch (err) {
+      if (version === selectionRequest.current) showToast(getErrorMessage(err, 'Failed to select students'), 'error');
+    } finally {
+      if (version === selectionRequest.current) setSelectingAll(false);
     }
-    setSelectedStudentIds(newSelected);
   };
 
   const handleBulkStatusUpdate = async () => {
@@ -211,7 +274,7 @@ export const Students = () => {
     let successCount = 0;
     let failCount = 0;
 
-    const selectedStudentsList = students.filter(s => selectedStudentIds.has(s.id));
+    const selectedStudentsList = Array.from(selectedStudents.values());
 
     for (const student of selectedStudentsList) {
       try {
@@ -229,7 +292,7 @@ export const Students = () => {
       `Updated status to ${bulkTargetStatus} for ${successCount} student(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
       failCount === 0 ? 'success' : 'error'
     );
-    setSelectedStudentIds(new Set());
+    setSelectedStudents(new Map());
     fetchStudents();
   };
 
@@ -239,7 +302,7 @@ export const Students = () => {
     let successCount = 0;
     let failCount = 0;
 
-    const selectedStudentsList = students.filter(s => selectedStudentIds.has(s.id));
+    const selectedStudentsList = Array.from(selectedStudents.values());
 
     for (const student of selectedStudentsList) {
       try {
@@ -264,7 +327,7 @@ export const Students = () => {
       `Promoted/Shifted grade to ${bulkPromoteGrade} for ${successCount} student(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
       failCount === 0 ? 'success' : 'error'
     );
-    setSelectedStudentIds(new Set());
+    setSelectedStudents(new Map());
     fetchStudents();
   };
 
@@ -274,8 +337,8 @@ export const Students = () => {
       return;
     }
 
-    const firstStudent = students.find(s => selectedStudentIds.has(s.id));
-    const gradeToUse = filterGrade ? `Grade ${filterGrade}` : firstStudent?.grade;
+    const firstStudent = Array.from(selectedStudents.values())[0];
+    const gradeToUse = filterGrade ? formatGradeDisplay(filterGrade) : firstStudent?.grade;
     setBulkTargetGrade(gradeToUse || '');
     setSelectedBulkSectionIds(new Set());
     setAvailableSections([]);
@@ -312,8 +375,8 @@ export const Students = () => {
       return;
     }
 
-    const targetGrade = bulkTargetGrade || (filterGrade ? `Grade ${filterGrade}` : '');
-    const selectedStudentIdsForGrade = students
+    const targetGrade = bulkTargetGrade || (filterGrade ? formatGradeDisplay(filterGrade) : '');
+    const selectedStudentIdsForGrade = Array.from(selectedStudents.values())
       .filter((student) => 
         selectedStudentIds.has(student.id) && 
         getGradeNumber(student.grade) === getGradeNumber(targetGrade) &&
@@ -382,7 +445,7 @@ export const Students = () => {
       );
 
       setShowBulkAssignModal(false);
-      setSelectedStudentIds(new Set());
+      setSelectedStudents(new Map());
       setSelectedBulkSectionIds(new Set());
       fetchStudents();
     } catch (err: any) {
@@ -427,41 +490,42 @@ export const Students = () => {
     }
   };
 
-  useEffect(() => { fetchStudents(); }, [filterStatus]);
-  useEffect(() => { fetchClasses(); }, []);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async (force = true) => {
+    const version = ++requestId.current;
+    if (force) studentService.invalidateLists();
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      setError(null);
-
-      // Use the new /school-admin/students endpoint that includes class info
-      const response = await studentService.getAllStudents({
-        status: filterStatus || undefined
+      const response = await studentService.getStudentPage({
+        search: debouncedSearch, grade: filterGrade, section: filterSection, status: filterStatus,
+      }, page, pageSize, listScope);
+      if (version !== requestId.current) return;
+      const rows = response.data.map(transformStudent);
+      setStudents(rows);
+      setSelectedStudents(prev => {
+        if (prev.size === 0) return prev;
+        const next = new Map(prev);
+        rows.forEach(row => { if (next.has(row.id)) next.set(row.id, row); });
+        return next;
       });
-
-      const data = response || [];
-      const transformed = data.map((s: any) => ({
-        id: s.student_id || s.id,
-        userId: s.user_id || s.userId,
-        digitalId: s.digital_id || s.digitalId,
-        firstName: s.name?.split(' ')[0] || '',
-        lastName: s.name?.split(' ').slice(1).join(' ') || '',
-        email: s.email,
-        grade: s.grade,
-        classId: s.class_id || s.classId,
-        className: s.class_name || s.className,
-        section: s.class_section || s.section,
-        status: s.status,
-      }));
-
-      setStudents(transformed);
+      setPagination(response.pagination);
+      setPage(response.pagination.page);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to fetch students');
+      if (version !== requestId.current) return;
+      setStudents([]);
+      setError(getErrorMessage(err, 'Failed to fetch students'));
     } finally {
-      setLoading(false);
+      if (version === requestId.current) setLoading(false);
     }
-  };
+  }, [debouncedSearch, filterGrade, filterSection, filterStatus, page, pageSize, listScope]);
+
+  useEffect(() => {
+    if (activeView !== 'students') return;
+    void fetchStudents(false);
+    return () => { requestId.current++; };
+  }, [fetchStudents, activeView]);
+
+  useEffect(() => { fetchClasses(); }, []);
 
   const fetchClasses = async () => {
     try {
@@ -525,6 +589,7 @@ export const Students = () => {
       const student = confirmDelete.student;
       // Pass both student PK id and user_id for proper fallback
       await studentService.deleteStudent(student.id, student.userId);
+      setSelectedStudents(prev => { const next = new Map(prev); next.delete(student.id); return next; });
       showToast('Student deleted successfully!', 'success');
       setConfirmDelete({ show: false, student: null });
       fetchStudents();
@@ -557,32 +622,30 @@ export const Students = () => {
     setShowEditModal(true);
   };
 
-  const handleExport = () => {
-    if (filtered.length === 0) {
-      showToast('No students to export for the current filters', 'error');
-      return;
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const matches = await studentService.getMatchingStudents({ search: debouncedSearch, grade: filterGrade, section: filterSection, status: filterStatus });
+      if (matches.length === 0) {
+        showToast('No students to export for the current filters', 'error');
+        return;
+      }
+      const rows = matches.map(transformStudent).map(s => ({
+        Student: `${s.firstName} ${s.lastName}`.trim(),
+        'Digital ID': s.digitalId || '',
+        Section: formatSectionDisplay(s.section),
+        Grade: formatGradeDisplay(s.grade),
+        Status: s.status || '',
+      }));
+      exportToExcel([{ name: 'Students', rows }], 'students');
+    } catch (err) {
+      showToast(getErrorMessage(err, 'Failed to export students'), 'error');
+    } finally {
+      setExporting(false);
     }
-
-    const rows = filtered.map((s) => ({
-      Student: `${s.firstName} ${s.lastName}`.trim(),
-      'Digital ID': s.digitalId || '',
-      Section: formatSectionDisplay(s.section),
-      Grade: formatGradeDisplay(s.grade),
-      Status: s.status || '',
-    }));
-
-    exportToExcel([{ name: 'Students', rows }], 'students');
   };
 
-  const filtered = students.filter(s => {
-    const matchSearch = !search || `${s.firstName} ${s.lastName} ${s.email} ${s.digitalId}`.toLowerCase().includes(search.toLowerCase());
-    const studentGradeNumber = getGradeNumber(s.grade);
-    const studentSectionNumber = getSectionNumber(s.section);
-    const matchGrade = !filterGrade || studentGradeNumber === filterGrade;
-    const matchSection = !filterSection || studentSectionNumber === filterSection;
-
-    return matchSearch && matchGrade && matchSection;
-  });
+  const filtered = students;
 
   return (
     <div className="space-y-6 pb-12">
@@ -642,10 +705,11 @@ export const Students = () => {
           <button
             type="button"
             onClick={handleExport}
+            disabled={exporting || listBusy || !!error}
             className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center gap-2 text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
           >
             <Download size={18} />
-            Export
+            {exporting ? 'Exporting...' : 'Export all matching'}
           </button>
         </div>
       </div>
@@ -668,6 +732,7 @@ export const Students = () => {
           onChange={(e) => {
             const val = e.target.value;
             setFilterGrade(val);
+            setPage(1);
             if (!val) setFilterSection('');
           }}
           className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -680,7 +745,7 @@ export const Students = () => {
         <select
           aria-label="Filter by section"
           value={filterSection}
-          onChange={(e) => setFilterSection(e.target.value)}
+          onChange={(e) => { setFilterSection(e.target.value); setPage(1); }}
           className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Sections</option>
@@ -691,7 +756,7 @@ export const Students = () => {
         <select
           aria-label="Filter by status"
           value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
           className="w-full sm:w-auto px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All Status</option>
@@ -733,7 +798,7 @@ export const Students = () => {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 md:p-8">
           <StudentRegistration
             isAdminView={false}
-            onCreated={() => setActiveView('students')}
+            onCreated={() => { studentService.invalidateLists(); setPage(1); setActiveView('students'); }}
           />
         </div>
       ) : (
@@ -744,12 +809,22 @@ export const Students = () => {
             </div>
           )}
 
-          {loading ? (
+          {listBusy ? (
             <div className="flex items-center justify-center h-64">
               <Loader2 className="animate-spin text-blue-600" size={32} />
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+              <div className="px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 text-sm">
+                <span aria-live="polite">{error ? 'Unable to load students' : `${pagination.total} matching students`}</span>
+                <div className="flex items-center gap-4">
+                  <button type="button" onClick={selectAllMatching} disabled={selectingAll || !!error || pagination.total === 0}
+                    className="text-blue-600 font-bold disabled:opacity-50">
+                    {selectingAll ? 'Selecting...' : 'Select all matching'}
+                  </button>
+                  <button type="button" onClick={() => fetchStudents()} className="text-blue-600 font-bold">Refresh</button>
+                </div>
+              </div>
               {/* Bulk Actions Bar */}
               {selectedStudentIds.size > 0 && (
                 <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 animate-in fade-in duration-200">
@@ -758,6 +833,7 @@ export const Students = () => {
                       type="checkbox"
                       checked={filtered.length > 0 && filtered.every(s => selectedStudentIds.has(s.id))}
                       onChange={selectAllFiltered}
+                      disabled={selectingAll}
                       className="w-4 h-4 rounded text-emerald-500 cursor-pointer accent-emerald-500"
                       title="Toggle select all visible students"
                     />
@@ -781,8 +857,8 @@ export const Students = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        const firstStudent = students.find(s => selectedStudentIds.has(s.id));
-                        const currentGrade = filterGrade ? `Grade ${filterGrade}` : (firstStudent?.grade || 'Grade 1');
+                        const firstStudent = Array.from(selectedStudents.values())[0];
+                        const currentGrade = filterGrade ? formatGradeDisplay(filterGrade) : (firstStudent?.grade || 'Grade 1');
                         setBulkPromoteGrade(currentGrade);
                         setBulkResetSection(true);
                         setShowBulkPromoteModal(true);
@@ -802,7 +878,7 @@ export const Students = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSelectedStudentIds(new Set())}
+                      onClick={() => setSelectedStudents(new Map())}
                       className="flex-1 sm:flex-none px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors text-sm font-bold"
                     >
                       Clear
@@ -823,9 +899,10 @@ export const Students = () => {
                           filtered.every(s => selectedStudentIds.has(s.id))
                         }
                         onChange={selectAllFiltered}
+                      disabled={selectingAll}
                         className="rounded cursor-pointer"
                         title="Select all visible students"
-                        aria-label="Select all students"
+                        aria-label="Select all students on this page"
                       />
                     </th>
                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Student</th>
@@ -843,7 +920,7 @@ export const Students = () => {
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={canViewStudentRecord ? 8 : 7} className="px-6 py-12 text-center text-slate-500">
-                        No students found. Add your first student!
+                        No students match the current filters.
                       </td>
                     </tr>
                   ) : (
@@ -854,6 +931,7 @@ export const Students = () => {
                             type="checkbox"
                             checked={selectedStudentIds.has(student.id)}
                             onChange={() => toggleStudentSelection(student.id)}
+                            disabled={selectingAll}
                             className="rounded cursor-pointer"
                             title={`Select ${student.firstName}`}
                             aria-label={`Select ${student.firstName}`}
@@ -1005,6 +1083,23 @@ export const Students = () => {
                   )}
                 </tbody>
               </table>
+              </div>
+              <div className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-t border-slate-100 dark:border-slate-800 text-sm">
+                <label className="flex items-center gap-2">
+                  Students per page
+                  <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    className="p-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                    {[25, 50, 100].map(size => <option key={size} value={size}>{size}</option>)}
+                  </select>
+                </label>
+                <span aria-live="polite">{error ? '—' : pagination.total === 0 ? '0 students' : `${(pagination.page - 1) * pageSize + 1}–${Math.min(pagination.page * pageSize, pagination.total)} of ${pagination.total}`}</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" disabled={page <= 1 || !!error} onClick={() => setPage(p => p - 1)}
+                    className="px-3 py-2 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40">Previous</button>
+                  <span>Page {pagination.page} of {pagination.totalPages}</span>
+                  <button type="button" disabled={page >= pagination.totalPages || !!error} onClick={() => setPage(p => p + 1)}
+                    className="px-3 py-2 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-40">Next</button>
+                </div>
               </div>
             </div>
           )}
